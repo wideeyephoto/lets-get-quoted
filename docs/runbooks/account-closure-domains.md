@@ -1,6 +1,6 @@
 # Account closure and contractor domains
 
-The supported admin **Close account** action schedules a 30-day recovery period. It suspends access immediately and records `account_closure_requested`; it must not report completed anonymization during that period. The scheduled closure worker performs disposal after the recovery deadline and any legal hold. The legacy hard-delete helper is not the supported UI flow.
+The supported admin **Close account → Schedule closure** action schedules a 30-day recovery period. It suspends access immediately and records `account_closure_requested`; it must not report completed anonymization during that period. The scheduled closure worker performs disposal after the recovery deadline and any legal hold. The legacy hard-delete helper is not the supported UI flow.
 
 The closure request captures website hostnames/site IDs and email domain/provider IDs in the service-only `account_closure_jobs.domain_cleanup_targets` ledger. It captures these within the request transaction, before email rows can be disposed. New domain enrollment is serialized with the account lock and cannot cross that snapshot. Browser roles cannot read these targets or run cleanup/recovery RPCs.
 
