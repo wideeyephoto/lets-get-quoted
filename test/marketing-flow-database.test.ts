@@ -21,6 +21,7 @@ beforeAll(async () => {
   // The deployed baseline predates this column; CREATE TABLE IF NOT EXISTS cannot repair it.
   await db.exec('alter table public.neighborhood_halo_campaigns drop column wallet_deducted_cents');
   await db.exec(readFileSync('migrations/20260910112758_halo_wallet_debit_column.sql', 'utf8'));
+  await db.exec(readFileSync('migrations/20260910124845_card_cancellation_payment_replay.sql', 'utf8'));
   await db.exec(`insert into public.accounts values('${account}'); insert into public.jobs values('${job}','${account}','complete');
     insert into public.sites values('${account}','${account}','{"adCampaign":{"walletBalanceCents":10000}}');
     insert into public.merchandise_card_designs(id,account_id) values('${proof}','${account}');
@@ -82,6 +83,21 @@ describe('Marketing transaction boundaries', () => {
     await db.query(`select public.apply_printful_order_event('TEST-CARD',123,'{"status":"in_production","fulfillment_status":"in_production"}')`);
     const order = await db.query<{status:string;payment_status:string}>("select status,payment_status from public.merchandise_orders where order_number='TEST-CARD'");
     expect(order.rows[0]).toEqual({status:'shipped',payment_status:'paid'});
+  });
+  it('keeps printer cancellation terminal across delayed paid Checkout replays', async () => {
+    const id = '77777777-7777-4777-8777-777777777777';
+    await db.query(`insert into public.merchandise_orders(id,account_id,order_number,proof_id,quote_id,subtotal,shipping_cost)
+      values('${id}','${account}','CANCEL-CARD','${proof}','${quote}',35,12)`);
+    const claim = `select public.claim_card_fulfillment('${account}','${id}','cs_cancel','pi_cancel',5000,300,'${lease}',175) as result`;
+    await db.query(claim);
+    await db.query(`select public.finish_card_fulfillment('${account}','${id}','${lease}','{"ok":true,"printfulOrderId":456,"status":"pending"}')`);
+    await db.query(`select public.apply_printful_order_event('CANCEL-CARD',456,'{"status":"cancelled","fulfillment_status":"cancelled"}')`);
+    for (let retry = 0; retry < 2; retry++) expect((await db.query<{result:{completed:boolean}}>(claim)).rows[0].result.completed).toBe(true);
+    const order = await db.query<{status:string;payment_status:string;fulfillment_status:string;provider_id:number;lease:unknown}>(`select status,payment_status,fulfillment_status,printful_order_id::int provider_id,fulfillment_lease_token lease from public.merchandise_orders where id='${id}'`);
+    expect(order.rows[0]).toEqual({status:'cancelled',payment_status:'paid',fulfillment_status:'cancelled',provider_id:456,lease:null});
+    const counts = await db.query<{ledger:number;attempts:number}>(`select (select count(*)::int from public.merchandise_revenue_ledger where order_id='${id}') ledger,(select count(*)::int from public.merchandise_fulfillment_attempts where order_id='${id}') attempts`);
+    expect(counts.rows[0]).toEqual({ledger:1,attempts:1});
+    await expect(db.query(claim.replace('cs_cancel','cs_other'))).rejects.toThrow(/session mismatch/);
   });
   it('serializes Halo delivery changes and never lowers cumulative spend', async () => {
     await db.exec(`update public.neighborhood_halo_campaigns set status='active' where id='${job}'`);

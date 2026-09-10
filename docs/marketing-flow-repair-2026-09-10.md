@@ -13,6 +13,7 @@ The held card ordering work is restored on top of current main. Halo and managed
 - Send the front artwork using the Orders v1 catalog file ID `default`; `front` is the catalog's display type, not its file ID.
 - Validate the returned order ID and documented fulfillment status when confirming a recovered draft. An HTTP 200 response with a failed, unconfirmed, incomplete, or different order cannot mark fulfillment successful.
 - Persist printer callbacks before acknowledging them. Delayed production updates cannot regress shipment status; a printer credit does not claim that the customer's Stripe payment was refunded.
+- Treat canceled fulfillment as terminal when a delayed paid Checkout event is replayed. Preserve the cancellation, provider order ID, and existing payment ledger without claiming another fulfillment lease.
 - Accept signed Printful v2 shipment events, decode the provider's hex signing key regardless of byte length, verify the configured store, and distinguish separate shipments when deduplicating retries.
 - Remove invented website addresses and premature manufacturing/dispatch confirmations. Unsupported stationery finishes and unavailable providers fail without simulated production success.
 
@@ -44,6 +45,8 @@ The actual PNG output from all three card layouts is rasterized and optically de
 ## Release ordering
 
 Apply `20260905170000_merchandise_card_operations.sql`, `20260910104058_marketing_flow_repair.sql`, and `20260910112758_halo_wallet_debit_column.sql` in order before deploying this branch. The earlier migration adds the previously held card tables; the repair migration adds the private artwork bucket, trusted RPCs, restricted browser writes, and settlement/lease fields. The final migration adds the wallet-debit column missing from the deployed Halo baseline; old rows default to zero because an unproven debit cannot earn a refund. Existing main migrations are prerequisites.
+
+Then apply `20260910124845_card_cancellation_payment_replay.sql`. It keeps provider-canceled orders terminal in `claim_card_fulfillment` while retaining the ownership, session, amount, and payment-state checks and service-only permissions. The cancellation regression executes a real claim, provider acceptance, cancellation callback, and two delayed paid-event claims, verifying one ledger row, one fulfillment attempt, the preserved provider ID, and no active lease. The follow-up passes 41 database/provider/webhook tests, nine staging PostgreSQL transaction tests, and TypeScript.
 
 All three migrations were applied to staging and production on September 10, 2026, with each environment's migration ledger updated in the same transaction. The real staging PostgreSQL checks in `test-staging/marketing-flow-transactions.test.ts` pass all eight transaction, idempotency, lifecycle, and privilege cases. This verification caught the missing Halo column that a fresh database did not reveal. The unit database harness now also tests that older schema shape. Security advisor findings for the changed tables were informational notices about intentionally server-only tables without browser policies.
 
