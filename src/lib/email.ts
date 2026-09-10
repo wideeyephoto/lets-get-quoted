@@ -1243,9 +1243,8 @@ export function renderDailyDigestEmailHtml(input: {
  * sending that news from the broken domain is the one delivery most likely to
  * land in spam or bounce outright. `contractorFrom` is never called here.
  *
- * Their outbound customer mail has already fallen back to the platform address
- * by this point, so nothing is queued or lost; the cost of not reading this is
- * that their invoices keep going out under our name instead of theirs.
+ * Technical downgrade makes the platform sender eligible. This does not prove
+ * receipt of earlier messages or override a separate administrative sending hold.
  */
 export async function sendSendingDomainFailedEmail(input: {
   recipientEmail: string;
@@ -1254,7 +1253,7 @@ export async function sendSendingDomainFailedEmail(input: {
   accountId?: string;
   reason?: string | null;
   settingsUrl: string;
-}): Promise<void> {
+}): Promise<string> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -1270,11 +1269,11 @@ export async function sendSendingDomainFailedEmail(input: {
       eyebrow: 'Action needed',
       heading: 'Your sending domain stopped verifying',
       paragraphs: [
-        `The DNS records that let us send email as ${input.domain} are no longer answering, so we have stopped sending from that address.`,
+        `We could not verify the email connection for ${input.domain}, so we have stopped sending from that address.`,
         input.reason?.trim()
-          ? `What your DNS provider reported: ${input.reason.trim()}`
+          ? `Connection status: ${input.reason.trim()}`
           : 'This usually means the DKIM or SPF record was edited or removed at your DNS provider.',
-        `Nothing has been lost. Your quotes and invoices are still going out — they are just coming from our address instead of yours until the records are back.`,
+        `LGQ can send quotes and invoices from its own address while you fix the records. Check recent deliveries if a customer reports a missing email.`,
       ],
       cta: { label: 'Check my sending domain', url: input.settingsUrl },
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">We are sending this from ${escapeHtml("Let's Get Quoted")} rather than ${escapeHtml(input.domain)} because that domain can no longer sign mail.</p>`,
@@ -1287,6 +1286,8 @@ export async function sendSendingDomainFailedEmail(input: {
     console.error('Failed to send sending-domain failure email:', result.error);
     throw new Error(result.error.message);
   }
+  if (!result.data?.id) throw new Error('Email provider returned no message ID.');
+  return result.data.id;
 }
 
 /**
