@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { lgqSmsText } from '@/lib/sms-brand';
+
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -309,7 +311,7 @@ async function processClaim(
       const queued = await enqueueSmsDelivery({
         accountId: claim.accountId,
         phoneNumber: outcome.ownerAlertPhone,
-        body: outcome.ownerAlertBody,
+        body: lgqSmsText(outcome.ownerAlertBody),
         messageKind: 'inbound-owner-alert',
         billingCategory: 'owner_alert',
         // Owner alerts are a new outbound intent, not a reply on the inbound
