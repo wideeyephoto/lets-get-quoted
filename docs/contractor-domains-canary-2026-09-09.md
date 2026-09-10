@@ -1,6 +1,6 @@
 # Contractor domains: Outlook, lifecycle, and canary record
 
-Updated September 10, 2026 at 12:52 UTC (September 10 in America/New_York). **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
+Updated September 10, 2026 at 13:20 UTC (September 10 in America/New_York). **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
 
 Current binding after the provider-loss drill: database **`ac8aff96-573a-4ec1-8cfa-25d48c551e05`**, Resend **`e36d84f4-13e1-4c52-a1ef-3b53514945ec`**, verified through LGQ at **12:50:48.309 UTC**. Both September 10 deliberate test allowances are now used: Outlook quote and Gmail owner alert. The routine 12:00 UTC daily digest is separate ordinary scheduled mail. Do not trigger more test mail or website-owner notifications today.
 
@@ -172,6 +172,8 @@ Read-only post-drill checks at **13:07–13:08 UTC** confirmed the replacement p
 The existing hourly follow-up remains responsible for the outstanding work under its original recipient limits. Next delivery drills require a new America/New_York daily allowance. The website fixture still needs the owner's Squarespace passkey approval before its DNS can be published, followed by scheduled certificate promotion/owner notice and deployed disposable-account deletion. F03's actual product fallback receipt, F07's failed-notice escalation, the other lifecycle/rollback gates, and the seven-day observation remain open. **The observation clock has not started.**
 
 ## Remaining lifecycle and canary work
+
+The September 10 follow-up completed **G07's support diagnostic document** against the released settings actions, provider adapter, sender/reply selection, definitive fallback and notice processor. The [new guide](runbooks/contractor-email-domain-support.md) covers each required recovery branch and LGQ/registrar/mailbox responsibilities. Its exact account-scoped read-only snapshot ran at **13:17:31.865 UTC**, returning the current verified binding with no failure reason and no open notices. The September 8 runbook's immediate-fallback promise and unsafe bulk/abuse-disable recipe were replaced with current boundaries. No mail, DNS, provider mutation or new deployment occurred. This documentation acceptance does not close G03/G05, the remaining F/H drills, or a canary observation day.
 
 Deployed onboarding, clean disconnect/reconnect, and a real custom-domain Outlook product quote are recorded above. Finish Gmail product coverage, the remaining supported-message and technical DNS/provider loss/recovery scenarios, durable hold/cleanup behavior, and website pending-certificate promotion/deletion using disposable assets. Keep injected fault tests distinct from provider/DNS observations. Do not delete the live website or claim that zero-row cron runs exercised a tenant.
 
