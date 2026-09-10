@@ -76,6 +76,8 @@ export default async function AdminBillingOperationsPage() {
   const now = new Date();
   const notInstalled = ledgers.filter((ledger) => ledger.availability === 'not_installed').length;
   const unavailable = ledgers.filter((ledger) => ledger.availability === 'unavailable').length;
+  const nonLiveReviews = ledgers.find((ledger) => ledger.id === 'subscription_events')
+    ?.metrics.find((metric) => metric.code === 'classified_non_live')?.count ?? 0;
 
   return (
     <>
@@ -102,6 +104,14 @@ export default async function AdminBillingOperationsPage() {
           <strong>{notInstalled} {notInstalled === 1 ? 'ledger is' : 'ledgers are'} not installed.</strong>{' '}
           Required production tables, columns, or summary functions are absent. That is a schema-readiness state, not
           an all-clear and not a zero count.
+        </div>
+      ) : null}
+
+      {nonLiveReviews > 0 ? (
+        <div className={styles.banner} role="status">
+          <strong>{nonLiveReviews} non-live subscription events need configuration review.</strong>{' '}
+          They are excluded from actionable billing failures. Their original evidence is retained;
+          operations must verify the source and webhook routing before closing the configuration case.
         </div>
       ) : null}
 
@@ -135,12 +145,17 @@ export default async function AdminBillingOperationsPage() {
                     </td>
                     <td style={{ minWidth: '19rem' }}>
                       <Metrics ledger={ledger} />
-                      {canManageOps && deadLetterCount > 0 ? (
+                      {canManageOps && deadLetterCount > 0 && ledger.id !== 'subscription_events' ? (
                         <RequeueDeadLettersButton
                           ledgerId={ledger.id}
                           ledgerLabel={ledger.label}
                           deadLetterCount={deadLetterCount}
                         />
+                      ) : null}
+                      {ledger.id === 'subscription_events' && deadLetterCount > 0 ? (
+                        <div className={styles.muted} style={{ fontSize: '.75rem', marginTop: '.35rem' }}>
+                          Targeted recovery only
+                        </div>
                       ) : null}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>

@@ -690,12 +690,44 @@ describe('PII-free billing worker heartbeat summaries', () => {
       in_progress: 0,
       retryable_failures: 1,
       terminal_failures: 0,
+      non_live_mode_rejections: 0,
       worker_errors: 1,
       claim_errors: 0,
       failures: 2,
     });
     expect(JSON.stringify(summary)).not.toContain(secret);
     expect(cronSummaryHasFailures(summary)).toBe(true);
+  });
+
+  it('reports non-live mode rejections separately without failing the batch', () => {
+    const summary = summarizeStripeSubscriptionProjectionBatch({
+      status: 'completed',
+      requestedBatchSize: 10,
+      claimedCount: 1,
+      results: [
+        {
+          status: 'ignored_test_mode',
+          billingEventId: '01d5f287-54dc-48d4-adc7-5561c523d944',
+        },
+      ],
+      errorCode: null,
+    });
+
+    expect(summary).toEqual({
+      requested: 10,
+      claimed: 1,
+      processed: 0,
+      ignored: 0,
+      replayed: 0,
+      in_progress: 0,
+      retryable_failures: 0,
+      terminal_failures: 0,
+      non_live_mode_rejections: 1,
+      worker_errors: 0,
+      claim_errors: 0,
+      failures: 0,
+    });
+    expect(cronSummaryHasFailures(summary)).toBe(false);
   });
 
   it('drops connected payment, workspace, Merchant, provider, and error identifiers', () => {
