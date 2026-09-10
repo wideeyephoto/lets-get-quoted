@@ -488,6 +488,18 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
     console.error('deleteAccount custom domain read failed:', error instanceof Error ? error.message : error);
   }
 
+  // Same reason, one table over: `sites` cascades too, so the custom domains
+  // this workspace holds have to be read while they are still readable. They
+  // are handed back to the project only after the delete is confirmed below.
+  let heldDomains: string[] = [];
+  try {
+    heldDomains = await readAccountCustomDomains(admin, accountId);
+  } catch (error) {
+    // Never block the erasure on this read. A leaked binding is a mess; a
+    // refused GDPR deletion is a breach.
+    console.error('deleteAccount custom domain read failed:', error instanceof Error ? error.message : error);
+  }
+
   // The privacy log outlives the account on purpose — a deletion request has to
   // stay provable after the deletion. But `details` is free text a staff member
   // typed, and it may quote the very personal data the request was about, so it
