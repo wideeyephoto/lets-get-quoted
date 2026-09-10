@@ -1,0 +1,185 @@
+{
+  "disposition": "Owner-confirmed prelaunch rehearsal; cancel the unsent missed-call SMS and retain all source and deferred attempt history.",
+  "owner_confirmation": {
+    "date": "2026-09-10",
+    "answer": "Yes, a prelaunch test",
+    "source_provider_call_id": "c223a77c-6321-4e9c-977e-9ca90810e8ce",
+    "task_id": "01a087bb-d6ec-7891-a1d7-c7b94209d43d"
+  },
+  "scope": "Exactly one SMS event and its delivery task. Original 221-record disposition batch remains unchanged. No provider request or usage mutation.",
+  "verification": {
+    "syntax_check": "passed",
+    "rollback_rehearsal": {
+      "observed_at": "2026-09-10T15:27:16.048Z",
+      "committed": false,
+      "source_rows_changed": 0,
+      "audit_rows_inserted": 0,
+      "rolled_back_source_updates": 2,
+      "preserved_fields_and_attempt_history": "matched",
+      "sms_usage_reservations": 0,
+      "sms_overage_events": 0
+    },
+    "repeat": {
+      "observed_at": "2026-09-10T15:27:34.788Z",
+      "audit_id": "5c32d4b2-9bf6-4d7b-a0fa-aadc21b7d287",
+      "source_rows_changed": 0,
+      "audit_rows_inserted": 0,
+      "exact_persisted_state_and_history_match": true
+    },
+    "follow_up_evidence": "operational-cleanup-observation-20260910T152738Z.json",
+    "pending_sms_after_cancellation": 0,
+    "unchanged_voice_usage": "The existing voice reservation has one committed minute; its full-row fingerprint was unchanged. It is outside this SMS cleanup."
+  },
+  "application": {
+    "observed_at": "2026-09-10T15:27:23.851Z",
+    "committed": true,
+    "event_id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+    "audit_id": "5c32d4b2-9bf6-4d7b-a0fa-aadc21b7d287",
+    "source_rows_changed": 2,
+    "audit_rows_inserted": 1,
+    "rolled_back_source_updates": 0,
+    "provider_requests": 0,
+    "usage_mutations": 0,
+    "original_221_record_batch_unchanged": true,
+    "before": {
+      "event": {
+        "id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+        "account_id": "c63293b4-138e-45c2-8e11-0f4e6d7e08e6",
+        "context": "automation",
+        "event_type": "missed_call",
+        "message_kind": "missed-call",
+        "billing_category": "customer_message",
+        "sender_purpose": "contractor_dedicated",
+        "idempotency_key": "missed-call:signalwire:c223a77c-6321-4e9c-977e-9ca90810e8ce",
+        "status": "queued",
+        "created_at": "2026-09-09T21:57:31.909Z",
+        "queued_at": "2026-09-09T21:57:32.001Z",
+        "updated_at": "2026-09-09T21:57:32.001Z",
+        "cancelled_at": null,
+        "error_reason": null,
+        "provider": null,
+        "provider_id": null,
+        "sender_number_id": null,
+        "send_started_at": null,
+        "sent_at": null,
+        "provider_accepted_at": null,
+        "delivered_at": null,
+        "failed_at": null,
+        "indeterminate_at": null,
+        "text_usage_kind": null,
+        "text_usage_state": null,
+        "text_usage_reservation_id": null,
+        "text_usage_finalization_key": null,
+        "text_usage_overage_key": null,
+        "text_usage_last_error": null,
+        "source_fingerprint": "280a96c25c8c39c694aa253fa79dfdc16bb689e818e61ae70686974300d34f42",
+        "preserved_fields_fingerprint": "edd4d57e76c6b2cf9cd46749ded0aa9678982c5a0b40053ccc5ca0b72ddeecc4"
+      },
+      "task": {
+        "sms_event_id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+        "task_state": "queued",
+        "claim_token": null,
+        "lease_expires_at": null,
+        "attempt_count": 0,
+        "available_at": "2026-09-10T15:27:19.538Z",
+        "request_started_at": null,
+        "last_error_code": "sms_sender_not_ready",
+        "completed_at": null,
+        "failed_at": null,
+        "indeterminate_at": null,
+        "cancelled_at": null,
+        "created_at": "2026-09-09T21:57:32.001Z",
+        "updated_at": "2026-09-10T15:12:19.538Z",
+        "lease_sequence": 66,
+        "source_fingerprint": "94f63703aa2752ad1596355db9437e92aafd1211ee1b8c17f9758c43ec140652",
+        "preserved_fields_fingerprint": "ca37f11a5f4dd4597c5b9299fa827e4030a80840353e0600b88501eb932d9b13"
+      },
+      "history": {
+        "records": 66,
+        "provider_requests_started": 0,
+        "unfinished": 0,
+        "unexpected_outcomes": 0,
+        "fingerprint": "a0b8ad531e6a5da2f69bb9e3b66caf0b5d54f3f01587c1877e7c22873162b2ec"
+      },
+      "usage": {
+        "reservations": 0,
+        "overage_events": 0
+      },
+      "voice_usage": {
+        "records": 1,
+        "committed_minutes": 1,
+        "fingerprint": "05b78469f29f215c2218c4569633ad65c0bb55f9f892db7ca4d77827f8cd8613"
+      }
+    },
+    "after": {
+      "event": {
+        "id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+        "account_id": "c63293b4-138e-45c2-8e11-0f4e6d7e08e6",
+        "context": "automation",
+        "event_type": "missed_call",
+        "message_kind": "missed-call",
+        "billing_category": "customer_message",
+        "sender_purpose": "contractor_dedicated",
+        "idempotency_key": "missed-call:signalwire:c223a77c-6321-4e9c-977e-9ca90810e8ce",
+        "status": "cancelled",
+        "created_at": "2026-09-09T21:57:31.909Z",
+        "queued_at": "2026-09-09T21:57:32.001Z",
+        "updated_at": "2026-09-10T15:27:25.258Z",
+        "cancelled_at": "2026-09-10T15:27:25.258Z",
+        "error_reason": "owner_confirmed_prelaunch_rehearsal",
+        "provider": null,
+        "provider_id": null,
+        "sender_number_id": null,
+        "send_started_at": null,
+        "sent_at": null,
+        "provider_accepted_at": null,
+        "delivered_at": null,
+        "failed_at": null,
+        "indeterminate_at": null,
+        "text_usage_kind": null,
+        "text_usage_state": null,
+        "text_usage_reservation_id": null,
+        "text_usage_finalization_key": null,
+        "text_usage_overage_key": null,
+        "text_usage_last_error": null,
+        "source_fingerprint": "98173de4810b155523014e7a67e080321f082dd645a06942df0b870f6a5443ae",
+        "preserved_fields_fingerprint": "edd4d57e76c6b2cf9cd46749ded0aa9678982c5a0b40053ccc5ca0b72ddeecc4"
+      },
+      "task": {
+        "sms_event_id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+        "task_state": "cancelled",
+        "claim_token": null,
+        "lease_expires_at": null,
+        "attempt_count": 0,
+        "available_at": "2026-09-10T15:27:19.538Z",
+        "request_started_at": null,
+        "last_error_code": "owner_confirmed_prelaunch_rehearsal",
+        "completed_at": null,
+        "failed_at": null,
+        "indeterminate_at": null,
+        "cancelled_at": "2026-09-10T15:27:25.258Z",
+        "created_at": "2026-09-09T21:57:32.001Z",
+        "updated_at": "2026-09-10T15:27:25.258Z",
+        "lease_sequence": 66,
+        "source_fingerprint": "62d573a2afd1a66995f0ee02b7597755a2559f3a98d026a4864ffe4c53e8111e",
+        "preserved_fields_fingerprint": "ca37f11a5f4dd4597c5b9299fa827e4030a80840353e0600b88501eb932d9b13"
+      },
+      "history": {
+        "records": 66,
+        "provider_requests_started": 0,
+        "unfinished": 0,
+        "unexpected_outcomes": 0,
+        "fingerprint": "a0b8ad531e6a5da2f69bb9e3b66caf0b5d54f3f01587c1877e7c22873162b2ec"
+      },
+      "usage": {
+        "reservations": 0,
+        "overage_events": 0
+      },
+      "voice_usage": {
+        "records": 1,
+        "committed_minutes": 1,
+        "fingerprint": "05b78469f29f215c2218c4569633ad65c0bb55f9f892db7ca4d77827f8cd8613"
+      }
+    }
+  }
+}
