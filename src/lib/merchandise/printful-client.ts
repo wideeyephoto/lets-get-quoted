@@ -104,7 +104,8 @@ export function buildPrintfulOrderItems(items: MerchandiseOrderItem[]):
         const frontUrl =
           item.customizationDetails?.customArtworkUrl;
         if (frontUrl) {
-          files.push({ type: 'front', url: frontUrl });
+          // Orders v1 expects the catalog file ID ("default"), not its display type ("front").
+          files.push({ type: 'default', url: frontUrl });
         }
         const backUrl = item.customizationDetails?.backDesign;
         if (backUrl) {
