@@ -48,7 +48,7 @@ export async function runEmailDomainFailureNotices(admin: SupabaseClient): Promi
         domain: notice.domain,
         accountId: notice.account_id,
         reason: notice.reason,
-        settingsUrl: `${APP_ORIGIN}/dashboard/settings`,
+        settingsUrl: `${APP_ORIGIN}/dashboard/settings#email-domain`,
       });
     } catch (error) {
       const known = error instanceof Error && ['owner_email_missing', 'owner_brand_unavailable'].includes(error.message);
