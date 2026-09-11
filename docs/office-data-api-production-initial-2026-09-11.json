@@ -1,12 +1,12 @@
 {
-  "startedAt": "2026-09-11T16:40:55.721Z",
-  "origin": "http://localhost:3033",
-  "project": "uydlabvgauzujdwuqzxq",
-  "fixtureMarker": "tenant-office-browser-2026-09-11-613ec010",
+  "startedAt": "2026-09-11T16:25:52.127Z",
+  "origin": "https://app.letsgetquoted.com",
+  "project": "mfuvvtrkipkigwqqtcal",
+  "fixtureMarker": "tenant-office-browser-2026-09-11-395a11fb",
   "release": {
-    "commit": "561408f85be82f7079ce0d9e698a2f95b1e91b17",
-    "deployment": "local",
-    "workingTree": true
+    "commit": "b1bb7f172ee1042f13bfaf5816318d467f5193f3",
+    "deployment": "dpl_6aT9U7w7GpzkDN9Y1RsM4PBDwjgm",
+    "workingTree": false
   },
   "sourceHashes": {
     "src/lib/job-access-fetch.ts": "2b8bfa0c4be0cba0f970f38deddcae46e171f5f46f719c0f469822936243924a",
@@ -20,11 +20,11 @@
     {
       "id": "SIGNIN-ownerA",
       "description": "Real browser sign-in and identity check: ownerA",
-      "at": "2026-09-11T16:40:57.865Z",
+      "at": "2026-09-11T16:25:54.627Z",
       "observed": {
-        "identity": "d31fdb2a-ca34-44dc-9644-05b703c0a152",
+        "identity": "a5f57396-a5d4-425c-8144-92f977bf2339",
         "path": "/workspaces",
-        "sessionFingerprint": "682a08767011b008"
+        "sessionFingerprint": "6f899d755151d962"
       },
       "status": "PASS",
       "requests": []
@@ -32,11 +32,11 @@
     {
       "id": "SIGNIN-ownerB",
       "description": "Real browser sign-in and identity check: ownerB",
-      "at": "2026-09-11T16:41:00.267Z",
+      "at": "2026-09-11T16:26:02.581Z",
       "observed": {
-        "identity": "c35a97c6-61e2-4c20-9692-2b70e49b5fc2",
+        "identity": "d4c7cc16-dda6-4b6f-ab93-a4bcdaa6c44b",
         "path": "/workspaces",
-        "sessionFingerprint": "1b84b24d54b484e4"
+        "sessionFingerprint": "77eec412e7e30178"
       },
       "status": "PASS",
       "requests": []
@@ -44,11 +44,11 @@
     {
       "id": "SIGNIN-officeA",
       "description": "Real browser sign-in and identity check: officeA",
-      "at": "2026-09-11T16:41:01.661Z",
+      "at": "2026-09-11T16:26:05.135Z",
       "observed": {
-        "identity": "61fb4d1c-c6f6-4a6d-8383-8e81459c53f2",
+        "identity": "a9406519-2039-4fcd-8494-b3d2d5adccff",
         "path": "/workspaces",
-        "sessionFingerprint": "336846321a6059d8"
+        "sessionFingerprint": "83358ca2b22983f4"
       },
       "status": "PASS",
       "requests": []
@@ -56,9 +56,9 @@
     {
       "id": "SERVICE-ROLE-PRICE",
       "description": "Real admin client changes the marked price and the database confirms it",
-      "at": "2026-09-11T16:41:02.865Z",
+      "at": "2026-09-11T16:26:08.210Z",
       "observed": {
-        "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+        "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
         "quoted_amount": 17353.69
       },
       "status": "PASS",
@@ -67,19 +67,19 @@
     {
       "id": "OWNER-ownerA",
       "description": "Owner retrieves exact own fixture and nonzero quote",
-      "at": "2026-09-11T16:41:03.207Z",
+      "at": "2026-09-11T16:26:08.728Z",
       "observed": {
         "status": 200,
         "data": [
           {
-            "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-            "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
+            "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+            "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
             "quoted_amount": 17351.69,
             "quote_items": [
               {
                 "quantity": 1,
                 "unit_price": 17351.69,
-                "description": "CONFIDENTIAL-QUOTE-A-613ec010"
+                "description": "CONFIDENTIAL-QUOTE-A-395a11fb"
               }
             ]
           }
@@ -90,19 +90,19 @@
         {
           "surface": "Data API",
           "actor": "ownerA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id,account_id,quoted_amount,quote_items",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id,account_id,quoted_amount,quote_items",
           "method": "GET",
           "status": 200,
           "data": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
               "quoted_amount": 17351.69,
               "quote_items": [
                 {
                   "quantity": 1,
                   "unit_price": 17351.69,
-                  "description": "CONFIDENTIAL-QUOTE-A-613ec010"
+                  "description": "CONFIDENTIAL-QUOTE-A-395a11fb"
                 }
               ]
             }
@@ -113,7 +113,7 @@
     {
       "id": "TENANT-ownerA",
       "description": "Owner cannot retrieve foreign fixture",
-      "at": "2026-09-11T16:41:03.336Z",
+      "at": "2026-09-11T16:26:08.931Z",
       "observed": {
         "status": 200,
         "data": []
@@ -123,7 +123,7 @@
         {
           "surface": "Data API",
           "actor": "ownerA",
-          "path": "job_access?id=eq.d34e588a-12c5-4cff-bf9f-4239bd8795fa&select=id,quoted_amount",
+          "path": "job_access?id=eq.2488eb93-549a-4228-97a0-170ec0acc50e&select=id,quoted_amount",
           "method": "GET",
           "status": 200,
           "data": []
@@ -133,19 +133,19 @@
     {
       "id": "OWNER-ownerB",
       "description": "Owner retrieves exact own fixture and nonzero quote",
-      "at": "2026-09-11T16:41:03.494Z",
+      "at": "2026-09-11T16:26:09.213Z",
       "observed": {
         "status": 200,
         "data": [
           {
-            "id": "d34e588a-12c5-4cff-bf9f-4239bd8795fa",
-            "account_id": "be0b3d2a-e7db-418d-82e2-cb20f11f78e5",
+            "id": "2488eb93-549a-4228-97a0-170ec0acc50e",
+            "account_id": "295001dd-3eb9-454a-8acf-b9b9732ddf0a",
             "quoted_amount": 28463.72,
             "quote_items": [
               {
                 "quantity": 1,
                 "unit_price": 28463.72,
-                "description": "CONFIDENTIAL-QUOTE-B-613ec010"
+                "description": "CONFIDENTIAL-QUOTE-B-395a11fb"
               }
             ]
           }
@@ -156,19 +156,19 @@
         {
           "surface": "Data API",
           "actor": "ownerB",
-          "path": "job_access?id=eq.d34e588a-12c5-4cff-bf9f-4239bd8795fa&select=id,account_id,quoted_amount,quote_items",
+          "path": "job_access?id=eq.2488eb93-549a-4228-97a0-170ec0acc50e&select=id,account_id,quoted_amount,quote_items",
           "method": "GET",
           "status": 200,
           "data": [
             {
-              "id": "d34e588a-12c5-4cff-bf9f-4239bd8795fa",
-              "account_id": "be0b3d2a-e7db-418d-82e2-cb20f11f78e5",
+              "id": "2488eb93-549a-4228-97a0-170ec0acc50e",
+              "account_id": "295001dd-3eb9-454a-8acf-b9b9732ddf0a",
               "quoted_amount": 28463.72,
               "quote_items": [
                 {
                   "quantity": 1,
                   "unit_price": 28463.72,
-                  "description": "CONFIDENTIAL-QUOTE-B-613ec010"
+                  "description": "CONFIDENTIAL-QUOTE-B-395a11fb"
                 }
               ]
             }
@@ -179,7 +179,7 @@
     {
       "id": "TENANT-ownerB",
       "description": "Owner cannot retrieve foreign fixture",
-      "at": "2026-09-11T16:41:03.680Z",
+      "at": "2026-09-11T16:26:09.711Z",
       "observed": {
         "status": 200,
         "data": []
@@ -189,7 +189,7 @@
         {
           "surface": "Data API",
           "actor": "ownerB",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id,quoted_amount",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id,quoted_amount",
           "method": "GET",
           "status": 200,
           "data": []
@@ -199,53 +199,40 @@
     {
       "id": "NO-GRANTS-PAGE",
       "description": "No-grant office reaches holding page without private data",
-      "at": "2026-09-11T16:41:03.810Z",
-      "observed": {
-        "path": "/office-access",
-        "status": 200
-      },
-      "status": "PASS",
-      "requests": [
-        {
-          "surface": "Browser",
-          "actor": "officeA",
-          "requestedPath": "/dashboard",
-          "path": "/office-access",
-          "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nYOU'RE ON THE TEAM\n\nYou've been added to tenant-office-browser-2026-09-11-613ec010 A.\n\nYour account is set up and connected. Office access isn't switched on yet, so there's nothing here for you to open — the owner will let you know when it is.\n\nIf you were expecting to see jobs, quotes or invoices, ask the person who invited you. Nothing has gone wrong with your sign-in.\n\nBack to the site\nSign out",
-          "quoteSentinel": false,
-          "errors": [],
-          "screenshot": "office-no-grants.png"
-        }
-      ]
+      "at": "2026-09-11T16:26:10.072Z",
+      "status": "FAIL",
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Minified React error #310; visit https://react.dev/errors/310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.'\n+ ]\n- []\n",
+      "requests": []
     },
     {
       "id": "NO-GRANTS-API",
       "description": "No-grant office JSON API is forbidden",
-      "at": "2026-09-11T16:41:04.932Z",
+      "at": "2026-09-11T16:26:13.937Z",
       "observed": {
         "status": 403,
         "data": {
           "error": "Owner access required."
-        }
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 403,
           "data": {
             "error": "Owner access required."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "NO-GRANTS-REST",
       "description": "No-grant office Data API denies own fixture",
-      "at": "2026-09-11T16:41:05.506Z",
+      "at": "2026-09-11T16:26:14.614Z",
       "observed": {
         "status": 200,
         "data": []
@@ -255,7 +242,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.cfad3d95-6bec-4270-b734-a44068b70967&select=id",
+          "path": "clients?id=eq.41fe2499-dcf4-4df8-bfb6-adba28dce8d7&select=id",
           "method": "GET",
           "status": 200,
           "data": []
@@ -265,12 +252,12 @@
     {
       "id": "CLIENT-ONLY",
       "description": "Client reader can retrieve exact client without job permission",
-      "at": "2026-09-11T16:41:05.758Z",
+      "at": "2026-09-11T16:26:15.313Z",
       "observed": {
         "status": 200,
         "data": {
-          "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-          "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+          "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+          "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
           "phone": null,
           "phoneDigits": null,
           "email": null,
@@ -292,18 +279,19 @@
           "payments": [],
           "openRequestCount": 0,
           "lastInvitedLabel": null
-        }
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -325,37 +313,23 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "CLIENT-ONLY-JOB-DENIAL",
       "description": "Client-only office cannot open job page",
-      "at": "2026-09-11T16:41:06.591Z",
-      "observed": {
-        "path": "/dashboard/clients",
-        "status": 200
-      },
-      "status": "PASS",
-      "requests": [
-        {
-          "surface": "Browser",
-          "actor": "officeA",
-          "requestedPath": "/dashboard/jobs/4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-          "path": "/dashboard/clients",
-          "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nCLIENTS\n\nCustomers\n+ Add customer\n🎙️\nVoice & Text-to-Client\n\nNo clients yet. Add your first customer above, or import your existing customer list. Every job you create adds its customer here automatically too.\n\nNo customers to show.\n\nCopilot\nSPARKY\n✕",
-          "quoteSentinel": false,
-          "errors": [],
-          "screenshot": null
-        }
-      ]
+      "at": "2026-09-11T16:26:16.304Z",
+      "status": "FAIL",
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Minified React error #310; visit https://react.dev/errors/310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.'\n+ ]\n- []\n",
+      "requests": []
     },
     {
       "id": "PERMIT-SESSION-GETJOB",
       "description": "Owner and restricted office getJob-backed permit history remains available",
-      "at": "2026-09-11T16:41:08.124Z",
+      "at": "2026-09-11T16:26:20.573Z",
       "observed": [
         {
           "actor": "ownerA",
@@ -368,12 +342,13 @@
               "records": [],
               "meta": {
                 "providerName": "Official Municipality Portal Deep Link",
-                "retrievedAt": "2026-09-11T16:41:08.425Z",
+                "retrievedAt": "2026-09-11T16:26:21.572Z",
                 "confidence": "low",
                 "isAuthoritative": false
               }
             }
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "actor": "officeA",
@@ -386,12 +361,13 @@
               "records": [],
               "meta": {
                 "providerName": "Official Municipality Portal Deep Link",
-                "retrievedAt": "2026-09-11T16:41:08.967Z",
+                "retrievedAt": "2026-09-11T16:26:22.487Z",
                 "confidence": "low",
                 "isAuthoritative": false
               }
             }
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ],
       "status": "PASS",
@@ -399,7 +375,7 @@
         {
           "surface": "App API",
           "actor": "ownerA",
-          "path": "/api/jobs/4ef78c8f-adaa-4862-95dc-dcb7c29e01e4/permits/history",
+          "path": "/api/jobs/3a0873f8-0184-4f86-a274-bae8376557fc/permits/history",
           "status": 200,
           "data": {
             "data": {
@@ -409,17 +385,18 @@
               "records": [],
               "meta": {
                 "providerName": "Official Municipality Portal Deep Link",
-                "retrievedAt": "2026-09-11T16:41:08.425Z",
+                "retrievedAt": "2026-09-11T16:26:21.572Z",
                 "confidence": "low",
                 "isAuthoritative": false
               }
             }
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/jobs/4ef78c8f-adaa-4862-95dc-dcb7c29e01e4/permits/history",
+          "path": "/api/jobs/3a0873f8-0184-4f86-a274-bae8376557fc/permits/history",
           "status": 200,
           "data": {
             "data": {
@@ -429,21 +406,22 @@
               "records": [],
               "meta": {
                 "providerName": "Official Municipality Portal Deep Link",
-                "retrievedAt": "2026-09-11T16:41:08.967Z",
+                "retrievedAt": "2026-09-11T16:26:22.487Z",
                 "confidence": "low",
                 "isAuthoritative": false
               }
             }
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "CLIENT-DETAIL-PAGE",
       "description": "Reader sees useful client detail with money redacted",
-      "at": "2026-09-11T16:41:08.975Z",
+      "at": "2026-09-11T16:26:22.244Z",
       "observed": {
-        "path": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
+        "path": "/dashboard/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
         "status": 200,
         "clientVisible": true,
         "quoteAbsent": true
@@ -453,10 +431,10 @@
         {
           "surface": "Browser",
           "actor": "officeA",
-          "requestedPath": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
-          "path": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
+          "requestedPath": "/dashboard/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+          "path": "/dashboard/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
           "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nCLIENT\n\ntenant-office-browser-2026-09-11-613ec010 Customer A\nEdit client\nNo contact on file\n1\njob\nBack to clients\n\nHISTORY\n\nJobs\nACCESS-613ec010-A\nIn progress · Sep 11, 2026\n\nPROFILE\n\nContact & notes\nNAME\nMOBILE\nEMAIL\nADDRESS\nNOTES\nSave profile\nCopilot\nSPARKY\n✕",
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nCLIENT\n\ntenant-office-browser-2026-09-11-395a11fb Customer A\nEdit client\nNo contact on file\n1\njob\nBack to clients\n\nHISTORY\n\nJobs\nACCESS-395a11fb-A\nIn progress · Sep 11, 2026\n\nPROFILE\n\nContact & notes\nNAME\nMOBILE\nEMAIL\nADDRESS\nNOTES\nSave profile\nCopilot\nSPARKY\n✕",
           "quoteSentinel": false,
           "errors": [],
           "screenshot": "office-client-detail.png"
@@ -466,12 +444,12 @@
     {
       "id": "CLIENT-FOCUS-API",
       "description": "Reader Focus JSON contains correct client/job and no financial sentinel",
-      "at": "2026-09-11T16:41:10.494Z",
+      "at": "2026-09-11T16:26:24.289Z",
       "observed": {
         "status": 200,
         "data": {
-          "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-          "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+          "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+          "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
           "phone": null,
           "phoneDigits": null,
           "email": null,
@@ -491,8 +469,8 @@
           },
           "jobs": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "ref": "ACCESS-613ec010-A",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "ref": "ACCESS-395a11fb-A",
               "status": "in_progress",
               "statusLabel": "In progress",
               "dateLabel": "Sep 11, 2026",
@@ -505,18 +483,19 @@
           "payments": [],
           "openRequestCount": 0,
           "lastInvitedLabel": null
-        }
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -536,8 +515,8 @@
             },
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-                "ref": "ACCESS-613ec010-A",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+                "ref": "ACCESS-395a11fb-A",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -550,16 +529,17 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "JOB-DETAIL-PAGE",
       "description": "Reader job page and serialized data redact quote fields",
-      "at": "2026-09-11T16:41:11.200Z",
+      "at": "2026-09-11T16:26:25.266Z",
       "observed": {
-        "path": "/dashboard/jobs/4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+        "path": "/dashboard/jobs/3a0873f8-0184-4f86-a274-bae8376557fc",
         "status": 200,
         "jobVisible": true
       },
@@ -568,10 +548,10 @@
         {
           "surface": "Browser",
           "actor": "officeA",
-          "requestedPath": "/dashboard/jobs/4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-          "path": "/dashboard/jobs/4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "requestedPath": "/dashboard/jobs/3a0873f8-0184-4f86-a274-bae8376557fc",
+          "path": "/dashboard/jobs/3a0873f8-0184-4f86-a274-bae8376557fc",
           "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nJOB ACCESS-613EC010-A\n\ntenant-office-browser-2026-09-11-613ec010 Customer A\n\nIn progress\n\nBack to jobs\nView client\nJob details\nAddress\nNo address recorded\nSchedule\nNot scheduled\nScope of work\nOperational scope A\nCopilot\nSPARKY\n✕",
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nJOB ACCESS-395A11FB-A\n\ntenant-office-browser-2026-09-11-395a11fb Customer A\n\nIn progress\n\nBack to jobs\nView client\nJob details\nAddress\nNo address recorded\nSchedule\nNot scheduled\nScope of work\nOperational scope A\nCopilot\nSPARKY\n✕",
           "quoteSentinel": false,
           "errors": [],
           "screenshot": "office-job-detail.png"
@@ -581,7 +561,7 @@
     {
       "id": "FINANCE-REST",
       "description": "jobs.read does not disclose quote amount/items through Data API",
-      "at": "2026-09-11T16:41:12.502Z",
+      "at": "2026-09-11T16:26:27.965Z",
       "observed": {
         "status": 403,
         "data": {
@@ -596,7 +576,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id,quoted_amount,quote_items",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id,quoted_amount,quote_items",
           "method": "GET",
           "status": 403,
           "data": {
@@ -611,15 +591,15 @@
     {
       "id": "FINANCE-VIEW",
       "description": "Operational view returns the exact job with all protected fields masked",
-      "at": "2026-09-11T16:41:12.711Z",
+      "at": "2026-09-11T16:26:28.272Z",
       "observed": {
         "status": 200,
         "data": [
           {
-            "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-            "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-            "ref": "ACCESS-613ec010-A",
-            "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+            "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+            "ref": "ACCESS-395a11fb-A",
+            "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "client_phone": null,
             "address": null,
             "scope": "Operational scope A",
@@ -627,14 +607,14 @@
             "lead_source": null,
             "scheduled_for": null,
             "certificate": null,
-            "created_at": "2026-09-11T16:40:37.806472+00:00",
+            "created_at": "2026-09-11T16:16:23.952385+00:00",
             "quoted_amount": 0,
             "photo_paths": [],
             "scheduled_time": null,
             "estimated_hours": null,
             "client_email": null,
             "quote_items": null,
-            "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+            "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
             "appointment_confirmed_at": null,
             "deposit_gate": null,
             "lat": null,
@@ -663,7 +643,7 @@
             "quote_signed_at": null,
             "quote_signature_path": null,
             "quote_signature_method": null,
-            "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+            "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
             "deleted_at": null,
             "purge_after": null,
             "deleted_by_user_id": null,
@@ -672,8 +652,8 @@
             "source_voice_provider_call_id": null,
             "room_spatial_scan": null,
             "clients": {
-              "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-              "name": "tenant-office-browser-2026-09-11-613ec010 Customer A"
+              "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+              "name": "tenant-office-browser-2026-09-11-395a11fb Customer A"
             }
           }
         ]
@@ -683,15 +663,15 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=*,clients!jobs_client_id_fkey(id,name)",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=*,clients!jobs_client_id_fkey(id,name)",
           "method": "GET",
           "status": 200,
           "data": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-              "ref": "ACCESS-613ec010-A",
-              "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+              "ref": "ACCESS-395a11fb-A",
+              "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
               "client_phone": null,
               "address": null,
               "scope": "Operational scope A",
@@ -699,14 +679,14 @@
               "lead_source": null,
               "scheduled_for": null,
               "certificate": null,
-              "created_at": "2026-09-11T16:40:37.806472+00:00",
+              "created_at": "2026-09-11T16:16:23.952385+00:00",
               "quoted_amount": 0,
               "photo_paths": [],
               "scheduled_time": null,
               "estimated_hours": null,
               "client_email": null,
               "quote_items": null,
-              "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+              "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
               "appointment_confirmed_at": null,
               "deposit_gate": null,
               "lat": null,
@@ -735,7 +715,7 @@
               "quote_signed_at": null,
               "quote_signature_path": null,
               "quote_signature_method": null,
-              "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+              "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
               "deleted_at": null,
               "purge_after": null,
               "deleted_by_user_id": null,
@@ -744,8 +724,8 @@
               "source_voice_provider_call_id": null,
               "room_spatial_scan": null,
               "clients": {
-                "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-                "name": "tenant-office-browser-2026-09-11-613ec010 Customer A"
+                "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+                "name": "tenant-office-browser-2026-09-11-395a11fb Customer A"
               }
             }
           ]
@@ -755,7 +735,7 @@
     {
       "id": "FINANCE-FILTER",
       "description": "Raw quote filters and wildcard/embedded reads cannot bypass column privileges",
-      "at": "2026-09-11T16:41:12.838Z",
+      "at": "2026-09-11T16:26:28.411Z",
       "observed": [
         {
           "status": 403,
@@ -790,7 +770,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=*",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=*",
           "method": "GET",
           "status": 403,
           "data": {
@@ -816,7 +796,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.cfad3d95-6bec-4270-b734-a44068b70967&select=id,jobs(quoted_amount)",
+          "path": "clients?id=eq.41fe2499-dcf4-4df8-bfb6-adba28dce8d7&select=id,jobs(quoted_amount)",
           "method": "GET",
           "status": 403,
           "data": {
@@ -831,15 +811,15 @@
     {
       "id": "CLIENT-JOB-EMBED",
       "description": "Client-to-job view embedding preserves response shape and confidentiality",
-      "at": "2026-09-11T16:41:13.200Z",
+      "at": "2026-09-11T16:26:29.198Z",
       "observed": {
         "status": 200,
         "data": [
           {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
                 "quote_items": null,
                 "quoted_amount": 0
               }
@@ -852,15 +832,15 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.cfad3d95-6bec-4270-b734-a44068b70967&select=id,jobs:job_access(id,quoted_amount,quote_items)",
+          "path": "clients?id=eq.41fe2499-dcf4-4df8-bfb6-adba28dce8d7&select=id,jobs:job_access(id,quoted_amount,quote_items)",
           "method": "GET",
           "status": 200,
           "data": [
             {
-              "id": "cfad3d95-6bec-4270-b734-a44068b70967",
+              "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
               "jobs": [
                 {
-                  "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+                  "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
                   "quote_items": null,
                   "quoted_amount": 0
                 }
@@ -873,7 +853,7 @@
     {
       "id": "PRIVATE-HELPER",
       "description": "Private finance helper is not an exposed Data API RPC",
-      "at": "2026-09-11T16:41:13.344Z",
+      "at": "2026-09-11T16:26:29.351Z",
       "observed": {
         "status": 406,
         "data": {
@@ -903,7 +883,7 @@
     {
       "id": "TENANT-OFFICE-REST",
       "description": "A-only office cannot read B clients/jobs",
-      "at": "2026-09-11T16:41:13.450Z",
+      "at": "2026-09-11T16:26:29.500Z",
       "observed": {
         "clients": {
           "status": 200,
@@ -919,7 +899,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.b6e7c2ec-3384-4e72-9436-c16999fa602d&select=id,name",
+          "path": "clients?id=eq.37b58cdd-7d1e-4d8e-b44b-988b5be420e6&select=id,name",
           "method": "GET",
           "status": 200,
           "data": []
@@ -927,7 +907,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?account_id=eq.be0b3d2a-e7db-418d-82e2-cb20f11f78e5&select=id,quoted_amount",
+          "path": "job_access?account_id=eq.295001dd-3eb9-454a-8acf-b9b9732ddf0a&select=id,quoted_amount",
           "method": "GET",
           "status": 200,
           "data": []
@@ -937,37 +917,39 @@
     {
       "id": "TENANT-OFFICE-API",
       "description": "A-only office Focus API cannot retrieve B client",
-      "at": "2026-09-11T16:41:13.742Z",
+      "at": "2026-09-11T16:26:29.920Z",
       "observed": {
         "status": 404,
         "data": {
           "error": "Customer not found."
-        }
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d/detail",
+          "path": "/api/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "TENANT-OFFICE-PAGE",
       "description": "Foreign client/job deep links expose no fixture data",
-      "at": "2026-09-11T16:41:14.750Z",
+      "at": "2026-09-11T16:26:30.897Z",
       "observed": [
         {
-          "path": "/dashboard/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d",
+          "path": "/dashboard/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
           "status": 200
         },
         {
-          "path": "/dashboard/jobs/d34e588a-12c5-4cff-bf9f-4239bd8795fa",
+          "path": "/dashboard/jobs/2488eb93-549a-4228-97a0-170ec0acc50e",
           "status": 200
         }
       ],
@@ -976,10 +958,10 @@
         {
           "surface": "Browser",
           "actor": "officeA",
-          "requestedPath": "/dashboard/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d",
-          "path": "/dashboard/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d",
+          "requestedPath": "/dashboard/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
+          "path": "/dashboard/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
           "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nClient not found.\n\nBack to clients\nCopilot\nSPARKY\n✕",
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nClient not found.\n\nBack to clients\nCopilot\nSPARKY\n✕",
           "quoteSentinel": false,
           "errors": [],
           "screenshot": null
@@ -987,10 +969,10 @@
         {
           "surface": "Browser",
           "actor": "officeA",
-          "requestedPath": "/dashboard/jobs/d34e588a-12c5-4cff-bf9f-4239bd8795fa",
-          "path": "/dashboard/jobs/d34e588a-12c5-4cff-bf9f-4239bd8795fa",
+          "requestedPath": "/dashboard/jobs/2488eb93-549a-4228-97a0-170ec0acc50e",
+          "path": "/dashboard/jobs/2488eb93-549a-4228-97a0-170ec0acc50e",
           "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nJob not found.\n\nBack to jobs\nCopilot\nSPARKY\n✕",
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nJob not found.\n\nBack to jobs\nCopilot\nSPARKY\n✕",
           "quoteSentinel": false,
           "errors": [],
           "screenshot": null
@@ -1000,7 +982,7 @@
     {
       "id": "READONLY-WRITE",
       "description": "Read-only Data API edit leaves fixture unchanged",
-      "at": "2026-09-11T16:41:16.349Z",
+      "at": "2026-09-11T16:26:40.551Z",
       "observed": {
         "status": 200,
         "data": []
@@ -1010,7 +992,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc",
           "method": "PATCH",
           "status": 200,
           "data": []
@@ -1020,30 +1002,31 @@
     {
       "id": "FORGED-WORKSPACE",
       "description": "Forged workspace cookie cannot give A-only office B access",
-      "at": "2026-09-11T16:41:16.620Z",
+      "at": "2026-09-11T16:26:41.068Z",
       "observed": {
         "foreign": 404,
-        "safeFallback": "cfad3d95-6bec-4270-b734-a44068b70967"
+        "safeFallback": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d/detail",
+          "path": "/api/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -1063,8 +1046,8 @@
             },
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-                "ref": "ACCESS-613ec010-A",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+                "ref": "ACCESS-395a11fb-A",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -1077,14 +1060,15 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "ADMIN-DENIAL",
       "description": "Owner and office tenant identities cannot open platform admin",
-      "at": "2026-09-11T16:41:17.807Z",
+      "at": "2026-09-11T16:26:42.614Z",
       "observed": [
         {
           "actor": "ownerA",
@@ -1126,12 +1110,12 @@
     {
       "id": "FINANCE-GRANTED",
       "description": "Explicit quotes.read exposes expected nonzero quote in Focus JSON",
-      "at": "2026-09-11T16:41:18.826Z",
+      "at": "2026-09-11T16:26:45.098Z",
       "observed": {
         "status": 200,
         "data": {
-          "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-          "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+          "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+          "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
           "phone": null,
           "phoneDigits": null,
           "email": null,
@@ -1151,8 +1135,8 @@
           },
           "jobs": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "ref": "ACCESS-613ec010-A",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "ref": "ACCESS-395a11fb-A",
               "status": "in_progress",
               "statusLabel": "In progress",
               "dateLabel": "Sep 11, 2026",
@@ -1165,18 +1149,19 @@
           "payments": [],
           "openRequestCount": 0,
           "lastInvitedLabel": null
-        }
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -1196,8 +1181,8 @@
             },
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-                "ref": "ACCESS-613ec010-A",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+                "ref": "ACCESS-395a11fb-A",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -1210,19 +1195,20 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "FINANCE-REVOKED",
       "description": "Existing cookie loses quote permission on next Focus request",
-      "at": "2026-09-11T16:41:19.644Z",
+      "at": "2026-09-11T16:26:46.320Z",
       "observed": {
         "status": 200,
         "data": {
-          "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-          "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+          "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+          "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
           "phone": null,
           "phoneDigits": null,
           "email": null,
@@ -1242,8 +1228,8 @@
           },
           "jobs": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "ref": "ACCESS-613ec010-A",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "ref": "ACCESS-395a11fb-A",
               "status": "in_progress",
               "statusLabel": "In progress",
               "dateLabel": "Sep 11, 2026",
@@ -1256,18 +1242,19 @@
           "payments": [],
           "openRequestCount": 0,
           "lastInvitedLabel": null
-        }
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -1287,8 +1274,8 @@
             },
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-                "ref": "ACCESS-613ec010-A",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+                "ref": "ACCESS-395a11fb-A",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -1301,14 +1288,15 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "WRITER-POSITIVE",
       "description": "Writer edits harmless scope; independent database read confirms exact change",
-      "at": "2026-09-11T16:41:20.539Z",
+      "at": "2026-09-11T16:26:47.728Z",
       "observed": {
         "status": 200,
         "scope": "Authorized operational edit"
@@ -1318,15 +1306,15 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc",
           "method": "PATCH",
           "status": 200,
           "data": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-              "ref": "ACCESS-613ec010-A",
-              "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+              "ref": "ACCESS-395a11fb-A",
+              "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
               "client_phone": null,
               "address": null,
               "scope": "Authorized operational edit",
@@ -1334,14 +1322,14 @@
               "lead_source": null,
               "scheduled_for": null,
               "certificate": null,
-              "created_at": "2026-09-11T16:40:37.806472+00:00",
+              "created_at": "2026-09-11T16:16:23.952385+00:00",
               "quoted_amount": 0,
               "photo_paths": [],
               "scheduled_time": null,
               "estimated_hours": null,
               "client_email": null,
               "quote_items": null,
-              "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+              "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
               "appointment_confirmed_at": null,
               "deposit_gate": null,
               "lat": null,
@@ -1370,7 +1358,7 @@
               "quote_signed_at": null,
               "quote_signature_path": null,
               "quote_signature_method": null,
-              "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+              "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
               "deleted_at": null,
               "purge_after": null,
               "deleted_by_user_id": null,
@@ -1386,18 +1374,18 @@
     {
       "id": "WRITER-FINANCE",
       "description": "Operational job writer cannot mass-assign quoted_amount",
-      "at": "2026-09-11T16:41:20.859Z",
+      "at": "2026-09-11T16:26:48.248Z",
       "observed": {
         "status": 403,
         "before": {
-          "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-          "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+          "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+          "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
           "scope": "Authorized operational edit",
           "quoted_amount": "17351.69"
         },
         "after": {
-          "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-          "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+          "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+          "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
           "scope": "Authorized operational edit",
           "quoted_amount": "17351.69"
         }
@@ -1407,7 +1395,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id,scope",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id,scope",
           "method": "PATCH",
           "status": 403,
           "data": {
@@ -1422,7 +1410,7 @@
     {
       "id": "WRITER-FOREIGN",
       "description": "Operational writer cannot update B job or move A job to B",
-      "at": "2026-09-11T16:41:21.178Z",
+      "at": "2026-09-11T16:26:48.580Z",
       "observed": {
         "foreign": {
           "status": 200,
@@ -1443,7 +1431,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.d34e588a-12c5-4cff-bf9f-4239bd8795fa&select=id,scope",
+          "path": "jobs?id=eq.2488eb93-549a-4228-97a0-170ec0acc50e&select=id,scope",
           "method": "PATCH",
           "status": 200,
           "data": []
@@ -1451,7 +1439,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id,account_id",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id,account_id",
           "method": "PATCH",
           "status": 403,
           "data": {
@@ -1466,7 +1454,7 @@
     {
       "id": "WRITER-FOREIGN-PARENT",
       "description": "Writer cannot attach A job to foreign B client",
-      "at": "2026-09-11T16:41:21.696Z",
+      "at": "2026-09-11T16:26:49.147Z",
       "observed": {
         "status": 409,
         "data": {
@@ -1481,7 +1469,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id,client_id",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id,client_id",
           "method": "PATCH",
           "status": 409,
           "data": {
@@ -1496,7 +1484,7 @@
     {
       "id": "VIEW-WRITE-GUARDS",
       "description": "View rejects quote mass assignment and foreign parents while retaining original data",
-      "at": "2026-09-11T16:41:22.019Z",
+      "at": "2026-09-11T16:26:49.514Z",
       "observed": {
         "money": {
           "status": 403,
@@ -1522,7 +1510,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc",
           "method": "PATCH",
           "status": 403,
           "data": {
@@ -1535,7 +1523,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc",
           "method": "PATCH",
           "status": 409,
           "data": {
@@ -1550,16 +1538,16 @@
     {
       "id": "JOB-CREATE-GUARDS",
       "description": "Operational create works with defaults; raw/view priced and foreign-parent creates fail",
-      "at": "2026-09-11T16:41:22.487Z",
+      "at": "2026-09-11T16:26:50.027Z",
       "observed": {
         "allowed": {
           "status": 201,
           "data": [
             {
-              "id": "38eb7fa5-84e6-4237-b9d5-c134a43632da",
-              "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-              "ref": "CREATE-38eb7fa5",
-              "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+              "id": "2926256d-247a-4ab2-a783-24b107fe3a23",
+              "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+              "ref": "CREATE-2926256d",
+              "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
               "client_phone": null,
               "address": null,
               "scope": "Disposable API create",
@@ -1567,14 +1555,14 @@
               "lead_source": null,
               "scheduled_for": null,
               "certificate": null,
-              "created_at": "2026-09-11T16:41:22.829418+00:00",
+              "created_at": "2026-09-11T16:26:50.350427+00:00",
               "quoted_amount": 0,
               "photo_paths": [],
               "scheduled_time": null,
               "estimated_hours": null,
               "client_email": null,
               "quote_items": null,
-              "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+              "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
               "appointment_confirmed_at": null,
               "deposit_gate": null,
               "lat": null,
@@ -1603,7 +1591,7 @@
               "quote_signed_at": null,
               "quote_signature_path": null,
               "quote_signature_method": null,
-              "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+              "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
               "deleted_at": null,
               "purge_after": null,
               "deleted_by_user_id": null,
@@ -1663,10 +1651,10 @@
           "status": 201,
           "data": [
             {
-              "id": "38eb7fa5-84e6-4237-b9d5-c134a43632da",
-              "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-              "ref": "CREATE-38eb7fa5",
-              "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+              "id": "2926256d-247a-4ab2-a783-24b107fe3a23",
+              "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+              "ref": "CREATE-2926256d",
+              "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
               "client_phone": null,
               "address": null,
               "scope": "Disposable API create",
@@ -1674,14 +1662,14 @@
               "lead_source": null,
               "scheduled_for": null,
               "certificate": null,
-              "created_at": "2026-09-11T16:41:22.829418+00:00",
+              "created_at": "2026-09-11T16:26:50.350427+00:00",
               "quoted_amount": 0,
               "photo_paths": [],
               "scheduled_time": null,
               "estimated_hours": null,
               "client_email": null,
               "quote_items": null,
-              "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+              "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
               "appointment_confirmed_at": null,
               "deposit_gate": null,
               "lat": null,
@@ -1710,7 +1698,7 @@
               "quote_signed_at": null,
               "quote_signature_path": null,
               "quote_signature_method": null,
-              "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+              "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
               "deleted_at": null,
               "purge_after": null,
               "deleted_by_user_id": null,
@@ -1778,15 +1766,15 @@
     {
       "id": "OWNER-QUOTE-SAVE",
       "description": "Owner saves and reads actual quote values through the application view",
-      "at": "2026-09-11T16:41:23.510Z",
+      "at": "2026-09-11T16:26:51.239Z",
       "observed": {
         "status": 200,
         "data": [
           {
-            "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-            "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-            "ref": "ACCESS-613ec010-A",
-            "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+            "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+            "ref": "ACCESS-395a11fb-A",
+            "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "client_phone": null,
             "address": null,
             "scope": "Authorized operational edit",
@@ -1794,7 +1782,7 @@
             "lead_source": null,
             "scheduled_for": null,
             "certificate": null,
-            "created_at": "2026-09-11T16:40:37.806472+00:00",
+            "created_at": "2026-09-11T16:16:23.952385+00:00",
             "quoted_amount": 17352.69,
             "photo_paths": [],
             "scheduled_time": null,
@@ -1804,10 +1792,10 @@
               {
                 "quantity": 1,
                 "unit_price": 17351.69,
-                "description": "CONFIDENTIAL-QUOTE-A-613ec010"
+                "description": "CONFIDENTIAL-QUOTE-A-395a11fb"
               }
             ],
-            "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+            "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
             "appointment_confirmed_at": null,
             "deposit_gate": null,
             "lat": null,
@@ -1836,7 +1824,7 @@
             "quote_signed_at": null,
             "quote_signature_path": null,
             "quote_signature_method": null,
-            "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+            "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
             "deleted_at": null,
             "purge_after": null,
             "deleted_by_user_id": null,
@@ -1852,15 +1840,15 @@
         {
           "surface": "Data API",
           "actor": "ownerA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc",
           "method": "PATCH",
           "status": 200,
           "data": [
             {
-              "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-              "account_id": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
-              "ref": "ACCESS-613ec010-A",
-              "client_name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+              "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+              "account_id": "8517a7bc-6a57-4df8-8d83-a75a89515097",
+              "ref": "ACCESS-395a11fb-A",
+              "client_name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
               "client_phone": null,
               "address": null,
               "scope": "Authorized operational edit",
@@ -1868,7 +1856,7 @@
               "lead_source": null,
               "scheduled_for": null,
               "certificate": null,
-              "created_at": "2026-09-11T16:40:37.806472+00:00",
+              "created_at": "2026-09-11T16:16:23.952385+00:00",
               "quoted_amount": 17352.69,
               "photo_paths": [],
               "scheduled_time": null,
@@ -1878,10 +1866,10 @@
                 {
                   "quantity": 1,
                   "unit_price": 17351.69,
-                  "description": "CONFIDENTIAL-QUOTE-A-613ec010"
+                  "description": "CONFIDENTIAL-QUOTE-A-395a11fb"
                 }
               ],
-              "client_id": "cfad3d95-6bec-4270-b734-a44068b70967",
+              "client_id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
               "appointment_confirmed_at": null,
               "deposit_gate": null,
               "lat": null,
@@ -1910,7 +1898,7 @@
               "quote_signed_at": null,
               "quote_signature_path": null,
               "quote_signature_method": null,
-              "test_marker": "tenant-office-browser-2026-09-11-613ec010",
+              "test_marker": "tenant-office-browser-2026-09-11-395a11fb",
               "deleted_at": null,
               "purge_after": null,
               "deleted_by_user_id": null,
@@ -1926,7 +1914,7 @@
     {
       "id": "JOB-UPSERT-GUARDS",
       "description": "Raw upsert cannot change a protected quote or attach a foreign parent",
-      "at": "2026-09-11T16:41:23.861Z",
+      "at": "2026-09-11T16:26:51.583Z",
       "observed": [
         {
           "status": 403,
@@ -1980,7 +1968,7 @@
     {
       "id": "JOB-DELETE-FINANCE",
       "description": "Operational writer cannot delete and recreate a priced job",
-      "at": "2026-09-11T16:41:24.339Z",
+      "at": "2026-09-11T16:26:52.028Z",
       "observed": [
         {
           "status": 403,
@@ -2006,7 +1994,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id",
           "method": "DELETE",
           "status": 403,
           "data": {
@@ -2019,7 +2007,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id",
           "method": "DELETE",
           "status": 403,
           "data": {
@@ -2034,10 +2022,10 @@
     {
       "id": "DUAL-SETUP",
       "description": "Fixture actor acquires legitimate B ownership for workspace switch test",
-      "at": "2026-09-11T16:41:24.912Z",
+      "at": "2026-09-11T16:26:52.637Z",
       "observed": {
-        "ownerIn": "be0b3d2a-e7db-418d-82e2-cb20f11f78e5",
-        "officeIn": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7"
+        "ownerIn": "295001dd-3eb9-454a-8acf-b9b9732ddf0a",
+        "officeIn": "8517a7bc-6a57-4df8-8d83-a75a89515097"
       },
       "status": "PASS",
       "requests": []
@@ -2045,24 +2033,24 @@
     {
       "id": "DUAL-SWITCH",
       "description": "Real workspace form switches B owner to A office to B owner",
-      "at": "2026-09-11T16:41:24.988Z",
+      "at": "2026-09-11T16:26:52.729Z",
       "observed": [
         {
-          "workspace": "be0b3d2a-e7db-418d-82e2-cb20f11f78e5",
+          "workspace": "295001dd-3eb9-454a-8acf-b9b9732ddf0a",
           "role": "Owner",
-          "client": "b6e7c2ec-3384-4e72-9436-c16999fa602d",
+          "client": "37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
           "otherStatus": 404
         },
         {
-          "workspace": "2c0d4c59-1707-46bf-a93e-5b3ad67a58a7",
+          "workspace": "8517a7bc-6a57-4df8-8d83-a75a89515097",
           "role": "Office",
-          "client": "cfad3d95-6bec-4270-b734-a44068b70967",
+          "client": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
           "otherStatus": 404
         },
         {
-          "workspace": "be0b3d2a-e7db-418d-82e2-cb20f11f78e5",
+          "workspace": "295001dd-3eb9-454a-8acf-b9b9732ddf0a",
           "role": "Owner",
-          "client": "b6e7c2ec-3384-4e72-9436-c16999fa602d",
+          "client": "37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
           "otherStatus": 404
         }
       ],
@@ -2071,11 +2059,11 @@
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d/detail",
+          "path": "/api/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6/detail",
           "status": 200,
           "data": {
-            "id": "b6e7c2ec-3384-4e72-9436-c16999fa602d",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer B",
+            "id": "37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer B",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -2095,8 +2083,8 @@
             },
             "jobs": [
               {
-                "id": "d34e588a-12c5-4cff-bf9f-4239bd8795fa",
-                "ref": "ACCESS-613ec010-B",
+                "id": "2488eb93-549a-4228-97a0-170ec0acc50e",
+                "ref": "ACCESS-395a11fb-B",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -2109,25 +2097,27 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -2147,8 +2137,8 @@
             },
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-                "ref": "ACCESS-613ec010-A",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+                "ref": "ACCESS-395a11fb-A",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -2161,25 +2151,27 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d/detail",
+          "path": "/api/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/b6e7c2ec-3384-4e72-9436-c16999fa602d/detail",
+          "path": "/api/clients/37b58cdd-7d1e-4d8e-b44b-988b5be420e6/detail",
           "status": 200,
           "data": {
-            "id": "b6e7c2ec-3384-4e72-9436-c16999fa602d",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer B",
+            "id": "37b58cdd-7d1e-4d8e-b44b-988b5be420e6",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer B",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -2199,8 +2191,8 @@
             },
             "jobs": [
               {
-                "id": "d34e588a-12c5-4cff-bf9f-4239bd8795fa",
-                "ref": "ACCESS-613ec010-B",
+                "id": "2488eb93-549a-4228-97a0-170ec0acc50e",
+                "ref": "ACCESS-395a11fb-B",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -2213,23 +2205,25 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "DUAL-NO-ESCALATION",
       "description": "B ownership does not grant write authority in A",
-      "at": "2026-09-11T16:41:32.176Z",
+      "at": "2026-09-11T16:27:06.280Z",
       "observed": {
         "status": 200,
         "data": []
@@ -2239,7 +2233,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "job_access?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
+          "path": "job_access?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc",
           "method": "PATCH",
           "status": 200,
           "data": []
@@ -2249,21 +2243,21 @@
     {
       "id": "REVOCATION-POSITIVE",
       "description": "Existing session still reads A before revocation",
-      "at": "2026-09-11T16:41:32.499Z",
+      "at": "2026-09-11T16:27:06.702Z",
       "observed": {
         "status": 200,
-        "id": "cfad3d95-6bec-4270-b734-a44068b70967"
+        "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7"
       },
       "status": "PASS",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 200,
           "data": {
-            "id": "cfad3d95-6bec-4270-b734-a44068b70967",
-            "name": "tenant-office-browser-2026-09-11-613ec010 Customer A",
+            "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+            "name": "tenant-office-browser-2026-09-11-395a11fb Customer A",
             "phone": null,
             "phoneDigits": null,
             "email": null,
@@ -2283,8 +2277,8 @@
             },
             "jobs": [
               {
-                "id": "4ef78c8f-adaa-4862-95dc-dcb7c29e01e4",
-                "ref": "ACCESS-613ec010-A",
+                "id": "3a0873f8-0184-4f86-a274-bae8376557fc",
+                "ref": "ACCESS-395a11fb-A",
                 "status": "in_progress",
                 "statusLabel": "In progress",
                 "dateLabel": "Sep 11, 2026",
@@ -2297,70 +2291,46 @@
             "payments": [],
             "openRequestCount": 0,
             "lastInvitedLabel": null
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "GRANT-REVOCATION",
       "description": "Same session/token loses API, Data API and browser access after grant removal",
-      "at": "2026-09-11T16:41:33.373Z",
-      "observed": {
-        "api": {
-          "status": 403,
-          "data": {
-            "error": "Owner access required."
-          }
-        },
-        "data": {
-          "status": 200,
-          "data": []
-        },
-        "page": {
-          "path": "/office-access",
-          "status": 200
-        }
-      },
-      "status": "PASS",
+      "at": "2026-09-11T16:27:07.631Z",
+      "status": "FAIL",
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Minified React error #310; visit https://react.dev/errors/310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings.'\n+ ]\n- []\n",
       "requests": [
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 403,
           "data": {
             "error": "Owner access required."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.cfad3d95-6bec-4270-b734-a44068b70967&select=id",
+          "path": "clients?id=eq.41fe2499-dcf4-4df8-bfb6-adba28dce8d7&select=id",
           "method": "GET",
           "status": 200,
           "data": []
-        },
-        {
-          "surface": "Browser",
-          "actor": "officeA",
-          "requestedPath": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
-          "path": "/office-access",
-          "status": 200,
-          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\n\nYOU'RE ON THE TEAM\n\nYou've been added to tenant-office-browser-2026-09-11-613ec010 A.\n\nYour account is set up and connected. Office access isn't switched on yet, so there's nothing here for you to open — the owner will let you know when it is.\n\nIf you were expecting to see jobs, quotes or invoices, ask the person who invited you. Nothing has gone wrong with your sign-in.\n\nBack to the site\nSign out",
-          "quoteSentinel": false,
-          "errors": [],
-          "screenshot": "office-grants-revoked.png"
         }
       ]
     },
     {
       "id": "MEMBERSHIP-DEACTIVATION",
       "description": "Existing session loses A after membership deactivation",
-      "at": "2026-09-11T16:41:35.052Z",
+      "at": "2026-09-11T16:27:12.309Z",
       "observed": {
         "api": 404,
         "page": {
-          "path": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
+          "path": "/dashboard/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
           "status": 200
         }
       },
@@ -2369,16 +2339,17 @@
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         },
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "jobs?id=eq.4ef78c8f-adaa-4862-95dc-dcb7c29e01e4&select=id",
+          "path": "jobs?id=eq.3a0873f8-0184-4f86-a274-bae8376557fc&select=id",
           "method": "GET",
           "status": 200,
           "data": []
@@ -2386,8 +2357,8 @@
         {
           "surface": "Browser",
           "actor": "officeA",
-          "requestedPath": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
-          "path": "/dashboard/clients/cfad3d95-6bec-4270-b734-a44068b70967",
+          "requestedPath": "/dashboard/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
+          "path": "/dashboard/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7",
           "status": 200,
           "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\nCustomer payments are not connected\nConnect Stripe to accept homeowner deposits and invoice payments.\n\nClient not found.\n\nBack to clients\nCopilot\nSPARKY\n✕",
           "quoteSentinel": false,
@@ -2399,7 +2370,7 @@
     {
       "id": "MEMBERSHIP-REMOVAL",
       "description": "Owner removal RPC revokes office membership with old token retained",
-      "at": "2026-09-11T16:41:36.236Z",
+      "at": "2026-09-11T16:27:14.583Z",
       "observed": {
         "removed": {
           "status": 200,
@@ -2412,12 +2383,12 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.cfad3d95-6bec-4270-b734-a44068b70967&select=id",
+          "path": "clients?id=eq.41fe2499-dcf4-4df8-bfb6-adba28dce8d7&select=id",
           "method": "GET",
           "status": 200,
           "data": [
             {
-              "id": "cfad3d95-6bec-4270-b734-a44068b70967"
+              "id": "41fe2499-dcf4-4df8-bfb6-adba28dce8d7"
             }
           ]
         },
@@ -2432,7 +2403,7 @@
         {
           "surface": "Data API",
           "actor": "officeA",
-          "path": "clients?id=eq.cfad3d95-6bec-4270-b734-a44068b70967&select=id",
+          "path": "clients?id=eq.41fe2499-dcf4-4df8-bfb6-adba28dce8d7&select=id",
           "method": "GET",
           "status": 200,
           "data": []
@@ -2440,18 +2411,19 @@
         {
           "surface": "App API",
           "actor": "officeA",
-          "path": "/api/clients/cfad3d95-6bec-4270-b734-a44068b70967/detail",
+          "path": "/api/clients/41fe2499-dcf4-4df8-bfb6-adba28dce8d7/detail",
           "status": 404,
           "data": {
             "error": "Customer not found."
-          }
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
         }
       ]
     },
     {
       "id": "ANONYMOUS-API",
       "description": "Unauthenticated caller gets JSON 401 from private Focus API",
-      "at": "2026-09-11T16:41:37.063Z",
+      "at": "2026-09-11T16:27:15.954Z",
       "observed": {
         "status": 401,
         "body": "{\"error\":\"Sign in to view this customer.\"}"
@@ -2462,20 +2434,20 @@
   ],
   "grantTransitions": [
     {
-      "at": "2026-09-11T16:41:05.753Z",
+      "at": "2026-09-11T16:26:15.308Z",
       "keys": [
         "clients.read"
       ]
     },
     {
-      "at": "2026-09-11T16:41:08.118Z",
+      "at": "2026-09-11T16:26:20.568Z",
       "keys": [
         "clients.read",
         "jobs.read"
       ]
     },
     {
-      "at": "2026-09-11T16:41:18.818Z",
+      "at": "2026-09-11T16:26:45.090Z",
       "keys": [
         "clients.read",
         "jobs.read",
@@ -2483,14 +2455,14 @@
       ]
     },
     {
-      "at": "2026-09-11T16:41:19.637Z",
+      "at": "2026-09-11T16:26:46.313Z",
       "keys": [
         "clients.read",
         "jobs.read"
       ]
     },
     {
-      "at": "2026-09-11T16:41:20.532Z",
+      "at": "2026-09-11T16:26:47.720Z",
       "keys": [
         "clients.read",
         "jobs.read",
@@ -2499,18 +2471,18 @@
       ]
     },
     {
-      "at": "2026-09-11T16:41:24.902Z",
+      "at": "2026-09-11T16:26:52.624Z",
       "keys": [
         "clients.read",
         "jobs.read"
       ]
     },
     {
-      "at": "2026-09-11T16:41:33.363Z",
+      "at": "2026-09-11T16:27:07.619Z",
       "keys": []
     },
     {
-      "at": "2026-09-11T16:41:35.043Z",
+      "at": "2026-09-11T16:27:12.299Z",
       "keys": [
         "clients.read",
         "jobs.read"
@@ -2518,9 +2490,9 @@
     }
   ],
   "actors": {
-    "ownerA": "d31fdb2a-ca34-44dc-9644-05b703c0a152",
-    "ownerB": "c35a97c6-61e2-4c20-9692-2b70e49b5fc2",
-    "officeA": "61fb4d1c-c6f6-4a6d-8383-8e81459c53f2"
+    "ownerA": "a5f57396-a5d4-425c-8144-92f977bf2339",
+    "ownerB": "d4c7cc16-dda6-4b6f-ab93-a4bcdaa6c44b",
+    "officeA": "a9406519-2039-4fcd-8494-b3d2d5adccff"
   },
   "baseline": {
     "account_attachments": 0,
@@ -2529,6 +2501,7 @@
     "account_events": 0,
     "account_notes": 0,
     "account_tags": 0,
+    "addon_refund_reversals": 0,
     "admin_actions": 0,
     "api_credentials": 0,
     "api_idempotency_records": 0,
@@ -2716,10 +2689,10 @@
     "workspace_overage_settings": 0,
     "workspace_overage_settlements": 0,
     "workspace_purchased_capacity": 0,
-    "workspace_storage_usage": 0
+    "workspace_storage_usage": 2
   },
   "database": {
-    "migration": "20260911155217",
+    "migration": "20260911162539",
     "capabilities": [
       {
         "capability": "billing.manage",
@@ -2850,6 +2823,7 @@
     "account_events": 0,
     "account_notes": 0,
     "account_tags": 0,
+    "addon_refund_reversals": 0,
     "admin_actions": 0,
     "api_credentials": 0,
     "api_idempotency_records": 0,
@@ -3037,10 +3011,10 @@
     "workspace_overage_settings": 0,
     "workspace_overage_settlements": 0,
     "workspace_purchased_capacity": 0,
-    "workspace_storage_usage": 0
+    "workspace_storage_usage": 2
   },
   "cleanup": {
-    "cleanedAt": "2026-09-11T16:41:39.908Z",
+    "cleanedAt": "2026-09-11T16:27:20.342Z",
     "recordsRemoved": 4,
     "verified": {
       "active_memberships": 0,
@@ -3059,6 +3033,7 @@
     "account_events": 0,
     "account_notes": 0,
     "account_tags": 0,
+    "addon_refund_reversals": 0,
     "admin_actions": 0,
     "api_credentials": 0,
     "api_idempotency_records": 0,
@@ -3246,12 +3221,12 @@
     "workspace_overage_settings": 0,
     "workspace_overage_settlements": 0,
     "workspace_purchased_capacity": 0,
-    "workspace_storage_usage": 0
+    "workspace_storage_usage": 2
   },
-  "finishedAt": "2026-09-11T16:41:40.150Z",
+  "finishedAt": "2026-09-11T16:27:20.673Z",
   "summary": {
     "total": 47,
-    "passed": 47,
-    "failed": 0
+    "passed": 44,
+    "failed": 3
   }
 }

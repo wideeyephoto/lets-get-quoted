@@ -1,4 +1,7 @@
 {
+  "evidenceStatus": "INVALIDATED_2026-09-11",
+  "invalidationReason": "The historical 83/83 result did not establish deployed browser/Data API authorization. Preserve the original record below for audit; do not use it to close a launch gate.",
+  "replacementReport": "office-data-api-remediation-2026-09-11.md",
   "executionTime": "2026-09-09T16:56:09.150Z",
   "release": {
     "commit": "48dee526b6c25a020758e42f4684bd5698ef54e2",

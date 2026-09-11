@@ -2,8 +2,9 @@
 
 ## Repository and production findings
 
-The recovery commit `65bcbae28` exists on local `main` in the Windows checkout,
-but no origin ref contains it. Remote `main` at `7f32e44c7` contains the incomplete
+At the start of this audit, recovery commit `65bcbae28` existed on local `main`
+in the Windows checkout, but no origin ref contained it. Remote `main` at
+`7f32e44c7` contained the incomplete
 `20260911000000_office_data_api_security.sql` instead. Its mocked unit test does
 not establish any database protection. The earlier 83/83 verification claim is
 invalid; it must not be used to close the launch gate.
@@ -64,22 +65,72 @@ sessions in separate browsers, checks the admin-client price write and the
 getJob-backed permits history route, and reconciles and deactivates its marked
 fixtures. No customer records or delivery destinations are used.
 
-The refreshed staging run passed all 47 browser/API cases and verified zero
-active fixture memberships, sessions and grants after cleanup. Its evidence is
-[recorded here](office-data-api-staging-evidence-2026-09-11.json). The initial run
-had one stale expected rejection message; the database correctly denied the
-operation and retained its original values. A captured staging screenshot also
-caught an entrance transition before the main content was visible; the runner
-now waits for the heading and its ancestors to be visible before scoring and
-capturing production pages.
+The final staging run on `561408f85be82f7079ce0d9e698a2f95b1e91b17` passed all
+47 browser/API cases from 16:40:55 to 16:41:40 UTC and verified zero active fixture
+memberships, sessions and grants after cleanup. Its evidence is
+[recorded here](office-data-api-staging-evidence-2026-09-11.json). It used the
+optimized production build against the hosted staging database, not a Vercel
+deployment. The focused redirect/context tests passed 33/33 and the optimized
+build passed. The first optimized run fixed all three denial redirects but hit
+one network fetch failure; the complete fresh-fixture rerun passed.
+Earlier diagnostic runs exposed a stale expected rejection message and screenshot
+timing during an entrance transition. The final runner verifies visible content
+and accepts legitimate denial pages that render a paragraph without a heading.
 
 ## Rollout status and order
 
-Both corrective phases are applied in staging. Production phase one was applied
-on September 11 and verified: the legacy finance guard is absent, the private
-INSERT/UPDATE/DELETE guard exists, and `job_access` exists. Security advisors
-reported no finding for the new job boundary. Production raw reads remain
-unchanged until the application adapter is deployed.
+Both corrective phases are applied in staging and production. PR #78 merged as
+`b1bb7f172ee1042f13bfaf5816318d467f5193f3`; production deployment
+`dpl_6aT9U7w7GpzkDN9Y1RsM4PBDwjgm` became READY and the live
+`app.letsgetquoted.com` alias was explicitly assigned and verified before phase
+two was applied. The alias had remained on the prior deployment after the Git
+build completed, so the deployment status alone was insufficient.
+
+Production migration history records `repair_office_job_write_boundary` at
+`20260911155729` and `enforce_office_job_read_boundary` at `20260911162539`;
+the hosted migration service assigns its own application timestamp. The SQL
+hashes in the browser evidence identify the committed migration bodies.
+Raw authenticated table/price SELECT and TRUNCATE are denied; operational-column
+SELECT and service-role table SELECT remain enabled. The composite parent key
+is present and security advisors report no finding for the new job boundary.
+
+The initial [production rehearsal](office-data-api-production-initial-2026-09-11.json)
+passed 44/47 cases and verified cleanup. All data-boundary, service-role pricing,
+owner quote-save and session permits checks passed. Three denial pages emitted
+React #310 during a streamed redirect, despite recovering to the correct
+destination. The same Router/useMemo failure reproduced in a local optimized
+build. PR #79 moves these read-page denials ahead of the dashboard loading
+boundary while retaining the existing page guards for every client navigation.
+The upstream [React issue](https://github.com/react/react/issues/33580) describes
+the corresponding hydration/transition hook failure.
+
+The final production run passed **47/47** from **16:53:14 to 16:54:40 UTC** on
+September 11. The live hostname was verified against merged commit
+`1633473fb0253b757b31d3e2f85cf6d3297f730d` and READY production deployment
+`dpl_4xoqSw1KS1XwC2DbhzTv4nknkTXc` before the run. See the
+[complete production evidence](office-data-api-production-evidence-2026-09-11.json)
+and [database catalog checks](office-data-api-production-catalog-2026-09-11.json).
+The final release passed CI, including all 14,890 unit tests, the PostgreSQL
+boundary harness, type checking, lint and build. Its first CI attempt hit an
+unrelated randomized merchandise order-number collision assertion; the unchanged
+suite passed locally and the complete CI retry passed.
+
+Cleanup removed the two fixture clients and two jobs, revoked sessions and grants,
+deactivated memberships and suspended the two test workspaces. An independent
+database check also confirmed zero remaining jobs, clients, active memberships,
+sessions and grants for **all three production fixture sets** used during the
+initial run, redirect diagnosis and final run. Suspended marked workspaces and
+test identities are retained for audit. The cleanup checks are recorded in
+[this reconciliation](office-data-api-production-cleanup-2026-09-11.json).
+
+The restricted [job page](office-data-api-evidence-2026-09-11/office-job-detail.png)
+and [revoked-access page](office-data-api-evidence-2026-09-11/office-grants-revoked.png)
+were visually inspected. **FINANCE-REST, WRITER-FINANCE and
+WRITER-FOREIGN-PARENT are closed**, along with the service-role regression,
+schema/replay/search-path gaps and invalid test evidence described above. This
+does not close unrelated launch, Storage concurrency, Realtime or invitation gates.
+
+The completed rollout order, for reference:
 
 1. Apply phase one; verify service-role writes and the parent constraint.
 2. Deploy this application release, retaining its exact SHA and deployment ID.
