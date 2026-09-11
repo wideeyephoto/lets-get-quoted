@@ -1,10 +1,25 @@
 # Contractor domains: Outlook, lifecycle, and canary record
 
-Updated September 11, 2026 at 12:44 UTC (September 11 in America/New_York). **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
+Updated September 11, 2026 at 16:23 UTC (12:23 PM in America/New_York). **Seven-day observation started at 2026-09-11 16:23:14.731206 UTC; launch acceptance remains open.** Following Brett's request to start now, observation of the already-live single-workspace domain runs alongside the remaining lifecycle drills. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed. Earlier dated statements that the clock had not started describe their historical checkpoints.
 
 Current binding after the provider-loss drill: database **`ac8aff96-573a-4ec1-8cfa-25d48c551e05`**, Resend **`e36d84f4-13e1-4c52-a1ef-3b53514945ec`**, verified through LGQ at **September 10 12:50:48.309 UTC**. Both September 10 normal deliberate test allowances were used: Outlook quote and Gmail owner alert. The routine 12:00 UTC daily digest was separate ordinary scheduled mail. Brett explicitly approved saving the certificate-fixture CNAME and one extra website-connected Gmail alert; that exception was used at 13:30 UTC. **September 11 Gmail allowance is now used by the actual product quote at 05:14 UTC. Outlook remains unused.** Fully paginated provider inventories at 04:42 and immediately before sending at 05:14:29.501 UTC were empty through the 04:00 UTC local-midnight boundary. At 05:16:53.410 UTC the inventory contained exactly this one Gmail quote; do not send or trigger another Gmail test today.
 
-Release continuation: Brett explicitly approved publishing/deploying the candidate and hourly follow-ups with at most one test per approved inbox daily. The task heartbeat `contractor-domain-seven-day-canary` is now ACTIVE, hourly at minute 40. It continues lifecycle preparation first and does not start/count canary days until the activation and recovery gates below pass. This supersedes the historical approval blocks recorded below.
+Release continuation: Brett explicitly approved publishing/deploying the candidate and hourly follow-ups with at most one test per approved inbox daily. The task heartbeat `contractor-domain-seven-day-canary` remains ACTIVE, hourly at minute 40. It now tracks elapsed observation and finishes the outstanding launch checks in parallel under the sequencing adjustment below. This supersedes the historical approval blocks and preparation-only scheduling instructions recorded below.
+
+## September 11 observation start
+
+Brett requested starting observation of the already-enabled canary while the remaining acceptance work continues. This changes the order of work, not the evidence required for launch: the remaining message, failure/recovery, tenant isolation, hold, alert, capacity, webhook, rollback and supported fixture-cleanup criteria stay unchecked. LGQ staff security verification remains necessary for supported fixture closure; the completed Squarespace passkey is separate. No feature flag, recipient allowance, provider binding, DNS record or customer exposure was changed to start observation.
+
+Fresh baseline at **16:23:14.731206 UTC**:
+
+- The production app alias resolved to READY deployment **`dpl_Uk5c8x51awwv2cXU5Dhnac2ErMD2`**, SHA **`7f32e44c7ce4f94553a305f1921050fba9ee50a3`**, the previously accepted release with the exact BrokePipes-only allowlist. Production contains exactly one contractor email-domain row, the active binding recorded above, verified with no failure reason.
+- Provider GET at **16:23:12.599 UTC** returned HTTP 200, that same verified provider ID, and all three required DKIM/return-path DNS records verified. The most recent scheduled email check remains **`59b08397-67fb-420f-b856-6765d8d3a459`**, September 11 06:23 UTC, with fresh `last_checked_at=06:23:20.954 UTC`, one domain checked and zero errors, downgrades, or backlog. This pre-start run remains baseline evidence and is not counted toward the seven runs.
+- There were zero failed domain cron runs since release, zero unresolved Resend callback failures, and one retained resolved domain notice. The 16:15 website run **`ae5c12d0-3042-4927-8588-266c4a78be66`** was healthy with zero pending sites; it does not substitute for an active email-domain check. The disposable fixture still has zero closure jobs.
+- Actual production Gmail and Outlook delivery, aligned authentication, usable quote links and reply evidence are dated below. Those earlier receipts establish the baseline; representative product sends, delivered outcomes and receiver/reply evidence must also be collected during observation within the existing daily limits. No email was sent by this start checkpoint.
+
+**Earliest seven-day review: September 18 at 16:23:14.731206 UTC (12:23 PM America/New_York)**, provided the window remains healthy and seven qualifying scheduled checks plus representative mail evidence exist. The first post-start scheduled email reconciliation is due September 12 at 06:23 UTC. At start, **0/7 scheduled checks and 0 completed days** are counted; no preparation is backdated into this window.
+
+Continue isolated Preview/staging drills and disposable website cleanup during observation. A planned drill that interrupts this active domain, changes its binding, or exercises an active sending hold invalidates the uninterrupted healthy window: preserve the attempt's evidence, complete recovery and authenticated send acceptance, then record a new start and seven-run count. Do the same for a material domain-path defect/fix or an actual stop-condition incident. Unrelated work and isolated fixtures do not reset a healthy domain window. Passing elapsed observation alone never closes the remaining launch gates or authorizes expansion.
 
 ## Production release and enrollment
 
@@ -245,7 +260,7 @@ The September 10 follow-up completed **G07's support diagnostic document** again
 
 Deployed onboarding, clean disconnect/reconnect, actual custom-domain Outlook and Gmail product quotes, and scheduled website certificate promotion are recorded above. Finish the remaining supported-message and technical DNS/provider loss/recovery scenarios, durable hold/cleanup behavior, and supported disposable website deletion. Keep injected fault tests distinct from provider/DNS observations. Do not delete the live website or claim that zero-row cron runs exercised a tenant.
 
-Before starting the clock, record the READY candidate, one-workspace allowlist, active provider and database binding, successful real custom-domain product mail, and restored healthy state after drills. The retired and replacement provider bindings are recorded above. Replies use the owner's authorized Gmail mailbox, saved through production Business settings and independently confirmed in the account record. No From mailbox is provisioned.
+The September 11 start baseline above records the READY candidate, one-workspace allowlist, active provider and database binding, successful real custom-domain product mail, and current healthy state. Remaining drills now run alongside observation; any drill that disrupts the active domain requires a new healthy window after verified recovery. The retired and replacement provider bindings are recorded above. Replies use the owner's authorized Gmail mailbox, saved through production Business settings and independently confirmed in the account record. No From mailbox is provisioned.
 
 Historical approval gates: automatic review initially rejected publication, recurring execution, and then the exact production variables. Brett explicitly approved publication/deployment and hourly follow-ups, then approved the two exact variables. Each rejected operation was retried only after the corresponding approval and then succeeded. No alternative path bypassed a rejection. There is no outstanding publication, scheduling, or variable approval at this checkpoint.
 
@@ -255,4 +270,11 @@ The canary needs at least seven elapsed days and seven consecutive successful sc
 
 | Day | Scheduled run / UTC | Domain checked and fresh | Sends / delivery / replies | Outcome |
 | --- | --- | --- | --- | --- |
-| 1–7 | Pending activation and lifecycle recovery | Not yet observed | Initial transport/product evidence above | Observation clock not started |
+| Start: September 11, 16:23:14.731206 UTC | Baseline only; September 11 06:23 run predates start | Verified; last checked September 11 06:23:20.954 UTC | Prior product evidence above; no start-checkpoint send | Observation active; 0 completed days, 0/7 qualifying runs |
+| 1: September 12 | Due 06:23 UTC; pending | Pending | Pending in-window evidence | Pending |
+| 2: September 13 | Due 06:23 UTC; pending | Pending | Pending | Pending |
+| 3: September 14 | Due 06:23 UTC; pending | Pending | Pending | Pending |
+| 4: September 15 | Due 06:23 UTC; pending | Pending | Pending | Pending |
+| 5: September 16 | Due 06:23 UTC; pending | Pending | Pending | Pending |
+| 6: September 17 | Due 06:23 UTC; pending | Pending | Pending | Pending |
+| 7: September 18 | Due 06:23 UTC; pending | Pending | Pending | Seven elapsed days also required, no earlier than 16:23:14.731206 UTC |

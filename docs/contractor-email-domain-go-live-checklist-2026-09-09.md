@@ -1,8 +1,8 @@
 # Contractor email domain sending: go-live task list
 
-Prepared September 9; updated September 11, 2026. Status: **Gmail and Outlook actual production quote receipt, authentication and matching links passed. Production onboarding and clean disconnect/reconnect passed. Remaining message paths, lifecycle drills, supported website-fixture cleanup and the seven-day canary remain open.**
+Prepared September 9; updated September 11, 2026 at 16:23 UTC. Status: **Seven-day observation is active from September 11 at 16:23:14.731206 UTC, with 0/7 qualifying scheduled checks at start. Gmail and Outlook actual production quote receipt, authentication and matching links passed. Production onboarding and clean disconnect/reconnect passed. Remaining message paths, lifecycle drills, supported website-fixture cleanup and final canary acceptance remain open.**
 
-**Current checkpoint, September 11, 05:18 UTC:** [PR #76](https://github.com/wideeyephoto/lets-get-quoted/pull/76) fixed the quick-contact editor's missing-column failure and is live on both production aliases as `dpl_Uk5c8x51awwv2cXU5Dhnac2ErMD2`, SHA `7f32e44c7ce4f94553a305f1921050fba9ee50a3`. Full CI passed 14,884 tests, nine PostgreSQL checks and the 422-page build. The repaired UI saved the synthetic quote's recipient, and its actual product email reached Gmail Inbox with SPF/DKIM/DMARC PASS, correct Reply-To and a working J-1004/$0 quote link. The original recipient was restored without another send. Gmail's September 11 allowance is used; Outlook remains unused. The certificate watcher and its September 10 owner notice already passed. LGQ staff verification, supported closure/provider cleanup and the other lifecycle gates remain open; the seven-day clock has not started. [Dated release and receipt evidence](contractor-domains-canary-2026-09-09.md#september-11-release-and-gmail-product-acceptance).
+**Historical release checkpoint, September 11, 05:18 UTC:** [PR #76](https://github.com/wideeyephoto/lets-get-quoted/pull/76) fixed the quick-contact editor's missing-column failure and is live on both production aliases as `dpl_Uk5c8x51awwv2cXU5Dhnac2ErMD2`, SHA `7f32e44c7ce4f94553a305f1921050fba9ee50a3`. Full CI passed 14,884 tests, nine PostgreSQL checks and the 422-page build. The repaired UI saved the synthetic quote's recipient, and its actual product email reached Gmail Inbox with SPF/DKIM/DMARC PASS, correct Reply-To and a working J-1004/$0 quote link. The original recipient was restored without another send. Gmail's September 11 allowance is used; Outlook remains unused. The certificate watcher and its September 10 owner notice already passed. LGQ staff verification, supported closure/provider cleanup and the other lifecycle gates remained open at that checkpoint, before the September 11 16:23 UTC observation start recorded above. [Dated release and receipt evidence](contractor-domains-canary-2026-09-09.md#september-11-release-and-gmail-product-acceptance).
 
 Release update, 22:09–22:20 UTC: PR #64 is merged and READY deployment `dpl_955shMPfprmxsadkAEui6PqeaKC9` serves the public app/webhook with the explicitly approved BrokePipes-only allowlist. Full CI passed 14,590 tests and build. Deployed product enrollment created a pending binding, and its exact return-path DNS is now published. Another authenticated workspace has no enrollment UI. Four authentic provider callback replays returned 202 with durable quarantine; the 20 known rehearsal incident records have explicit retained dispositions. The website watcher checked/attached one pending fixture through deployed credentials. Hourly follow-ups are ACTIVE; the seven-day clock remains unstarted. [Current evidence and remaining work](contractor-domains-canary-2026-09-09.md).
 
@@ -93,7 +93,7 @@ The export also contains plaintext Resend domain-management, Supabase service-ro
 | G4: canary passed | One approved contractor, seven healthy scheduled checks with real sends, no unresolved release defect | G1–G3, I |
 | G5: general release | Capacity, eligibility, support, abuse controls, and monitoring ready for the admitted cohort | G4, all GA tasks, J |
 
-Critical path: **environment and rollout controls → real DNS verification → received headers → failure/rollback rehearsal → one-contractor canary → seven-day observation → staged general release.** DNS/provider propagation and the observation period are elapsed-time dependencies; do not replace them with green unit tests.
+September 11 sequencing adjustment, following Brett's request to start: **the already-enabled BrokePipes domain enters observation while remaining failure/rollback and cleanup drills continue.** G4 sign-off and general release still require G1–G3 and every remaining acceptance item. An active-domain interruption or material domain-path fix restarts the healthy window after recovery; isolated staging/Preview and disposable website drills may proceed concurrently. DNS/provider propagation and the observation period remain elapsed-time dependencies; do not replace them with green unit tests. See the [start baseline and restart rules](contractor-domains-canary-2026-09-09.md#september-11-observation-start).
 
 Start with **B08 (exposed credentials), B02 (reported Preview-to-Production binding), C01 (workspace allowlist), and C04 (durable suspension)** while the owner selects the rehearsal assets and canary. The pricing decision is not a prerequisite for those tasks. A06's v1 behavior and A05's suspension policy must be settled before dependent implementation and G3 sign-off.
 
@@ -216,7 +216,7 @@ Owners: Engineering + Operations. Depends on C–G; done in the rehearsal enviro
 
 ## I. Launch one contractor and observe for seven days
 
-Owners: Operations + Support; release decision: Brett. Entry: G1–G3 passed.
+Owners: Operations + Support; release decision: Brett. Observation started under the September 11 sequencing adjustment above; final sign-off and expansion still require G1–G3. The earliest elapsed-time review is September 18 at 16:23:14.731206 UTC (12:23 PM America/New_York), subject to seven qualifying runs, representative in-window delivery/authentication/replies, and any required restart. The September 11 morning run predates the start and is not counted. No I-series completion is claimed by starting observation.
 
 - [ ] **I01 — Deploy with one-workspace eligibility.** Configure Production flag and server-side allowlist, deploy the reviewed SHA, and record the resulting READY deployment. Confirm runtime behavior in the allowed workspace and a different workspace; the latter must be refused server-side. Recheck actual provider headroom and total email budget.
 - [ ] **I02 — Supervise production onboarding.** Contractor publishes their provider-returned DNS records, verifies through LGQ, and confirms mailbox/alias plus Reply-To. Observe a real production quote with consented recipients and save received authentication/reply evidence. Preview success alone does not close this step.
@@ -228,13 +228,14 @@ Canary daily log:
 
 | Day/date | Scheduled run ID; checked/errors | Domain status; last checked | Actual send/delivery counts | Bounces/complaints; replies | Issue/action; owner |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Pending | Pending | Pending | Pending | Pending |
-| 2 | Pending | Pending | Pending | Pending | Pending |
-| 3 | Pending | Pending | Pending | Pending | Pending |
-| 4 | Pending | Pending | Pending | Pending | Pending |
-| 5 | Pending | Pending | Pending | Pending | Pending |
-| 6 | Pending | Pending | Pending | Pending | Pending |
-| 7 | Pending | Pending | Pending | Pending | Pending |
+| Start: September 11, 16:23 UTC | Baseline only; 0/7 qualifying runs | Verified; September 11 06:23:20.954 UTC | No start-checkpoint send | Prior receipt/reply evidence retained | Observation active; remaining gates open |
+| 1 / September 12 | Due 06:23 UTC; pending | Pending | Pending | Pending | Pending |
+| 2 / September 13 | Due 06:23 UTC; pending | Pending | Pending | Pending | Pending |
+| 3 / September 14 | Due 06:23 UTC; pending | Pending | Pending | Pending | Pending |
+| 4 / September 15 | Due 06:23 UTC; pending | Pending | Pending | Pending | Pending |
+| 5 / September 16 | Due 06:23 UTC; pending | Pending | Pending | Pending | Pending |
+| 6 / September 17 | Due 06:23 UTC; pending | Pending | Pending | Pending | Pending |
+| 7 / September 18 | Due 06:23 UTC; pending | Pending | Pending | Pending | Elapsed-time review no earlier than 16:23:14.731206 UTC |
 
 ## J. Open general availability in controlled batches
 
