@@ -3,7 +3,7 @@
 // cannot: missing functions, constraints, roles, or migration prerequisites.
 
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
@@ -114,8 +114,13 @@ const requiredFunctions = [
   'sms_account_recipient_opted_out',
 ];
 
+const dbDir = join(process.cwd(), '.pg17-messaging-schema-check');
+if (existsSync(dbDir)) {
+  try { rmSync(dbDir, { recursive: true, force: true }); } catch { /* ignore */ }
+}
+
 const pg = new EmbeddedPostgres({
-  databaseDir: join(process.cwd(), '.pg17-messaging-schema-check'),
+  databaseDir: dbDir,
   user: 'postgres', password: 'postgres', port: PORT, persistent: false,
 });
 let client;

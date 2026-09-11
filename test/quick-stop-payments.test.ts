@@ -5,7 +5,6 @@ import * as paymentsModule from '@/lib/payments';
 import * as authModule from '@/lib/auth';
 import * as smsModule from '@/lib/sms';
 import * as emailModule from '@/lib/email';
-import * as alertsModule from '@/lib/alerts';
 
 vi.mock('@/lib/stripe', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/stripe')>();

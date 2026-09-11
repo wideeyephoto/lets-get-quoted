@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   recordRecurringChargeFailure,
-  retryDunningPayment,
-  runDunningRetries,
   rescheduleDunningAfterCardUpdate
 } from '@/lib/dunning';
 

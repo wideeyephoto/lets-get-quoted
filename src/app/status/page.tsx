@@ -1,5 +1,19 @@
-import { createClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
+
+interface PlatformIncident {
+  id: string;
+  title: string;
+  kind?: string;
+  severity?: string;
+  description?: string;
+  impact_summary?: string;
+  resolution_summary?: string;
+  root_cause?: string;
+  started_at: string;
+  resolved_at?: string | null;
+  published?: boolean;
+}
 
 export const metadata = {
   title: 'Platform Status - Let\'s Get Quoted',
@@ -9,7 +23,7 @@ export const metadata = {
 export const revalidate = 60; // Refresh cache every minute
 
 export default async function StatusPage() {
-  const supabase = createClient();
+  const supabase = await createSupabaseServerClient();
   const { data: incidents, error } = await supabase
     .from('platform_incidents')
     .select('*')
@@ -21,8 +35,9 @@ export default async function StatusPage() {
     console.error('Failed to load status incidents', error);
   }
 
-  const activeIncidents = (incidents || []).filter(i => !i.resolved_at && i.kind === 'incident');
-  const pastIncidents = (incidents || []).filter(i => i.resolved_at || i.kind === 'release');
+  const typedIncidents = (incidents as PlatformIncident[] | null) || [];
+  const activeIncidents = typedIncidents.filter((i: PlatformIncident) => !i.resolved_at && i.kind === 'incident');
+  const pastIncidents = typedIncidents.filter((i: PlatformIncident) => i.resolved_at || i.kind === 'release');
 
   const isHealthy = activeIncidents.length === 0;
 
@@ -59,7 +74,7 @@ export default async function StatusPage() {
         <div className="mb-12">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">Active Incidents</h3>
           <div className="space-y-6">
-            {activeIncidents.map(incident => (
+            {activeIncidents.map((incident: PlatformIncident) => (
               <div key={incident.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="bg-red-50 px-6 py-4 border-b border-red-100 flex justify-between items-center">
                   <h4 className="text-lg font-semibold text-red-900">{incident.title}</h4>
@@ -85,7 +100,7 @@ export default async function StatusPage() {
           <p className="text-gray-500 italic">No past incidents or updates to display.</p>
         ) : (
           <div className="space-y-6">
-            {pastIncidents.map(incident => (
+            {pastIncidents.map((incident: PlatformIncident) => (
               <div key={incident.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                   <h4 className="text-lg font-medium text-gray-900">{incident.title}</h4>

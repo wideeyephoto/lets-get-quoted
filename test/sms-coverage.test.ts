@@ -165,7 +165,7 @@ describe('sms.ts coverage', () => {
 
   describe('sendPaymentSmsEvent', () => {
     it('throws if payment not found', async () => {
-      await expect(sendPaymentSmsEvent('pay_1', 'payment_request')).rejects.toThrow('Payment not found');
+      await expect(sendPaymentSmsEvent('pay_1', 'payment_requested')).rejects.toThrow('Payment not found');
     });
 
     it('returns skipped if no consent or no phone', async () => {
@@ -177,7 +177,7 @@ describe('sms.ts coverage', () => {
         };
         return chain;
       });
-      const result = await sendPaymentSmsEvent('pay_1', 'payment_request');
+      const result = await sendPaymentSmsEvent('pay_1', 'payment_requested');
       expect(result).toEqual({ status: 'skipped' });
     });
 
@@ -190,7 +190,7 @@ describe('sms.ts coverage', () => {
         };
         return chain;
       });
-      const result = await sendPaymentSmsEvent('pay_1', 'payment_request');
+      const result = await sendPaymentSmsEvent('pay_1', 'payment_requested');
       expect(result).toEqual({ status: 'failed', error: 'SMS destination is invalid.' });
     });
     
@@ -217,7 +217,7 @@ describe('sms.ts coverage', () => {
       
       vi.mocked(enqueueSmsDelivery).mockResolvedValueOnce({ created: true, eventId: 'evt_1', state: 'queued' } as any);
 
-      const result = await sendPaymentSmsEvent('pay_1', 'payment_request');
+      const result = await sendPaymentSmsEvent('pay_1', 'payment_requested');
       expect(result).toEqual({ status: 'queued', eventId: 'evt_1', deliveryState: 'queued' });
       
       // verify exact cents calculation - wait, payment text is mocked, but we should make sure the amount isn't manipulated weirdly.
@@ -225,7 +225,7 @@ describe('sms.ts coverage', () => {
         accountId: 'acc_1',
         phoneNumber: '+15551234567',
         paymentId: 'pay_1',
-        eventType: 'payment_request',
+        eventType: 'payment_requested',
         billingCategory: 'payment_message'
       }), mockSupabase);
     });
@@ -250,7 +250,7 @@ describe('sms.ts coverage', () => {
         };
         return chain;
       });
-      const result = await sendPaymentSmsEvent('pay_1', 'payment_request');
+      const result = await sendPaymentSmsEvent('pay_1', 'payment_requested');
       expect(result).toEqual({ status: 'opted_out' });
     });
   });
@@ -278,7 +278,7 @@ describe('sms.ts coverage', () => {
       });
       vi.mocked(enqueueSmsDelivery).mockResolvedValueOnce({ created: false, eventId: 'evt_1', state: 'failed' } as any);
 
-      const result = await retryFailedPaymentSmsEvent('pay_1', 'payment_request');
+      const result = await retryFailedPaymentSmsEvent('pay_1', 'payment_requested');
       expect(result).toEqual({ status: 'duplicate', eventId: 'evt_1', deliveryState: 'failed' });
     });
   });

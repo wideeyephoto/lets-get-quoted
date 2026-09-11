@@ -46,7 +46,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
 
   it('fails with dead_letter if decryption throws', async () => {
     const task = mockTask();
-    task.encrypted_secret.data = 'bad';
+    (task.encrypted_secret as any).data = 'bad';
     const outcome = await deliverSingleWebhookTask(mockAdmin, task);
     expect(outcome).toBe('dead_letter');
     expect(rpcCalls[0].method).toBe('fail_webhook_delivery');
@@ -163,7 +163,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
         if (url === 'https://dead.com') return Promise.resolve({ ok: false, status: 400, text: async()=>'' });
         if (url === 'https://dis.com') return Promise.resolve({ ok: false, status: 410, text: async()=>'' });
         return Promise.resolve({ ok: true, status: 200, text: async()=>'' });
-      });
+      }) as any;
 
       const result = await runWebhookDeliveryBatch(10, mockAdmin);
       expect(result).toEqual({

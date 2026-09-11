@@ -162,5 +162,5 @@ export async function togglePublishIncidentAction(formData: FormData) {
 
   revalidatePath('/admin/incidents');
   revalidatePath('/status');
-  back(done= + (published ? 'published' : 'unpublished'));
+  back('done=' + (published ? 'published' : 'unpublished'));
 }
