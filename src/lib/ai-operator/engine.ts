@@ -496,11 +496,19 @@ export async function executeHitlDecision(
           const stepId = typeof action.payload.stepId === 'string' ? (action.payload.stepId as any) : 'nudge_zero_quotes';
           const recipients = Array.isArray(action.payload.recipients) ? action.payload.recipients : [];
 
+          if (!recipients.length) {
+            throw new Error('This approval has no prepared recipients. Decline the old card and run a fresh growth scan to preview the current audience.');
+          }
+
           const batchRes = await sendActivationNudgeBatch(supabase, {
             stepId,
             recipients,
             dryRun: !isFlagEnabled,
           });
+
+          if (batchRes.errors > 0) {
+            return { success: false, error: 'Some activation emails failed. Review the results before retrying.', executionResult: batchRes, action };
+          }
 
           executionResult = {
             ...batchRes,

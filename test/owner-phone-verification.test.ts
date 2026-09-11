@@ -52,7 +52,7 @@ describe('owner phone 2FA verification', () => {
   it('formats the transactional OTP SMS text with STOP opt-out', () => {
     const body = ownerVerificationCodeText({ code: '754912' });
     expect(body).toContain('754912');
-    expect(body).toContain('Let’s Get Quoted verification code');
+    expect(body).toMatch(/^Let's Get Quoted: Your verification code is /);
     expect(body).toContain('Reply STOP to opt out');
   });
 });

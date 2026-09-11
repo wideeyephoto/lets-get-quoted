@@ -31,6 +31,7 @@
     "test:pg17:overage-idempotency": "node scripts/verify-overage-idempotency.mjs",
     "test:pg17:overage-settlement": "node scripts/verify-overage-settlement.mjs",
     "test:pg17:overage-reaper": "node scripts/verify-overage-settlement.mjs",
+    "test:overage-reconciliation": "node --test scripts/test-overage-reconciliation.test.mjs",
     "test:pg17:scale-allowance": "node scripts/verify-scale-allowance-patch.mjs",
     "test:pg17:office-collision": "node scripts/verify-office-seat-collision.mjs",
     "test:pg17:voice-allowance": "node scripts/verify-voice-minute-allowance.mjs",
@@ -80,6 +81,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
+    "@noble/hashes": "1.8.0",
     "@simplewebauthn/browser": "14.0.0",
     "@simplewebauthn/server": "14.0.1",
     "@supabase/ssr": "^0.5.0",
@@ -95,10 +97,12 @@
     "react-dom": "18.3.1",
     "read-excel-file": "^9.3.4",
     "resend": "^3.5.0",
+    "sharp": "0.35.4",
     "stripe": "^22.3.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@iconify-json/lucide": "^1.2.120",
     "@iconify-json/simple-icons": "^1.2.93",
     "@iconify/utils": "^3.1.4",

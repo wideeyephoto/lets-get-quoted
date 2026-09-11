@@ -1,324 +1,194 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
-
-import {
-  OVERAGE_PERIOD_CLOSE_FLAG,
-  OVERAGE_SETTLEMENT_FLAG,
-  overagePeriodCloseWorkerEnabled,
-  overageSettlementIdempotencyKey,
-  overageSettlementWorkerEnabled,
-} from '@/lib/billing/overage-settlement-worker';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), create: vi.fn(), accounts: vi.fn(), balance: vi.fn(), subscription: vi.fn() }));
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc, from: mocks.from }) }));
+vi.mock('@/lib/stripe', () => ({ getStripeClient: () => ({ invoiceItems: { create: mocks.create },
+  accounts: { retrieve: mocks.accounts }, balance: { retrieve: mocks.balance } }) }));
+import { runOverageSettlementBatch, runOveragePeriodCloseBatch, classifyStripeFailure, overageSettlementIdempotencyKey,
+  overagePeriodCloseWorkerEnabled, overageSettlementWorkerEnabled, OVERAGE_PERIOD_CLOSE_FLAG, OVERAGE_SETTLEMENT_FLAG } from '@/lib/billing/overage-settlement-worker';
 import { CRON_JOBS, cronSummaryHasFailures } from '@/lib/cron-jobs';
 import { extractLogicalFailureReason } from '@/lib/cron-runs';
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
-const MIGRATION = read('migrations', '20260819260000_overage_settlement.sql');
-const REAPER_MIGRATION = read('migrations', '20260909210000_overage_settlement_reaper_and_starvation.sql');
-const ALERT_MIGRATION = read('migrations', '20260909210100_operational_alert_overage_settlements.sql');
-const WORKER = read('src', 'lib', 'billing', 'overage-settlement-worker.ts');
-const CLOSE_ROUTE = read('src', 'app', 'api', 'cron', 'overage-period-close', 'route.ts');
-const SETTLE_ROUTE = read('src', 'app', 'api', 'cron', 'overage-settlement', 'route.ts');
-const ENV = read('.env.example');
-
-/**
- * The rail this drives was written to make double-billing impossible, and every
- * one of those guarantees is only as good as the worker holding it. So the
- * assertions here are about the two things a worker can get wrong that the
- * database cannot catch for it: reusing the idempotency key across retries, and
- * deciding that a request which MIGHT have charged somebody did not.
- */
-
-describe('the idempotency key is what makes a retry safe', () => {
-  const key = () => overageSettlementIdempotencyKey({
-    settlementId: '3f7c1a52-0a5e-4c31-9b2f-0c9d6c1f2b34',
-    chargeableCents: 1_234,
-  });
-
-  it('is the exact shape the database will store', () => {
-    // The column has a CHECK on this pattern, so a key of the wrong shape is
-    // refused at claim time -- after the row has already moved to `submitted`.
-    expect(key()).toMatch(/^lgq:billing:v1:overage\.settle:[0-9a-f]{64}$/);
-    expect(MIGRATION).toContain("stripe_idempotency_key ~ '^lgq:billing:v1:overage[.]settle:[0-9a-f]{64}$'");
-  });
-
-  it('is identical on every attempt for the same settlement', () => {
-    // `indeterminate` is re-claimable on purpose: Stripe may or may not have
-    // created the item, and asking again is the only way to find out. That is
-    // safe only while the second ask carries the SAME key.
-    expect(key()).toBe(key());
-  });
-
-  it('derives from nothing that can move between attempts', () => {
-    // Attempt count, claim token and timestamps all change on a re-claim. If
-    // any of them fed the digest, the retry built to PREVENT a double charge
-    // would be the thing causing one.
-    const digestInput = WORKER.slice(WORKER.indexOf('createHash(\'sha256\')'));
-    for (const mutable of ['attempt', 'claimToken', 'Date.now', 'now()', 'token']) {
-      expect(digestInput.slice(0, 300), mutable).not.toContain(mutable);
+const id = '11111111-1111-4111-8111-111111111111';
+const account = '22222222-2222-4222-8222-222222222222';
+const token = '33333333-3333-4333-8333-333333333333';
+const key = overageSettlementIdempotencyKey({ settlementId: id, chargeableCents: 100 });
+const payload = { customer: 'cus_original123', amount: 100, currency: 'usd', description: 'original',
+  metadata: { lgq_settlement_id: id, lgq_account_id: account } };
+let rows: Record<string, unknown>[];
+let results: Record<string, unknown>;
+const ok = (data: unknown) => ({ data, error: null });
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.stubEnv('LGQ_OVERAGE_SETTLEMENT_ACCOUNT_IDS', undefined);
+  rows = [{ id, account_id: account, chargeable_cents: 100, attempt_count: 0, period_start: '2026-01-01', period_end: '2026-02-01' }];
+  results = {};
+  mocks.rpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
+    if (name in results) {
+      if (results[name] instanceof Error) throw results[name];
+      return results[name];
     }
-    expect(WORKER).toContain('`${input.settlementId}:${input.chargeableCents}`');
+    if (name === 'reap_overage_settlement_leases') return ok(0);
+    if (name === 'list_claimable_overage_settlements') return ok(rows);
+    if (name === 'claim_overage_settlement_v2') return ok({ claim_token: token, payload: args.p_payload, idempotency_key: args.p_stripe_idempotency_key,
+      retry_deadline_at: new Date(Date.now()+23*3600000).toISOString(), lease_expires_at: new Date(Date.now()+300000).toISOString() });
+    return ok(true);
   });
+  const query: Record<string, unknown> = {};
+  for (const name of ['select','eq','not','order','limit']) query[name] = () => query;
+  query.maybeSingle = mocks.subscription;
+  mocks.from.mockReturnValue(query);
+  mocks.subscription.mockResolvedValue(ok({ provider_customer_id: 'cus_original123', livemode: false }));
+  mocks.accounts.mockResolvedValue({ id: 'acct_original123' });
+  mocks.balance.mockResolvedValue({ livemode: false });
+  mocks.create.mockResolvedValue({ id: 'ii_original123' });
+});
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); vi.useRealTimers(); });
 
-  it('separates settlements that differ only in amount', () => {
-    const a = overageSettlementIdempotencyKey({ settlementId: 'a', chargeableCents: 100 });
-    const b = overageSettlementIdempotencyKey({ settlementId: 'a', chargeableCents: 101 });
-    expect(a).not.toBe(b);
+describe('settlement execution', () => {
+  it('claims before creating and counts only confirmed completion', async () => {
+    expect(await runOverageSettlementBatch()).toMatchObject({ charged: 1, completion_unconfirmed: 0, worker_errors: 0 });
+    const claimIndex = mocks.rpc.mock.calls.findIndex(([name]) => name === 'claim_overage_settlement_v2');
+    expect(mocks.rpc.mock.invocationCallOrder[claimIndex]).toBeLessThan(mocks.create.mock.invocationCallOrder[0]);
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ amount: 100 }),
+      { idempotencyKey: key, timeout: 20000, maxNetworkRetries: 0 });
+  });
+  it.each([ok(false),ok(null),{ data: null, error: { message: 'lost write' } },new Error('network')])('never counts unconfirmed completion: %j', async (result) => {
+    results.complete_overage_settlement = result;
+    expect(await runOverageSettlementBatch()).toMatchObject({ charged: 0, completion_unconfirmed: 1 });
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === 'complete_overage_settlement')).toHaveLength(2);
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'fail_overage_settlement')).toBe(false);
+  });
+  it('retries only local completion when its first response is lost', async () => {
+    const base = mocks.rpc.getMockImplementation()!;
+    let completed = false;
+    mocks.rpc.mockImplementation(async (...args) => {
+      if (args[0] === 'complete_overage_settlement' && !completed) { completed = true; throw new Error('lost reply'); }
+      return base(...args);
+    });
+    expect((await runOverageSettlementBatch()).charged).toBe(1);
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
+  it('reuses the frozen payload and customer on retries', async () => {
+    rows[0] = { ...rows[0], attempt_count: 1, stripe_account_id: 'acct_original123', livemode: false, request_payload: payload, stripe_idempotency_key: key };
+    expect((await runOverageSettlementBatch()).charged).toBe(1);
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.create.mock.calls[0][0]).toEqual(payload);
+  });
+  it('completes locally from previously saved provider evidence', async () => {
+    results.claim_overage_settlement_v2=ok({claim_token:token,payload,idempotency_key:key,invoice_item_id:'ii_prior12345',
+      retry_deadline_at:new Date(Date.now()+3600000).toISOString(),lease_expires_at:new Date(Date.now()+300000).toISOString()});
+    expect((await runOverageSettlementBatch()).charged).toBe(1);
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('complete_overage_settlement',expect.objectContaining({p_invoice_item_id:'ii_prior12345'}));
+  });
+  it.each([null,{}, { claim_token: null }])('cannot dispatch with a missing/malformed claim %j', async (claim) => {
+    results.claim_overage_settlement_v2 = ok(claim);
+    await runOverageSettlementBatch();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it('does not recreate a provider object after its idempotency cache expires', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-10T00:00:00Z'));
+    let objectCount = 0;
+    let cachedAt = -Infinity;
+    mocks.create.mockImplementation(async () => {
+      if (Date.now()-cachedAt >= 86400000) { objectCount += 1; cachedAt = Date.now(); }
+      return { id: `ii_original12${objectCount}` };
+    });
+    await runOverageSettlementBatch();
+    vi.setSystemTime(new Date('2026-09-12T00:00:00Z'));
+    // Defense at dispatch even if a stale/incorrect candidate reaches the worker.
+    results.claim_overage_settlement_v2 = ok({ claim_token: token, payload, idempotency_key: key,
+      retry_deadline_at:'2026-09-10T23:00:00Z',lease_expires_at:'2026-09-12T00:05:00Z' });
+    await runOverageSettlementBatch();
+    expect(objectCount).toBe(1);
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
+  it('distinguishes customer lookup outage from verified absence', async () => {
+    mocks.subscription.mockResolvedValue({ data: null, error: { message:'unavailable' } });
+    expect(await runOverageSettlementBatch()).toMatchObject({ no_customer:0,worker_errors:1 });
+    expect(mocks.rpc.mock.calls.some(([name]) => name==='fail_overage_settlement')).toBe(false);
+  });
+  it('records verified missing customer only after the database confirms', async () => {
+    mocks.subscription.mockResolvedValue(ok(null));
+    expect((await runOverageSettlementBatch()).no_customer).toBe(1);
+    results.fail_overage_settlement=ok(false);
+    expect(await runOverageSettlementBatch()).toMatchObject({ no_customer:0,worker_errors:1 });
+  });
+  it('does not submit in the wrong mode', async () => {
+    mocks.balance.mockResolvedValue({ livemode:true });
+    expect((await runOverageSettlementBatch()).worker_errors).toBe(1);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it('stops and reports a reaper error', async () => {
+    results.reap_overage_settlement_leases={ data:null,error:{message:'missing RPC'} };
+    expect((await runOverageSettlementBatch()).worker_errors).toBe(1);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it('reports failure-write errors and uses shaped provider error codes', async () => {
+    mocks.create.mockRejectedValue({type:'StripeConnectionError'});
+    results.fail_overage_settlement={data:null,error:{message:'db down'}};
+    expect(await runOverageSettlementBatch()).toMatchObject({indeterminate:1,worker_errors:1,charged:0});
+    expect(mocks.rpc).toHaveBeenCalledWith('fail_overage_settlement',expect.objectContaining({p_error_code:'stripe_connection_error',p_indeterminate:true}));
+  });
+  it('never treats a rejection of an earlier uncertain attempt as proof of failure', async () => {
+    rows[0]={...rows[0],attempt_count:1,stripe_account_id:'acct_original123',livemode:false,request_payload:payload,stripe_idempotency_key:key};
+    mocks.create.mockRejectedValue({type:'StripeInvalidRequestError'});
+    expect((await runOverageSettlementBatch()).indeterminate).toBe(1);
+  });
+  it('passes a validated canary scope into SQL before limit', async () => {
+    vi.stubEnv('LGQ_OVERAGE_SETTLEMENT_ACCOUNT_IDS',account);
+    await runOverageSettlementBatch(1);
+    expect(mocks.rpc).toHaveBeenCalledWith('list_claimable_overage_settlements',{p_limit:1,p_accounts:[account]});
+  });
+  it('rejects malformed canary scope', async () => {
+    vi.stubEnv('LGQ_OVERAGE_SETTLEMENT_ACCOUNT_IDS','not-an-account');
+    expect((await runOverageSettlementBatch()).worker_errors).toBe(1);
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });
 
-describe('an uncertain Stripe failure must not be recorded as a definite one', () => {
-  it('defaults the unknown case to indeterminate, not to failed', () => {
-    // The whole file turns on this default. "We do not know" resolving to
-    // "it did not happen" is how a second attempt charges somebody twice, and
-    // an unrecognised error shape is exactly the case nobody thought about.
-    const classify = WORKER.slice(WORKER.indexOf('function classifyStripeFailure'));
-    const body = classify.slice(0, classify.indexOf('\n}'));
-    // The last return in the function is the fallthrough, and it is the true one.
-    const returns = [...body.matchAll(/indeterminate:\s*(true|false)/g)].map((m) => m[1]);
-    expect(returns.length).toBeGreaterThanOrEqual(2);
-    expect(returns.at(-1)).toBe('true');
+describe('close and operational accounting', () => {
+  it.each([['closed','closed'],['nothing_owed','nothing_owed']])('counts %s results',async (state,counter) => {
+    results.list_unclosed_overage_periods=ok([{account_id:account,period_start:'2026-01-01',period_end:'2026-02-01'}]);
+    results.close_overage_period=ok({id,state});
+    expect((await runOveragePeriodCloseBatch())[counter as 'closed'|'nothing_owed']).toBe(1);
   });
-
-  it('treats only a refusal Stripe is certain about as terminal', () => {
-    const classify = WORKER.slice(WORKER.indexOf('function classifyStripeFailure'));
-    expect(classify).toContain('StripeInvalidRequestError');
-    expect(classify).toContain('resource_missing');
+  it('does not count null close response as success',async () => {
+    results.list_unclosed_overage_periods=ok([{account_id:account,period_start:'2026-01-01',period_end:'2026-02-01'}]);
+    results.close_overage_period=ok(null);
+    expect(await runOveragePeriodCloseBatch()).toMatchObject({closed:0,failures:1});
   });
+  it.each(['nothing_owed','already_closed','deferred'])('does not alarm on resolved or deferred %s work', (field) => {
+    const summary={candidates:1,closed:0,failures:0,[field]:1};
+    expect(cronSummaryHasFailures(summary)).toBe(false);
+    expect(extractLogicalFailureReason('overage-period-close',summary)).not.toContain('reported 0 closed periods');
+  });
+  it('alerts on unconfirmed completions and retains money-critical registry entries', () => {
+    expect(cronSummaryHasFailures({completion_unconfirmed:1})).toBe(true);
+    expect(extractLogicalFailureReason('overage-settlement',{completion_unconfirmed:1})).toContain('completion_unconfirmed=1');
+    for (const job of ['overage-period-close','overage-settlement']) expect(CRON_JOBS.find(j=>j.job===job)?.importance).toBe('money');
+  });
+});
 
-  it('records the claim before calling Stripe, never after', () => {
-    // A process that dies mid-request must leave evidence that we were about to
-    // ask. The rail cannot enforce the ordering; only the worker can.
-    //
-    // Comments stripped first. The header explains that this settles with
-    // `invoiceItems.create` rather than a metered Price, and matching raw source
-    // found that sentence at byte 807 -- an ordering assertion that passed or
-    // failed on where the prose sat.
-    const code = WORKER.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-    const claimAt = code.indexOf("rpc('claim_overage_settlement'");
-    const callAt = code.indexOf('invoiceItems.create');
-    const completeAt = code.indexOf("rpc('complete_overage_settlement'");
-    for (const [name, at] of [['claim', claimAt], ['call', callAt], ['complete', completeAt]] as const) {
-      expect(at, name).toBeGreaterThan(-1);
+describe('stable key, shaped failures and independent opt-in flags', () => {
+  it('keeps the existing key algorithm', () => {
+    expect(key).toMatch(/^lgq:billing:v1:overage\.settle:[0-9a-f]{64}$/);
+    expect(key).toBe(overageSettlementIdempotencyKey({settlementId:id,chargeableCents:100}));
+    expect(key).not.toBe(overageSettlementIdempotencyKey({settlementId:id,chargeableCents:101}));
+  });
+  it.each([null,{}, {type:'StripeAPIError'}, {type:'StripeConnectionError'}, {type:'StripeIdempotencyError'}])('unknown or ambiguous %j stays uncertain',err => {
+    expect(classifyStripeFailure(err).indeterminate).toBe(true);
+    expect(classifyStripeFailure(err).code).toMatch(/^[a-z][a-z0-9_]{2,63}$/);
+  });
+  it('flags are off unless explicitly enabled', () => {
+    for (const value of [undefined,'','true','0','1 ']) {
+      expect(overagePeriodCloseWorkerEnabled({[OVERAGE_PERIOD_CLOSE_FLAG]:value})).toBe(false);
+      expect(overageSettlementWorkerEnabled({[OVERAGE_SETTLEMENT_FLAG]:value})).toBe(false);
     }
-    expect(claimAt).toBeLessThan(callAt);
-    expect(callAt).toBeLessThan(completeAt);
-  });
-});
-
-describe('two workers, two flags, because they are not equally dangerous', () => {
-  it('is off unless the value is exactly 1', () => {
-    for (const check of [overagePeriodCloseWorkerEnabled, overageSettlementWorkerEnabled]) {
-      expect(check({})).toBe(false);
-      for (const value of ['0', '', 'true', 'yes', '1 ', '01']) {
-        expect(check({ [OVERAGE_PERIOD_CLOSE_FLAG]: value, [OVERAGE_SETTLEMENT_FLAG]: value }), value)
-          .toBe(false);
-      }
-    }
-    expect(overagePeriodCloseWorkerEnabled({ [OVERAGE_PERIOD_CLOSE_FLAG]: '1' })).toBe(true);
-    expect(overageSettlementWorkerEnabled({ [OVERAGE_SETTLEMENT_FLAG]: '1' })).toBe(true);
-  });
-
-  it('gates the money one independently of the harmless one', () => {
-    // Closing a period freezes a number; settling one charges a card. One flag
-    // for both would mean turning on the safe half turns on the other.
-    expect(OVERAGE_PERIOD_CLOSE_FLAG).not.toBe(OVERAGE_SETTLEMENT_FLAG);
-    expect(overageSettlementWorkerEnabled({ [OVERAGE_PERIOD_CLOSE_FLAG]: '1' })).toBe(false);
-    expect(ENV).toContain('LGQ_OVERAGE_PERIOD_CLOSE_ENABLED=0');
-    expect(ENV).toContain('LGQ_OVERAGE_SETTLEMENT_ENABLED=0');
-  });
-
-  it('404s before doing anything at all while dark', () => {
-    for (const [name, route] of [['close', CLOSE_ROUTE], ['settle', SETTLE_ROUTE]] as const) {
-      // The flag check must precede authenticatedGET, or a dark worker still
-      // reads a secret, writes a heartbeat and builds a service-role client.
-      const gate = route.indexOf('WorkerEnabled()');
-      const run = route.indexOf('return authenticatedGET(request)');
-      expect(gate, name).toBeGreaterThan(-1);
-      expect(gate, name).toBeLessThan(run);
-      expect(route).toContain('status: 404');
-    }
-  });
-});
-
-describe('what the workers refuse to do', () => {
-  it('closes only periods that have actually ended', () => {
-    // A period still running has accruals that can still move. Freezing one
-    // early bills somebody for a month they are halfway through.
-    // The candidate scan delegates to list_unclosed_overage_periods, which
-    // filters on a.period_end <= pg_catalog.now().
-    expect(WORKER).toContain("admin.rpc('list_unclosed_overage_periods'");
-    expect(REAPER_MIGRATION).toContain('a.period_end <= pg_catalog.now()');
-  });
-
-  it('never charges a settlement worth nothing', () => {
-    expect(WORKER).toContain(".gt('chargeable_cents', 0)");
-  });
-
-  it('does not take a settlement another worker still holds', () => {
-    expect(WORKER).toContain('lease_expires_at');
-  });
-
-  it('does not log amounts, only the workspace', () => {
-    // A worker log is not a place to reproduce somebody's billing.
-    const logs = [...WORKER.matchAll(/console\.(error|warn|log)\([^)]*\)/g)].map((m) => m[0]);
-    expect(logs.length).toBeGreaterThan(0);
-    for (const line of logs) {
-      expect(line, line).not.toMatch(/chargeableCents|total_millicents|amount/);
-    }
-  });
-
-  it('is declared as a cron, and named in the health registry with a consequence', () => {
-    const vercel = JSON.parse(read('vercel.json')) as { crons: { path: string; schedule: string }[] };
-    const jobs = read('src', 'lib', 'cron-jobs.ts');
-    for (const name of ['overage-period-close', 'overage-settlement']) {
-      // A worker with no cron never runs; one missing from the registry runs
-      // and nobody is told when it stops.
-      expect(vercel.crons.some((c) => c.path === `/api/cron/${name}`), name).toBe(true);
-      expect(jobs, name).toContain(`job: '${name}'`);
-    }
-  });
-});
-
-describe('settlement reaper and idempotency preservation (Bugs 1a-1d)', () => {
-  it('reclaims an expired submitted settlement preserving the exact same idempotency key', () => {
-    // Bug 1a: reap_overage_settlement_leases moves expired-lease 'submitted' rows
-    // to 'indeterminate' with last_error = 'lease_expired'.
-    expect(REAPER_MIGRATION).toContain("state = 'indeterminate'");
-    expect(REAPER_MIGRATION).toContain("last_error = 'lease_expired'");
-    expect(REAPER_MIGRATION).toContain('lease_expires_at <= pg_catalog.now()');
-
-    // The reaper SQL must not touch or nullify stripe_idempotency_key or claim_token.
-    expect(REAPER_MIGRATION).not.toContain('stripe_idempotency_key = null');
-    expect(REAPER_MIGRATION).not.toContain('claim_token = null');
-
-    // Claiming an indeterminate row reuses the existing idempotency key.
-    expect(MIGRATION).toContain("if v_row.state not in ('closed', 'indeterminate') then");
-    expect(MIGRATION).toContain('stripe_idempotency_key = p_stripe_idempotency_key');
-
-    // Even if recomputed by the worker on retry, the idempotency key is strictly
-    // identical because it derives solely from settlementId and chargeableCents.
-    const settlementId = '3f7c1a52-0a5e-4c31-9b2f-0c9d6c1f2b34';
-    const chargeableCents = 2_500;
-    const initialKey = overageSettlementIdempotencyKey({ settlementId, chargeableCents });
-    const retryKey = overageSettlementIdempotencyKey({ settlementId, chargeableCents });
-    expect(initialKey).toBe(retryKey);
-
-    // Bug 1b: Partial index on (state, lease_expires_at) where state = 'submitted'.
-    expect(REAPER_MIGRATION).toContain('create index if not exists workspace_overage_settlements_reaper_idx');
-    expect(REAPER_MIGRATION).toContain('on public.workspace_overage_settlements (state, lease_expires_at)');
-    expect(REAPER_MIGRATION).toContain("where state = 'submitted'");
-
-    // Bug 1c: runOverageSettlementBatch calls the reaper at the head and surfaces reaped count.
-    expect(WORKER).toContain("admin.rpc('reap_overage_settlement_leases'");
-    expect(WORKER).toContain('reaped:');
-
-    // Bug 1d: corrected comment at lines 298-300 explicitly naming reap_overage_settlement_leases
-    expect(WORKER).toContain('recovered by reap_overage_settlement_leases');
-    expect(WORKER).not.toContain('re-claimed as indeterminate once its lease expires');
-  });
-});
-
-describe('period-close starvation prevention (Bugs 2a-2c)', () => {
-  it('prevents starvation by anti-joining accruals against settlements in the RPC', () => {
-    // Bug 2a: list_unclosed_overage_periods(p_limit) anti-joins accruals against settlements
-    // on (account_id, period_start) inside Postgres, so having >100 historical closed accruals
-    // does not starve newly ended periods from ever being selected.
-    expect(REAPER_MIGRATION).toContain('create or replace function public.list_unclosed_overage_periods');
-    expect(REAPER_MIGRATION).toContain('from public.workspace_overage_accruals a');
-    expect(REAPER_MIGRATION).toContain('not exists (');
-    expect(REAPER_MIGRATION).toContain('from public.workspace_overage_settlements s');
-    expect(REAPER_MIGRATION).toContain('s.account_id = a.account_id');
-    expect(REAPER_MIGRATION).toContain('s.period_start = a.period_start');
-
-    // Bug 2b: index on workspace_overage_accruals (period_end) to support candidate scan
-    expect(REAPER_MIGRATION).toContain('create index if not exists workspace_overage_accruals_period_end_idx');
-    expect(REAPER_MIGRATION).toContain('on public.workspace_overage_accruals (period_end)');
-
-    // Bug 2c: runOveragePeriodCloseBatch calls list_unclosed_overage_periods with p_limit
-    expect(WORKER).toContain("admin.rpc('list_unclosed_overage_periods'");
-    expect(WORKER).toContain('p_limit: limit');
-    expect(WORKER).not.toContain("from('workspace_overage_accruals').select");
-    expect(WORKER).toContain('anti-joins accruals against existing settlements');
-    expect(WORKER).toContain('(account_id, period_start)');
-  });
-});
-
-describe('complete_overage_settlement RPC error handling (Bug 3)', () => {
-  it('stops counting unconfirmed completions as charged and increments completion_unconfirmed', () => {
-    // When complete_overage_settlement fails, the invoice item was created in Stripe
-    // but the DB state write failed. This must NOT increment charged.
-    expect(WORKER).toContain("const { error: completeError } = await admin.rpc('complete_overage_settlement'");
-    expect(WORKER).toContain('if (completeError) {');
-    expect(WORKER).toContain('completionUnconfirmed += 1;');
-    expect(WORKER).toContain('} else {');
-    expect(WORKER).toContain('charged += 1;');
-    expect(WORKER).toContain('completion_unconfirmed: completionUnconfirmed');
-  });
-});
-
-describe('operator alerting for settlement and period-close anomalies', () => {
-  it('flags settlement runs with completion_unconfirmed or no_customer as logical failures', () => {
-    const cleanSettlementSummary = {
-      reaped: 0,
-      claimable: 1,
-      charged: 1,
-      completion_unconfirmed: 0,
-      no_customer: 0,
-      indeterminate: 0,
-      terminal_failures: 0,
-      worker_errors: 0,
-    };
-    expect(cronSummaryHasFailures(cleanSettlementSummary)).toBe(false);
-
-    const unconfirmedSummary = { ...cleanSettlementSummary, charged: 0, completion_unconfirmed: 1 };
-    expect(cronSummaryHasFailures(unconfirmedSummary)).toBe(true);
-    expect(extractLogicalFailureReason('overage-settlement', unconfirmedSummary)).toContain('completion_unconfirmed=1');
-
-    const noCustomerSummary = { ...cleanSettlementSummary, charged: 0, no_customer: 1 };
-    expect(cronSummaryHasFailures(noCustomerSummary)).toBe(true);
-    expect(extractLogicalFailureReason('overage-settlement', noCustomerSummary)).toContain('no_customer=1');
-
-    const noStripeCustomerSummary = { no_stripe_customer: 1 };
-    expect(cronSummaryHasFailures(noStripeCustomerSummary)).toBe(true);
-    expect(extractLogicalFailureReason('overage-settlement', noStripeCustomerSummary)).toContain('no_stripe_customer=1');
-  });
-
-  it('flags period-close starvation (candidates > 0 and closed === 0) as logical failure', () => {
-    const starvedSummary = {
-      candidates: 5,
-      closed: 0,
-      already_closed: 0,
-      nothing_owed: 0,
-      failures: 0,
-    };
-    expect(cronSummaryHasFailures(starvedSummary)).toBe(true);
-    expect(extractLogicalFailureReason('overage-period-close', starvedSummary)).toBe(
-      'overage-period-close reported 0 closed periods while 5 candidate(s) exist',
-    );
-
-    const normalSummary = {
-      candidates: 5,
-      closed: 5,
-      already_closed: 0,
-      nothing_owed: 0,
-      failures: 0,
-    };
-    expect(cronSummaryHasFailures(normalSummary)).toBe(false);
-  });
-
-  it('marks both overage crons with importance money in cron registry', () => {
-    const closeJob = CRON_JOBS.find((j) => j.job === 'overage-period-close');
-    const settleJob = CRON_JOBS.find((j) => j.job === 'overage-settlement');
-    expect(closeJob?.importance).toBe('money');
-    expect(settleJob?.importance).toBe('money');
-  });
-
-  it('patches scan_operational_failures to detect terminal failed overage settlements', () => {
-    expect(ALERT_MIGRATION).toContain('from public.workspace_overage_settlements s');
-    expect(ALERT_MIGRATION).toContain("where s.state = 'failed'");
-    expect(ALERT_MIGRATION).toContain("'settlement:'||s.id as source_key");
-    expect(ALERT_MIGRATION).toContain("'billing' as category");
-    expect(ALERT_MIGRATION).toContain('Overage settlement');
+    expect(overagePeriodCloseWorkerEnabled({[OVERAGE_PERIOD_CLOSE_FLAG]:'1'})).toBe(true);
+    expect(overageSettlementWorkerEnabled({[OVERAGE_SETTLEMENT_FLAG]:'1'})).toBe(true);
   });
 });

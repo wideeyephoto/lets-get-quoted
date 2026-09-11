@@ -20,6 +20,7 @@ import {
   getFailedSmsEvents,
   getFailedEmailEvents,
   getUnresolvedWebhookFailures,
+  createAdminSignalDiagnostics,
   getRecentIncidents,
   getNotOnboardedAccounts,
 } from '@/lib/admin-alerts';
@@ -206,13 +207,13 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   {
     name: 'replay_failed_webhooks',
     description:
-      'Diagnoses failed webhooks or executes an automated replay and resolution across unresolved webhook failures.',
+      'Inspects failed webhooks and recommends source-specific investigation. Does not replay or resolve failures.',
     parameters: {
       type: Type.OBJECT,
       properties: {
         action: {
           type: Type.STRING,
-          description: '"diagnose" to analyze root cause or "replay_and_resolve" to execute recovery and mark resolved',
+          description: 'Use "diagnose" to inspect failures. Generic replay is unavailable; recovery requires a source-specific handler and verified business effects.',
         },
         ids: {
           type: Type.ARRAY,
@@ -624,10 +625,19 @@ export async function executeOperatorTool(
             },
           };
         }
+
+        return { data: {
+          success: false,
+          replayedCount: 0,
+          resolvedCount: 0,
+          error: 'Generic webhook replay is unavailable. Inspect the failure and use a source-specific recovery procedure with provider and business-effect verification.',
+        } };
       }
 
       try {
-        const failures = await getUnresolvedWebhookFailures(supabase);
+        const signalDiagnostics = createAdminSignalDiagnostics();
+        const failures = await getUnresolvedWebhookFailures(supabase, { diagnostics: signalDiagnostics });
+        if (signalDiagnostics.failed.length) throw new Error('Webhook failure inspection unavailable');
         const filtered = targetIds && targetIds.length > 0
           ? failures.filter((f) => targetIds.includes(f.id))
           : failures;
@@ -640,37 +650,6 @@ export async function executeOperatorTool(
               resolvedCount: 0,
               errors: [],
               remediationSummary: 'No unresolved webhook failures found to process.',
-            },
-          };
-        }
-
-        if (action === 'replay_and_resolve') {
-          const idsToResolve = filtered.map((f) => f.id);
-          const resolvedAt = new Date().toISOString();
-          const resolvedBy = ctx.adminUserId || 'ai-operator';
-
-          await supabase
-            .from('webhook_failures')
-            .update({ resolved_at: resolvedAt, resolved_by: resolvedBy })
-            .in('id', idsToResolve);
-
-          recordOperatorAudit({
-            category: 'sre_platform',
-            actionName: 'Webhooks Replayed & Resolved',
-            severity: 'safe_auto',
-            toolName: 'replay_failed_webhooks',
-            outputResult: { resolvedCount: idsToResolve.length },
-            reasoningSummary: `Replayed and resolved ${idsToResolve.length} failed webhook event(s).`,
-            status: 'success',
-          });
-
-          return {
-            data: {
-              success: true,
-              replayedCount: idsToResolve.length,
-              resolvedCount: idsToResolve.length,
-              errors: [],
-              remediationSummary: `Successfully recovered and marked ${idsToResolve.length} webhook failure(s) resolved.`,
             },
           };
         }
@@ -694,7 +673,8 @@ export async function executeOperatorTool(
             success: true,
             totalFailures: filtered.length,
             diagnostics,
-            actionRequired: 'Review diagnostics above or call replay_failed_webhooks with action "replay_and_resolve".',
+            remediationSummary: `${filtered.length} webhook failure(s) require inspection. No replay was attempted.`,
+            actionRequired: 'Verify each provider event and its business effects, then use the appropriate source-specific recovery procedure.',
           },
         };
       } catch (err: unknown) {

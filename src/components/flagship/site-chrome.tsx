@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
+import { LGQ_MAILING_ADDRESS } from '@/lib/company';
 import styles from './flagship.module.css';
 
 /**
@@ -393,6 +394,7 @@ export function SiteFooter() {
         </p>
         <p className="footer-slogan">Built thoughtfully, for thoughtful contractors</p>
         <span>© 2026 Let’s Get Quoted</span>
+        <address style={{ gridColumn: '1 / -1', fontStyle: 'normal', lineHeight: 1.6 }}>{LGQ_MAILING_ADDRESS}</address>
       </footer>
     </>
   );

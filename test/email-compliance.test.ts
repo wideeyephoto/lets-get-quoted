@@ -83,9 +83,9 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
         businessName: 'Apex Roofing',
       });
 
-      expect(html).toContain('Let’s Get Quoted LLC');
-      expect(html).toContain('11801 Domain Blvd, 3rd Floor · Austin, TX 78758');
-      expect(html).toContain('Unsubscribe from platform announcements');
+      expect(html).toContain('LETS GET QUOTED LLC');
+      expect(html).toContain('2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864');
+      expect(html).toContain('Unsubscribe from onboarding tips and platform announcements');
     });
 
     it('renders valid physical postal address in contractor lifecycle emails', () => {
@@ -95,9 +95,9 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
         businessName: 'John Plumbing',
       });
 
-      expect(html).toContain('Let’s Get Quoted LLC');
-      expect(html).toContain('11801 Domain Blvd, 3rd Floor · Austin, TX 78758');
-      expect(html).toContain('Unsubscribe from platform onboarding emails');
+      expect(html).toContain('LETS GET QUOTED LLC');
+      expect(html).toContain('2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864');
+      expect(html).toContain('Unsubscribe from onboarding tips and platform announcements');
     });
 
     it('renders contractor mailing address in contractor campaign emails', async () => {

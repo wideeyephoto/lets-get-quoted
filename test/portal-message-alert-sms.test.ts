@@ -15,7 +15,7 @@ describe('Owner Portal Message Alert SMS', () => {
         dashboardUrl: 'https://app.letsgetquoted.com/dashboard/messages?thread=%2B12485550625',
       });
 
-      expect(text).toContain('💬 New message from Ian Whitaker for BrokePipes Plumbing: "Can you find me?".');
+      expect(text).toContain('💬 New message from Ian Whitaker for workspace BrokePipes Plumbing: "Can you find me?".');
       expect(text).toContain('View in messages: https://app.letsgetquoted.com/dashboard/messages?thread=%2B12485550625');
       expect(text).toContain('Reply STOP to opt out.');
     });

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     'Launch a complete, editable contractor website with Smart Intake and instant estimates, connected to your back office from day one.',
   alternates: { canonical: 'https://letsgetquoted.com/features/website-builder-mockup' },
+  robots: { index: false, follow: false },
 };
 
 export default function WebsiteBuilderMockupFeaturePage() {

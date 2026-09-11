@@ -1,3 +1,4 @@
+import { walletRpcFor } from './helpers/ad-wallet-rpc';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   createAdBudgetCheckoutSession,
@@ -75,7 +76,8 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
   describe('1. Exact Fail-Closed Payment Status Checks', () => {
     function createMockAdmin(initialState: Partial<AdBudgetWalletState> = {}) {
       let state: AdBudgetWalletState = { ...DEFAULT_AD_WALLET_STATE, ...initialState };
-      return {
+      const admin = {
+        rpc: walletRpcFor(() => admin),
         getState: () => state,
         from: (table: string) => {
           if (table === 'sites') {
@@ -122,6 +124,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
           };
         },
       };
+      return admin;
     }
 
     it('rejects checkout.session.completed when payment_status is unpaid', async () => {
@@ -376,6 +379,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       };
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -473,6 +477,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       };
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -556,6 +561,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       };
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -610,6 +616,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       };
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -673,6 +680,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       };
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -718,6 +726,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       };
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -766,7 +775,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       let rpcMutex = Promise.resolve();
       const mockAdmin: any = {
         rpc: async (fnName: string, args: any) => {
-          if (fnName === 'atomic_ad_wallet_credit') {
+          if (fnName === 'atomic_ad_wallet_credit_v2') {
             return new Promise((resolve) => {
               rpcMutex = rpcMutex.then(async () => {
                 await new Promise((r) => setTimeout(r, 2));

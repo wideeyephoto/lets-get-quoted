@@ -466,7 +466,8 @@ export function cronSummaryHasFailures(summary: Record<string, unknown> | null |
     typeof summary.candidates === 'number' &&
     summary.candidates > 0 &&
     typeof summary.closed === 'number' &&
-    summary.closed === 0
+    summary.closed === 0 &&
+    Number(summary.already_closed ?? 0) + Number(summary.nothing_owed ?? 0) + Number(summary.deferred ?? 0) === 0
   ) {
     return true;
   }

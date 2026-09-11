@@ -375,6 +375,8 @@ export function inferProviderOutcome(receipt: VoiceReceipt): VoiceCallProviderOu
   const hasAssistantTurns = log.some((turn) => turn.role === 'assistant' && turn.content.trim().length > 0);
 
   const transferMentioned = log.some((turn) => {
+    // Prompt instructions and caller requests do not prove an attempted handoff.
+    if (turn.role !== 'assistant' && turn.role !== 'tool') return false;
     const text = turn.content.toLowerCase();
     return text.includes('connecting you now')
       || text.includes('connecting you with')

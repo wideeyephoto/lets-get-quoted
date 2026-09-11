@@ -1,15 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import {
-  escapeHtml,
-  normalizeEmailTheme,
-  renderBrandedEmail,
-  renderRichCampaignBodyHtml,
-  themePaint,
-  type EmailBrand,
-} from '@/emails/brand';
-import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
+import { renderPlatformEmail, renderPlatformEmailText } from '@/emails/platform';
+import { buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
 import { logAdminAction, type AuditActor } from '@/lib/admin';
 import { ownerEmailsForAccounts } from '@/lib/admin-accounts';
@@ -32,13 +25,6 @@ import {
   parseCustomEmailList,
 } from '@/lib/admin-campaign-types';
 
-function marketingFooter(businessName: string, mailingAddress: string | null, unsubscribeUrl: string): string {
-  const addressLine = mailingAddress
-    ? `<br/><span style="color:#9099a6">${escapeHtml(mailingAddress)}</span>`
-    : '<br/><span style="color:#9099a6">Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758</span>';
-  return `<p style="margin-top:28px;color:#6b7280;font-size:12px;line-height:1.6">${escapeHtml(businessName)}${addressLine}<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe from platform announcements</a></p>`;
-}
-
 function listUnsubscribeHeaders(oneClickUrl: string): Record<string, string> {
   return {
     'List-Unsubscribe': `<${oneClickUrl}>`,
@@ -53,50 +39,7 @@ export function renderPlatformCampaignEmailHtml(
   input: Omit<PlatformCampaignInput, 'audience'>,
   recipient?: Partial<PlatformCampaignRecipient>,
 ): string {
-  const theme = normalizeEmailTheme(input.theme);
-  const mailingAddress = input.mailingAddress || process.env.COMPANY_MAILING_ADDRESS || 'Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758';
-  const replyTo = input.replyTo?.trim() || 'hello@letsgetquoted.com';
-  const senderName = input.senderName?.trim() || "Let's Get Quoted";
-
-  const brand: EmailBrand = {
-    businessName: senderName,
-    accent: '#ff7a21',
-    logoUrl: null,
-    phone: null,
-    siteUrl: 'https://letsgetquoted.com',
-    replyTo,
-    theme,
-    mailingAddress,
-    senderName,
-  };
-
-  const interpolatedHeading = interpolateTokens(input.heading, recipient);
-  const interpolatedBody = interpolateTokens(input.body, recipient);
-  const interpolatedEyebrow = input.eyebrow ? interpolateTokens(input.eyebrow, recipient) : 'Platform Announcement';
-  const interpolatedPreheader = input.preheader
-    ? interpolateTokens(input.preheader, recipient)
-    : interpolateTokens(input.subject, recipient);
-
-  const accountId = recipient?.accountId || 'platform';
-  const targetEmail = recipient?.email || 'contractor@example.com';
-  const unsubscribeUrl = buildUnsubscribePageUrl(accountId, targetEmail);
-
-  return renderBrandedEmail({
-    brand,
-    audience: 'account',
-    preheader: interpolatedPreheader,
-    eyebrow: interpolatedEyebrow,
-    heading: interpolatedHeading,
-    bodyHtml: renderRichCampaignBodyHtml(interpolatedBody, themePaint(theme, '#ff7a21')),
-    cta: input.ctaLabel && input.ctaUrl
-      ? {
-          label: interpolateTokens(input.ctaLabel, recipient),
-          url: interpolateTokens(input.ctaUrl, recipient),
-        }
-      : undefined,
-    footerHtml: marketingFooter("Let's Get Quoted", mailingAddress, unsubscribeUrl),
-    accountReplyText: `Reply directly to this email to reach the Let's Get Quoted team (${replyTo}).`,
-  });
+  return renderPlatformEmail(input, recipient);
 }
 
 export const MAX_PLATFORM_CAMPAIGN_AUDIENCE = 10000;
@@ -176,13 +119,10 @@ export async function resolvePlatformCampaignRecipients(
   let countQuery = admin
     .from('accounts')
     .select('id', { count: 'exact', head: true })
-    .is('test_marker', null);
+    .is('test_marker', null)
+    .is('suspended_at', null);
 
-  if (audience === 'paid_tier') {
-    countQuery = countQuery.in('plan', ['pro', 'crew_plus']);
-  } else if (audience === 'free_tier') {
-    countQuery = countQuery.eq('plan', 'free');
-  } else if (audience === 'incomplete_onboarding') {
+  if (audience === 'incomplete_onboarding') {
     countQuery = countQuery.eq('connect_onboarded', false);
   } else if (audience === 'recent_signups') {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -219,15 +159,12 @@ export async function resolvePlatformCampaignRecipients(
       .from('accounts')
       .select('id, business_name, plan, connect_onboarded, created_at, test_marker, reply_to_email')
       .is('test_marker', null)
+      .is('suspended_at', null)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(offset, offset + PAGE_CHUNK - 1);
 
-    if (audience === 'paid_tier') {
-      chunkQuery = chunkQuery.in('plan', ['pro', 'crew_plus']);
-    } else if (audience === 'free_tier') {
-      chunkQuery = chunkQuery.eq('plan', 'free');
-    } else if (audience === 'incomplete_onboarding') {
+    if (audience === 'incomplete_onboarding') {
       chunkQuery = chunkQuery.eq('connect_onboarded', false);
     } else if (audience === 'recent_signups') {
       const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
@@ -247,6 +184,24 @@ export async function resolvePlatformCampaignRecipients(
 
   // For active_30d and active_90d, filter by recent activity across jobs and invoices
   let eligibleAccountIds = new Set(accounts.map((a) => a.id));
+
+  // accounts.plan is a legacy projection; use current billing entitlements.
+  if (audience === 'paid_tier' || audience === 'free_tier') {
+    eligibleAccountIds = new Set<string>();
+    for (let i = 0; i < accounts.length; i += 500) {
+      const { data: entitlements, error } = await admin.from('workspace_entitlements')
+        .select('account_id, plan_code, entitlement_state, billing_status')
+        .in('account_id', accounts.slice(i, i + 500).map((account) => account.id));
+      if (error) throw new Error(`Plan audience lookup failed: ${error.message}`);
+      for (const row of entitlements ?? []) {
+        if (row.entitlement_state !== 'active') continue;
+        const matches = audience === 'free_tier'
+          ? row.plan_code === 'flex' && row.billing_status === 'free'
+          : ['solo', 'growth', 'scale', 'enterprise'].includes(row.plan_code) && row.billing_status === 'active';
+        if (matches) eligibleAccountIds.add(row.account_id);
+      }
+    }
+  }
 
   if (audience === 'active_30d' || audience === 'active_90d') {
     const days = audience === 'active_30d' ? 30 : 90;
@@ -306,7 +261,7 @@ export async function resolvePlatformCampaignRecipients(
   const seenEmails = new Set<string>();
 
   for (const account of targetAccounts) {
-    const rawEmail = account.reply_to_email || ownerEmailMap.get(account.id);
+    const rawEmail = ownerEmailMap.get(account.id);
     if (!rawEmail) continue;
 
     const email = rawEmail.trim().toLowerCase();
@@ -366,11 +321,12 @@ export async function sendTestPlatformCampaignEmail(
     to: cleanEmail,
     subject: interpolatedSubject,
     html,
+    text: renderPlatformEmailText(input, sampleRecipient),
     reply_to: replyTo,
     headers: listUnsubscribeHeaders(oneClickUrl),
     tags: [
       { name: 'kind', value: 'platform_campaign_test' },
-      { name: 'theme', value: input.theme || 'studio' },
+      { name: 'theme', value: 'blueprint' },
     ],
   });
 
@@ -415,7 +371,7 @@ export async function sendPlatformCampaignBlast(
   const senderEmail = input.senderEmail?.trim() || 'hello@letsgetquoted.com';
   const replyTo = input.replyTo?.trim() || 'hello@letsgetquoted.com';
   const from = `${senderName} <${senderEmail}>`;
-  const theme = normalizeEmailTheme(input.theme);
+  const theme = 'blueprint';
 
   const resend = getResendClient();
   let sentCount = 0;
@@ -439,6 +395,7 @@ export async function sendPlatformCampaignBlast(
           to: recipient.email,
           subject,
           html,
+          text: renderPlatformEmailText(input, recipient),
           reply_to: replyTo,
           headers: listUnsubscribeHeaders(oneClickUrl),
           tags: [

@@ -43,6 +43,9 @@ jobs:
       - name: SEO tests
         run: npm run test:seo
 
+      - name: Overage reconciliation tests
+        run: npm run test:overage-reconciliation
+
       - name: Stock image tests
         run: npm run test:stock
 

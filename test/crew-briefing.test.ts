@@ -165,7 +165,7 @@ describe('Crew Morning Dispatch Briefing', () => {
     };
 
     const sms = buildCrewMorningBriefingSms(urgentBriefing);
-    expect(sms).toContain('🚨 URGENT SCHEDULE UPDATE from Apex Plumbing!');
+    expect(sms).toContain('🚨 URGENT SCHEDULE UPDATE for workspace Apex Plumbing!');
     expect(sms).toContain('📌 Note: Customer at stop 1 had a water main burst.');
 
     const runSheet = buildCrewDailyRunSheetText(urgentBriefing);

@@ -1,3 +1,4 @@
+import { LGQ_MAILING_ADDRESS } from '@/lib/company';
 import Link from 'next/link';
 import HeroDashboard from '@/components/hero-dashboard';
 import ExampleFrame from '@/components/marketing/example-frame';
@@ -125,6 +126,7 @@ export default function HomeCompactPage() {
             Built thoughtfully, for thoughtful contractors
           </p>
           <span>© 2026 Let’s Get Quoted</span>
+          <address style={{ fontStyle: 'normal', lineHeight: 1.6 }}>{LGQ_MAILING_ADDRESS}</address>
         </div>
         <nav className={styles.footLinks} aria-label="Footer">
           <Link href="/features">Features</Link>

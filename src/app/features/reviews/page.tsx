@@ -166,7 +166,7 @@ export default function ReviewsFeaturePage() {
       lede="The request goes out when the job is actually finished, and every customer is offered the same two things: post a public review, or tell you privately. Then the customers you already have become the ones you book next."
       heroChips={['No star-rating gating', 'STOP and consent enforced', 'Sent when the job is finished']}
       heroNote="No review gating. The routes offered do not depend on how happy somebody is, because screening by star rating breaks Google’s rules and puts your profile at risk."
-      primary={{ label: 'Open the live reviews screen', href: '/demo/reviews' }}
+      primary={{ label: 'See review collection in the demo', href: '/demo/reviews' }}
       demo={
         <ExampleFrame
           label="What a customer is offered after the job wraps."

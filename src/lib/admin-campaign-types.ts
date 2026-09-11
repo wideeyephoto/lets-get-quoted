@@ -28,25 +28,25 @@ export const PLATFORM_AUDIENCES: PlatformAudienceDef[] = [
   {
     id: 'active_30d',
     label: 'Active (Last 30 Days)',
-    description: 'Contractors who logged in, created quotes, or issued invoices in the last 30 days.',
+    description: 'Contractors with jobs or invoices created in the last 30 days.',
     badge: 'High engagement',
   },
   {
     id: 'active_90d',
     label: 'Active (Last 90 Days)',
-    description: 'Contractors active within the previous quarter.',
+    description: 'Contractors with jobs or invoices created in the last 90 days.',
     badge: 'Broad active',
   },
   {
     id: 'paid_tier',
     label: 'Paid Plan Subscribers',
-    description: 'Contractors subscribed to Pro, Crew+, or Custom paid tiers.',
+    description: 'Owners with an active paid plan in the current billing system.',
     badge: 'Paid customers',
   },
   {
     id: 'free_tier',
-    label: 'Free Plan Accounts',
-    description: 'Contractors currently on the Free tier (prime audience for upgrade campaigns).',
+    label: 'Flex Plan Accounts',
+    description: 'Owners currently on the active Flex plan.',
     badge: 'Upgrade target',
   },
   {
@@ -88,7 +88,6 @@ export type PlatformCampaignInput = {
   senderEmail?: string;
   replyTo?: string;
   theme?: EmailThemeId;
-  mailingAddress?: string | null;
   audience: PlatformAudienceId;
   customEmails?: string;
 };

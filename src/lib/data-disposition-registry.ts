@@ -1198,6 +1198,19 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'stripe',
   },
 
+  // Recovery evidence follows the immutable settlement's retention policy.
+  overage_settlement_evidence: {
+    tableName: 'overage_settlement_evidence',
+    relationship: 'fk_chain',
+    fkPath: ['settlement_id', 'workspace_overage_settlements.account_id'],
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
   // Invoiced monthly usage overage charges
   workspace_overage_settlements: {
     tableName: 'workspace_overage_settlements',
@@ -2447,6 +2460,12 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+  operational_sms_pages: {
+    tableName: 'operational_sms_pages', relationship: 'system_global', primaryKeyColumn: 'page_key',
+    localAction: 'retain_immutable', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
   // Configuration-review evidence follows the platform operational-alert policy.
   billing_event_operational_reviews: {
     tableName: 'billing_event_operational_reviews', relationship: 'system_global', primaryKeyColumn: 'id',
@@ -2613,6 +2632,52 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
     vendorDependency: 'stripe',
   },
+
+  // Business card designs and layout revisions
+  merchandise_card_designs: {
+    tableName: 'merchandise_card_designs',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Immutable approved production card proofs with asset checksums
+  merchandise_card_proofs: {
+    tableName: 'merchandise_card_proofs',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Authoritative server quotes in integer cents with TTL expiration
+  merchandise_order_quotes: {
+    tableName: 'merchandise_order_quotes',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Durable checkout and fulfillment operation state machine
+  merchandise_checkout_operations: {
+    tableName: 'merchandise_checkout_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
   // Autonomous operator audit and decision logs
   ai_operator_logs: {
     tableName: 'ai_operator_logs',

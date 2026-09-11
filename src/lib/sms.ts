@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import { createAdminClient } from '@/lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadBusinessName } from '@/lib/business-name';
@@ -799,7 +800,7 @@ export async function sendOwnerEstimateAcceptedSms(input: {
     await queueAccountSms({
       accountId: input.accountId,
       phone: to,
-      body: withOptOut(input.message),
+      body: lgqSmsText(withOptOut(input.message)),
       messageKind: 'owner-estimate-accepted',
       category: 'owner_alert',
       context: 'owner',
@@ -1882,6 +1883,7 @@ export async function sendQuoteFollowupSms(params: {
   url: string;
   accountId: string;
   idempotencyKey?: string;
+  stage?: 'first' | 'intermediate' | 'final';
 }) {
   // Shared with the settings preview so the contractor is shown the message
   // their client actually receives.
@@ -1889,6 +1891,7 @@ export async function sendQuoteFollowupSms(params: {
     businessName: params.businessName,
     clientName: params.clientName,
     url: params.url,
+    stage: params.stage,
   });
   return queueAccountSms({
     accountId: params.accountId,
@@ -2206,7 +2209,7 @@ export async function sendContractorAdLeadSms(params: {
   return queueAccountSms({
     accountId: params.accountId,
     phone: params.phone,
-    body: params.body,
+    body: lgqSmsText(params.body),
     messageKind: 'contractor-ad-lead-alert',
     category: 'owner_alert',
     idempotencyKey: params.idempotencyKey,

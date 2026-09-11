@@ -36612,6 +36612,60 @@ end;
 $verify_registry_callback_fail_closed$;
 
 commit;
+
+-- Source: migrations/20260908173107_sms_dispatch_help_account_binding.sql
+-- A dispatch HELP receipt previously had no account binding, even for one
+-- consented active crew workspace. The production canary gate consequently
+-- suppressed its compliance acknowledgment. Use the existing STOP/START
+-- authority lookup for HELP too, without changing consent or ambiguity rules.
+begin;
+set local lock_timeout = '5s';
+
+do $migration$
+declare
+  v_definition text;
+  v_old text := $old$if p_keyword in ('stop', 'start')
+     and v_sender.purpose = 'lgq_dispatch'
+     and v_routed_account_id is null then$old$;
+  v_new text := $new$if p_keyword in ('stop', 'start', 'help')
+     and v_sender.purpose = 'lgq_dispatch'
+     and v_routed_account_id is null then$new$;
+begin
+  v_definition := pg_catalog.pg_get_functiondef(
+    'public.ingest_sms_inbound_webhook(text,text,text,text,text,text,text,text,text,text[],text)'::regprocedure
+  );
+  -- Historical Windows-loaded definitions retain CRLF. Preserve their exact
+  -- whitespace rather than replacing the whole function with an older copy.
+  if pg_catalog.strpos(v_definition, v_old) = 0
+     and pg_catalog.strpos(v_definition, v_new) = 0 then
+    v_old := pg_catalog.replace(v_old, E'\n', E'\r\n');
+    v_new := pg_catalog.replace(v_new, E'\n', E'\r\n');
+  end if;
+  if pg_catalog.strpos(v_definition, v_old) = 0
+     and pg_catalog.strpos(v_definition, v_new) > 0 then
+    return;
+  end if;
+  if (pg_catalog.length(v_definition)
+      - pg_catalog.length(pg_catalog.replace(v_definition, v_old, '')))
+       <> pg_catalog.length(v_old)
+     or pg_catalog.strpos(v_definition, v_new) > 0 then
+    raise exception 'Dispatch keyword authority block changed; review HELP migration before applying';
+  end if;
+  -- Patch the installed definition so later field-intake, suppression and
+  -- callback changes survive. CREATE OR REPLACE preserves its owner/grants.
+  execute pg_catalog.replace(v_definition, v_old, v_new);
+end;
+$migration$;
+
+commit;
+
+-- Source: migrations/20260908175833_subcontractor_sms_projection_service_grant.sql
+-- The offer-link trigger runs as the server's service_role. Its nested
+-- projector call needs EXECUTE; browser roles must remain excluded.
+begin;
+grant execute on function public.apply_subcontractor_sms_event_projection(uuid)
+  to service_role;
+commit;
 -- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 
 
@@ -37884,6 +37938,472 @@ revoke all on function public.reserve_usage_credits(uuid, text, bigint, text, te
   from public, anon, authenticated;
 grant execute on function public.reserve_usage_credits(uuid, text, bigint, text, text, timestamptz, jsonb)
   to service_role;
+
+commit;
+
+
+-- Multi-location inventory: 20260901040000
+begin;
+
+CREATE TABLE IF NOT EXISTS public.inventory_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'warehouse',
+  code TEXT,
+  address TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_locations_account ON public.inventory_locations(account_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_locations_account_name ON public.inventory_locations(account_id, lower(trim(name)));
+
+ALTER TABLE public.inventory_locations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_locations"
+  ON public.inventory_locations FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_locations"
+  ON public.inventory_locations FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_locations TO authenticated;
+REVOKE ALL ON public.inventory_locations FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_tools (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES public.inventory_locations(id) ON DELETE SET NULL,
+  location_name TEXT,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  brand TEXT NOT NULL,
+  model_number TEXT,
+  serial_number TEXT,
+  asset_tag TEXT NOT NULL,
+  purchase_price NUMERIC(10, 2),
+  purchase_date DATE,
+  depreciation_schedule TEXT,
+  status TEXT NOT NULL DEFAULT 'available',
+  assigned_crew_id UUID REFERENCES public.crew(id) ON DELETE SET NULL,
+  assigned_crew_name TEXT,
+  assigned_job_id UUID REFERENCES public.jobs(id) ON DELETE SET NULL,
+  assigned_job_label TEXT,
+  checked_out_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_account ON public.inventory_tools(account_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_status ON public.inventory_tools(account_id, status);
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_location ON public.inventory_tools(account_id, location_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_tools_account_asset_tag ON public.inventory_tools(account_id, lower(trim(asset_tag)));
+
+ALTER TABLE public.inventory_tools ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_tools"
+  ON public.inventory_tools FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_tools"
+  ON public.inventory_tools FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_tools TO authenticated;
+REVOKE ALL ON public.inventory_tools FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_vehicles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  make TEXT NOT NULL,
+  model TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  license_plate TEXT NOT NULL,
+  vin TEXT,
+  current_mileage INTEGER NOT NULL DEFAULT 0,
+  purchase_price NUMERIC(10, 2),
+  purchase_date DATE,
+  depreciation_schedule TEXT,
+  primary_driver_id UUID REFERENCES public.crew(id) ON DELETE SET NULL,
+  primary_driver_name TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  last_service_date DATE,
+  last_service_mileage INTEGER,
+  next_service_due_mileage INTEGER,
+  inspection_expires_at DATE,
+  insurance_expires_at DATE,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_account ON public.inventory_vehicles(account_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_status ON public.inventory_vehicles(account_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_vehicles_account_plate ON public.inventory_vehicles(account_id, lower(trim(license_plate)));
+
+ALTER TABLE public.inventory_vehicles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_vehicles"
+  ON public.inventory_vehicles FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_vehicles"
+  ON public.inventory_vehicles FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_vehicles TO authenticated;
+REVOKE ALL ON public.inventory_vehicles FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_stock_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES public.inventory_locations(id) ON DELETE SET NULL,
+  location_name TEXT NOT NULL DEFAULT 'Main Shop',
+  name TEXT NOT NULL,
+  sku TEXT NOT NULL,
+  category TEXT NOT NULL,
+  quantity_on_hand NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  min_threshold NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'ea',
+  unit_cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  preferred_supplier TEXT,
+  reorder_qty NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_account ON public.inventory_stock_items(account_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_location ON public.inventory_stock_items(account_id, location_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_stock_account_sku_loc ON public.inventory_stock_items(account_id, lower(trim(sku)), lower(trim(coalesce(location_name, ''))));
+
+ALTER TABLE public.inventory_stock_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_stock_items"
+  ON public.inventory_stock_items FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_stock_items"
+  ON public.inventory_stock_items FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_stock_items TO authenticated;
+REVOKE ALL ON public.inventory_stock_items FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_stock_transfers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  item_id UUID REFERENCES public.inventory_stock_items(id) ON DELETE CASCADE,
+  item_name TEXT NOT NULL,
+  from_location TEXT NOT NULL,
+  to_location TEXT NOT NULL,
+  quantity NUMERIC(10, 2) NOT NULL,
+  performed_by TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_transfers_account ON public.inventory_stock_transfers(account_id);
+
+ALTER TABLE public.inventory_stock_transfers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_stock_transfers"
+  ON public.inventory_stock_transfers FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_stock_transfers"
+  ON public.inventory_stock_transfers FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_stock_transfers TO authenticated;
+REVOKE ALL ON public.inventory_stock_transfers FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_maintenance_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  asset_type TEXT NOT NULL,
+  asset_id TEXT NOT NULL,
+  asset_name TEXT NOT NULL,
+  service_type TEXT NOT NULL,
+  cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  performed_by TEXT NOT NULL,
+  performed_at DATE NOT NULL,
+  next_due_at DATE,
+  mileage_at_service INTEGER,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_maint_account ON public.inventory_maintenance_records(account_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_maint_record_dedup ON public.inventory_maintenance_records(account_id, asset_type, lower(trim(asset_name)), lower(trim(service_type)), performed_at);
+
+ALTER TABLE public.inventory_maintenance_records ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_maintenance_records"
+  ON public.inventory_maintenance_records FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_maintenance_records"
+  ON public.inventory_maintenance_records FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_maintenance_records TO authenticated;
+REVOKE ALL ON public.inventory_maintenance_records FROM anon, public;
+
+commit;
+
+
+-- Inventory comprehensive hardening: 20260905090000
+begin;
+
+create table if not exists public.inventory_tool_custody_log (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  tool_id uuid not null references public.inventory_tools(id) on delete cascade,
+  action text not null,
+  crew_id uuid references public.crew(id) on delete set null,
+  crew_name text,
+  job_id uuid references public.jobs(id) on delete set null,
+  job_label text,
+  performed_by text,
+  notes text,
+  occurred_at timestamptz not null default now()
+);
+
+create index if not exists idx_inv_tool_custody_account_tool
+  on public.inventory_tool_custody_log(account_id, tool_id);
+
+create index if not exists idx_inv_tool_custody_occurred
+  on public.inventory_tool_custody_log(account_id, occurred_at desc);
+
+alter table public.inventory_tool_custody_log enable row level security;
+
+create policy "office_users_read_inventory_tool_custody"
+  on public.inventory_tool_custody_log
+  for select
+  to authenticated
+  using (
+    public.office_can(account_id, 'inventory.read')
+    or public.office_can(account_id, 'jobs.read')
+  );
+
+create policy "office_users_insert_inventory_tool_custody"
+  on public.inventory_tool_custody_log
+  for insert
+  to authenticated
+  with check (
+    public.office_can(account_id, 'inventory.custody')
+    or public.office_can(account_id, 'inventory.write')
+    or public.office_can(account_id, 'jobs.write')
+  );
+
+grant select, insert on public.inventory_tool_custody_log to authenticated;
+revoke all on public.inventory_tool_custody_log from anon, public;
+
+create table if not exists public.inventory_van_kit_templates (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  name text not null,
+  description text,
+  items jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_inv_van_kit_templates_acc
+  on public.inventory_van_kit_templates(account_id);
+
+alter table public.inventory_van_kit_templates enable row level security;
+
+create policy "office_users_read_van_kit_templates"
+  on public.inventory_van_kit_templates
+  for select
+  to authenticated
+  using (
+    public.office_can(account_id, 'inventory.read')
+    or public.office_can(account_id, 'jobs.read')
+  );
+
+create policy "office_users_manage_van_kit_templates"
+  on public.inventory_van_kit_templates
+  for all
+  to authenticated
+  using (
+    public.office_can(account_id, 'inventory.write')
+    or public.office_can(account_id, 'jobs.write')
+  )
+  with check (
+    public.office_can(account_id, 'inventory.write')
+    or public.office_can(account_id, 'jobs.write')
+  );
+
+grant select, insert, update, delete on public.inventory_van_kit_templates to authenticated;
+revoke all on public.inventory_van_kit_templates from anon, public;
+
+create or replace function public.enforce_inventory_maintenance_immutable()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+begin
+  raise exception 'inventory_maintenance_records is an immutable audit ledger and cannot be modified or deleted';
+end;
+$$;
+
+drop trigger if exists trg_enforce_inventory_maintenance_immutable on public.inventory_maintenance_records;
+create trigger trg_enforce_inventory_maintenance_immutable
+  before update or delete
+  on public.inventory_maintenance_records
+  for each row
+  execute function public.enforce_inventory_maintenance_immutable();
+
+revoke update, delete on public.inventory_maintenance_records from authenticated;
+
+commit;
+
+
+-- Insurance claims: 20260905142000
+begin;
+
+create table if not exists public.insurance_claims (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  client_id uuid references public.clients(id) on delete set null,
+  job_id uuid references public.jobs(id) on delete set null,
+  claim_number text,
+  policyholder_name text,
+  property_address text,
+  carrier_name text,
+  adjuster_name text,
+  adjuster_email text,
+  adjuster_phone text,
+  date_of_loss text,
+  scope_text text,
+  parsed_figures jsonb not null default '{}'::jsonb,
+  discrepancies jsonb not null default '[]'::jsonb,
+  total_supplement_amount numeric(10, 2) not null default 0.00
+    check (total_supplement_amount >= 0 and total_supplement_amount <= 99999999.99),
+  revised_rcv_amount numeric(10, 2)
+    check (revised_rcv_amount is null or (revised_rcv_amount >= 0 and revised_rcv_amount <= 99999999.99)),
+  justification_letter text,
+  letter_revisions jsonb not null default '[]'::jsonb,
+  status text not null default 'draft'
+    check (status in ('draft', 'scope_received', 'supplement_pending', 'approved', 'invoiced', 'closed')),
+  trade_slug text not null default 'roofers',
+  ai_analyzed_at timestamptz,
+  analysis_method text not null default 'heuristic'
+    check (analysis_method in ('heuristic', 'ai')),
+  deleted_at timestamptz,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists idx_insurance_claims_account_id
+  on public.insurance_claims(account_id);
+
+create index if not exists idx_insurance_claims_status
+  on public.insurance_claims(account_id, status)
+  where deleted_at is null;
+
+alter table public.insurance_claims enable row level security;
+
+create policy "office_users_read_insurance_claims"
+  on public.insurance_claims
+  for select
+  to authenticated
+  using (public.office_can(account_id, 'jobs.read'));
+
+create policy "office_users_write_insurance_claims"
+  on public.insurance_claims
+  for all
+  to authenticated
+  using (public.office_can(account_id, 'jobs.write'))
+  with check (public.office_can(account_id, 'jobs.write'));
+
+grant select, insert, update, delete on public.insurance_claims to authenticated;
+grant all on public.insurance_claims to service_role;
+revoke all on public.insurance_claims from anon, public;
+
+commit;
+
+
+-- Marketing tracking links: 20260905150000
+begin;
+
+create table if not exists public.marketing_tracking_links (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  short_code text not null,
+  name text not null,
+  channel_id text not null default 'print_qr',
+  source text not null default 'yard_sign',
+  medium text not null default 'print_qr',
+  campaign text not null,
+  content text,
+  term text,
+  promo text,
+  destination_url text not null,
+  full_url text not null,
+  ad_spend numeric(10, 2) not null default 0.00,
+  scan_count integer not null default 0,
+  last_scanned_at timestamptz,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp(),
+  deleted_at timestamptz
+);
+
+create unique index if not exists idx_marketing_tracking_links_short_code
+  on public.marketing_tracking_links(lower(short_code))
+  where deleted_at is null;
+
+create index if not exists idx_marketing_tracking_links_account
+  on public.marketing_tracking_links(account_id, created_at desc)
+  where deleted_at is null;
+
+alter table public.marketing_tracking_links enable row level security;
+
+create policy "office_users_read_marketing_tracking_links"
+  on public.marketing_tracking_links
+  for select
+  to authenticated
+  using (public.office_can(account_id, 'marketing.read'));
+
+create policy "office_users_write_marketing_tracking_links"
+  on public.marketing_tracking_links
+  for all
+  to authenticated
+  using (public.office_can(account_id, 'marketing.write'))
+  with check (public.office_can(account_id, 'marketing.write'));
+
+grant select, insert, update, delete on public.marketing_tracking_links to authenticated;
+revoke all on public.marketing_tracking_links from anon, public;
+
+-- FK-covering indexes for inventory, custody log, and insurance claims tables
+-- (required by Supabase security advisor: every FK column must lead an index)
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_assigned_crew ON public.inventory_tools(assigned_crew_id) WHERE assigned_crew_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_assigned_job ON public.inventory_tools(assigned_job_id) WHERE assigned_job_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_location_fk ON public.inventory_tools(location_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_primary_driver ON public.inventory_vehicles(primary_driver_id) WHERE primary_driver_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_items_location_fk ON public.inventory_stock_items(location_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_transfers_item ON public.inventory_stock_transfers(item_id);
+create index if not exists idx_inv_tool_custody_tool on public.inventory_tool_custody_log(tool_id);
+create index if not exists idx_inv_tool_custody_crew on public.inventory_tool_custody_log(crew_id);
+create index if not exists idx_inv_tool_custody_job on public.inventory_tool_custody_log(job_id) where job_id is not null;
+create index if not exists idx_insurance_claims_client_id on public.insurance_claims(client_id);
+create index if not exists idx_insurance_claims_job_id on public.insurance_claims(job_id);
 
 commit;
 

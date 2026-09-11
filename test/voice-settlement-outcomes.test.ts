@@ -59,6 +59,21 @@ const baseReceipt: VoiceReceipt = {
 };
 
 describe('voice settlement outcome inference', () => {
+  it('does not treat transfer instructions in the production prompt as an attempted handoff', () => {
+    expect(inferProviderOutcome({ ...baseReceipt, callLog: [
+      { role: 'system', content: 'Use transfer_to_emergency for emergencies. When the caller asks for a person, use transfer_to_business.', timestamp: null },
+      ...baseReceipt.callLog!,
+    ] })).toBe('ai_handled');
+  });
+
+  it('does not turn a caller request or diagnostic log into an attempted handoff', () => {
+    expect(inferProviderOutcome({ ...baseReceipt, callLog: [
+      { role: 'system-log', content: 'Available function: transfer_to_business', timestamp: null },
+      { role: 'user', content: 'Please transfer to business.', timestamp: null },
+      { role: 'assistant', content: 'The office is unavailable. I can take a message.', timestamp: null },
+    ] })).toBe('ai_handled');
+  });
+
   it('records an on-call transfer attempt without claiming it connected', () => {
     expect(inferProviderOutcome({ ...baseReceipt, callLog: [
       { role: 'tool', content: 'transfer_to_emergency', timestamp: null },

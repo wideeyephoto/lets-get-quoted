@@ -282,10 +282,10 @@ export default function OperatorCockpit({
     handleSendPrompt(promptInput);
   };
 
-  const handleReplayWebhooks = async () => {
+  const handleInspectWebhooks = async () => {
     setStatusBanner(null);
     try {
-      const res = (await replayWebhooksServerAction('replay_and_resolve')) as {
+      const res = (await replayWebhooksServerAction('diagnose')) as {
         success: boolean;
         remediationSummary?: string;
         error?: string;
@@ -293,19 +293,18 @@ export default function OperatorCockpit({
       if (res?.success) {
         setStatusBanner({
           type: 'success',
-          message: `✓ ${res.remediationSummary || 'Webhooks replayed and resolved successfully.'}`,
+          message: res.remediationSummary || 'Inspection completed. Review failures under Admin → Failures; no replay was attempted.',
         });
-        await handleRunCycle();
       } else {
         setStatusBanner({
           type: 'error',
-          message: `Webhook recovery error: ${res?.error || 'Unknown failure'}`,
+          message: `Webhook inspection error: ${res?.error || 'Unknown failure'}`,
         });
       }
     } catch (e) {
       setStatusBanner({
         type: 'error',
-        message: `Failed to replay webhooks: ${e instanceof Error ? e.message : String(e)}`,
+        message: `Failed to inspect webhooks: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
   };
@@ -497,12 +496,12 @@ export default function OperatorCockpit({
               {briefing.operations.unresolvedWebhooksCount > 0 && (
                 <button
                   className={styles.rejectBtn}
-                  onClick={handleReplayWebhooks}
+                  onClick={handleInspectWebhooks}
                   type="button"
                   style={{ background: 'rgba(239, 68, 68, 0.15)', borderColor: '#ef4444', color: '#f87171' }}
-                  title="1-Click Replay & Resolve Webhook Failures"
+                  title="Inspect webhook failures without replaying them"
                 >
-                  ⚡ Replay 2 Webhooks
+                  Inspect {briefing.operations.unresolvedWebhooksCount} Webhooks
                 </button>
               )}
               <span className={styles.categoryTag}>{briefing.period}</span>
