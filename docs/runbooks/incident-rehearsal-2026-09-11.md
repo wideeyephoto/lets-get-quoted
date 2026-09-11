@@ -131,7 +131,34 @@ the table **as** `anon` and `authenticated`. 10 checks pass:
 the column list, and the release-versus-incident distinction. Repository-wide
 typecheck, lint (0 errors) and `next build` pass; the build lists `/status`.
 
+## Deployed verification instrument — September 11, 2026
+
+`npm run verify:status-deployed` probes a running deployment, read-only, over
+GET only. It is the counterpart to the local PostgreSQL run: that one proves the
+migration is correct, this one proves *the database this product talks to* got
+it, and that the rendered page did not print the internal half anyway.
+
+It checks, in one run: the anonymous page returns 200; the banner is the expected
+state and no other; caller-supplied text that must appear does; caller-supplied
+internal text does **not** (pass the fixture's own root cause, owner and external
+URL verbatim); no internal column name is rendered; the sitemap lists the route;
+the app host 308s to the apex. Given the two public Supabase values it also asks
+the hosted Data API directly, and requires it to refuse anonymous `select=*`,
+`root_cause`, `owner`, `created_by` and `external_url` while still serving the
+public column list and returning no unpublished row.
+
+It could not be pointed at production from the authoring session: outbound
+network there is restricted to package registries and every request to the site
+returned the proxy's 403. It was instead exercised against a local mock
+deployment across five scenarios — healthy, leaking the internal fields, `/status`
+missing, wrong banner state, and absent from the sitemap. The healthy case passes
+8 checks and exits 0; each of the other four exits 1 and names what was wrong.
+**The instrument is tested; the deployment is not.**
+
 ## Remaining G5 release work
+
+Procedure, with the command and PASS criterion for each step:
+[status-page-release-2026-09-11.md](status-page-release-2026-09-11.md).
 
 1. ~~Review and apply the publishing migration in staging~~ — **reviewed and
    rewritten**; the public field set is now defined and proved locally. Applying
@@ -141,11 +168,20 @@ typecheck, lint (0 errors) and `next build` pass; the build lists `/status`.
    `MARKETING_PATHS`, so the app host 308s to the apex rather than answering as a
    duplicate.
 3. Deploy the reviewed schema and application release, recording its exact SHA.
+   **Not run.** Needs Vercel deploy authorisation and a production connection
+   string.
 4. Rehearse authenticated operator open/update/resolve through the deployed
    `/admin/incidents` controls, check the corresponding `admin_actions` rows, and
    verify the anonymous rendered page after each state. A service-role script
-   bypasses operator authorization and cannot prove this.
-5. Retain the G5 publication policy and alert deep-link evidence required by
-   `docs/prelaunch-gap-closure-plan-2026-09-11.md` before marking the item closed.
-   The publication policy — which severities are published, who writes the copy,
-   and the target time from page to publish — is still unwritten.
+   bypasses operator authorization and cannot prove this. **Not run.** Needs a
+   deployed release and a staff account with `ops.manage` and MFA. The eight-step
+   sequence and its probe invocations are in the release procedure.
+5. ~~Retain the G5 publication policy~~ — **written**:
+   [status-page-publication-policy.md](status-page-publication-policy.md) covers
+   which severities publish, the mapping from all eight operational alert
+   categories, who writes the copy, target times, the overnight posture for a
+   single operator, and the limitation that the page cannot report its own worst
+   case. Its §4 and G7's overnight paging policy must end up naming the same
+   categories.
+   The **alert deep link** from `sendOperationalEmergencyAlert` is still not
+   built, and is still required before G5 closes.

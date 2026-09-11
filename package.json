@@ -83,6 +83,7 @@
     "inspect:tax-registrations": "node scripts/inspect-stripe-tax-registrations.mjs",
     "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
     "verify:status-boundary": "node scripts/verify-status-page-boundary.mjs",
+    "verify:status-deployed": "node scripts/verify-deployed-status-page.mjs",
     "test:incident-rehearsal": "node --test scripts/rehearse-incident-cycle.test.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
     "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"

@@ -304,10 +304,27 @@ Nothing here is hosted evidence — no migration is applied and `/status` is sti
   17.10: 10 checks, both browser roles, including the reproduced pre-migration
   TRUNCATE hazard. `test/status-page.test.ts` adds 13 unit checks.
 
-Still required to close G5: apply to staging and re-run the rehearsal, deploy and
-record the SHA, rehearse operator open/update/resolve against the deployed page
-with `admin_actions` checked, add the alert deep link, and write the publication
-policy.
+**2026-09-11 policy and release tooling:** the publication policy required by
+step 6 is written —
+[status-page-publication-policy.md](runbooks/status-page-publication-policy.md).
+It sets publish/do-not-publish per incident severity and per operational alert
+category for all eight, names the operator as the sole author, gives target times
+of 15 minutes for critical and 60 for warning, states an overnight posture sized
+for one person, and records that a database outage takes `/status` with it, so
+the page may not be cited as evidence of uptime.
+
+`npm run verify:status-deployed` is the read-only prober for the hosted checks.
+It could not be pointed at production from the authoring session — outbound
+access there is limited to package registries — so it was exercised against a
+local mock across five scenarios instead: healthy passes 8 checks and exits 0,
+and leaking, missing, wrong-state and absent-from-sitemap each exit 1. The
+instrument is tested; the deployment is not.
+
+Still required to close G5, none of it runnable without hosted credentials:
+apply to staging and re-run the rehearsal, apply to production, deploy and record
+the SHA, rehearse operator open/update/resolve against the deployed page with
+`admin_actions` checked, and add the alert deep link. Procedure and PASS criteria:
+[status-page-release-2026-09-11.md](runbooks/status-page-release-2026-09-11.md).
 
 ---
 
