@@ -271,6 +271,13 @@ Deployed `/status` returning 200 anonymously against the frozen release SHA · a
 open → update → resolve cycle with the page correctly reflecting each state · RLS test
 proving `anon` cannot read unpublished rows · route present in sitemap.
 
+**2026-09-11 verification:** G5 remains open. The rehearsal runner has been
+corrected and regression-tested, but the actual staging run fails before writing
+data because `platform_incidents.published` is missing. Production has the same
+schema gap; the live `/status` returns 404 and is absent from the sitemap. See
+[the rehearsal record](runbooks/incident-rehearsal-2026-09-11.md) for evidence and
+the remaining deployment, page-state, and operator-audit checks.
+
 ---
 
 ## G6 — Legal counsel review has no line item, and it is the longest pole

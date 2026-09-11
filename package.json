@@ -82,6 +82,7 @@
     "inspect:ai-tier": "node scripts/inspect-ai-provider-tier.mjs",
     "inspect:tax-registrations": "node scripts/inspect-stripe-tax-registrations.mjs",
     "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
+    "test:incident-rehearsal": "node --test scripts/rehearse-incident-cycle.test.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
     "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
   },
