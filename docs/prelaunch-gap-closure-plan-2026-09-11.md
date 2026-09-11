@@ -366,6 +366,33 @@ checklist item.
 
 **Start the engagement today.** Everything else here finishes in days; this one does not.
 
+**2026-09-11 brief assembled:**
+[legal-review-brief-2026-09.md](legal-review-brief-2026-09.md) and its tracking
+companion [legal-review-2026-09.md](legal-review-2026-09.md) are written. Nine
+numbered questions, each citing exact source rather than describing it from
+memory, three found by reading the code while assembling the brief and not
+previously tracked anywhere:
+
+- **Q1 (lien NOI / waivers):** `src/lib/noi-generator.ts` and
+  `src/lib/lien-waiver.ts` take no state parameter of any kind — one template
+  nationwide for what is, in reality, 50 statutory regimes, some of which
+  (California) mandate exact statutory wording.
+- **Q3 (card surcharge advice):** the in-product "Surcharge Lab" tells
+  contractors surcharging is "compliant nationwide" and that the platform
+  "automatically displays clear itemized fee disclosure" — that disclosure
+  does not exist anywhere in the codebase, no surcharge setting is persisted
+  anywhere in `schema.sql` or `migrations/`, and its own "Apply Policy to
+  Checkout" button writes nothing and wires to nothing.
+- **Q4 (recording disclosure):** independent of the all-party-consent legal
+  question, the compliance register's quoted disclosure sentence
+  ("You are speaking with an AI assistant") does not match what the code
+  actually plays today (`AI_VOICE_DISCLOSURE` in `src/lib/voice/provider.ts`)
+  — the register was never updated after the wording changed.
+
+Engagement itself (finding and retaining counsel, sending the brief) has not
+started — that is the operator's step, not an agent's. The brief is ready to
+send as soon as counsel is identified.
+
 ---
 
 ## G7 — No post-cutover watch window
