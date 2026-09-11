@@ -80,15 +80,16 @@ async function page(actor,path,file){
   // Text can arrive before hydration and a CSS entrance transition settles.
   // Require a visible heading through all its ancestors before scoring/capture.
   await p.waitForFunction(() => {
-    const heading=document.querySelector('main h1, h1');
-    if (!heading || heading.getBoundingClientRect().height === 0 || document.querySelector('main[aria-busy="true"]')) return false;
+    const heading=document.querySelector('main h1, h1') || document.querySelector('main');
+    // A legitimate denied/not-found page may render only a paragraph.
+    if (!heading?.textContent?.trim() || heading.getBoundingClientRect().height === 0 || document.querySelector('main[aria-busy="true"]')) return false;
     for(let node=heading;node;node=node.parentElement) {
       const style=getComputedStyle(node);
       if(style.display==='none'||style.visibility==='hidden'||Number(style.opacity)<0.99)return false;
     }
     return true;
   });
-  await p.locator('h1').first().click({trial:true});
+  if(await p.locator('h1').count()) await p.locator('h1').first().click({trial:true});
   assert.equal(await p.locator('[data-nextjs-dialog],.vite-error-overlay').count(),0);
   assert.deepEqual(sessions[actor].errors.slice(errorsStart),[]);
   const body=await p.locator('body').innerText(); const html=await p.content();
