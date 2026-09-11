@@ -131,7 +131,7 @@ export default function QuotesFeaturePage() {
       /* A specific job, not the job list. job-13 is the demo record sitting at
          the quote stage — "open a sample quote" that lands on an index of jobs
          is the disappointment the third button used to cause. */
-      primary={{ label: 'Open a sample quote', href: '/demo/jobs/job-13' }}
+      primary={{ label: 'See a sample quote in the demo', href: '/demo/jobs/job-13' }}
       demo={
         <ExampleFrame
           label="A quote as the homeowner sees it, with one upgrade taken."

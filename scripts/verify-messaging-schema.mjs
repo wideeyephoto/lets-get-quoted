@@ -44,6 +44,19 @@ end
 $roles$;
 create schema if not exists auth;
 create table if not exists auth.users (id uuid primary key default pg_catalog.gen_random_uuid());
+create table if not exists auth.sessions (
+  id uuid primary key default pg_catalog.gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  factor_id uuid,
+  aal text,
+  not_after timestamptz
+);
+create table if not exists auth.mfa_factors (
+  id uuid primary key default pg_catalog.gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  factor_type text,
+  status text
+);
 create or replace function auth.uid() returns uuid language sql stable
 as $$ select nullif(pg_catalog.current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create schema if not exists storage;
@@ -88,7 +101,7 @@ const requiredFunctions = [
   'rollback_sms_delivery_pre_request_boundary',
   'ingest_sms_inbound_webhook',
   'claim_sms_inbound_action_batch',
-  'claim_voice_call_admission',
+  'claim_voice_call_admission_v2',
   'claim_payment_sms_producer_tasks',
   'enqueue_direct_payment_settlement_sms',
   'enqueue_authorized_inbox_message',
@@ -131,16 +144,7 @@ try {
   await client.query(prelude);
   await client.query(readFileSync(join(process.cwd(), 'schema.sql'), 'utf8'));
   check('schema.sql executes top-to-bottom in a fresh PostgreSQL 17 database', true);
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260821210000_sms_durability_followups.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260821210500_sms_purpose_aware_inbound_routing.sql'),
-    'utf8',
-  ));
-  // Those historical follow-ups replace inbound and delivery functions. Reapply
-  // the current Campaign-wide suppression, dispatch sender registration,
+  // Reapply the current Campaign-wide suppression, dispatch sender registration,
   // purpose boundary, and registry callback quarantine so this harness checks
   // the final production definitions.
   await client.query(readFileSync(
@@ -167,7 +171,7 @@ try {
     join(process.cwd(), 'migrations/20260908175833_subcontractor_sms_projection_service_grant.sql'),
     'utf8',
   ));
-  check('SMS durability, routing, Campaign STOP, dispatch sender, purpose boundary, callback quarantine, HELP binding, and projection grant reapply', true);
+  check('Campaign STOP, dispatch sender, purpose boundary, callback quarantine, HELP binding, and projection grant reapply', true);
 
   const tables = await client.query(
     `select tablename from pg_catalog.pg_tables

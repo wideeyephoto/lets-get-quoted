@@ -143,7 +143,7 @@ export default function CashFlowFeaturePage() {
       lede="Deposits and balances you are owed, payroll and bills you owe — dated and projected forward from today’s balance. The week you cannot cover payroll becomes a warning rather than a Friday morning discovery."
       heroChips={['No bank connection', 'Forecasting, not bookkeeping', 'Confirmed and expected, marked apart']}
       heroNote="Built from money the product already knows about: approved quotes, deposits, installments, recurring visits, logged hours and the bills you enter. Nothing here is a guess about your industry."
-      primary={{ label: 'Open the live forecast', href: '/demo/cash-flow' }}
+      primary={{ label: 'See cash flow tools in the demo', href: '/demo/cash-flow' }}
       demo={
         <ExampleFrame
           label="Two weeks forward, with the day the balance dips below the buffer."
