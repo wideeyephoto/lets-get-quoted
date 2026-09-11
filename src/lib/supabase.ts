@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from './supabase-url';
+import { jobAccessFetch } from './job-access-fetch';
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseUrl = normalizeSupabaseUrl(rawUrl) || 'https://placeholder.supabase.co';
@@ -9,5 +10,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholde
 // client-side auth actions (phone OTP verify, identity linking, etc.) is
 // also visible to server-side code (middleware, server components) that
 // reads the session from request cookies.
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  global: { fetch: jobAccessFetch },
+});
 
