@@ -459,7 +459,15 @@ export async function confirmTerminalPayment(
 ): Promise<TerminalPaymentStatusResult> {
   const stripe = getStripeClient();
 
-  let isPaid = true;
+  // isPaid starts false and is set true only by an explicit 'succeeded' read
+  // from Stripe. It used to start true, so a retrieve() that THREW -- a
+  // network blip, a rate limit, an expired PaymentIntent, any Stripe API
+  // failure -- fell through the catch with isPaid still true from its initial
+  // value, and the code below marked the payment row 'paid' and the linked
+  // invoice paid on the strength of an error, not a confirmation. In a
+  // card-present, real-money collection path, an error retrieving whether a
+  // charge succeeded is not evidence that it did.
+  let isPaid = false;
   let cardBrand = 'Visa Contactless';
   let last4 = '4242';
   let receiptUrl: string | null = null;
@@ -487,11 +495,21 @@ export async function confirmTerminalPayment(
           paymentIntentId,
           amount: fromCents(intent.amount),
         };
-      } else {
-        isPaid = false;
       }
+      // Any other terminal Stripe status (canceled, requires_payment_method,
+      // requires_confirmation) leaves isPaid at its false default.
     } catch (err) {
-      console.warn('PaymentIntent retrieve fallback:', err);
+      // Could not confirm either way. Treated the same as 'processing' above:
+      // return without touching the payments row or the linked invoice, so the
+      // operator sees "not settled yet" and can retry the confirm, rather than
+      // the ledger recording a payment nobody has verified happened.
+      console.warn('PaymentIntent retrieve failed; reporting unconfirmed rather than paid:', err);
+      return {
+        status: 'processing',
+        paymentId,
+        paymentIntentId,
+        amount,
+      };
     }
   }
 

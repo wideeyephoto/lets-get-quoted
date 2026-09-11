@@ -9,6 +9,7 @@ import {
   cancelTerminalReaderAction,
   confirmTerminalPayment,
 } from '../src/lib/stripe-terminal';
+import { markInvoicePaidForPayment } from '@/lib/invoices';
 
 // Mock getStripeClient
 const mockStripe = {
@@ -387,6 +388,54 @@ describe('Stripe Terminal & Tap to Pay Core Library', () => {
       expect(result.cardBrand).toBe('Visa Contactless');
       expect(result.last4).toBe('4242');
       expect(result.receiptUrl).toBe('https://pay.stripe.com/receipts/test_receipt_123');
+    });
+
+    /**
+     * THE REGRESSION. isPaid used to default to true, so a retrieve() that
+     * THREW -- rather than resolving with a non-succeeded status -- fell
+     * through the catch with isPaid never reassigned, and the code below
+     * marked the payment row 'paid' and the linked invoice paid on the
+     * strength of an error. In a card-present, real-money collection path,
+     * failing to confirm a charge is not evidence that it succeeded.
+     *
+     * Every failure mode below must produce the exact same safe outcome:
+     * status other than 'succeeded', no write to the payments row, no
+     * invoice marked paid. A contractor can retry the confirm; nothing here
+     * should let them believe money moved when nobody has verified it did.
+     */
+    it('does not mark a payment or its invoice paid when Stripe cannot confirm it', async () => {
+      // maxPaymentsReads: a thrown retrieve() returns before ever reading the
+      // payments row (0 calls); a resolved-but-not-succeeded status still
+      // reads the row to report its amount, but must never reach the write
+      // (1 call). Either way, the write/invoice branch -- a second
+      // from('payments') call, since the mock factory hands back a fresh
+      // object including update() on every call -- must never be entered.
+      const failures: Array<[string, () => void, number]> = [
+        ['a rejected retrieve (network/API failure)', () => {
+          mockStripe.paymentIntents.retrieve.mockRejectedValueOnce(new Error('ECONNRESET'));
+        }, 0],
+        ['a canceled PaymentIntent', () => {
+          mockStripe.paymentIntents.retrieve.mockResolvedValueOnce({ id: 'pi_x', status: 'canceled', amount: 50000 });
+        }, 1],
+        ['a PaymentIntent still requiring a payment method', () => {
+          mockStripe.paymentIntents.retrieve.mockResolvedValueOnce({ id: 'pi_x', status: 'requires_payment_method', amount: 50000 });
+        }, 1],
+      ];
+
+      for (const [label, arrange, maxPaymentsReads] of failures) {
+        vi.clearAllMocks();
+        arrange();
+        const supabase = createMockSupabase({
+          payment: { id: 'pay_test_999', amount: 500.0, invoice_id: 'inv_123', job_id: 'job_123', status: 'processing' },
+        });
+
+        const result = await confirmTerminalPayment(supabase, 'acc_test_1', 'pay_test_999', 'pi_terminal_cardpresent_123');
+
+        expect(result.status, label).not.toBe('succeeded');
+        const paymentsCalls = (supabase.from as ReturnType<typeof vi.fn>).mock.calls.filter((c) => c[0] === 'payments');
+        expect(paymentsCalls.length, `${label}: payments table touched ${paymentsCalls.length} times, expected at most ${maxPaymentsReads} (the read only)`).toBe(maxPaymentsReads);
+        expect(markInvoicePaidForPayment, `${label}: invoice was marked paid`).not.toHaveBeenCalled();
+      }
     });
   });
 });
