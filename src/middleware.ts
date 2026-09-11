@@ -321,9 +321,20 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!signedIn && isMarketingPath(request.nextUrl.pathname)) {
+    // /status is a marketing path for routing — it is on the apex and the app
+    // host must 308 to it — but it is NOT marketing copy, and the shared
+    // s-maxage=3600 would be actively harmful here: an edge holding an hour-old
+    // render keeps telling customers "All Systems Operational" for an hour into
+    // an outage, and stale-while-revalidate=86400 extends that to a day. That
+    // is the same failure as swallowing a query error, moved to the CDN. A
+    // minute is short enough that the page is never usefully wrong and long
+    // enough to absorb the traffic spike an incident brings.
+    const isStatus = request.nextUrl.pathname === '/status';
     response.headers.set(
       'Cache-Control',
-      'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
+      isStatus
+        ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=60'
+        : 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
     );
   }
 

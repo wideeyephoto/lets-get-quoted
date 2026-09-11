@@ -278,6 +278,37 @@ schema gap; the live `/status` returns 404 and is absent from the sitemap. See
 [the rehearsal record](runbooks/incident-rehearsal-2026-09-11.md) for evidence and
 the remaining deployment, page-state, and operator-audit checks.
 
+**2026-09-11 code review and repair:** step 1's "define the intended public
+fields before deploying it" is closed, and steps 2 and 3 are closed in source.
+Nothing here is hosted evidence — no migration is applied and `/status` is still
+404 in production.
+
+- The reviewed migration was **unsafe to apply** and has been rewritten. Its
+  single `for select using (published = true)` policy carried no `TO` clause and
+  no column restriction, so `select *` against a published row would have
+  returned `root_cause`, `owner`, `created_by`, `external_url` and
+  `affected_services` to anonymous callers. It also left Supabase's default write
+  grants in place, and **TRUNCATE is not subject to RLS** — so this table has
+  been truncatable by any browser session since 2026-08-06. Both are closed by
+  the rewritten file: revoke all, grant `select` on ten named columns, policy
+  scoped `to anon, authenticated`, and a `DO` block that raises on any internal
+  column or write privilege surviving. New columns fail closed.
+- The status page **reported healthy when it could not read** — a query error was
+  logged and then discarded, rendering "All Systems Operational". `unavailable`
+  is now a third state and is not green.
+- `togglePublishIncidentAction` had **no caller anywhere in the app** and neither
+  incident reader selected `published`, so no operator could have published
+  anything and `/status` could only ever have been empty. The control is now on
+  `/admin/incidents`, behind the existing MFA permission and audit write.
+- `npm run verify:status-boundary` proves the grants against real PostgreSQL
+  17.10: 10 checks, both browser roles, including the reproduced pre-migration
+  TRUNCATE hazard. `test/status-page.test.ts` adds 13 unit checks.
+
+Still required to close G5: apply to staging and re-run the rehearsal, deploy and
+record the SHA, rehearse operator open/update/resolve against the deployed page
+with `admin_actions` checked, add the alert deep link, and write the publication
+policy.
+
 ---
 
 ## G6 — Legal counsel review has no line item, and it is the longest pole

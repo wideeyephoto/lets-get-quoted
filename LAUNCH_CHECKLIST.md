@@ -45,7 +45,21 @@ Ten requirements no prior item covered. Verified absent against this checklist a
 - [ ] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
   customer and no `/status` route exists. Close with a deployed anonymous `/status` on the frozen
   SHA, `platform_incidents` with anon-read-published-only RLS, operator open/update/resolve writing
-  `admin_actions`, and a rehearsed incident cycle.
+  `admin_actions`, and a rehearsed incident cycle. **Source work complete 2026-09-11; nothing
+  deployed.** The reviewed publishing migration was unsafe to apply and is rewritten: its lone
+  policy had no `TO` clause and no column restriction, so `select *` on a published row would have
+  returned `root_cause`, `owner`, `created_by` and `external_url` anonymously, and it left
+  Supabase's default write grants in place — **TRUNCATE is not subject to RLS, so this table has
+  been truncatable by any browser session since 2026-08-06**. The page reported "All Systems
+  Operational" whenever it could not read the log; unknown is now its own state.
+  `togglePublishIncidentAction` had no caller anywhere in the app, so `/status` could only ever
+  have been empty; the control is now on `/admin/incidents` behind the existing MFA permission and
+  audit write. `/status` is in the sitemap and in `MARKETING_PATHS`. `npm run
+  verify:status-boundary` passes 10 checks against real PostgreSQL 17.10 for both browser roles;
+  `test/status-page.test.ts` adds 13. Typecheck, lint and build pass. Remaining: apply to staging
+  and re-run the rehearsal, deploy and record the SHA, rehearse operator open/update/resolve
+  against the deployed page with `admin_actions` checked, add the alert deep link, and write the
+  publication policy. See [the rehearsal record](docs/runbooks/incident-rehearsal-2026-09-11.md).
 - [ ] **Legal counsel review:** §13 verified disclosures exist in code; no attorney has assessed
   lien/NOI validity per state, public-adjusting exposure, surcharge legality, all-party-consent
   recording, employee-monitoring sufficiency, state privacy rights, or ADA posture. Named as

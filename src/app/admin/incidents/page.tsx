@@ -12,6 +12,7 @@ import {
 import styles from '../admin.module.css';
 import { logIncidentAction } from './actions';
 import ResolveIncidentButton from './ResolveIncidentButton';
+import PublishIncidentButton from './PublishIncidentButton';
 
 /**
  * Releases and incidents.
@@ -30,6 +31,8 @@ export const metadata = { title: 'Incidents' };
 const DONE: Record<string, string> = {
   logged: 'Logged. It is on the Command Center now.',
   resolved: 'Marked resolved.',
+  published: 'Published. It is on letsgetquoted.com/status now.',
+  unpublished: 'Unpublished. It is off /status and visible to staff only.',
 };
 const ERRORS: Record<string, string> = {
   title: 'Give it a title — that is what everyone reads first.',
@@ -103,9 +106,12 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                 <span>
                   <span className={`${styles.pill} ${i.severity === 'critical' ? styles.bad : styles.warn}`}>{i.severity}</span>{' '}
                   <span className={styles.timelineActor}>{i.title}</span>
+                  {!i.published ? <span className={styles.muted} style={{ fontSize: '.72rem' }}> · not on /status</span> : null}
                   {mayManage ? (
                     <>
                       {' — '}
+                      <PublishIncidentButton incidentId={i.id} title={i.title} published={i.published} />
+                      {' '}
                       <ResolveIncidentButton incidentId={i.id} title={i.title} />
                     </>
                   ) : null}
@@ -130,7 +136,7 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
-                    <tr><th>Started</th><th>Kind</th><th>Title &amp; impact</th><th>Severity</th><th>Lasted</th><th>Owner</th></tr>
+                    <tr><th>Started</th><th>Kind</th><th>Title &amp; impact</th><th>Severity</th><th>Lasted</th><th>Owner</th><th>Public</th></tr>
                   </thead>
                   <tbody>
                     {incidents.map((i) => (
@@ -154,6 +160,16 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                             unresolved incident is still counting. */}
                         <td>{i.kind === 'release' ? '—' : incidentDuration(i.started_at, i.resolved_at, now)}{i.kind === 'incident' && !i.resolved_at ? ' (open)' : ''}</td>
                         <td className={styles.muted}>{i.owner ?? i.created_by ?? '—'}</td>
+                        <td>
+                          <span className={`${styles.pill} ${i.published ? styles.warn : styles.neutral}`}>
+                            {i.published ? 'on /status' : 'internal'}
+                          </span>
+                          {mayManage ? (
+                            <div style={{ marginTop: '.35rem' }}>
+                              <PublishIncidentButton incidentId={i.id} title={i.title} published={i.published} />
+                            </div>
+                          ) : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -221,6 +237,19 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
 
               <label htmlFor="external_url">Deploy, status, or incident URL (optional)</label>
               <input id="external_url" name="external_url" className={styles.input} type="url" placeholder="https://…" />
+
+              {/* The action has always read this field and no form ever sent
+                  it, so everything logged so far defaulted to internal. Off by
+                  default stays right: publishing is a decision, not a side
+                  effect of writing an incident up. */}
+              <label htmlFor="published" style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+                <input id="published" name="published" type="checkbox" value="true" />
+                Publish to the public status page now
+              </label>
+              <p className={styles.muted} style={{ margin: '.2rem 0 .6rem', fontSize: '.78rem' }}>
+                Customers read the title, what happened, customer impact and the resolution. The owner, root cause and
+                any internal link stay staff-only.
+              </p>
 
               <button type="submit" className="btn primary">Log it</button>
             </form>

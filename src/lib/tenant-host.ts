@@ -134,6 +134,10 @@ const MARKETING_PATHS = [
   '/faq',
   '/help',
   '/security',
+  // The public status page. It is here for the same reason every other entry
+  // is: it is listed in the sitemap on the apex, so the app host must 308 to
+  // the apex rather than answer as a second copy of it.
+  '/status',
   '/resources',
   '/changelog',
   '/contact',
