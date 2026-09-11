@@ -1,0 +1,2459 @@
+{
+  "startedAt": "2026-09-09T20:06:28.947Z",
+  "origin": "https://app.letsgetquoted.com",
+  "project": "mfuvvtrkipkigwqqtcal",
+  "fixtureMarker": "tenant-office-browser-2026-09-09-cb8b5d6b",
+  "release": {
+    "commit": "8a7b129ac4dd68467532cb384da78d5203135a18",
+    "deployment": "dpl_Cc1muyh2q6hUJNRcKHqso8DwK1jB",
+    "confirmedAfterRun": true,
+    "confirmedDeployment": "dpl_Cc1muyh2q6hUJNRcKHqso8DwK1jB"
+  },
+  "method": "Chromium magic-link callback; Auth-issued session cookies and their access tokens; no mocked responses or SQL role impersonation",
+  "cases": [
+    {
+      "id": "SIGNIN-ownerA",
+      "description": "Real browser sign-in and identity check: ownerA",
+      "at": "2026-09-09T20:06:31.640Z",
+      "observed": {
+        "identity": "9087e655-993a-4bbe-9f53-2acc4ac1baaa",
+        "path": "/workspaces",
+        "sessionFingerprint": "a2f3f5b27ae66dfc"
+      },
+      "status": "PASS",
+      "requests": []
+    },
+    {
+      "id": "SIGNIN-ownerB",
+      "description": "Real browser sign-in and identity check: ownerB",
+      "at": "2026-09-09T20:06:34.346Z",
+      "observed": {
+        "identity": "4db0a808-42bf-46c2-a476-18f3b5ddb28d",
+        "path": "/workspaces",
+        "sessionFingerprint": "966188534bfc49d2"
+      },
+      "status": "PASS",
+      "requests": []
+    },
+    {
+      "id": "SIGNIN-officeA",
+      "description": "Real browser sign-in and identity check: officeA",
+      "at": "2026-09-09T20:06:35.887Z",
+      "observed": {
+        "identity": "6d6b6cbd-33cb-447f-a91a-839e94584697",
+        "path": "/workspaces",
+        "sessionFingerprint": "580497467d55b868"
+      },
+      "status": "PASS",
+      "requests": []
+    },
+    {
+      "id": "OWNER-ownerA",
+      "description": "Owner retrieves exact own fixture and nonzero quote",
+      "at": "2026-09-09T20:06:37.370Z",
+      "observed": {
+        "status": 200,
+        "data": [
+          {
+            "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+            "account_id": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+            "quoted_amount": 17351.69,
+            "quote_items": [
+              {
+                "quantity": 1,
+                "unit_price": 17351.69,
+                "description": "CONFIDENTIAL-QUOTE-A-cb8b5d6b"
+              }
+            ]
+          }
+        ]
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "ownerA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c&select=id,account_id,quoted_amount,quote_items",
+          "method": "GET",
+          "status": 200,
+          "data": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "account_id": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+              "quoted_amount": 17351.69,
+              "quote_items": [
+                {
+                  "quantity": 1,
+                  "unit_price": 17351.69,
+                  "description": "CONFIDENTIAL-QUOTE-A-cb8b5d6b"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TENANT-ownerA",
+      "description": "Owner cannot retrieve foreign fixture",
+      "at": "2026-09-09T20:06:37.496Z",
+      "observed": {
+        "status": 200,
+        "data": []
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "ownerA",
+          "path": "jobs?id=eq.8b5c4241-220e-43fc-8111-d351c9ca3ddc&select=id,quoted_amount",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        }
+      ]
+    },
+    {
+      "id": "OWNER-ownerB",
+      "description": "Owner retrieves exact own fixture and nonzero quote",
+      "at": "2026-09-09T20:06:37.663Z",
+      "observed": {
+        "status": 200,
+        "data": [
+          {
+            "id": "8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+            "account_id": "92626d25-095d-41c9-a33d-c34ebe8ef788",
+            "quoted_amount": 28463.72,
+            "quote_items": [
+              {
+                "quantity": 1,
+                "unit_price": 28463.72,
+                "description": "CONFIDENTIAL-QUOTE-B-cb8b5d6b"
+              }
+            ]
+          }
+        ]
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "ownerB",
+          "path": "jobs?id=eq.8b5c4241-220e-43fc-8111-d351c9ca3ddc&select=id,account_id,quoted_amount,quote_items",
+          "method": "GET",
+          "status": 200,
+          "data": [
+            {
+              "id": "8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+              "account_id": "92626d25-095d-41c9-a33d-c34ebe8ef788",
+              "quoted_amount": 28463.72,
+              "quote_items": [
+                {
+                  "quantity": 1,
+                  "unit_price": 28463.72,
+                  "description": "CONFIDENTIAL-QUOTE-B-cb8b5d6b"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TENANT-ownerB",
+      "description": "Owner cannot retrieve foreign fixture",
+      "at": "2026-09-09T20:06:37.938Z",
+      "observed": {
+        "status": 200,
+        "data": []
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "ownerB",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c&select=id,quoted_amount",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        }
+      ]
+    },
+    {
+      "id": "NO-GRANTS-PAGE",
+      "description": "No-grant office reaches holding page without private data",
+      "at": "2026-09-09T20:06:38.163Z",
+      "observed": {
+        "path": "/office-access",
+        "status": 200
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard",
+          "path": "/office-access",
+          "status": 200,
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\nDashboard\nAccount\n$\nChecking…\n\n🔒\n14 sections hidden\n\nYOU'RE ON THE TEAM\n\nYou've been added to tenant-office-browser-2026-09-09-cb8b5d6b A.\n\nYour account is set up and connected. Office access isn't switched on yet, so there's nothing here for you to open — the owner will let you know when it is.\n\nIf you were expecting to see jobs, quotes or invoices, ask the person who invited you. Nothing has gone wrong with your sign-in.\n\nBack to the site\nSign out",
+          "quoteSentinel": false,
+          "errors": [
+            "Minified React error #310; visit https://react.dev/errors/310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+          ],
+          "screenshot": "office-no-grants.png"
+        }
+      ]
+    },
+    {
+      "id": "NO-GRANTS-API",
+      "description": "No-grant office JSON API is forbidden",
+      "at": "2026-09-09T20:06:41.652Z",
+      "observed": {
+        "status": 403,
+        "data": {
+          "error": "Owner access required."
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 403,
+          "data": {
+            "error": "Owner access required."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "NO-GRANTS-REST",
+      "description": "No-grant office Data API denies own fixture",
+      "at": "2026-09-09T20:06:42.144Z",
+      "observed": {
+        "status": 200,
+        "data": []
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "clients?id=eq.f32776c2-a2dd-4147-aa23-f5e06fb58d12&select=id",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        }
+      ]
+    },
+    {
+      "id": "CLIENT-ONLY",
+      "description": "Client reader can retrieve exact client without job permission",
+      "at": "2026-09-09T20:06:42.529Z",
+      "observed": {
+        "status": 200,
+        "data": {
+          "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+          "phone": null,
+          "phoneDigits": null,
+          "email": null,
+          "address": null,
+          "city": null,
+          "notes": "Disposable access verification record; no contact destination.",
+          "customerSinceLabel": "Sep 9, 2026",
+          "jobCount": 0,
+          "openJobCount": 0,
+          "totals": {
+            "quoted": 0,
+            "paid": 0,
+            "outstanding": 0,
+            "quotedLabel": "—",
+            "paidLabel": "—",
+            "outstandingLabel": "—"
+          },
+          "jobs": [],
+          "payments": [],
+          "openRequestCount": 0,
+          "lastInvitedLabel": null
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 0,
+            "openJobCount": 0,
+            "totals": {
+              "quoted": 0,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "CLIENT-ONLY-JOB-DENIAL",
+      "description": "Client-only office cannot open job page",
+      "at": "2026-09-09T20:06:43.360Z",
+      "observed": {
+        "path": "/dashboard/clients",
+        "status": 200
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/jobs/0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "path": "/dashboard/clients",
+          "status": 200,
+          "body": "Skip to content\nLET'S GET QUOTED\nFeatures\nWebsite\nText-to-Job\nHow it works\nFor your trade\nPricing\nFounder\n✦\nSee everything included\nSign in\nCreate Free Account\nLET'S GET QUOTED\n\nTHE SITE\n\nFeatures\nWebsite\nText-to-Job\nHow it works\nFor your trade\nPricing\nFounder\n▶\nExplore the demo\n✦\nView site templates\n\n✦\nPREVIEW EVERYTHING INCLUDED\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nAutomations\nMarketing\nReviews\n\nSITE\n\nWebsite\nDashboard\nAccount\n\n🔒 Free to unlock — no card required.\n\nCreate Free Account\nAlready have an account? Log in\n\nCLIENTS\n\nCustomers\n+ Add customer\n🎙️\nVoice & Text-to-Client\n\nNo clients yet. Add your first customer above, or import your existing customer list. Every job you create adds its customer here automatically too.\n\nNo customers to show.\n\nCopilot\nSPARKY",
+          "quoteSentinel": false,
+          "errors": [
+            "Minified React error #310; visit https://react.dev/errors/310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+          ],
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "id": "CLIENT-DETAIL-PAGE",
+      "description": "Reader sees useful client detail with money redacted",
+      "at": "2026-09-09T20:06:47.183Z",
+      "observed": {
+        "path": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+        "status": 200,
+        "clientVisible": true,
+        "quoteAbsent": true
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "path": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "status": 200,
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nCLIENT\n\ntenant-office-browser-2026-09-09-cb8b5d6b Customer A\nEdit client\nNo contact on file\n1\njob\nBack to clients\n\nHISTORY\n\nJobs\nACCESS-cb8b5d6b-A\nIn progress · Sep 9, 2026\n\nPROFILE\n\nContact & notes\nNAME\nMOBILE\nEMAIL\nADDRESS\nNOTES\nSave profile\nCopilot\nSPARKY\n✕",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": "office-client-detail.png"
+        }
+      ]
+    },
+    {
+      "id": "CLIENT-FOCUS-API",
+      "description": "Reader Focus JSON contains correct client/job and no financial sentinel",
+      "at": "2026-09-09T20:06:48.875Z",
+      "observed": {
+        "status": 200,
+        "data": {
+          "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+          "phone": null,
+          "phoneDigits": null,
+          "email": null,
+          "address": null,
+          "city": null,
+          "notes": "Disposable access verification record; no contact destination.",
+          "customerSinceLabel": "Sep 9, 2026",
+          "jobCount": 1,
+          "openJobCount": 1,
+          "totals": {
+            "quoted": 0,
+            "paid": 0,
+            "outstanding": 0,
+            "quotedLabel": "—",
+            "paidLabel": "—",
+            "outstandingLabel": "—"
+          },
+          "jobs": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "ref": "ACCESS-cb8b5d6b-A",
+              "status": "in_progress",
+              "statusLabel": "In progress",
+              "dateLabel": "Sep 9, 2026",
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "balance": 0,
+              "balanceLabel": "—"
+            }
+          ],
+          "payments": [],
+          "openRequestCount": 0,
+          "lastInvitedLabel": null
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 0,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [
+              {
+                "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+                "ref": "ACCESS-cb8b5d6b-A",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "—",
+                "paidLabel": "—",
+                "balance": 0,
+                "balanceLabel": "—"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "JOB-DETAIL-PAGE",
+      "description": "Reader job page and serialized data redact quote fields",
+      "at": "2026-09-09T20:06:49.576Z",
+      "observed": {
+        "path": "/dashboard/jobs/0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+        "status": 200,
+        "jobVisible": true
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/jobs/0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "path": "/dashboard/jobs/0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "status": 200,
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nJOB ACCESS-CB8B5D6B-A\n\ntenant-office-browser-2026-09-09-cb8b5d6b Customer A\n\nIn progress\n\nBack to jobs\nView client\nJob details\nAddress\nNo address recorded\nSchedule\nNot scheduled\nScope of work\nOperational scope A\nCopilot\nSPARKY\n✕",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": "office-job-detail.png"
+        }
+      ]
+    },
+    {
+      "id": "FINANCE-REST",
+      "description": "jobs.read does not disclose quote amount/items through Data API",
+      "at": "2026-09-09T20:06:50.748Z",
+      "status": "FAIL",
+      "error": "Restricted quote sentinel was returned",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c&select=id,quoted_amount,quote_items",
+          "method": "GET",
+          "status": 200,
+          "data": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "quoted_amount": 17351.69,
+              "quote_items": [
+                {
+                  "quantity": 1,
+                  "unit_price": 17351.69,
+                  "description": "CONFIDENTIAL-QUOTE-A-cb8b5d6b"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "TENANT-OFFICE-REST",
+      "description": "A-only office cannot read B clients/jobs",
+      "at": "2026-09-09T20:06:50.858Z",
+      "observed": {
+        "clients": {
+          "status": 200,
+          "data": []
+        },
+        "jobs": {
+          "status": 200,
+          "data": []
+        }
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "clients?id=eq.21e4323a-107e-444b-9e5e-78d172724ce6&select=id,name",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        },
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?account_id=eq.92626d25-095d-41c9-a33d-c34ebe8ef788&select=id,quoted_amount",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        }
+      ]
+    },
+    {
+      "id": "TENANT-OFFICE-API",
+      "description": "A-only office Focus API cannot retrieve B client",
+      "at": "2026-09-09T20:06:51.215Z",
+      "observed": {
+        "status": 404,
+        "data": {
+          "error": "Customer not found."
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/21e4323a-107e-444b-9e5e-78d172724ce6/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "TENANT-OFFICE-PAGE",
+      "description": "Foreign client/job deep links expose no fixture data",
+      "at": "2026-09-09T20:06:51.891Z",
+      "observed": [
+        {
+          "path": "/dashboard/clients/21e4323a-107e-444b-9e5e-78d172724ce6",
+          "status": 200
+        },
+        {
+          "path": "/dashboard/jobs/8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+          "status": 200
+        }
+      ],
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/clients/21e4323a-107e-444b-9e5e-78d172724ce6",
+          "path": "/dashboard/clients/21e4323a-107e-444b-9e5e-78d172724ce6",
+          "status": 200,
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nClient not found.\n\nBack to clients\nCopilot\nSPARKY\n✕",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": null
+        },
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/jobs/8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+          "path": "/dashboard/jobs/8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+          "status": 200,
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nJobs\nSchedule\nClients\nDashboard\nAccount\n$\nChecking…\n\n🔒\n11 sections hidden\n\nJob not found.\n\nBack to jobs\nCopilot\nSPARKY",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "id": "READONLY-WRITE",
+      "description": "Read-only Data API edit leaves fixture unchanged",
+      "at": "2026-09-09T20:06:54.848Z",
+      "observed": {
+        "status": 200,
+        "data": []
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "method": "PATCH",
+          "status": 200,
+          "data": []
+        }
+      ]
+    },
+    {
+      "id": "FORGED-WORKSPACE",
+      "description": "Forged workspace cookie cannot give A-only office B access",
+      "at": "2026-09-09T20:06:55.108Z",
+      "observed": {
+        "foreign": 404,
+        "safeFallback": "f32776c2-a2dd-4147-aa23-f5e06fb58d12"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/21e4323a-107e-444b-9e5e-78d172724ce6/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 0,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [
+              {
+                "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+                "ref": "ACCESS-cb8b5d6b-A",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "—",
+                "paidLabel": "—",
+                "balance": 0,
+                "balanceLabel": "—"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "ADMIN-DENIAL",
+      "description": "Owner and office tenant identities cannot open platform admin",
+      "at": "2026-09-09T20:06:56.784Z",
+      "observed": [
+        {
+          "actor": "ownerA",
+          "path": "/admin",
+          "status": 404
+        },
+        {
+          "actor": "officeA",
+          "path": "/admin",
+          "status": 404
+        }
+      ],
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Browser",
+          "actor": "ownerA",
+          "requestedPath": "/admin",
+          "path": "/admin",
+          "status": 404,
+          "body": "",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": null
+        },
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/admin",
+          "path": "/admin",
+          "status": 404,
+          "body": "",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "id": "FINANCE-GRANTED",
+      "description": "Explicit quotes.read exposes expected nonzero quote in Focus JSON",
+      "at": "2026-09-09T20:06:58.416Z",
+      "observed": {
+        "status": 200,
+        "data": {
+          "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+          "phone": null,
+          "phoneDigits": null,
+          "email": null,
+          "address": null,
+          "city": null,
+          "notes": "Disposable access verification record; no contact destination.",
+          "customerSinceLabel": "Sep 9, 2026",
+          "jobCount": 1,
+          "openJobCount": 1,
+          "totals": {
+            "quoted": 17351.69,
+            "paid": 0,
+            "outstanding": 0,
+            "quotedLabel": "$17,351.69",
+            "paidLabel": "—",
+            "outstandingLabel": "—"
+          },
+          "jobs": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "ref": "ACCESS-cb8b5d6b-A",
+              "status": "in_progress",
+              "statusLabel": "In progress",
+              "dateLabel": "Sep 9, 2026",
+              "quotedLabel": "$17,351.69",
+              "paidLabel": "—",
+              "balance": 0,
+              "balanceLabel": "—"
+            }
+          ],
+          "payments": [],
+          "openRequestCount": 0,
+          "lastInvitedLabel": null
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 17351.69,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "$17,351.69",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [
+              {
+                "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+                "ref": "ACCESS-cb8b5d6b-A",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "$17,351.69",
+                "paidLabel": "—",
+                "balance": 0,
+                "balanceLabel": "—"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "FINANCE-REVOKED",
+      "description": "Existing cookie loses quote permission on next Focus request",
+      "at": "2026-09-09T20:06:59.605Z",
+      "observed": {
+        "status": 200,
+        "data": {
+          "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+          "phone": null,
+          "phoneDigits": null,
+          "email": null,
+          "address": null,
+          "city": null,
+          "notes": "Disposable access verification record; no contact destination.",
+          "customerSinceLabel": "Sep 9, 2026",
+          "jobCount": 1,
+          "openJobCount": 1,
+          "totals": {
+            "quoted": 0,
+            "paid": 0,
+            "outstanding": 0,
+            "quotedLabel": "—",
+            "paidLabel": "—",
+            "outstandingLabel": "—"
+          },
+          "jobs": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "ref": "ACCESS-cb8b5d6b-A",
+              "status": "in_progress",
+              "statusLabel": "In progress",
+              "dateLabel": "Sep 9, 2026",
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "balance": 0,
+              "balanceLabel": "—"
+            }
+          ],
+          "payments": [],
+          "openRequestCount": 0,
+          "lastInvitedLabel": null
+        },
+        "cacheControl": "public, max-age=0, must-revalidate"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 0,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [
+              {
+                "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+                "ref": "ACCESS-cb8b5d6b-A",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "—",
+                "paidLabel": "—",
+                "balance": 0,
+                "balanceLabel": "—"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "WRITER-POSITIVE",
+      "description": "Writer edits harmless scope; independent database read confirms exact change",
+      "at": "2026-09-09T20:07:00.805Z",
+      "observed": {
+        "status": 200,
+        "scope": "Authorized operational edit"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "method": "PATCH",
+          "status": 200,
+          "data": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "account_id": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+              "ref": "ACCESS-cb8b5d6b-A",
+              "client_name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+              "client_phone": null,
+              "address": null,
+              "scope": "Authorized operational edit",
+              "status": "in_progress",
+              "lead_source": null,
+              "scheduled_for": null,
+              "certificate": null,
+              "created_at": "2026-09-09T19:56:50.379236+00:00",
+              "quoted_amount": 17351.69,
+              "photo_paths": [],
+              "scheduled_time": null,
+              "estimated_hours": null,
+              "client_email": null,
+              "quote_items": [
+                {
+                  "quantity": 1,
+                  "unit_price": 17351.69,
+                  "description": "CONFIDENTIAL-QUOTE-A-cb8b5d6b"
+                }
+              ],
+              "client_id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+              "appointment_confirmed_at": null,
+              "deposit_gate": null,
+              "lat": null,
+              "lng": null,
+              "geocoded_at": null,
+              "scheduled_until": null,
+              "recurring_plan_id": null,
+              "recurring_visit_date": null,
+              "started_at": null,
+              "booking_requested_date": null,
+              "booking_requested_time": null,
+              "booking_confirmed_at": null,
+              "booking_declined_at": null,
+              "reschedule_discount_percent": null,
+              "reschedule_discount_note": null,
+              "reschedule_discount_agreed_at": null,
+              "arrival_confirm_sent_at": null,
+              "booking_requested_end_time": null,
+              "booking_note": null,
+              "weather_sensitive": null,
+              "message_channel": "auto",
+              "booking_alt_date": null,
+              "booking_alt_time": null,
+              "booking_alt_end_time": null,
+              "quote_signer_name": null,
+              "quote_signed_at": null,
+              "quote_signature_path": null,
+              "quote_signature_method": null,
+              "test_marker": "tenant-office-browser-2026-09-09-cb8b5d6b",
+              "deleted_at": null,
+              "purge_after": null,
+              "deleted_by_user_id": null,
+              "deletion_reason": null,
+              "delete_operation_id": null,
+              "source_voice_provider_call_id": null,
+              "room_spatial_scan": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WRITER-FINANCE",
+      "description": "Operational job writer cannot mass-assign quoted_amount",
+      "at": "2026-09-09T20:07:01.142Z",
+      "status": "FAIL",
+      "error": "Unauthorized price changed to 12345.67; restored fixture immediately\n+ actual - expected\n\n+ 12345.67\n- 17351.69\n",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "method": "PATCH",
+          "status": 200,
+          "data": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "account_id": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+              "ref": "ACCESS-cb8b5d6b-A",
+              "client_name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+              "client_phone": null,
+              "address": null,
+              "scope": "Authorized operational edit",
+              "status": "in_progress",
+              "lead_source": null,
+              "scheduled_for": null,
+              "certificate": null,
+              "created_at": "2026-09-09T19:56:50.379236+00:00",
+              "quoted_amount": 12345.67,
+              "photo_paths": [],
+              "scheduled_time": null,
+              "estimated_hours": null,
+              "client_email": null,
+              "quote_items": [
+                {
+                  "quantity": 1,
+                  "unit_price": 17351.69,
+                  "description": "CONFIDENTIAL-QUOTE-A-cb8b5d6b"
+                }
+              ],
+              "client_id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+              "appointment_confirmed_at": null,
+              "deposit_gate": null,
+              "lat": null,
+              "lng": null,
+              "geocoded_at": null,
+              "scheduled_until": null,
+              "recurring_plan_id": null,
+              "recurring_visit_date": null,
+              "started_at": null,
+              "booking_requested_date": null,
+              "booking_requested_time": null,
+              "booking_confirmed_at": null,
+              "booking_declined_at": null,
+              "reschedule_discount_percent": null,
+              "reschedule_discount_note": null,
+              "reschedule_discount_agreed_at": null,
+              "arrival_confirm_sent_at": null,
+              "booking_requested_end_time": null,
+              "booking_note": null,
+              "weather_sensitive": null,
+              "message_channel": "auto",
+              "booking_alt_date": null,
+              "booking_alt_time": null,
+              "booking_alt_end_time": null,
+              "quote_signer_name": null,
+              "quote_signed_at": null,
+              "quote_signature_path": null,
+              "quote_signature_method": null,
+              "test_marker": "tenant-office-browser-2026-09-09-cb8b5d6b",
+              "deleted_at": null,
+              "purge_after": null,
+              "deleted_by_user_id": null,
+              "deletion_reason": null,
+              "delete_operation_id": null,
+              "source_voice_provider_call_id": null,
+              "room_spatial_scan": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WRITER-FOREIGN",
+      "description": "Operational writer cannot update B job or move A job to B",
+      "at": "2026-09-09T20:07:01.589Z",
+      "observed": {
+        "foreign": {
+          "status": 200,
+          "data": []
+        },
+        "move": {
+          "status": 403,
+          "data": {
+            "code": "42501",
+            "details": null,
+            "hint": null,
+            "message": "new row violates row-level security policy for table \"jobs\""
+          }
+        }
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+          "method": "PATCH",
+          "status": 200,
+          "data": []
+        },
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "method": "PATCH",
+          "status": 403,
+          "data": {
+            "code": "42501",
+            "details": null,
+            "hint": null,
+            "message": "new row violates row-level security policy for table \"jobs\""
+          }
+        }
+      ]
+    },
+    {
+      "id": "WRITER-FOREIGN-PARENT",
+      "description": "Writer cannot attach A job to foreign B client",
+      "at": "2026-09-09T20:07:02.220Z",
+      "status": "FAIL",
+      "error": "Foreign client_id was stored; restored fixture immediately\n+ actual - expected\n\n+ '21e4323a-107e-444b-9e5e-78d172724ce6'\n- 'f32776c2-a2dd-4147-aa23-f5e06fb58d12'\n",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "method": "PATCH",
+          "status": 200,
+          "data": [
+            {
+              "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+              "account_id": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+              "ref": "ACCESS-cb8b5d6b-A",
+              "client_name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+              "client_phone": null,
+              "address": null,
+              "scope": "Authorized operational edit",
+              "status": "in_progress",
+              "lead_source": null,
+              "scheduled_for": null,
+              "certificate": null,
+              "created_at": "2026-09-09T19:56:50.379236+00:00",
+              "quoted_amount": 17351.69,
+              "photo_paths": [],
+              "scheduled_time": null,
+              "estimated_hours": null,
+              "client_email": null,
+              "quote_items": [
+                {
+                  "quantity": 1,
+                  "unit_price": 17351.69,
+                  "description": "CONFIDENTIAL-QUOTE-A-cb8b5d6b"
+                }
+              ],
+              "client_id": "21e4323a-107e-444b-9e5e-78d172724ce6",
+              "appointment_confirmed_at": null,
+              "deposit_gate": null,
+              "lat": null,
+              "lng": null,
+              "geocoded_at": null,
+              "scheduled_until": null,
+              "recurring_plan_id": null,
+              "recurring_visit_date": null,
+              "started_at": null,
+              "booking_requested_date": null,
+              "booking_requested_time": null,
+              "booking_confirmed_at": null,
+              "booking_declined_at": null,
+              "reschedule_discount_percent": null,
+              "reschedule_discount_note": null,
+              "reschedule_discount_agreed_at": null,
+              "arrival_confirm_sent_at": null,
+              "booking_requested_end_time": null,
+              "booking_note": null,
+              "weather_sensitive": null,
+              "message_channel": "auto",
+              "booking_alt_date": null,
+              "booking_alt_time": null,
+              "booking_alt_end_time": null,
+              "quote_signer_name": null,
+              "quote_signed_at": null,
+              "quote_signature_path": null,
+              "quote_signature_method": null,
+              "test_marker": "tenant-office-browser-2026-09-09-cb8b5d6b",
+              "deleted_at": null,
+              "purge_after": null,
+              "deleted_by_user_id": null,
+              "deletion_reason": null,
+              "delete_operation_id": null,
+              "source_voice_provider_call_id": null,
+              "room_spatial_scan": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "DUAL-SETUP",
+      "description": "Fixture actor acquires legitimate B ownership for workspace switch test",
+      "at": "2026-09-09T20:07:02.830Z",
+      "observed": {
+        "ownerIn": "92626d25-095d-41c9-a33d-c34ebe8ef788",
+        "officeIn": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a"
+      },
+      "status": "PASS",
+      "requests": []
+    },
+    {
+      "id": "DUAL-SWITCH",
+      "description": "Real workspace form switches B owner to A office to B owner",
+      "at": "2026-09-09T20:07:02.930Z",
+      "observed": [
+        {
+          "workspace": "92626d25-095d-41c9-a33d-c34ebe8ef788",
+          "role": "Owner",
+          "client": "21e4323a-107e-444b-9e5e-78d172724ce6",
+          "otherStatus": 404
+        },
+        {
+          "workspace": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+          "role": "Office",
+          "client": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "otherStatus": 404
+        },
+        {
+          "workspace": "92626d25-095d-41c9-a33d-c34ebe8ef788",
+          "role": "Owner",
+          "client": "21e4323a-107e-444b-9e5e-78d172724ce6",
+          "otherStatus": 404
+        }
+      ],
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/21e4323a-107e-444b-9e5e-78d172724ce6/detail",
+          "status": 200,
+          "data": {
+            "id": "21e4323a-107e-444b-9e5e-78d172724ce6",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer B",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 28463.72,
+              "paid": 0,
+              "outstanding": 28463.72,
+              "quotedLabel": "$28,463.72",
+              "paidLabel": "$0.00",
+              "outstandingLabel": "$28,463.72"
+            },
+            "jobs": [
+              {
+                "id": "8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+                "ref": "ACCESS-cb8b5d6b-B",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "$28,463.72",
+                "paidLabel": "$0.00",
+                "balance": 28463.72,
+                "balanceLabel": "$28,463.72"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 0,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [
+              {
+                "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+                "ref": "ACCESS-cb8b5d6b-A",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "—",
+                "paidLabel": "—",
+                "balance": 0,
+                "balanceLabel": "—"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/21e4323a-107e-444b-9e5e-78d172724ce6/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/21e4323a-107e-444b-9e5e-78d172724ce6/detail",
+          "status": 200,
+          "data": {
+            "id": "21e4323a-107e-444b-9e5e-78d172724ce6",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer B",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 28463.72,
+              "paid": 0,
+              "outstanding": 28463.72,
+              "quotedLabel": "$28,463.72",
+              "paidLabel": "$0.00",
+              "outstandingLabel": "$28,463.72"
+            },
+            "jobs": [
+              {
+                "id": "8b5c4241-220e-43fc-8111-d351c9ca3ddc",
+                "ref": "ACCESS-cb8b5d6b-B",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "$28,463.72",
+                "paidLabel": "$0.00",
+                "balance": 28463.72,
+                "balanceLabel": "$28,463.72"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "DUAL-NO-ESCALATION",
+      "description": "B ownership does not grant write authority in A",
+      "at": "2026-09-09T20:07:12.498Z",
+      "observed": {
+        "status": 200,
+        "data": []
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+          "method": "PATCH",
+          "status": 200,
+          "data": []
+        }
+      ]
+    },
+    {
+      "id": "REVOCATION-POSITIVE",
+      "description": "Existing session still reads A before revocation",
+      "at": "2026-09-09T20:07:12.961Z",
+      "observed": {
+        "status": 200,
+        "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12"
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 200,
+          "data": {
+            "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+            "name": "tenant-office-browser-2026-09-09-cb8b5d6b Customer A",
+            "phone": null,
+            "phoneDigits": null,
+            "email": null,
+            "address": null,
+            "city": null,
+            "notes": "Disposable access verification record; no contact destination.",
+            "customerSinceLabel": "Sep 9, 2026",
+            "jobCount": 1,
+            "openJobCount": 1,
+            "totals": {
+              "quoted": 0,
+              "paid": 0,
+              "outstanding": 0,
+              "quotedLabel": "—",
+              "paidLabel": "—",
+              "outstandingLabel": "—"
+            },
+            "jobs": [
+              {
+                "id": "0e2b50ef-10d9-402a-b60a-404f9a1e088c",
+                "ref": "ACCESS-cb8b5d6b-A",
+                "status": "in_progress",
+                "statusLabel": "In progress",
+                "dateLabel": "Sep 9, 2026",
+                "quotedLabel": "—",
+                "paidLabel": "—",
+                "balance": 0,
+                "balanceLabel": "—"
+              }
+            ],
+            "payments": [],
+            "openRequestCount": 0,
+            "lastInvitedLabel": null
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "GRANT-REVOCATION",
+      "description": "Same session/token loses API, Data API and browser access after grant removal",
+      "at": "2026-09-09T20:07:13.910Z",
+      "observed": {
+        "api": {
+          "status": 403,
+          "data": {
+            "error": "Owner access required."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        "data": {
+          "status": 200,
+          "data": []
+        },
+        "page": {
+          "path": "/office-access",
+          "status": 200
+        }
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 403,
+          "data": {
+            "error": "Owner access required."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "clients?id=eq.f32776c2-a2dd-4147-aa23-f5e06fb58d12&select=id",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        },
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "path": "/office-access",
+          "status": 200,
+          "body": "Skip to content\nLET'S GET QUOTED\nFeatures\nWebsite\nText-to-Job\nHow it works\nFor your trade\nPricing\nFounder\n✦\nSee everything included\nSign in\nCreate Free Account\nLET'S GET QUOTED\n\nTHE SITE\n\nFeatures\nWebsite\nText-to-Job\nHow it works\nFor your trade\nPricing\nFounder\n▶\nExplore the demo\n✦\nView site templates\n\n✦\nPREVIEW EVERYTHING INCLUDED\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nAutomations\nMarketing\nReviews\n\nSITE\n\nWebsite\nDashboard\nAccount\n\n🔒 Free to unlock — no card required.\n\nCreate Free Account\nAlready have an account? Log in\n\nYOU'RE ON THE TEAM\n\nYou've been added to tenant-office-browser-2026-09-09-cb8b5d6b A.\n\nYour account is set up and connected. Office access isn't switched on yet, so there's nothing here for you to open — the owner will let you know when it is.\n\nIf you were expecting to see jobs, quotes or invoices, ask the person who invited you. Nothing has gone wrong with your sign-in.\n\nBack to the site\nSign out\nAsk Sparky\n⚡\n24/7 AI Copilot",
+          "quoteSentinel": false,
+          "errors": [
+            "Minified React error #310; visit https://react.dev/errors/310 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+          ],
+          "screenshot": "office-grants-revoked.png"
+        }
+      ]
+    },
+    {
+      "id": "MEMBERSHIP-DEACTIVATION",
+      "description": "Existing session loses A after membership deactivation",
+      "at": "2026-09-09T20:07:18.801Z",
+      "observed": {
+        "api": 404,
+        "page": {
+          "path": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "status": 200
+        }
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        },
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "jobs?id=eq.0e2b50ef-10d9-402a-b60a-404f9a1e088c&select=id",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        },
+        {
+          "surface": "Browser",
+          "actor": "officeA",
+          "requestedPath": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "path": "/dashboard/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12",
+          "status": 200,
+          "body": "LET'S GET QUOTED\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nSchedule\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nChecking…\nCustomer payments are not connected\nConnect Stripe to accept homeowner deposits and invoice payments.\n\nClient not found.\n\nBack to clients\nCopilot\nSPARKY\n✕",
+          "quoteSentinel": false,
+          "errors": [],
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "id": "MEMBERSHIP-REMOVAL",
+      "description": "Owner removal RPC revokes office membership with old token retained",
+      "at": "2026-09-09T20:07:20.498Z",
+      "observed": {
+        "removed": {
+          "status": 200,
+          "data": true
+        },
+        "api": 404
+      },
+      "status": "PASS",
+      "requests": [
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "clients?id=eq.f32776c2-a2dd-4147-aa23-f5e06fb58d12&select=id",
+          "method": "GET",
+          "status": 200,
+          "data": [
+            {
+              "id": "f32776c2-a2dd-4147-aa23-f5e06fb58d12"
+            }
+          ]
+        },
+        {
+          "surface": "Data API",
+          "actor": "ownerA",
+          "path": "rpc/remove_office_user",
+          "method": "POST",
+          "status": 200,
+          "data": true
+        },
+        {
+          "surface": "Data API",
+          "actor": "officeA",
+          "path": "clients?id=eq.f32776c2-a2dd-4147-aa23-f5e06fb58d12&select=id",
+          "method": "GET",
+          "status": 200,
+          "data": []
+        },
+        {
+          "surface": "App API",
+          "actor": "officeA",
+          "path": "/api/clients/f32776c2-a2dd-4147-aa23-f5e06fb58d12/detail",
+          "status": 404,
+          "data": {
+            "error": "Customer not found."
+          },
+          "cacheControl": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "id": "ANONYMOUS-API",
+      "description": "Unauthenticated caller gets JSON 401 from private Focus API",
+      "at": "2026-09-09T20:07:21.508Z",
+      "observed": {
+        "status": 401,
+        "body": "{\"error\":\"Sign in to view this customer.\"}"
+      },
+      "status": "PASS",
+      "requests": []
+    }
+  ],
+  "grantTransitions": [
+    {
+      "at": "2026-09-09T20:06:42.524Z",
+      "keys": [
+        "clients.read"
+      ]
+    },
+    {
+      "at": "2026-09-09T20:06:47.179Z",
+      "keys": [
+        "clients.read",
+        "jobs.read"
+      ]
+    },
+    {
+      "at": "2026-09-09T20:06:58.406Z",
+      "keys": [
+        "clients.read",
+        "jobs.read",
+        "quotes.read"
+      ]
+    },
+    {
+      "at": "2026-09-09T20:06:59.596Z",
+      "keys": [
+        "clients.read",
+        "jobs.read"
+      ]
+    },
+    {
+      "at": "2026-09-09T20:07:00.789Z",
+      "keys": [
+        "clients.read",
+        "jobs.read",
+        "clients.write",
+        "jobs.write"
+      ]
+    },
+    {
+      "at": "2026-09-09T20:07:02.822Z",
+      "keys": [
+        "clients.read",
+        "jobs.read"
+      ]
+    },
+    {
+      "at": "2026-09-09T20:07:13.899Z",
+      "keys": []
+    },
+    {
+      "at": "2026-09-09T20:07:18.786Z",
+      "keys": [
+        "clients.read",
+        "jobs.read"
+      ]
+    }
+  ],
+  "actors": {
+    "ownerA": "9087e655-993a-4bbe-9f53-2acc4ac1baaa",
+    "ownerB": "4db0a808-42bf-46c2-a476-18f3b5ddb28d",
+    "officeA": "6d6b6cbd-33cb-447f-a91a-839e94584697"
+  },
+  "baseline": {
+    "account_attachments": 0,
+    "account_closure_jobs": 0,
+    "account_credits": 0,
+    "account_events": 0,
+    "account_notes": 0,
+    "account_tags": 0,
+    "admin_actions": 0,
+    "api_credentials": 0,
+    "api_idempotency_records": 0,
+    "api_request_audit": 0,
+    "availability_blocks": 0,
+    "billing_allowance_reset_operations": 0,
+    "billing_allowance_reset_worker_attempts": 0,
+    "billing_allowance_reset_worker_states": 0,
+    "billing_direct_checkout_late_success_resolutions": 0,
+    "billing_direct_checkout_late_success_tasks": 0,
+    "billing_direct_payment_settlement_tasks": 0,
+    "billing_direct_refund_authorizations": 0,
+    "billing_direct_refund_operations": 0,
+    "billing_events": 0,
+    "billing_payment_operations": 0,
+    "billing_subscription_checkout_operations": 0,
+    "billing_subscription_consent_acceptances": 0,
+    "billing_subscription_customers": 0,
+    "billing_subscription_plan_change_operations": 0,
+    "billing_subscriptions": 0,
+    "billing_top_up_purchase_operations": 0,
+    "booking_holds": 0,
+    "campaigns": 0,
+    "cancellation_waitlist": 0,
+    "cash_snapshots": 0,
+    "change_orders": 0,
+    "client_duplicate_dismissals": 0,
+    "client_job_access": 0,
+    "client_portal_access": 0,
+    "clients": 2,
+    "contractor_credentials": 0,
+    "costs": 0,
+    "crew": 0,
+    "crew_assignments": 0,
+    "crew_location_state": 0,
+    "crew_pay_entries": 0,
+    "crew_pay_entry_lines": 0,
+    "crew_pay_events": 0,
+    "crew_pay_periods": 0,
+    "day_plan_prefs": 0,
+    "email_events": 0,
+    "email_sending_domains": 0,
+    "email_suppression": 0,
+    "equipment_passports": 0,
+    "estimate_offers": 0,
+    "extra_stop_events": 0,
+    "extra_stop_requests": 0,
+    "extra_stop_screenings": 0,
+    "field_submissions": 0,
+    "finance_plans": 0,
+    "google_lsa_connections": 0,
+    "google_lsa_conversations": 0,
+    "google_lsa_feedback": 0,
+    "google_lsa_leads": 0,
+    "google_lsa_spend": 0,
+    "homeowner_financing_enrollments": 0,
+    "insurance_claims": 0,
+    "integration_events": 0,
+    "inventory_locations": 0,
+    "inventory_maintenance_records": 0,
+    "inventory_stock_items": 0,
+    "inventory_stock_transfers": 0,
+    "inventory_tool_custody_log": 0,
+    "inventory_tools": 0,
+    "inventory_van_kit_templates": 0,
+    "inventory_vehicles": 0,
+    "invoices": 0,
+    "job_feed": 0,
+    "job_milestones": 0,
+    "job_permit_cases": 0,
+    "job_permit_documents": 0,
+    "job_permit_inspections": 0,
+    "job_schedule_requests": 0,
+    "job_selections": 0,
+    "job_tasks": 0,
+    "job_tracking": 0,
+    "jobs": 2,
+    "lead_blocklist": 0,
+    "leads": 0,
+    "legacy_destination_checkout_event_receipts": 0,
+    "legacy_destination_checkout_operations": 0,
+    "legacy_destination_checkout_session_adoptions": 0,
+    "login_events": 9,
+    "marketing_tracking_links": 0,
+    "marketplace_lead_receipts": 0,
+    "membership_tiers": 0,
+    "memberships": 3,
+    "merchandise_orders": 0,
+    "merchandise_revenue_ledger": 0,
+    "message_templates": 0,
+    "messaging_compliance_verifications": 0,
+    "messaging_lifecycle_email_evidence": 0,
+    "messaging_lifecycle_notifications": 0,
+    "messaging_managed_registration_operations": 0,
+    "messaging_number_provisioning_operations": 0,
+    "messaging_number_retention": 0,
+    "messaging_number_retention_events": 0,
+    "messaging_payment_ledger": 0,
+    "messaging_registration_applications": 0,
+    "messaging_registration_events": 0,
+    "messaging_registrations": 0,
+    "messaging_registry_callbacks": 0,
+    "messaging_setup_orders": 0,
+    "milestone_photos": 0,
+    "neighborhood_halo_campaigns": 0,
+    "neighborhood_halo_settings": 0,
+    "office_invitations": 0,
+    "office_member_capabilities": 0,
+    "payment_plans": 0,
+    "payment_sms_producer_tasks": 0,
+    "payments": 0,
+    "privacy_requests": 0,
+    "product_tour_events": 4,
+    "product_tour_progress": 0,
+    "property_passport_ledger": 0,
+    "property_passports": 0,
+    "push_subscriptions": 0,
+    "quick_stop_payment_tasks": 0,
+    "quick_stop_priority_zones": 0,
+    "quickbooks_connections": 0,
+    "recoverable_deletions": 0,
+    "recurring_plans": 0,
+    "reschedule_offers": 0,
+    "review_invites": 0,
+    "risk_reviews": 0,
+    "route_stops": 0,
+    "saved_places": 0,
+    "scheduled_payments": 0,
+    "selection_options": 0,
+    "selection_reminders": 0,
+    "selection_templates": 0,
+    "services": 0,
+    "sites": 0,
+    "sms_consent": 0,
+    "sms_consent_evidence": 0,
+    "sms_consent_scopes": 0,
+    "sms_events": 0,
+    "sms_inbound_action_tasks": 0,
+    "sms_messages": 0,
+    "sms_missed_call_receipts": 0,
+    "sms_operator_review_items": 0,
+    "sms_sender_numbers": 0,
+    "sms_webhook_receipts": 0,
+    "stripe_connected_checkout_expirations": 0,
+    "subcontractor_offers": 0,
+    "subcontractor_requests": 0,
+    "subcontractor_reviews": 0,
+    "support_cases": 0,
+    "tenant_audit_events": 0,
+    "time_entries": 0,
+    "usage_credit_lots": 8,
+    "usage_reservation_allocations": 0,
+    "usage_reservations": 0,
+    "voice_call_admissions": 0,
+    "voice_call_notes": 0,
+    "voice_call_workflows": 0,
+    "voice_calls": 0,
+    "voice_events": 0,
+    "voice_forwarding_usage": 0,
+    "voice_number_identity_cleanup_reservations": 0,
+    "voice_number_inventory": 0,
+    "voice_number_operation_retry_authorizations": 0,
+    "voice_number_provisioning_operations": 0,
+    "voice_number_purchase_authorizations": 0,
+    "voice_settings": 0,
+    "voice_staff_step_up_challenges": 0,
+    "voice_staff_step_up_send_events": 0,
+    "voice_tool_actions": 0,
+    "waitlist_offers": 0,
+    "warranties": 0,
+    "warranty_claims": 0,
+    "webhook_deliveries": 0,
+    "webhook_delivery_attempts": 0,
+    "webhook_subscriptions": 0,
+    "workspace_entitlements": 2,
+    "workspace_overage_accrual_events": 0,
+    "workspace_overage_accruals": 0,
+    "workspace_overage_authorizations": 0,
+    "workspace_overage_event_settlements": 0,
+    "workspace_overage_settings": 0,
+    "workspace_overage_settlements": 0,
+    "workspace_purchased_capacity": 0,
+    "workspace_storage_usage": 0
+  },
+  "database": {
+    "migration": "20260909195808",
+    "capabilities": [
+      {
+        "capability": "billing.manage",
+        "enabled": false
+      },
+      {
+        "capability": "billing.read",
+        "enabled": false
+      },
+      {
+        "capability": "clients.read",
+        "enabled": true
+      },
+      {
+        "capability": "clients.write",
+        "enabled": true
+      },
+      {
+        "capability": "crew_pay.read",
+        "enabled": false
+      },
+      {
+        "capability": "crew_pay.write",
+        "enabled": false
+      },
+      {
+        "capability": "crew.read",
+        "enabled": true
+      },
+      {
+        "capability": "crew.write",
+        "enabled": true
+      },
+      {
+        "capability": "inventory.custody",
+        "enabled": false
+      },
+      {
+        "capability": "inventory.read",
+        "enabled": false
+      },
+      {
+        "capability": "inventory.write",
+        "enabled": false
+      },
+      {
+        "capability": "invoices.read",
+        "enabled": true
+      },
+      {
+        "capability": "invoices.write",
+        "enabled": false
+      },
+      {
+        "capability": "jobs.read",
+        "enabled": true
+      },
+      {
+        "capability": "jobs.write",
+        "enabled": true
+      },
+      {
+        "capability": "leads.read",
+        "enabled": true
+      },
+      {
+        "capability": "leads.write",
+        "enabled": true
+      },
+      {
+        "capability": "marketing.read",
+        "enabled": false
+      },
+      {
+        "capability": "marketing.write",
+        "enabled": false
+      },
+      {
+        "capability": "messages.read",
+        "enabled": true
+      },
+      {
+        "capability": "messages.send",
+        "enabled": true
+      },
+      {
+        "capability": "payments.collect",
+        "enabled": false
+      },
+      {
+        "capability": "payments.read",
+        "enabled": true
+      },
+      {
+        "capability": "payments.refund",
+        "enabled": false
+      },
+      {
+        "capability": "quotes.read",
+        "enabled": true
+      },
+      {
+        "capability": "quotes.write",
+        "enabled": false
+      },
+      {
+        "capability": "reports.read",
+        "enabled": false
+      },
+      {
+        "capability": "schedule.write",
+        "enabled": true
+      },
+      {
+        "capability": "settings.write",
+        "enabled": false
+      },
+      {
+        "capability": "team.manage",
+        "enabled": false
+      }
+    ]
+  },
+  "after": {
+    "account_attachments": 0,
+    "account_closure_jobs": 0,
+    "account_credits": 0,
+    "account_events": 0,
+    "account_notes": 0,
+    "account_tags": 0,
+    "admin_actions": 0,
+    "api_credentials": 0,
+    "api_idempotency_records": 0,
+    "api_request_audit": 0,
+    "availability_blocks": 0,
+    "billing_allowance_reset_operations": 0,
+    "billing_allowance_reset_worker_attempts": 0,
+    "billing_allowance_reset_worker_states": 0,
+    "billing_direct_checkout_late_success_resolutions": 0,
+    "billing_direct_checkout_late_success_tasks": 0,
+    "billing_direct_payment_settlement_tasks": 0,
+    "billing_direct_refund_authorizations": 0,
+    "billing_direct_refund_operations": 0,
+    "billing_events": 0,
+    "billing_payment_operations": 0,
+    "billing_subscription_checkout_operations": 0,
+    "billing_subscription_consent_acceptances": 0,
+    "billing_subscription_customers": 0,
+    "billing_subscription_plan_change_operations": 0,
+    "billing_subscriptions": 0,
+    "billing_top_up_purchase_operations": 0,
+    "booking_holds": 0,
+    "campaigns": 0,
+    "cancellation_waitlist": 0,
+    "cash_snapshots": 0,
+    "change_orders": 0,
+    "client_duplicate_dismissals": 0,
+    "client_job_access": 0,
+    "client_portal_access": 0,
+    "clients": 2,
+    "contractor_credentials": 0,
+    "costs": 0,
+    "crew": 0,
+    "crew_assignments": 0,
+    "crew_location_state": 0,
+    "crew_pay_entries": 0,
+    "crew_pay_entry_lines": 0,
+    "crew_pay_events": 0,
+    "crew_pay_periods": 0,
+    "day_plan_prefs": 0,
+    "email_events": 0,
+    "email_sending_domains": 0,
+    "email_suppression": 0,
+    "equipment_passports": 0,
+    "estimate_offers": 0,
+    "extra_stop_events": 0,
+    "extra_stop_requests": 0,
+    "extra_stop_screenings": 0,
+    "field_submissions": 0,
+    "finance_plans": 0,
+    "google_lsa_connections": 0,
+    "google_lsa_conversations": 0,
+    "google_lsa_feedback": 0,
+    "google_lsa_leads": 0,
+    "google_lsa_spend": 0,
+    "homeowner_financing_enrollments": 0,
+    "insurance_claims": 0,
+    "integration_events": 0,
+    "inventory_locations": 0,
+    "inventory_maintenance_records": 0,
+    "inventory_stock_items": 0,
+    "inventory_stock_transfers": 0,
+    "inventory_tool_custody_log": 0,
+    "inventory_tools": 0,
+    "inventory_van_kit_templates": 0,
+    "inventory_vehicles": 0,
+    "invoices": 0,
+    "job_feed": 0,
+    "job_milestones": 0,
+    "job_permit_cases": 0,
+    "job_permit_documents": 0,
+    "job_permit_inspections": 0,
+    "job_schedule_requests": 0,
+    "job_selections": 0,
+    "job_tasks": 0,
+    "job_tracking": 0,
+    "jobs": 2,
+    "lead_blocklist": 0,
+    "leads": 0,
+    "legacy_destination_checkout_event_receipts": 0,
+    "legacy_destination_checkout_operations": 0,
+    "legacy_destination_checkout_session_adoptions": 0,
+    "login_events": 12,
+    "marketing_tracking_links": 0,
+    "marketplace_lead_receipts": 0,
+    "membership_tiers": 0,
+    "memberships": 3,
+    "merchandise_orders": 0,
+    "merchandise_revenue_ledger": 0,
+    "message_templates": 0,
+    "messaging_compliance_verifications": 0,
+    "messaging_lifecycle_email_evidence": 0,
+    "messaging_lifecycle_notifications": 0,
+    "messaging_managed_registration_operations": 0,
+    "messaging_number_provisioning_operations": 0,
+    "messaging_number_retention": 0,
+    "messaging_number_retention_events": 0,
+    "messaging_payment_ledger": 0,
+    "messaging_registration_applications": 0,
+    "messaging_registration_events": 0,
+    "messaging_registrations": 0,
+    "messaging_registry_callbacks": 0,
+    "messaging_setup_orders": 0,
+    "milestone_photos": 0,
+    "neighborhood_halo_campaigns": 0,
+    "neighborhood_halo_settings": 0,
+    "office_invitations": 0,
+    "office_member_capabilities": 2,
+    "payment_plans": 0,
+    "payment_sms_producer_tasks": 0,
+    "payments": 0,
+    "privacy_requests": 0,
+    "product_tour_events": 6,
+    "product_tour_progress": 0,
+    "property_passport_ledger": 0,
+    "property_passports": 0,
+    "push_subscriptions": 0,
+    "quick_stop_payment_tasks": 0,
+    "quick_stop_priority_zones": 0,
+    "quickbooks_connections": 0,
+    "recoverable_deletions": 0,
+    "recurring_plans": 0,
+    "reschedule_offers": 0,
+    "review_invites": 0,
+    "risk_reviews": 0,
+    "route_stops": 0,
+    "saved_places": 0,
+    "scheduled_payments": 0,
+    "selection_options": 0,
+    "selection_reminders": 0,
+    "selection_templates": 0,
+    "services": 0,
+    "sites": 0,
+    "sms_consent": 0,
+    "sms_consent_evidence": 0,
+    "sms_consent_scopes": 0,
+    "sms_events": 0,
+    "sms_inbound_action_tasks": 0,
+    "sms_messages": 0,
+    "sms_missed_call_receipts": 0,
+    "sms_operator_review_items": 0,
+    "sms_sender_numbers": 0,
+    "sms_webhook_receipts": 0,
+    "stripe_connected_checkout_expirations": 0,
+    "subcontractor_offers": 0,
+    "subcontractor_requests": 0,
+    "subcontractor_reviews": 0,
+    "support_cases": 0,
+    "tenant_audit_events": 0,
+    "time_entries": 0,
+    "usage_credit_lots": 8,
+    "usage_reservation_allocations": 0,
+    "usage_reservations": 0,
+    "voice_call_admissions": 0,
+    "voice_call_notes": 0,
+    "voice_call_workflows": 0,
+    "voice_calls": 0,
+    "voice_events": 0,
+    "voice_forwarding_usage": 0,
+    "voice_number_identity_cleanup_reservations": 0,
+    "voice_number_inventory": 0,
+    "voice_number_operation_retry_authorizations": 0,
+    "voice_number_provisioning_operations": 0,
+    "voice_number_purchase_authorizations": 0,
+    "voice_settings": 0,
+    "voice_staff_step_up_challenges": 0,
+    "voice_staff_step_up_send_events": 0,
+    "voice_tool_actions": 0,
+    "waitlist_offers": 0,
+    "warranties": 0,
+    "warranty_claims": 0,
+    "webhook_deliveries": 0,
+    "webhook_delivery_attempts": 0,
+    "webhook_subscriptions": 0,
+    "workspace_entitlements": 2,
+    "workspace_overage_accrual_events": 0,
+    "workspace_overage_accruals": 0,
+    "workspace_overage_authorizations": 0,
+    "workspace_overage_event_settlements": 0,
+    "workspace_overage_settings": 0,
+    "workspace_overage_settlements": 0,
+    "workspace_purchased_capacity": 0,
+    "workspace_storage_usage": 0
+  },
+  "finishedAt": "2026-09-09T20:07:23.376Z",
+  "summary": {
+    "total": 36,
+    "passed": 33,
+    "failed": 3
+  },
+  "cleanup": {
+    "cleanedAt": "2026-09-09T20:07:55.791Z",
+    "recordsRemoved": 4,
+    "verified": {
+      "active_memberships": 0,
+      "sessions": 0,
+      "grants": 0
+    },
+    "membershipsDeactivated": true,
+    "grantsRemoved": true,
+    "sessionsRevoked": true,
+    "retained": "Two suspended marked workspaces and three test identities retained for audit; no active memberships.",
+    "suspendedAccountsVerified": [
+      {
+        "id": "c5ca295d-9667-49f9-a5a9-a367b9aa2e0a",
+        "suspendedAt": "2026-09-09T20:07:57.586Z"
+      },
+      {
+        "id": "92626d25-095d-41c9-a33d-c34ebe8ef788",
+        "suspendedAt": "2026-09-09T20:07:57.586Z"
+      }
+    ],
+    "reconciledAt": "2026-09-09T20:19:29.995Z"
+  },
+  "screenshots": [
+    "evidence/tenant-office-2026-09-09/office-client-detail.png",
+    "evidence/tenant-office-2026-09-09/office-grants-revoked.png",
+    "evidence/tenant-office-2026-09-09/office-job-detail.png",
+    "evidence/tenant-office-2026-09-09/office-no-grants.png",
+    "evidence/tenant-office-2026-09-09/workspace-owner-b.png"
+  ],
+  "afterCleanup": {
+    "account_attachments": 0,
+    "account_closure_jobs": 0,
+    "account_credits": 0,
+    "account_events": 0,
+    "account_notes": 0,
+    "account_tags": 0,
+    "admin_actions": 0,
+    "api_credentials": 0,
+    "api_idempotency_records": 0,
+    "api_request_audit": 0,
+    "availability_blocks": 0,
+    "billing_allowance_reset_operations": 0,
+    "billing_allowance_reset_worker_attempts": 0,
+    "billing_allowance_reset_worker_states": 0,
+    "billing_direct_checkout_late_success_resolutions": 0,
+    "billing_direct_checkout_late_success_tasks": 0,
+    "billing_direct_payment_settlement_tasks": 0,
+    "billing_direct_refund_authorizations": 0,
+    "billing_direct_refund_operations": 0,
+    "billing_events": 0,
+    "billing_payment_operations": 0,
+    "billing_subscription_checkout_operations": 0,
+    "billing_subscription_consent_acceptances": 0,
+    "billing_subscription_customers": 0,
+    "billing_subscription_plan_change_operations": 0,
+    "billing_subscriptions": 0,
+    "billing_top_up_purchase_operations": 0,
+    "booking_holds": 0,
+    "campaigns": 0,
+    "cancellation_waitlist": 0,
+    "cash_snapshots": 0,
+    "change_orders": 0,
+    "client_duplicate_dismissals": 0,
+    "client_job_access": 0,
+    "client_portal_access": 0,
+    "clients": 0,
+    "contractor_credentials": 0,
+    "costs": 0,
+    "crew": 0,
+    "crew_assignments": 0,
+    "crew_location_state": 0,
+    "crew_pay_entries": 0,
+    "crew_pay_entry_lines": 0,
+    "crew_pay_events": 0,
+    "crew_pay_periods": 0,
+    "day_plan_prefs": 0,
+    "email_events": 0,
+    "email_sending_domains": 0,
+    "email_suppression": 0,
+    "equipment_passports": 0,
+    "estimate_offers": 0,
+    "extra_stop_events": 0,
+    "extra_stop_requests": 0,
+    "extra_stop_screenings": 0,
+    "field_submissions": 0,
+    "finance_plans": 0,
+    "google_lsa_connections": 0,
+    "google_lsa_conversations": 0,
+    "google_lsa_feedback": 0,
+    "google_lsa_leads": 0,
+    "google_lsa_spend": 0,
+    "homeowner_financing_enrollments": 0,
+    "insurance_claims": 0,
+    "integration_events": 0,
+    "inventory_locations": 0,
+    "inventory_maintenance_records": 0,
+    "inventory_stock_items": 0,
+    "inventory_stock_transfers": 0,
+    "inventory_tool_custody_log": 0,
+    "inventory_tools": 0,
+    "inventory_van_kit_templates": 0,
+    "inventory_vehicles": 0,
+    "invoices": 0,
+    "job_feed": 0,
+    "job_milestones": 0,
+    "job_permit_cases": 0,
+    "job_permit_documents": 0,
+    "job_permit_inspections": 0,
+    "job_schedule_requests": 0,
+    "job_selections": 0,
+    "job_tasks": 0,
+    "job_tracking": 0,
+    "jobs": 0,
+    "lead_blocklist": 0,
+    "leads": 0,
+    "legacy_destination_checkout_event_receipts": 0,
+    "legacy_destination_checkout_operations": 0,
+    "legacy_destination_checkout_session_adoptions": 0,
+    "login_events": 12,
+    "marketing_tracking_links": 0,
+    "marketplace_lead_receipts": 0,
+    "membership_tiers": 0,
+    "memberships": 3,
+    "merchandise_orders": 0,
+    "merchandise_revenue_ledger": 0,
+    "message_templates": 0,
+    "messaging_compliance_verifications": 0,
+    "messaging_lifecycle_email_evidence": 0,
+    "messaging_lifecycle_notifications": 0,
+    "messaging_managed_registration_operations": 0,
+    "messaging_number_provisioning_operations": 0,
+    "messaging_number_retention": 0,
+    "messaging_number_retention_events": 0,
+    "messaging_payment_ledger": 0,
+    "messaging_registration_applications": 0,
+    "messaging_registration_events": 0,
+    "messaging_registrations": 0,
+    "messaging_registry_callbacks": 0,
+    "messaging_setup_orders": 0,
+    "milestone_photos": 0,
+    "neighborhood_halo_campaigns": 0,
+    "neighborhood_halo_settings": 0,
+    "office_invitations": 0,
+    "office_member_capabilities": 0,
+    "payment_plans": 0,
+    "payment_sms_producer_tasks": 0,
+    "payments": 0,
+    "privacy_requests": 0,
+    "product_tour_events": 6,
+    "product_tour_progress": 0,
+    "property_passport_ledger": 0,
+    "property_passports": 0,
+    "push_subscriptions": 0,
+    "quick_stop_payment_tasks": 0,
+    "quick_stop_priority_zones": 0,
+    "quickbooks_connections": 0,
+    "recoverable_deletions": 0,
+    "recurring_plans": 0,
+    "reschedule_offers": 0,
+    "review_invites": 0,
+    "risk_reviews": 0,
+    "route_stops": 0,
+    "saved_places": 0,
+    "scheduled_payments": 0,
+    "selection_options": 0,
+    "selection_reminders": 0,
+    "selection_templates": 0,
+    "services": 0,
+    "sites": 0,
+    "sms_consent": 0,
+    "sms_consent_evidence": 0,
+    "sms_consent_scopes": 0,
+    "sms_events": 0,
+    "sms_inbound_action_tasks": 0,
+    "sms_messages": 0,
+    "sms_missed_call_receipts": 0,
+    "sms_operator_review_items": 0,
+    "sms_sender_numbers": 0,
+    "sms_webhook_receipts": 0,
+    "stripe_connected_checkout_expirations": 0,
+    "subcontractor_offers": 0,
+    "subcontractor_requests": 0,
+    "subcontractor_reviews": 0,
+    "support_cases": 0,
+    "tenant_audit_events": 0,
+    "time_entries": 0,
+    "usage_credit_lots": 8,
+    "usage_reservation_allocations": 0,
+    "usage_reservations": 0,
+    "voice_call_admissions": 0,
+    "voice_call_notes": 0,
+    "voice_call_workflows": 0,
+    "voice_calls": 0,
+    "voice_events": 0,
+    "voice_forwarding_usage": 0,
+    "voice_number_identity_cleanup_reservations": 0,
+    "voice_number_inventory": 0,
+    "voice_number_operation_retry_authorizations": 0,
+    "voice_number_provisioning_operations": 0,
+    "voice_number_purchase_authorizations": 0,
+    "voice_settings": 0,
+    "voice_staff_step_up_challenges": 0,
+    "voice_staff_step_up_send_events": 0,
+    "voice_tool_actions": 0,
+    "waitlist_offers": 0,
+    "warranties": 0,
+    "warranty_claims": 0,
+    "webhook_deliveries": 0,
+    "webhook_delivery_attempts": 0,
+    "webhook_subscriptions": 0,
+    "workspace_entitlements": 2,
+    "workspace_overage_accrual_events": 0,
+    "workspace_overage_accruals": 0,
+    "workspace_overage_authorizations": 0,
+    "workspace_overage_event_settlements": 0,
+    "workspace_overage_settings": 0,
+    "workspace_overage_settlements": 0,
+    "workspace_purchased_capacity": 0,
+    "workspace_storage_usage": 2
+  }
+}

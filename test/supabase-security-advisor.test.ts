@@ -20,7 +20,7 @@ describe('Supabase Security Advisor Verification Suite', () => {
     expect(migration).toContain('create index if not exists idx_');
   });
 
-  it('asserts that 100% of SECURITY DEFINER functions in schema.sql declare immutable search paths', () => {
+  it('checks explicit search paths in canonical SECURITY DEFINER function headers', () => {
     const schema = readFileSync(schemaPath, 'utf8');
     const chunks = schema.split(/create\s+(?:or\s+replace\s+)?function\s+/i);
 
@@ -30,11 +30,13 @@ describe('Supabase Security Advisor Verification Suite', () => {
       const chunk = chunks[i];
       const nameMatch = chunk.match(/^([a-zA-Z0-9_."]+)\s*\(/);
       const name = nameMatch ? nameMatch[1] : 'unknown';
-      const header = chunk.split('$$')[0];
-      const isSecDef = /security\s+definer/i.test(header) || /security\s+definer/i.test(chunk.slice(0, 1000));
+      // Stop at any dollar-quoted body, including $can$ and $function$.
+      // A body comment mentioning SECURITY DEFINER is not a function attribute.
+      const header = chunk.split(/\$[a-zA-Z_0-9]*\$/)[0].replace(/--[^\n]*/g, '');
+      const isSecDef = /security\s+definer/i.test(header);
 
       if (isSecDef) {
-        const searchPathMatch = header.match(/set\s+search_path\s*=\s*([^,\n;]+(?:,\s*[^,\n;]+)*)/i);
+        const searchPathMatch = header.match(/set\s+search_path\s*=\s*(''|[^;\r\n]+?)(?=\s+as\b|\s+language\b|\s+security\b|[\r\n;]|$)/i);
         if (!searchPathMatch) {
           mutableSearchPath.push(`${name} (missing search_path)`);
         } else {

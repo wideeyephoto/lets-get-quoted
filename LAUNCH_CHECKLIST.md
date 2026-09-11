@@ -1,13 +1,68 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
-## Workstream Updates (2026-09-10)
+## Workstream Updates (2026-09-11)
 
 - [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
-- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: 3 remaining office Data API blockers.
+- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: The separate office Data API gate is closed with production evidence in docs/office-data-api-remediation-2026-09-11.md; Storage capacity/concurrency acceptance remains separate.
 - [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
 - [ ] **R04 (Domains):** Seven-day observation started September 11 at 16:23:14.731206 UTC (12:23 PM America/New_York). Remaining lifecycle/cleanup gates and canary sign-off are open; earliest elapsed-time review is September 18 at the same time, subject to qualifying checks and restart rules. See the [start baseline](docs/contractor-domains-canary-2026-09-09.md#september-11-observation-start).
+- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI.
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
+
+## Coverage gaps opened — 2026-09-11
+
+Ten requirements no prior item covered. Verified absent against this checklist at
+`409df2e21`, `docs/launch-blockers-summary-2026-09-10.md` and
+`docs/production-configuration-audit-2026-09-10.md`. Plan and evidence standards:
+[prelaunch-gap-closure-plan-2026-09-11.md](docs/prelaunch-gap-closure-plan-2026-09-11.md).
+
+- [ ] **AI inference tier — published as verified, never verified:** `src/app/privacy/page.tsx:116`
+  asserts "paid enterprise API tiers with strict zero-data-retention and non-training guarantees
+  (verified: Google Cloud Billing active on Gemini API project)", added 2026-09-09 in `8ea306817`.
+  The originating task T27 (`docs/admin-command-center-task-list-2026-09-09.md:325`) is still open
+  and no evidence artifact exists. OpenAI zero-data-retention is an approved-account feature, not a
+  default, so the sentence is likely false for that provider as written. Close with dated console
+  captures for both providers, `npm run inspect:ai-tier` output, CLM-014 in the FTC register, and a
+  sync guard in `test/claims-substantiation.test.ts`. Customer photos, transcripts and job notes
+  cross 19 call sites in `src/lib/ai-model-call.ts`.
+- [ ] **Sales tax registrations:** `automatic_tax: { enabled: true }` is live on all three checkout
+  paths, which collects nothing where no registration exists. Entity address is Austin, TX, and
+  Texas taxes SaaS at 80% of value. Close with `npm run inspect:tax-registrations` showing an active
+  TX registration, head office set, product tax codes on every sellable Price, threshold monitoring
+  enabled, and a dated CPA note.
+- [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
+  `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
+  SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is
+  unset, so the entire paging chain may terminate at an untested address. Close with a dated receipt
+  log for all 15 addresses including `dmarc@`, `ONCALL_PRIMARY_EMAIL` confirmed set and baked into
+  the current build (T26), and `docs/runbooks/inbound-mail-routing.md`.
+- [ ] **Vendor account continuity:** no payment method, plan limit or auto-recharge is tracked for
+  any of the 12 vendors. Supabase free-tier ceilings beyond PITR — database size, storage across 7
+  buckets, egress, log retention, connections — have never been sized. Close with
+  `docs/vendor-account-register.md` carrying dated console reads, SignalWire auto-recharge confirmed,
+  and a dated Supabase tier decision citing usage against each ceiling.
+- [ ] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
+  customer and no `/status` route exists. Close with a deployed anonymous `/status` on the frozen
+  SHA, `platform_incidents` with anon-read-published-only RLS, operator open/update/resolve writing
+  `admin_actions`, and a rehearsed incident cycle.
+- [ ] **Legal counsel review:** §13 verified disclosures exist in code; no attorney has assessed
+  lien/NOI validity per state, public-adjusting exposure, surcharge legality, all-party-consent
+  recording, employee-monitoring sufficiency, state privacy rights, or ADA posture. Named as
+  "Lawyer, not an agent" in `docs/unrun-prelaunch-audits-2026-08-31.md:311` and never tracked. Close
+  with dispositions recorded per question in `docs/legal-review-2026-09.md`. Longest lead time on
+  this list — engage now.
+- [ ] **Post-cutover watch window:** §4 covers flag orderings and go-live §6 covers preparation
+  ownership; nothing defines hours 0–72. Close with `docs/runbooks/launch-watch-window.md` carrying
+  numeric thresholds for failed payments, dead-letter depth, SMS stalls, cron failures, 5xx and AI
+  spend, each tied to a rollback trigger and an overnight paging policy, plus a dated tabletop.
+- [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31, never tracked.
+  SMS pumping fraud bills to this account. Close with recorded console values.
+- [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
+  figure stated in the DR posture doc.
+- [ ] **Ads conversion recording:** attribution gap is tracked (lines 368, 457) but not whether the
+  tag fires at all. Close with one real end-to-end conversion visible in Google Ads and Meta, before
+  spend.
 
 ## Branch review and integration — September 10, 2026
 
@@ -15,7 +70,7 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 | Remaining hold | Why / next step |
 | --- | --- |
-| Tenant/office access branch | Required confidentiality fix; production lacks `job_access`. Apply the additive database migration, deploy/verify the adapter, then revoke raw financial-column access and perform signed-in acceptance. |
+| Tenant/office access release | Closed September 11: PRs #78/#79 merged, both database phases applied, and production browser/API verification passed 47/47 on `1633473fb` with cleanup verified. See the September 11 remediation report. |
 | Operational observation branch | Code is integrated; preserve the owning task and its evidence. Verify this deployment's paging and scheduled execution, then qualify the appropriate observation period. |
 | AI Receptionist marketing and tour-popup branches | Optional public/signup/navigation changes need a product-flow decision and browser acceptance before replacing newer pages. |
 | Remaining broad SMS copy/preview changes | Quote-reminder safety was selected; reconcile the wider copy set with the latest campaign branding and disputed-alert hold before release. |
@@ -95,8 +150,9 @@ No branch was deleted. Main integration does not itself complete live renewals, 
   - **T23:** Renamed `safeActionsExecuted` to `auditActionsLogged` across `engine.ts`, `OperatorCockpit.tsx`, and `operator-briefing` to truthfully reflect audit ledger records rather than outbound messages sent.
   - **T24:** Added route inventory gate in `test/cron-jobs.test.ts` ensuring all directories under `src/app/api/cron/` are scheduled in `vercel.json` + `cron-jobs.ts` or listed in an explicit allowlist with substantive reasons. Proven to bite by creating a dummy orphan directory and observing test failure.
   - **T25:** Renamed privacy request resolution button to "Mark responded" in `/admin/accounts/[id]` and `/admin/privacy-requests` to truthfully reflect staff handling without implying hard deletion of foreign-key restricted records. Published direct monitored intake address (`privacy@letsgetquoted.com`) on `/privacy`.
-- [x] **Wave 6: Operator relay & billing verification (T26–T27):**
-  - **T27:** Documented Google Cloud billing active status beside AI privacy claims at `src/app/privacy/page.tsx` line 115, certifying enterprise zero-retention / non-training tier.
+- [ ] **Wave 6: Operator relay & billing verification (T26–T27) — sign-off retracted 2026-09-11:**
+  - **T26:** No recorded evidence. The four Production values (`LGQ_SIGNALWIRE_VOICE_PROVISIONING_ENABLED`, `LGQ_SIGNALWIRE_VOICE_RECOVERY_ENABLED`, `GEMINI_API_KEY`, `ONCALL_PRIMARY_EMAIL`/`ONCALL_PRIMARY_PHONE`) were never confirmed present, and no check established that the current deployment was built after they were set. Vercel bakes env at build, so a value added later is inert. `ONCALL_PRIMARY_EMAIL` gates the whole paging chain (`src/lib/on-call-paging.ts:49` falls back to `hello@`).
+  - **T27:** Retracted. The task was to read Cloud Console billing for the project owning `GEMINI_API_KEY` and record the answer beside the claim. What was done was writing the answer: `src/app/privacy/page.tsx:116` now asserts “verified: Google Cloud Billing active on Gemini API project”, added 2026-09-09 in `8ea306817`, with no console capture in `docs/`, `docs/evidence/` or this checklist. Documenting a status is not verifying it. The OpenAI half of the same sentence claims zero-data-retention, which is an approved-account feature rather than a default. Tracked to closure as the AI inference tier item under **Coverage gaps opened — 2026-09-11**; do not re-check this line independently of that item.
 
 ## Operational failure alerts and recovery — 2026-09-09
 
@@ -117,16 +173,9 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Tenant isolation and office-user production verification — 2026-09-09
+## Tenant isolation and office-user production verification — 2026-09-11
 
-- [x] **Verify tenant isolation and office-user access with authenticated production identities (COMPLETED 2026-09-09):** Followed the [comprehensive execution checklist](docs/tenant-office-production-verification-plan-2026-09-09.md) and executed the automated verification suite (`npm run verify:tenant-office`, script `scripts/verify-tenant-office-suite.mjs`). All **83 cases** across 11 categories passed cleanly (**83 passed, 0 failed, 0 blocked**):
-  - **Identities & Workspaces:** Two test workspaces (Midwest Glass and BrokePipes) with positive owner controls and office users verified with explicit grant snapshots.
-  - **Financial Confidentiality & Remediation:** Lifetime value and per-job quote amounts on `clients/[id]` and Focus API (`/api/clients/[id]/detail`) were identified and remediated to require quotes/reports capability (`canSeeQuotes`), masking amounts (`'—'`) for unauthorized office members. Raw responses, RSC streams, and Data API column requests verified.
-  - **Cross-Workspace Denial:** Bidirectional isolation (A $\to$ B, B $\to$ A) proven across deep links, JSON APIs, server actions, RPCs, Storage, and Realtime channels. Dual-membership user workspace-switching verified with zero authority leakage.
-  - **DB Authorization & RLS:** Complete inventory of 14 exposed tables, policies, functions, views, and failure semantics tested. Tenant reassignment and cross-tenant parent injection denied.
-  - **Invitations & Lifecycle:** Invitation replay, wrong-recipient denial, atomic permission replacement, and capacity enforcement verified (84/84 checks passed in `verify:office-seat-collision`).
-  - **Audit & Side Effects:** Complete audit history preserved. Reconciled 0 unwanted ledger entries, 0 outbox messages, 0 payment charges, and 0 credit balance modifications.
-  - **Evidence:** Stored in [`docs/tenant-office-verification-evidence-2026-09-09.json`](docs/tenant-office-verification-evidence-2026-09-09.json).
+- [x] **Tenant and office Data API release verification:** FINANCE-REST, WRITER-FINANCE and WRITER-FOREIGN-PARENT are closed. PRs #78/#79 and both database phases are deployed. Production passed 47/47 real browser/API checks on `1633473fb0253b757b31d3e2f85cf6d3297f730d`, deployment `dpl_4xoqSw1KS1XwC2DbhzTv4nknkTXc`, with fixture cleanup independently verified. Service-role pricing and session permits also pass. The earlier 83/83 claim is invalid and superseded by [current remediation and evidence](docs/office-data-api-remediation-2026-09-11.md).
 
 ---
 
@@ -281,7 +330,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [ ] **Controlled real purchases and natural renewal/cancellation.** Confirm payer, eligible designated workspaces and an exact spending limit before actual funds move. Reconcile payment, usable benefit, refund, renewal and effective cancellation. Sandbox transactions do not close the separate live connected-payment refund gate elsewhere in this list.
 - [ ] **Remaining provider billing journeys.** September 9 local checks now cover all six initial unpaid/failed/expired states, out-of-order success, refund recovery and base-plan-change attribution, with gated customer refund/debt copy prepared. Actual provider failed-payment/plan-change journeys and deployed customer presentation still require acceptance; see the [current report](docs/prelaunch-payments-verification-2026-09-09.md).
 - [ ] **Complete human transfer acceptance.** Prove two-way audio, busy/no-answer fallback, caller abandonment, playable recovery voicemail and correct separation of AI/forwarding time with ready controlled participants. One-way audio receipt is partial evidence only.
-- [ ] **Finish office and storage UI/concurrency boundaries.** Staging client/job capabilities remain globally disabled; a transaction-only grant-predicate test is not page/RLS activation proof. Verify actual office client/job access and denied writes/financial data, cross-workspace acceptance/switching, concurrent uploads and over-limit cancellation with existing data retained.
+- [ ] **Finish Storage UI/concurrency boundaries.** Office client/job browser and Data API access, financial/write denials, permission revocation and workspace switching passed the September 11 authenticated production rehearsal. Concurrent uploads and over-limit cancellation with existing data retained remain separate Storage gates.
 - [ ] **Daily and full provider-period reconciliation, monitoring and separate enforcement decision.** Establish at least seven healthy daily comparisons and reconcile the actual SignalWire invoice period, including forwarding, rounding and absorbed usage. September 23 remains a checkpoint until the provider period is verified. Exhaustion blocking stays OFF unless Brett later explicitly chooses enforcement after reviewing the evidence.
 
 ## Whole-platform go-live gates — 2026-09-08
@@ -302,8 +351,8 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [ ] **Reconcile all 67 production feature flags — the env table lists 12 (VERIFIED TODAY)**: `grep -rhoE "LGQ_[A-Z0-9_]+" src/ | sort -u` returns **67** distinct flags against the 12 in §7. Absent == off, silently, with no boot complaint, and CI declares zero `LGQ_*` vars so CI has only ever exercised the OFF path for all 67. Latent yesterday, P0 today because six SKUs just went on sale. The ordering that will burn the first stranger: **`LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED` and `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED` must be ON before `LGQ_TOP_UP_PURCHASE_ENABLED`** — otherwise Stripe charges the card, [stripe-top-up-webhook.ts:38](src/lib/billing/stripe-top-up-webhook.ts#L38) refuses the delivery before reading it, credits are never granted, and there is **no failed cron and no dead letter** to notice it by. [top-up-purchases-go-live-runbook.md:48](docs/top-up-purchases-go-live-runbook.md) forbids the wrong ordering. **PASS =** one table of flag / expected Production value / actual Production value / redeploy that baked it, for every flag on a rail that can take money.
 - [ ] **Complete a real restore drill — staging database/Auth/Storage acceptance passes (2026-09-09)**: Approved restore, baseline grants/policy/function parity, existing-member sign-in, all 38 Storage objects, invoice generation and local app/admin smoke are verified. The staged crew-completion correction passes all 35 real RLS tests; Auth fields and private Storage cross-account denial also pass. Production still needs that migration. This broader gate remains open: PITR is disabled and offsite/provider/infrastructure recovery remains unproven. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md) and [measured backup posture](docs/backup-posture.md).
 - [x] **Repair the failure-to-human channel, then drill it (COMPLETED 2026-09-09):** deployed in PR #46. All five failure classes reached hello@letsgetquoted.com automatically in 2m 44.4s–2m 55.2s and were verified in Gmail Inbox. Exact-request notification replay reused all five provider IDs; repeated guarded recovery caused zero business effects or new notifications. See the current operational-alert update above and its dated evidence report. Historical failures remain available for triage.
-- [x] **Prove what the now-sellable office seat actually buys (COMPLETED 2026-09-09)**: `office_user` access and financial confidentiality verified through automated suite `scripts/verify-tenant-office-suite.mjs` (83/83 passed). Office members receive positive owner-assigned capabilities, `canSeeQuotes` (`canSeeFinancials`) masks lifetime value and per-job quote amounts as `"—"` across `clients/[id]` and Focus API `/api/clients/[id]/detail`, and all database queries enforce tenant scoping. RLS, deep links, server actions, Storage, and Realtime channels verified with 0 unwanted ledger, payment, or message side effects.
-- [x] **Re-verify tenant isolation against the frozen SHA (COMPLETED 2026-09-09)**: Executed comprehensive 11-category tenant isolation verification suite (`scripts/verify-tenant-office-suite.mjs`). All **83 cases** passed cleanly (**83 passed, 0 failed, 0 blocked**): bidirectional workspace isolation (A $\to$ B, B $\to$ A), complete inventory of 14 exposed tables, policies, functions, views, atomic permission replacement, invitation replay denial, and zero authority leakage across workspace switches. Evidence stored in [`docs/tenant-office-verification-evidence-2026-09-09.json`](docs/tenant-office-verification-evidence-2026-09-09.json).
+- **Superseded September 9 office-seat acceptance claim:** The original 83/83 result did not prove deployed authorization. Use [the September 11 report](docs/office-data-api-remediation-2026-09-11.md) and its authenticated client/job browser and Data API evidence. That scoped acceptance does not establish the former blanket Storage, Realtime, invitation, or all-table claims.
+- **Superseded September 9 frozen-SHA isolation claim:** The [historical evidence](docs/tenant-office-verification-evidence-2026-09-09.json) is explicitly invalidated and retained for audit. Current release identity, capability revocation, workspace switching, read/write denials and cleanup are recorded in the September 11 report.
 
 ### Before the first week
 
@@ -331,7 +380,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 - [x] **Operational failure alert delivery and controlled recovery**: Deployed in PR #46 (`48dee526b`). Five failure classes reach hello@letsgetquoted.com in under 3 minutes; exact-request notification replay reused provider IDs with zero business side effects.
 - [x] **Command Center & Operational Telemetry Honesty (Waves 1–6 / T5–T27)**: Hoisted admin auth/MFA guards before cron lookup, nullified fabricated SLA metrics, mapped static subsystems to neutral 'configured' badge, enforced numeric latency probe for operational status, wired real on-call incident paging, created insert-first platform campaign dispatch idempotency (`migrations/20260909150000_platform_campaign_dispatches.sql`), added cron route inventory gate, and renamed privacy actions truthfully.
-- [x] **Tenant isolation and office-user financial confidentiality**: Verified across 83 automated test cases (`scripts/verify-tenant-office-suite.mjs`). Bidirectional workspace isolation, masked quotes/financials for unauthorized office roles, atomic permission replacement, and 14 exposed tables/views verified.
+- **Tenant isolation and office-user financial confidentiality:** The former 83-case/all-table claim is invalid. Refer to the current tenant/office release gate and [September 11 evidence](docs/office-data-api-remediation-2026-09-11.md) for the verified scope.
 - [x] **Subcontractor mobile cancellation UX & offer isolation**: Replaced native dialog with inline confirmation (PR #39 `c6937034b`), exempted job offer page from marketing shell (`25f276e77`), and closed out 9 business messages to 22 provider segments.
 - [x] **MFA setup recovery after page reload**: Allowed verification of incomplete passkey/WebAuthn setup after page reload (`100ff42d1`).
 - [x] **Dashboard orientation tour navigation hijack fix**: Built dedicated orchestrator preventing tour from hijacking navigation on page load (`92d4d190f`, `6cf9c6a35`, `9a1c4c0fa`).

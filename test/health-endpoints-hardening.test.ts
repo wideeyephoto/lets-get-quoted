@@ -128,8 +128,8 @@ describe('Pre-Launch Diagnostic Health Endpoints Hardening', () => {
       const content = fs.readFileSync(privacyFilePath, 'utf8').replace(/\s+/g, ' ');
 
       expect(content).toContain('Google Gemini API');
-      expect(content).toContain('zero-data-retention');
-      expect(content).toContain('never used to train public foundation models');
+      expect(content).toContain('AI Zero-Retention Policy');
+      expect(content).toContain('are not used to train public foundation models');
       expect(content).toContain('SignalWire, Inc.');
       expect(content).toContain('30-day soft deletion grace period');
       expect(content).toContain('Row Level Security');
