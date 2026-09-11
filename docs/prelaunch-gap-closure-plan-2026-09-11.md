@@ -20,7 +20,7 @@ asserting a verification is not the verification.**
 | # | Gap | Owner | Blocks | Effort |
 |---|---|---|---|---|
 | G1 | AI inference tier — published claim with no artifact | Operator → agent | Any customer data through AI paths | 30 min + 1h codify |
-| G2 | Sales tax registrations | Operator + CPA | First subscription | 1h + CPA lead time |
+| G2 | Sales tax registrations | Operator + CPA | First subscription or card order | 1h + CPA lead time |
 | G3 | Inbound mail liveness for 14 addresses | Operator | G5, G7, all paging | 30 min |
 | G4 | Vendor account continuity register | Operator | Everything | 2h |
 | G5 | Customer-facing incident channel (`/status`) | Agent | Inviting traffic | ~1 day |
@@ -124,10 +124,29 @@ throughout. Stripe Tax calculates **only where an active registration exists**. 
 every checkout collects zero tax and the liability accrues silently against the company,
 not the customer. The checklist has zero mentions of tax, nexus or registration.
 
-The standardized legal entity address is `Let's Get Quoted LLC · 11801 Domain Blvd, 3rd
-Floor · Austin, TX 78758` (§13). **Texas taxes SaaS as a data processing service at 80% of
-value.** Home-state registration is almost certainly required from the first dollar, not at
-a threshold.
+**Correction (2026-09-11).** This section first read the entity address off §13, which still
+carries `11801 Domain Blvd, 3rd Floor · Austin, TX 78758`, and reasoned from Texas law. That
+address is stale. It was an email fallback retired on 2026-09-09 in
+`docs/email-campaign-audit-2026-09-09.md`. The steps below are rewritten against the real entity;
+the §13 line now carries a dated correction pointing here.
+
+The legal entity is `LETS GET QUOTED LLC · 2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864`, set
+in `src/lib/company.ts` and rendered by the website footer, Contact, Terms, Privacy, SMS Terms and
+DPA. `src/app/terms/page.tsx:25` and `:321` describe a **Michigan** limited liability company under
+Michigan governing law, and the operator is in Michigan. **Michigan is the home state, and physical
+presence there is nexus.**
+
+Two surfaces, two different questions:
+
+- **Subscriptions and top-ups.** Whether Michigan taxes remotely accessed software is a live
+  question with a real chance of coming back "no", so home-state registration may not be required
+  at any dollar. It is the CPA's to answer, not this plan's, and it is not a reason to delay
+  asking.
+- **Merchandise.** Both card paths sell physical goods fulfilled by Printful and shipped to US
+  addresses, tagged with the tangible-goods tax code `txcd_99999999`
+  (`src/lib/merchandise/card-checkout.ts:50`). Tangible goods sold from a state where you have
+  physical presence are the ordinary case for registration from the first sale. This, not SaaS, is
+  the likely trigger.
 
 ### Steps
 
@@ -137,21 +156,25 @@ a threshold.
    `stripe.tax.settings.retrieve()`. Prints each active registration's country/state and
    active-from date, plus head office and default tax behavior. Wire as
    `npm run inspect:tax-registrations`. Stripe SDK is `^22.3.1`; both calls are available.
-2. **Operator: confirm or create the Texas registration** in Stripe Dashboard → Tax, and set
-   the head office address to match the §13 entity address.
+2. **Operator: set the Stripe Tax head office to the Okemos address** in Stripe Dashboard → Tax,
+   and confirm or create the **Michigan** registration once the CPA answers which surfaces require
+   it. Do not register in Texas on the strength of the stale §13 address; Texas matters only if
+   Texas nexus is established on its own facts.
 3. **Operator: set product tax codes** on all six base-plan Prices, the top-up Prices and
    the merchandise Prices. Without a tax code Stripe falls back to a default that may not
    match SaaS treatment.
 4. **Operator: enable Stripe Tax threshold monitoring** so economic nexus in other states
    surfaces before it is breached rather than after.
-5. **CPA sign-off** on which states to register in now versus monitor, and on the Texas 80%
-   treatment. Record in `docs/tax-posture-2026-09.md`.
+5. **CPA sign-off** on three questions, recorded in `docs/tax-posture-2026-09.md`: whether
+   Michigan taxes the subscription and top-up products as sold; whether the Printful card orders
+   require a Michigan registration from the first sale; and which other states to monitor for
+   economic nexus rather than register in today.
 
 ### Evidence to close
 
-`npm run inspect:tax-registrations` output showing at least one active registration
-including TX · head office set · tax codes present on every sellable Price · threshold
-monitoring on · dated CPA note.
+`npm run inspect:tax-registrations` output · head office set to the Okemos address · every
+registration the CPA calls for active, or a dated CPA note saying none is required and why · tax
+codes present on every sellable Price · threshold monitoring on.
 
 Not agent-closable. Needs the Stripe account and an accountant.
 
@@ -298,6 +321,11 @@ surface · fee and surcharge logic · `docs/ftc-substantiation-register.md`.
 
 ### Questions for counsel
 
+Counsel should be Michigan-licensed: `src/app/terms/page.tsx:321` chooses Michigan law and Michigan
+venue, and the permits surface already encodes Michigan-specific requirements
+(`src/components/permits/PermitSubmissionModal.tsx:193` cites MCL 125.1523a). Start question 1 with
+Michigan.
+
 1. Mechanic's lien and NOI validity per state served — the generator produces documents with
    statutory deadlines.
 2. **Public-adjusting exposure** from the insurance-claims workflow. Unlicensed public
@@ -404,10 +432,16 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   sync guard in `test/claims-substantiation.test.ts`. Customer photos, transcripts and job notes
   cross 19 call sites in `src/lib/ai-model-call.ts`.
 - [ ] **Sales tax registrations:** `automatic_tax: { enabled: true }` is live on all three checkout
-  paths, which collects nothing where no registration exists. Entity address is Austin, TX, and
-  Texas taxes SaaS at 80% of value. Close with `npm run inspect:tax-registrations` showing an active
-  TX registration, head office set, product tax codes on every sellable Price, threshold monitoring
-  enabled, and a dated CPA note.
+  paths, which collects nothing where no registration exists. The entity is a Michigan LLC at
+  `2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864` (`src/lib/company.ts`; Michigan organization and
+  governing law at `src/app/terms/page.tsx:25` and `:321`), so Michigan is the home state. Whether
+  Michigan taxes remotely accessed software is the CPA's first question. The unambiguously taxable
+  surface is merchandise: both card paths ship physical Printful goods to US addresses under
+  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Close with
+  `npm run inspect:tax-registrations` output, head office set to the Okemos address, product tax
+  codes on every sellable Price, threshold monitoring enabled, and a dated CPA note covering
+  Michigan SaaS treatment, Michigan registration for the card orders, and which states to monitor
+  for economic nexus.
 - [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
   `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
   SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is

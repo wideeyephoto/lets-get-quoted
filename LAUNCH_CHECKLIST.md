@@ -27,10 +27,16 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   sync guard in `test/claims-substantiation.test.ts`. Customer photos, transcripts and job notes
   cross 19 call sites in `src/lib/ai-model-call.ts`.
 - [ ] **Sales tax registrations:** `automatic_tax: { enabled: true }` is live on all three checkout
-  paths, which collects nothing where no registration exists. Entity address is Austin, TX, and
-  Texas taxes SaaS at 80% of value. Close with `npm run inspect:tax-registrations` showing an active
-  TX registration, head office set, product tax codes on every sellable Price, threshold monitoring
-  enabled, and a dated CPA note.
+  paths, which collects nothing where no registration exists. The entity is a Michigan LLC at
+  `2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864` (`src/lib/company.ts`; Michigan organization and
+  governing law at `src/app/terms/page.tsx:25` and `:321`), so Michigan is the home state. Whether
+  Michigan taxes remotely accessed software is the CPA's first question. The unambiguously taxable
+  surface is merchandise: both card paths ship physical Printful goods to US addresses under
+  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Close with
+  `npm run inspect:tax-registrations` output, head office set to the Okemos address, product tax
+  codes on every sellable Price, threshold monitoring enabled, and a dated CPA note covering
+  Michigan SaaS treatment, Michigan registration for the card orders, and which states to monitor
+  for economic nexus.
 - [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
   `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
   SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is
@@ -1044,6 +1050,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 - [x] **Outbound-Email Compliance Invariant (Completed 2026-08-31)**:
   - Verified RFC 8058 one-click unsubscribe headers (`List-Unsubscribe: <url>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) and footer links across all marketing email senders (`sendCampaignEmail`, `sendRebookInviteEmail`, `sendReviewRequestEmail`, `admin-platform-campaigns.ts`, `contractor-lifecycle-emails.ts`).
   - Standardized legal entity postal address (`Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758`) across platform announcements and contractor onboarding mailings.
+    - **Correction (2026-09-11):** that Austin address is superseded and is not the entity address. It was the retired email fallback removed on 2026-09-09 in the [email campaign audit](docs/email-campaign-audit-2026-09-09.md), which replaced it (and a Boston placeholder in the Privacy Policy) with the owner-confirmed `LETS GET QUOTED LLC · 2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864`. That value now lives in `src/lib/company.ts` as the single source for the website, legal pages and every platform email, is asserted by `test/email-compliance.test.ts`, and cannot be overridden by environment. The entity is a Michigan LLC under Michigan governing law (`src/app/terms/page.tsx:25`, `:321`). Use the Okemos address for tax, legal and mailing purposes.
   - Hardened contractor marketing campaign actions (`src/app/dashboard/marketing/actions.ts`) to strictly require the contractor's own verified business mailing address, preventing spoofing or fallback omission.
   - Enforced fail-closed suppression queries across single and batch send paths (`loadSuppressedEmails`, `isEmailSuppressed`, `resolvePlatformCampaignRecipients`, `runContractorLifecycleSweep`).
   - Verified via `test/email-compliance.test.ts` (10/10 passing).
