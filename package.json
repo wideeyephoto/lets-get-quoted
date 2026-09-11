@@ -75,11 +75,13 @@
     "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
     "verify:tenant-office": "node scripts/verify-tenant-office-suite.mjs",
+    "test:pg17:job-access": "node scripts/verify-job-access-boundary.mjs",
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",
     "inspect:cron-health:strict": "node scripts/inspect-cron-health.mjs 90 --strict",
     "inspect:live-top-ups": "node scripts/inspect-live-top-up-prices.mjs",
     "inspect:ai-tier": "node scripts/inspect-ai-provider-tier.mjs",
     "inspect:tax-registrations": "node scripts/inspect-stripe-tax-registrations.mjs",
+    "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
     "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
   },
