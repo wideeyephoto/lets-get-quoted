@@ -39,5 +39,46 @@ export default defineConfig({
       TWILIO_ACCOUNT_SID: 'AC00000000000000000000000000000000',
       TWILIO_AUTH_TOKEN: 'test-token',
     },
+    // --- Code coverage ---
+    // Generates reports even when tests fail so you can still inspect gaps.
+    // Run `npm run test:coverage` for a full report, or pass `--coverage` to
+    // any `vitest run` invocation. Reports land in coverage/.
+    coverage: {
+      provider: 'v8',
+      enabled: false,          // off by default; `--coverage` or the npm script turns it on
+      reportsDirectory: './coverage',
+      reporter: [
+        'text-summary',        // quick console overview after the run
+        ['lcov', {}],          // lcov.info + HTML viewer for CI and local browsing
+        ['json-summary', {}],  // machine-readable summary for dashboards / scripts
+      ],
+      // Measure the server-side logic the test suite actually imports.
+      // React components, hooks and email templates run in a browser/RSC
+      // context that the node test environment cannot exercise, so including
+      // them would inflate "uncovered" without providing actionable signal.
+      // Add them when an E2E / component-test suite exists.
+      include: [
+        'src/lib/**/*.ts',
+        'src/middleware.ts',
+      ],
+      exclude: [
+        'src/lib/**/index.ts',         // barrel re-exports
+        'src/lib/seo/**',              // generated SEO copy, not logic
+        'src/lib/stock/**',            // generated stock copy
+        'src/lib/site-content.ts',     // 146KB generated content catalog
+        'src/lib/trades.ts',           // 222KB generated trade definitions
+        '**/*.d.ts',                   // type declarations
+        '**/*.test.*',                 // tests themselves
+      ],
+      // No thresholds initially — establish a baseline first, then set floors
+      // to prevent regressions. Uncomment and tune after reviewing the first
+      // report:
+      // thresholds: {
+      //   lines: 50,
+      //   functions: 50,
+      //   branches: 50,
+      //   statements: 50,
+      // },
+    },
   },
 });
