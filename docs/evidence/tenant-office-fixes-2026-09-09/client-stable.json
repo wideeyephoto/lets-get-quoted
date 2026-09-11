@@ -1,0 +1,24 @@
+{
+  "startedAt": "2026-09-09T22:04:17.088Z",
+  "purpose": "Supplementary stable client-page visual capture; real staging office session",
+  "marker": "tenant-office-browser-2026-09-09-208fcca2",
+  "path": "/dashboard/clients/dbb7c596-6936-438d-8b65-6855841bb969",
+  "client": "tenant-office-browser-2026-09-09-208fcca2 Customer A",
+  "status": "PASS",
+  "body": "LET'S GET QUOTED\n\ntenant-office-browser-2026-09-09-208fcca2 A\n\nSearch workspace...\nPlan Day\n+\nNew\n▾\n\nWORK\n\nLeads\nMessages\nJobs\nNEW\nNew work has landed since you last opened Jobs\nSchedule\nPAUSED\nPAUSED\nCrew\nClients\nInventory\nClaims\n\nMONEY\n\nMoney\nRecurring\n\nMARKETING & AI\n\nWebsite\nOFF\nOFF\nAutomations\nMarketing\nReviews\nDashboard\nAccount\n$\nConnect Stripe\n\nCLIENT\n\ntenant-office-browser-2026-09-09-208fcca2 Customer A\nEdit client\nNo contact on file\n1\njob\nBack to clients\n\nHISTORY\n\nJobs\nACCESS-208fcca2-A\nIn progress · Sep 9, 2026\n\nPROFILE\n\nContact & notes\nNAME\nMOBILE\nEMAIL\nADDRESS\nNOTES\nSave profile\nCopilot\nSPARKY\n✕",
+  "origin": "http://localhost:3014",
+  "cleanup": {
+    "cleanedAt": "2026-09-09T22:04:31.944Z",
+    "recordsRemoved": 4,
+    "verified": {
+      "active_memberships": 0,
+      "sessions": 0,
+      "grants": 0
+    },
+    "membershipsDeactivated": true,
+    "grantsRemoved": true,
+    "sessionsRevoked": true,
+    "retained": "Two suspended marked workspaces and three test identities retained for audit; no active memberships."
+  },
+  "finishedAt": "2026-09-09T22:04:32.012Z"
+}

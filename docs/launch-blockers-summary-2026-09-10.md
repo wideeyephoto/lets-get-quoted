@@ -2,10 +2,10 @@
 
 ## Hard Blockers (must resolve before launch)
 1. Two unapplied database migrations: `20260910104058_marketing_flow_repair.sql` and `20260910121506_overage_recovery_guards.sql` — production worker code calls RPCs that don't exist yet
-2. Three office Data API security vulnerabilities (FINANCE-REST, WRITER-FINANCE, WRITER-FOREIGN-PARENT) — PostgREST returns financial data the UI redacts, and permits cross-tenant writes
+2. [RESOLVED IN CODEBASE / STAGING] Three office Data API security vulnerabilities (FINANCE-REST, WRITER-FINANCE, WRITER-FOREIGN-PARENT) — PostgREST returns financial data the UI redacts, and permits cross-tenant writes. Fixed with `job_access` view, security definer masking helper, base table write guards, and composite FK. Staging-verified across 44 browser/API cases & 17 PostgreSQL scenarios. Production rollout pending.
 3. R04 domain observation clock — Day 1 of 7 started September 11; earliest completion September 17. Run `59b08397` passed.
 4. Webhook routing formal sign-off — preview Stripe webhook `we_1U5dHvPqTgiW6iRM8Si0gH56` was pointed at production DB, leaked 185 rows. Disabled but needs operator sign-off
-5. Two failing PG17 test suites: `test:pg17:late-success` and `test:pg17:messaging-schema`
+5. [RESOLVED] Two failing PG17 test suites: `test:pg17:late-success` and `test:pg17:messaging-schema` — fixed in commit 4bd3e2d7c.
 
 ## Soft Blockers (should resolve)
 1. Three failing cron jobs: `direct-payment-settlement` (4 failures/287 runs), `overage-settlement` (1/24), `voice-allowance` (1/94)
