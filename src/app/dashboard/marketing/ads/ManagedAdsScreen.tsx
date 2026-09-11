@@ -2708,7 +2708,19 @@ export default function ManagedAdsScreen({
                   </span>
                 </div>
 
-                <div className={styles.messageMatchChain}>
+                {/* overflow-x: auto makes this scrollable once the chain is
+                    wider than its box, and a scrollable region with no
+                    focusable content of its own is unreachable by keyboard --
+                    there is no arrow-key equivalent to a mouse drag or a
+                    trackpad swipe. tabIndex makes the box itself a stop a
+                    keyboard user can Tab to and then scroll with the arrow
+                    keys; the label is what they are told they landed on. */}
+                <div
+                  className={styles.messageMatchChain}
+                  tabIndex={0}
+                  role="group"
+                  aria-label="Message-match verification chain: search query, ad headline, landing page, and intake call to action"
+                >
                   <div className={styles.messageMatchNode}>
                     <span className={styles.messageMatchNodeLabel}>1. Search Query</span>
                     <strong className={styles.messageMatchNodeValue}>{selectedServices[0] || trade} in {city.split(',')[0]}</strong>
@@ -3272,9 +3284,18 @@ export default function ManagedAdsScreen({
             </h2>
           </div>
 
+          {/* role="tablist" requires every direct child to carry role="tab" --
+              these were plain buttons, which axe's aria-required-children
+              rule (critical impact) flags because a screen reader announcing
+              "tab list" and then reading plain buttons inside it is a
+              contradiction between the announced role and the actual
+              content. aria-selected is the other half of the same pairing:
+              it is how a tab says which of the group is showing. */}
           <div className={styles.knowledgeHubNav} role="tablist">
             <button
               type="button"
+              role="tab"
+              aria-selected={knowledgeTab === 'pipeline'}
               className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'pipeline' ? styles.knowledgeHubTabBtnActive : ''}`}
               onClick={() => setKnowledgeTab('pipeline')}
             >
@@ -3282,6 +3303,8 @@ export default function ManagedAdsScreen({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={knowledgeTab === 'comparison'}
               className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'comparison' ? styles.knowledgeHubTabBtnActive : ''}`}
               onClick={() => setKnowledgeTab('comparison')}
             >
@@ -3289,6 +3312,8 @@ export default function ManagedAdsScreen({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={knowledgeTab === 'lsa_dual'}
               className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'lsa_dual' ? styles.knowledgeHubTabBtnActive : ''}`}
               onClick={() => setKnowledgeTab('lsa_dual')}
             >
@@ -3296,6 +3321,8 @@ export default function ManagedAdsScreen({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={knowledgeTab === 'timeline'}
               className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'timeline' ? styles.knowledgeHubTabBtnActive : ''}`}
               onClick={() => setKnowledgeTab('timeline')}
             >
@@ -3303,6 +3330,8 @@ export default function ManagedAdsScreen({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={knowledgeTab === 'shields'}
               className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'shields' ? styles.knowledgeHubTabBtnActive : ''}`}
               onClick={() => setKnowledgeTab('shields')}
             >
@@ -3310,6 +3339,8 @@ export default function ManagedAdsScreen({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={knowledgeTab === 'faq'}
               className={`${styles.knowledgeHubTabBtn} ${knowledgeTab === 'faq' ? styles.knowledgeHubTabBtnActive : ''}`}
               onClick={() => setKnowledgeTab('faq')}
             >

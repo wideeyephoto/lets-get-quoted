@@ -84,6 +84,7 @@
     "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
     "verify:status-boundary": "node scripts/verify-status-page-boundary.mjs",
     "verify:status-deployed": "node scripts/verify-deployed-status-page.mjs",
+    "audit:demo-wcag": "node scripts/audit-demo-route-wcag.mjs",
     "test:incident-rehearsal": "node --test scripts/rehearse-incident-cycle.test.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
     "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
@@ -111,6 +112,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electric-sql/pglite": "0.5.8",
     "@iconify-json/lucide": "^1.2.120",
     "@iconify-json/simple-icons": "^1.2.93",
@@ -123,6 +125,7 @@
     "@types/react-test-renderer": "18.3.1",
     "@types/web-push": "^3.6.4",
     "@vitest/coverage-v8": "~2.1.9",
+    "axe-core": "^4.13.0",
     "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.5.24",

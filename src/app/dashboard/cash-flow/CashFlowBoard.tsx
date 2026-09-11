@@ -592,43 +592,50 @@ export default function CashFlowBoard({
               </div>
             </div>
 
+            {/* A dl's only valid direct children are dt/dd pairs (optionally
+                grouped in a div containing nothing else) -- a div with a
+                trailing <small> sibling of the dd fails that content model.
+                The explanation now lives inside its own dd, which axe accepts
+                and which the plain `.cash-decision-facts small` descendant
+                selector in globals.css styles exactly as before regardless of
+                nesting depth. */}
             <dl className="cash-decision-facts">
               <div>
                 <dt>Next warning</dt>
                 <dd className={outlook.risk ? 'is-risk' : ''}>
                   {outlook.risk ? outlook.risk.label : `None in ${longHorizon} days`}
+                  <small>
+                    {outlook.risk
+                      ? outlook.risk.beyondWindow
+                        ? `${outlook.risk.daysAway} days out — past the ${horizonDays}-day chart.`
+                        : `${outlook.risk.daysAway === 0 ? 'Today' : `In ${outlook.risk.daysAway} days`}, at ${money(outlook.risk.balance)}.`
+                      : 'Checked past the edge of the chart, not just inside it.'}
+                  </small>
                 </dd>
-                <small>
-                  {outlook.risk
-                    ? outlook.risk.beyondWindow
-                      ? `${outlook.risk.daysAway} days out — past the ${horizonDays}-day chart.`
-                      : `${outlook.risk.daysAway === 0 ? 'Today' : `In ${outlook.risk.daysAway} days`}, at ${money(outlook.risk.balance)}.`
-                    : 'Checked past the edge of the chart, not just inside it.'}
-                </small>
               </div>
               <div>
                 <dt>Headroom above buffer</dt>
                 <dd className={outlook.headroom !== null && outlook.headroom < 0 ? 'is-risk' : ''}>
                   {outlook.headroom === null ? '—' : money(outlook.headroom)}
+                  <small>
+                    {outlook.headroom === null
+                      ? 'Needs today’s bank balance.'
+                      : `At the lowest point in ${longHorizon} days, against a ${money(buffer)} buffer.`}
+                  </small>
                 </dd>
-                <small>
-                  {outlook.headroom === null
-                    ? 'Needs today’s bank balance.'
-                    : `At the lowest point in ${longHorizon} days, against a ${money(buffer)} buffer.`}
-                </small>
               </div>
               <div>
                 <dt>Funding needed</dt>
                 <dd className={balanceGiven && outlook.funding > 0 ? 'is-risk' : ''}>
                   {balanceGiven ? money(outlook.funding) : '—'}
+                  <small>
+                    {!balanceGiven
+                      ? 'Needs today’s bank balance.'
+                      : outlook.funding > 0
+                        ? 'Cash that has to arrive before the low point.'
+                        : 'Nothing needed — the movements clear the buffer on their own.'}
+                  </small>
                 </dd>
-                <small>
-                  {!balanceGiven
-                    ? 'Needs today’s bank balance.'
-                    : outlook.funding > 0
-                      ? 'Cash that has to arrive before the low point.'
-                      : 'Nothing needed — the movements clear the buffer on their own.'}
-                </small>
               </div>
             </dl>
 

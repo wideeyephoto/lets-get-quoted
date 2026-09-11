@@ -208,9 +208,18 @@ export default function DemoSidebar() {
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            background: 'rgba(80, 227, 189, 0.12)',
-            border: '1px solid rgba(80, 227, 189, 0.35)',
-            color: '#50e3bd',
+            // --good is a literal hex per theme (globals.css), tuned per
+            // background: a light mint for a dark page, a dark forest green
+            // for a light one. This pill used to hardcode the dark-theme
+            // value (#50e3bd) directly, so on Light (data-theme='sunlight',
+            // --good: #067647) the text rendered mint-on-near-white at a
+            // measured 1.51:1 -- effectively invisible. color-mix() derives
+            // the tint/border from the same token that already adapts, the
+            // way quote-request-form.module.css and globals.css do elsewhere
+            // in this codebase, rather than adding a second hardcoded value.
+            background: 'color-mix(in srgb, var(--good) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--good) 35%, transparent)',
+            color: 'var(--good)',
             fontSize: '12px',
             fontWeight: 750,
             padding: '6px 12px',

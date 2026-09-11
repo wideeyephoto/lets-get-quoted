@@ -282,7 +282,13 @@
 
 .activityItem small {
   margin-top: 2px;
-  color: #67808e;
+  /* This rail is deliberately dark regardless of the page theme (its own
+     literal #091924 background, not a token), so the fix stays local rather
+     than reaching for a theme variable: measured 4.30:1 against that
+     background, short of the 4.5:1 floor. Lightened to #718a98 (4.92:1),
+     same slate-blue family as the sibling .activityItem, which already
+     passes at 4.75:1 against the same background. */
+  color: #718a98;
   font-size: 10px;
 }
 

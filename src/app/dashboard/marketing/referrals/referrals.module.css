@@ -159,7 +159,19 @@
 }
 
 .advocateCard {
-  background: var(--surface-bg, rgba(255, 255, 255, 0.02));
+  /* --surface-bg and --ink-t100 (below) are not defined in any theme in
+     globals.css -- every rule that referenced them was silently running on
+     its own literal fallback in every theme, dark included, by accident
+     rather than design. On a dark page a near-transparent white card over
+     near-white text still reads as "light card, light text" and looks
+     intentional; on the Workbench/Light themes the same pair composites to
+     white-on-white text at a measured 1.04:1 contrast -- an advocate's name
+     invisible on their own referral card. --tint is the RGB triple this file
+     already uses the same way two rules down (--rule-t10, --rule-t20) and
+     that globals.css defines for every theme, dark-appropriate values
+     included, so this keeps the identical translucent-card look without
+     inventing a token nobody wired up. */
+  background: rgba(var(--tint), 0.02);
   border: 1px solid var(--rule-t10, rgba(255, 255, 255, 0.08));
   border-radius: 8px;
   padding: 1rem;
@@ -171,7 +183,7 @@
 .advocateName {
   font-weight: 700;
   font-size: 0.95rem;
-  color: var(--ink-t100, #f8fafc);
+  color: var(--text);
   margin-bottom: 0.25rem;
 }
 
@@ -192,9 +204,12 @@
   padding: 0.35rem 0.65rem;
   font-size: 0.78rem;
   border-radius: 5px;
-  background: rgba(255, 255, 255, 0.06);
+  /* Same fix as .advocateCard above: --tint in place of a hardcoded white
+     tint and an undefined --ink-t100 fallback, both of which only looked
+     right on a dark page. */
+  background: rgba(var(--tint), 0.06);
   border: 1px solid var(--rule-t20, rgba(255, 255, 255, 0.12));
-  color: var(--ink-t100, #f8fafc);
+  color: var(--text);
   cursor: pointer;
   display: inline-flex;
   align-items: center;

@@ -238,7 +238,12 @@
   --line: rgba(var(--tint), 0.09);
   --text: #efece6;
   --muted: #b0a99e;
-  --muted-2: #857e73;
+  /* Measured 3.99:1 against --bg-2 (#24211d) -- table headers and captions
+     using this token were the largest single cluster of contrast failures in
+     the Dim theme. Lightened to #948d83 (4.88:1), same warm-grey family and
+     the same direction --muted already lightens in, just far enough to clear
+     4.5:1 with margin rather than sit on the line. */
+  --muted-2: #948d83;
   --accent: #f97d34;
   --accent-2: #fba36b;
   --accent-end: #fba36b;
@@ -1805,7 +1810,13 @@
   --text-primary: var(--text);
   --text-color: var(--text);
   --muted: #566274;
-  --muted-2: #717d8e;
+  /* Measured 4.17:1 against this block's white/near-white paper surfaces --
+     a near miss of the 4.5:1 AA floor for normal text, e.g. table headers and
+     form labels on Workbench's review and referral cards. Darkened to
+     #687383 (4.8:1), same blue-grey family and same lightening the -2 suffix
+     already implies relative to --muted, just enough steps further to clear
+     the line with margin rather than sit on it. */
+  --muted-2: #687383;
   --fresh: #0d7a52;
   --shade: 24, 36, 54;
   --good: #0a6b47;

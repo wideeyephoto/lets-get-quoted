@@ -1931,6 +1931,33 @@
   color: var(--accent, #f97316);
 }
 
+/* This screen renders on a hardcoded white/cream card background in every
+   theme (see the many literal #ffffff / #fff7ed rules throughout this file,
+   e.g. .demandShoulder below) rather than following the rest of the
+   dashboard's dark-shell-with-light-paper-cards Workbench model. Its other
+   theme-sensitive rules already carry a `:root[data-theme='light'] .foo`
+   override for exactly that reason (.demandPeak/.demandShoulder/
+   .demandOffPeak) -- this trio simply never got one, so it fell through to
+   var(--text)/var(--muted)/var(--accent), which resolve to Workbench's
+   dark-shell values: near-white text measured at 1.05:1 on this card's
+   actually-light background. Sunlight, Clarity and Parchment are unaffected
+   because those themes' own root palettes are dark-on-light already; only
+   Workbench's base tokens assume a dark surface. Values match this file's
+   own established dark-on-light convention (#0f172a/#475569 are its most-used
+   primary/secondary text colors; #c2410c is the same orange already used for
+   .demandShoulder two rules below). */
+:root[data-theme='light'] .strategyBriefingTitle {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .strategyBriefingSub {
+  color: #475569;
+}
+
+:root[data-theme='light'] .strategyBriefingAction {
+  color: #c2410c;
+}
+
 .seasonalDemandGuidance {
   font-size: 0.78rem;
   color: var(--text);
