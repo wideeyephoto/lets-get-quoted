@@ -148,6 +148,12 @@ Two surfaces, two different questions:
   physical presence are the ordinary case for registration from the first sale. This, not SaaS, is
   the likely trigger.
 
+One open input feeds both. `2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864` is a suite address of
+the kind registered agents use, and an address of record is not necessarily where work happens.
+**Nexus follows physical presence** — where the operator and the equipment actually are. If the
+business operates from a different Michigan address, the CPA needs that one too, and the answer
+rests on it rather than on the mailing address.
+
 ### Steps
 
 1. **Add `scripts/inspect-stripe-tax-registrations.mjs` (agent).** Read-only, same shape and
@@ -156,8 +162,9 @@ Two surfaces, two different questions:
    `stripe.tax.settings.retrieve()`. Prints each active registration's country/state and
    active-from date, plus head office and default tax behavior. Wire as
    `npm run inspect:tax-registrations`. Stripe SDK is `^22.3.1`; both calls are available.
-2. **Operator: set the Stripe Tax head office to the Okemos address** in Stripe Dashboard → Tax,
-   and confirm or create the **Michigan** registration once the CPA answers which surfaces require
+2. **Operator: set the Stripe Tax head office to the Michigan operating address** in Stripe
+   Dashboard → Tax — the Okemos address of record unless step 5 establishes a different one — and
+   confirm or create the **Michigan** registration once the CPA answers which surfaces require
    it. Do not register in Texas on the strength of the stale §13 address; Texas matters only if
    Texas nexus is established on its own facts.
 3. **Operator: set product tax codes** on all six base-plan Prices, the top-up Prices and
@@ -165,14 +172,16 @@ Two surfaces, two different questions:
    match SaaS treatment.
 4. **Operator: enable Stripe Tax threshold monitoring** so economic nexus in other states
    surfaces before it is breached rather than after.
-5. **CPA sign-off** on three questions, recorded in `docs/tax-posture-2026-09.md`: whether
-   Michigan taxes the subscription and top-up products as sold; whether the Printful card orders
-   require a Michigan registration from the first sale; and which other states to monitor for
-   economic nexus rather than register in today.
+5. **CPA sign-off** on four questions, recorded in `docs/tax-posture-2026-09.md`: which address
+   the business physically operates from, given that the Okemos suite may be an agent address
+   only; whether Michigan taxes the subscription and top-up products as sold; whether the Printful
+   card orders require a Michigan registration from the first sale; and which other states to
+   monitor for economic nexus rather than register in today.
 
 ### Evidence to close
 
-`npm run inspect:tax-registrations` output · head office set to the Okemos address · every
+`npm run inspect:tax-registrations` output · head office set to the confirmed Michigan
+operating address · every
 registration the CPA calls for active, or a dated CPA note saying none is required and why · tax
 codes present on every sellable Price · threshold monitoring on.
 
@@ -437,11 +446,13 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   governing law at `src/app/terms/page.tsx:25` and `:321`), so Michigan is the home state. Whether
   Michigan taxes remotely accessed software is the CPA's first question. The unambiguously taxable
   surface is merchandise: both card paths ship physical Printful goods to US addresses under
-  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Close with
-  `npm run inspect:tax-registrations` output, head office set to the Okemos address, product tax
-  codes on every sellable Price, threshold monitoring enabled, and a dated CPA note covering
-  Michigan SaaS treatment, Michigan registration for the card orders, and which states to monitor
-  for economic nexus.
+  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Give the CPA
+  the address the business physically operates from as well as the Okemos address of record, which
+  is a suite of the kind registered agents use: nexus follows physical presence, not where mail is
+  forwarded. Close with `npm run inspect:tax-registrations` output, head office set to the confirmed
+  Michigan operating address, product tax codes on every sellable Price, threshold monitoring
+  enabled, and a dated CPA note covering Michigan SaaS treatment, Michigan registration for the card
+  orders, and which states to monitor for economic nexus.
 - [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
   `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
   SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is

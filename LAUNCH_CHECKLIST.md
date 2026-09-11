@@ -32,11 +32,13 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   governing law at `src/app/terms/page.tsx:25` and `:321`), so Michigan is the home state. Whether
   Michigan taxes remotely accessed software is the CPA's first question. The unambiguously taxable
   surface is merchandise: both card paths ship physical Printful goods to US addresses under
-  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Close with
-  `npm run inspect:tax-registrations` output, head office set to the Okemos address, product tax
-  codes on every sellable Price, threshold monitoring enabled, and a dated CPA note covering
-  Michigan SaaS treatment, Michigan registration for the card orders, and which states to monitor
-  for economic nexus.
+  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Give the CPA
+  the address the business physically operates from as well as the Okemos address of record, which
+  is a suite of the kind registered agents use: nexus follows physical presence, not where mail is
+  forwarded. Close with `npm run inspect:tax-registrations` output, head office set to the confirmed
+  Michigan operating address, product tax codes on every sellable Price, threshold monitoring
+  enabled, and a dated CPA note covering Michigan SaaS treatment, Michigan registration for the card
+  orders, and which states to monitor for economic nexus.
 - [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
   `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
   SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is
