@@ -1,11 +1,12 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
-## Workstream Updates (2026-09-10)
+## Workstream Updates (2026-09-11)
 
 - [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
 - [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: 3 remaining office Data API blockers.
 - [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
 - [ ] **R04 (Domains):** Observation started September 11, 2026. **Day 1 of 7** — run `59b08397` passed (checked=1, errors=0). Completes September 17 at earliest.
+- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Baseline (14,877 tests / 1,155 files): **68.78% statements** (122,547/178,149), **75.93% branches** (29,507/38,858), **76.96% functions** (4,705/6,113). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`. Thresholds not yet enforced in CI.
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
