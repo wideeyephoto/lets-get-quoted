@@ -46,33 +46,33 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       enabled: false,          // off by default; `--coverage` or the npm script turns it on
+      reportOnFailure: true,   // emit reports even when tests fail
       reportsDirectory: './coverage',
       reporter: [
         'text-summary',        // quick console overview after the run
         ['lcov', {}],          // lcov.info + HTML viewer for CI and local browsing
         ['json-summary', {}],  // machine-readable summary for dashboards / scripts
       ],
-      // Measure the server-side logic the test suite actually imports.
-      // React components, hooks and email templates run in a browser/RSC
-      // context that the node test environment cannot exercise, so including
-      // them would inflate "uncovered" without providing actionable signal.
-      // Add them when an E2E / component-test suite exists.
+      // Measure server-side logic and API route handlers. React components
+      // and hooks are excluded from this config because the main suite uses
+      // a node environment; component tests that use react-test-renderer or
+      // a jsdom/happy-dom environment (see https://v2.vitest.dev/guide/environment)
+      // can be added to a separate config with its own coverage scope.
       include: [
         'src/lib/**/*.ts',
+        'src/app/api/**/*.ts',
         'src/middleware.ts',
       ],
       exclude: [
         'src/lib/**/index.ts',         // barrel re-exports
-        'src/lib/seo/**',              // generated SEO copy, not logic
-        'src/lib/stock/**',            // generated stock copy
         'src/lib/site-content.ts',     // 146KB generated content catalog
         'src/lib/trades.ts',           // 222KB generated trade definitions
         '**/*.d.ts',                   // type declarations
         '**/*.test.*',                 // tests themselves
       ],
       // No thresholds initially — establish a baseline first, then set floors
-      // to prevent regressions. Uncomment and tune after reviewing the first
-      // report:
+      // to prevent regressions. Uncomment and tune after reviewing the
+      // corrected report:
       // thresholds: {
       //   lines: 50,
       //   functions: 50,
