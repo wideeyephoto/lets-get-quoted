@@ -41,6 +41,7 @@ export async function logIncidentAction(formData: FormData) {
   const severityRaw = String(formData.get('severity') ?? '');
   const startedRaw = String(formData.get('started_at') ?? '').trim();
   const owner = String(formData.get('owner') ?? '').trim().slice(0, 320) || ctx.adminEmail;
+  const rootCause = String(formData.get('root_cause') ?? '').trim().slice(0, 4000) || null;
   const affectedServices = String(formData.get('affected_services') ?? '').split(',').map((value) => value.trim()).filter(Boolean).slice(0, 20);
   const impactSummary = String(formData.get('impact_summary') ?? '').trim().slice(0, 2000) || null;
   const externalRaw = String(formData.get('external_url') ?? '').trim().slice(0, 1000);
@@ -64,7 +65,7 @@ export async function logIncidentAction(formData: FormData) {
 
   const { data, error } = await admin
     .from('platform_incidents')
-    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail, owner, affected_services: affectedServices, impact_summary: impactSummary, external_url: externalUrl, published })
+    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail, owner, root_cause: rootCause, affected_services: affectedServices, impact_summary: impactSummary, external_url: externalUrl, published })
     .select('id')
     .single();
   if (error || !data) {
@@ -163,4 +164,55 @@ export async function togglePublishIncidentAction(formData: FormData) {
   revalidatePath('/admin/incidents');
   revalidatePath('/status');
   back('done=' + (published ? 'published' : 'unpublished'));
+}
+
+export async function updateIncidentDescriptionAction(incidentId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('ops.manage');
+  const description = String(formData.get('description') ?? '').trim().slice(0, 4000) || null;
+  const { data, error } = await ctx.admin
+    .from('platform_incidents')
+    .update({ description })
+    .eq('id', incidentId)
+    .select('id, title, description, published')
+    .single();
+  if (error || !data) back('error=failed');
+
+  await logAdminAction(ctx.admin, ctx, {
+    action: 'platform_incident_update',
+    targetType: 'platform_incident',
+    targetId: data.id,
+    after: { description: data.description },
+    meta: { title: data.title, published: data.published, edit: 'description' },
+  });
+  revalidatePath('/admin/incidents');
+  revalidatePath('/admin');
+  revalidatePath('/status');
+  back('done=updated');
+}
+
+export async function deleteIncidentAction(incidentId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('ops.manage');
+  if (formData.get('confirm_delete') !== 'yes') back('error=delete_confirmation');
+  // Require retraction first, including if publication changed since the page loaded.
+  const { data, error } = await ctx.admin
+    .from('platform_incidents')
+    .delete()
+    .eq('id', incidentId)
+    .eq('published', false)
+    .select('id, title, description, root_cause, owner, published, resolution_summary')
+    .maybeSingle();
+  if (error) back('error=failed');
+  if (!data) back('error=delete_unavailable');
+
+  await logAdminAction(ctx.admin, ctx, {
+    action: 'platform_incident_delete',
+    targetType: 'platform_incident',
+    targetId: data.id,
+    before: data,
+    meta: { title: data.title },
+  });
+  revalidatePath('/admin/incidents');
+  revalidatePath('/admin');
+  revalidatePath('/status');
+  back('done=deleted');
 }

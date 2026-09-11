@@ -9,7 +9,7 @@ import styles from '../admin.module.css';
  * the action refuses a second click — so the confirm is here to stop the first
  * one being accidental rather than to protect the data.
  */
-export default function ResolveIncidentButton({ incidentId, title }: { incidentId: string; title: string }) {
+export default function ResolveIncidentButton({ incidentId, title, rootCause }: { incidentId: string; title: string; rootCause?: string | null }) {
   const [open, setOpen] = useState(false);
   if (!open) return <button type="button" className="btn secondary" style={{ minHeight: 32, fontSize: '.8rem' }} onClick={() => setOpen(true)}>Resolve…</button>;
   return (
@@ -17,7 +17,7 @@ export default function ResolveIncidentButton({ incidentId, title }: { incidentI
       <label htmlFor={`resolution-${incidentId}`}>Resolution summary</label>
       <input id={`resolution-${incidentId}`} className={styles.compactInput} name="resolution_summary" required minLength={4} placeholder="What restored service?" />
       <label htmlFor={`root-cause-${incidentId}`}>Root cause (optional)</label>
-      <input id={`root-cause-${incidentId}`} className={styles.compactInput} name="root_cause" placeholder="Underlying cause, if known" />
+      <input id={`root-cause-${incidentId}`} className={styles.compactInput} name="root_cause" defaultValue={rootCause ?? ''} placeholder="Underlying cause, if known" />
       <button type="submit" className="btn secondary" style={{ minHeight: 32, fontSize: '.8rem' }}>
         Confirm resolved now
       </button>

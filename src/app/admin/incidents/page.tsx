@@ -10,7 +10,7 @@ import {
   incidentDuration,
 } from '@/lib/platform-incidents';
 import styles from '../admin.module.css';
-import { logIncidentAction } from './actions';
+import { deleteIncidentAction, logIncidentAction, updateIncidentDescriptionAction } from './actions';
 import ResolveIncidentButton from './ResolveIncidentButton';
 import PublishIncidentButton from './PublishIncidentButton';
 
@@ -33,6 +33,8 @@ const DONE: Record<string, string> = {
   resolved: 'Marked resolved.',
   published: 'Published. It is on letsgetquoted.com/status now.',
   unpublished: 'Unpublished. It is off /status and visible to staff only.',
+  updated: 'Description updated. Published incidents show the new text on /status.',
+  deleted: 'Incident deleted. Its audit trail is retained.',
 };
 const ERRORS: Record<string, string> = {
   title: 'Give it a title — that is what everyone reads first.',
@@ -41,6 +43,8 @@ const ERRORS: Record<string, string> = {
   failed: 'Could not save that. Try again in a moment.',
   resolution: 'Add a short resolution summary before closing the incident.',
   url: 'Use a complete http or https URL for the external incident link.',
+  delete_confirmation: 'Confirm the permanent deletion first.',
+  delete_unavailable: 'Unpublish the incident before deleting it. It may already have been removed.',
 };
 
 function fmt(v: string | null): string {
@@ -112,7 +116,7 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                       {' — '}
                       <PublishIncidentButton incidentId={i.id} title={i.title} published={i.published} />
                       {' '}
-                      <ResolveIncidentButton incidentId={i.id} title={i.title} />
+                      <ResolveIncidentButton incidentId={i.id} title={i.title} rootCause={i.root_cause} />
                     </>
                   ) : null}
                 </span>
@@ -167,6 +171,23 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                           {mayManage ? (
                             <div style={{ marginTop: '.35rem' }}>
                               <PublishIncidentButton incidentId={i.id} title={i.title} published={i.published} />
+                              <details style={{ marginTop: '.5rem' }}>
+                                <summary>Edit description…</summary>
+                                <form action={updateIncidentDescriptionAction.bind(null, i.id)} className={styles.formStack} aria-label={`Edit ${i.title}`}>
+                                  <label htmlFor={`description-${i.id}`}>What happened</label>
+                                  <textarea id={`description-${i.id}`} name="description" className={styles.input} rows={4} maxLength={4000} defaultValue={i.description ?? ''} />
+                                  <button type="submit" className="btn secondary">{i.published ? 'Save and re-publish' : 'Save description'}</button>
+                                </form>
+                              </details>
+                              {!i.published ? (
+                                <details style={{ marginTop: '.5rem' }}>
+                                  <summary>Delete…</summary>
+                                  <form action={deleteIncidentAction.bind(null, i.id)} className={styles.formStack} aria-label={`Delete ${i.title}`}>
+                                    <p>Delete this internal incident permanently? The audit trail will remain.</p>
+                                    <button type="submit" name="confirm_delete" value="yes" className="btn secondary">Confirm permanent deletion</button>
+                                  </form>
+                                </details>
+                              ) : null}
                             </div>
                           ) : null}
                         </td>
@@ -234,6 +255,9 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
 
               <label htmlFor="incident_owner">Incident owner</label>
               <input id="incident_owner" name="owner" className={styles.input} defaultValue={ctx.adminEmail} />
+
+              <label htmlFor="incident_root_cause">Root cause (internal, optional)</label>
+              <textarea id="incident_root_cause" name="root_cause" className={styles.input} rows={3} maxLength={4000} placeholder="Underlying cause, if known. This stays staff-only." />
 
               <label htmlFor="external_url">Deploy, status, or incident URL (optional)</label>
               <input id="external_url" name="external_url" className={styles.input} type="url" placeholder="https://…" />
