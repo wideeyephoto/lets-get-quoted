@@ -1,16 +1,71 @@
-# Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
+# Official Pre-Launch & Go-Live Checklist â€” Let's Get Quoted
 
 ## Workstream Updates (2026-09-11)
+
+## Coverage gaps opened â€” 2026-09-11
+
+Ten requirements no prior item covered. Verified absent against this checklist at
+`409df2e21`, `docs/launch-blockers-summary-2026-09-10.md` and
+`docs/production-configuration-audit-2026-09-10.md`. Plan and evidence standards:
+[prelaunch-gap-closure-plan-2026-09-11.md](docs/prelaunch-gap-closure-plan-2026-09-11.md).
+
+- [ ] **AI inference tier â€” published as verified, never verified:** `src/app/privacy/page.tsx:116`
+  asserts "paid enterprise API tiers with strict zero-data-retention and non-training guarantees
+  (verified: Google Cloud Billing active on Gemini API project)", added 2026-09-09 in `8ea306817`.
+  The originating task T27 (`docs/admin-command-center-task-list-2026-09-09.md:325`) is still open
+  and no evidence artifact exists. OpenAI zero-data-retention is an approved-account feature, not a
+  default, so the sentence is likely false for that provider as written. Close with dated console
+  captures for both providers, `npm run inspect:ai-tier` output, CLM-014 in the FTC register, and a
+  sync guard in `test/claims-substantiation.test.ts`. Customer photos, transcripts and job notes
+  cross 19 call sites in `src/lib/ai-model-call.ts`.
+- [ ] **Sales tax registrations:** `automatic_tax: { enabled: true }` is live on all three checkout
+  paths, which collects nothing where no registration exists. Entity address is Austin, TX, and
+  Texas taxes SaaS at 80% of value. Close with `npm run inspect:tax-registrations` showing an active
+  TX registration, head office set, product tax codes on every sellable Price, threshold monitoring
+  enabled, and a dated CPA note.
+- [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
+  `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
+  SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is
+  unset, so the entire paging chain may terminate at an untested address. Close with a dated receipt
+  log for all 15 addresses including `dmarc@`, `ONCALL_PRIMARY_EMAIL` confirmed set and baked into
+  the current build (T26), and `docs/runbooks/inbound-mail-routing.md`.
+- [ ] **Vendor account continuity:** no payment method, plan limit or auto-recharge is tracked for
+  any of the 12 vendors. Supabase free-tier ceilings beyond PITR â€” database size, storage across 7
+  buckets, egress, log retention, connections â€” have never been sized. Close with
+  `docs/vendor-account-register.md` carrying dated console reads, SignalWire auto-recharge confirmed,
+  and a dated Supabase tier decision citing usage against each ceiling.
+- [ ] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
+  customer and no `/status` route exists. Close with a deployed anonymous `/status` on the frozen
+  SHA, `platform_incidents` with anon-read-published-only RLS, operator open/update/resolve writing
+  `admin_actions`, and a rehearsed incident cycle.
+- [ ] **Legal counsel review:** Â§13 verified disclosures exist in code; no attorney has assessed
+  lien/NOI validity per state, public-adjusting exposure, surcharge legality, all-party-consent
+  recording, employee-monitoring sufficiency, state privacy rights, or ADA posture. Named as
+  "Lawyer, not an agent" in `docs/unrun-prelaunch-audits-2026-08-31.md:311` and never tracked. Close
+  with dispositions recorded per question in `docs/legal-review-2026-09.md`. Longest lead time on
+  this list â€” engage now.
+- [ ] **Post-cutover watch window:** Â§4 covers flag orderings and go-live Â§6 covers preparation
+  ownership; nothing defines hours 0â€“72. Close with `docs/runbooks/launch-watch-window.md` carrying
+  numeric thresholds for failed payments, dead-letter depth, SMS stalls, cron failures, 5xx and AI
+  spend, each tied to a rollback trigger and an overnight paging policy, plus a dated tabletop.
+- [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31, never tracked.
+  SMS pumping fraud bills to this account. Close with recorded console values.
+- [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
+  figure stated in the DR posture doc.
+- [ ] **Ads conversion recording:** attribution gap is tracked (lines 317, 406) but not whether the
+  tag fires at all. Close with one real end-to-end conversion visible in Google Ads and Meta, before
+  spend.
+
 
 - [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
 - [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: 3 remaining office Data API blockers.
 - [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
-- [ ] **R04 (Domains):** Observation started September 11, 2026. **Day 1 of 7** — run `59b08397` passed (checked=1, errors=0). Completes September 17 at earliest.
-- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Baseline (14,877 tests / 1,155 files): **68.78% statements** (122,547/178,149), **75.93% branches** (29,507/38,858), **76.96% functions** (4,705/6,113). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`. Thresholds not yet enforced in CI.
+- [ ] **R04 (Domains):** Observation started September 11, 2026. **Day 1 of 7** â€” run `59b08397` passed (checked=1, errors=0). Completes September 17 at earliest.
+- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI.
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
-## Branch review and integration — September 10, 2026
+## Branch review and integration â€” September 10, 2026
 
 Reviewed **46 divergent branches / 123 distinct non-merge commits** against main `7f72eaf84`. Selected missing reliability, email, quote-reminder, SMS schema, client-statement and indexing fixes were integrated and tested. Seven original divergent branches already had exact patch matches in main; other old bundles were superseded or held for the specific reasons below. The complete per-branch list is in the [integration review](docs/branch-integration-review-2026-09-10.md#branch-decisions).
 
@@ -26,7 +81,7 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
 
-## Contractor domains verification — 2026-09-09 to 2026-09-10
+## Contractor domains verification â€” 2026-09-09 to 2026-09-10
 
 - [x] **Verification audit and recovery fixes:** Real `blackholeart.com` quote received in Gmail with aligned SPF, DKIM, and DMARC PASS; configured Gmail Reply-To exercised. A real provider rejection recovered once through the platform sender and arrived in Gmail. Fixed paused-enrollment management, unsafe provider-domain adoption, disconnect recovery, and cleanup failure reporting. [PR #64](https://github.com/wideeyephoto/lets-get-quoted/pull/64) was released as `dpl_955shMPfprmxsadkAEui6PqeaKC9`, SHA `18a412404d`; subsequent releases are recorded below. Full CI passed 14,590 tests and the production build. See [current release evidence](docs/contractor-domains-canary-2026-09-09.md).
 - [x] **Website production observations:** Valid TLS on the existing website; deployed watcher has 96 successful scheduled runs in 24 hours. Actual release helper removed a disposable binding from the production Vercel project, confirmed absent afterward. Runs checked zero pending domains; the provider cleanup used CLI authorization.
@@ -37,14 +92,14 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [x] **Production custom-domain Outlook quote (September 10, 04:47 UTC):** Deployed LGQ sent J-1004 from `hello@blackholeart.com` using the reconnected product binding. Outlook Focused Inbox received it with SPF, aligned DKIM, DMARC, and Microsoft authentication PASS plus the correct Reply-To. The received button opened the matching $0 test quote. Provider and canonical delivery IDs are retained in the [canary record](docs/contractor-domains-canary-2026-09-09.md).
 - [x] **Active-domain scheduled reconciliation (September 10, 06:23 UTC):** Production run `93219051-6b33-40be-84fd-b68ce8f588d5` checked the actual BrokePipes binding, kept it verified, and refreshed `last_checked_at` to 06:23:21.089 UTC with zero errors, provider orphans, or backlog. Independent provider verification passed. This is preparation evidence; remaining recovery gates prevent counting it as canary day 1.
 - [x] **Owner-alert recovery release and receipt (September 10):** [PR #70](https://github.com/wideeyephoto/lets-get-quoted/pull/70) is live as `dpl_HMKSCBkwh5kWfkZddzi9uvRFFyzX`, SHA `836b5d2cb1`. Full CI passed 14,618 tests and build; the service-only notice migration is applied in both databases. Injected failures and 15 PostgreSQL checks proved retained incidents and no blind resend. A real production provider-loss alert reached Gmail, matched its signed delivery callback, and resolved without a duplicate on the next worker run. Failed-notice escalation acceptance remains open; see [evidence](docs/contractor-domains-canary-2026-09-09.md).
-- [x] **Provider-loss detection and reconnection (September 10, 12:38–12:50 UTC):** Deleted only the approved rehearsal email binding at Resend and confirmed GET 404. The deployed worker downgraded LGQ, recorded the reconnection reason, and sent one platform-origin owner alert. Product disconnect retained its resolved notice; product reconnect created a fresh binding and verified it against unchanged DNS. The active provider is now `e36d84f4-13e1-4c52-a1ef-3b53514945ec`. F03's subsequent product fallback receipt is still open because today's test allowances are used.
+- [x] **Provider-loss detection and reconnection (September 10, 12:38â€“12:50 UTC):** Deleted only the approved rehearsal email binding at Resend and confirmed GET 404. The deployed worker downgraded LGQ, recorded the reconnection reason, and sent one platform-origin owner alert. Product disconnect retained its resolved notice; product reconnect created a fresh binding and verified it against unchanged DNS. The active provider is now `e36d84f4-13e1-4c52-a1ef-3b53514945ec`. F03's subsequent product fallback receipt is still open because today's test allowances are used.
 - [x] **Reachable recovery instructions (September 10, 13:10 UTC):** [PR #71](https://github.com/wideeyephoto/lets-get-quoted/pull/71) merged as `a19356d3b6` and is live on both public aliases as `dpl_4r5THCtG18aDrULMbbLUrLLbvdRP`. The owner alert now links directly to the email-domain panel and correctly describes replies to LGQ support; the panel displays the saved failure reason. Full CI passed **14,619 tests** and build; 74 focused tests and an isolated browser check passed. The production direct link opened BrokePipes Business/Profile with the verified custom sender and HTTP 200. No second email was sent to recheck the revised copy; see [release evidence](docs/contractor-domains-canary-2026-09-09.md).
 - [x] **Support diagnostic guide (September 10):** G07 is documented in the [current recovery guide](docs/runbooks/contractor-email-domain-support.md), with source-reviewed DNS/provider, reply, capacity, hold and cleanup branches and a verified read-only production snapshot. Corrected the old runbook's immediate-fallback and bulk/abuse-disable instructions. Staffed response and actual hold/rollback acceptance remain open.
 - [x] **Scheduled website certificate promotion and Gmail receipt (September 10, 13:30 UTC):** With the owner's explicit CNAME and extra-alert approval, Squarespace DNS was saved. Scheduled watcher `fb79b4a2-4469-4a92-8af4-1e338b33bac6` connected the exact fixture and notified once, with zero errors. Strict hostname/CA TLS validation passed; the notice reached Gmail Inbox and its signed delivery callback matched. The existing Black Hole Art certificate remained valid. See [production evidence](docs/contractor-domains-canary-2026-09-09.md).
 - [ ] **Supported account-closure domain cleanup:** The live drill exposed missing provider cleanup and a closure request referencing nonexistent account columns. The candidate adds durable targets, guarded retries/completion, correct 30-day scheduling/recovery and truthful website-alert copy. Local tests and the hosted staging rollback drill passed; release and actual deployed fixture cleanup remain pending. See [procedure](docs/runbooks/account-closure-domains.md).
 - [ ] **Remaining production sign-off:** Finish Gmail product coverage, remaining message/recovery drills and deployed deletion, then observe seven healthy elapsed days with seven consecutive active-domain scheduled runs. DNS/passkey and scheduled certificate promotion are complete. Hourly follow-ups are ACTIVE; today's normal inbox allowances and explicitly approved extra Gmail alert are used. **The seven-day clock started September 11, 2026 (Day 1/7).** Full scope and evidence are in the [canary record](docs/contractor-domains-canary-2026-09-09.md) and [email go-live list](docs/contractor-email-domain-go-live-checklist-2026-09-09.md).
 
-## Live payments and refunds — verified September 9, 2026
+## Live payments and refunds â€” verified September 9, 2026
 
 **Current result: live LGQ refund engine and all six initial paid add-on/refund journeys verified.** The [verification report](docs/prelaunch-payments-verification-2026-09-09.md), [connected-charge evidence](docs/evidence/live-connected-refund-2026-09-09.json) and [six-SKU evidence](docs/evidence/live-addon-lifecycle-2026-09-09.json) record the results. Natural renewal and effective period-end acceptance remain open.
 
@@ -53,11 +108,11 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [x] **Release current-source add-on refund and renewal-date fixes.** Integrated the pending PR #33 refund implementation and Stripe item-period correction. Preserved operational-alert scheduling, added the gated refund/debt explanation and removed the unverified paid claim on checkout return. Combined implementation CI: 14,554 tests / 1,127 files; typecheck, lint, security audit and build passed. PR #56 merged as `399e95a44` and is included in production. Paid acceptance is recorded separately below.
 - [x] **Activate and verify the production refund worker.** Refund-ledger, paid Voice and duplicate-delivery migrations are applied; new tables and RPC deny browser-role access. Saved the four refund events on the existing platform top-up webhook and enabled the refund worker. Its unauthenticated endpoint returns 401. The first scheduled run completed at 21:55:12 UTC without errors; subsequent scheduled runs processed the real refunds below.
 - [x] **Complete all six initial live add-on purchases within the approved cap.** Stripe confirms $248 total across the minute pack, Flex/Solo/Growth Voice, storage and office seat. Signed receipts projected into the designated workspaces and usable benefits were verified. Five purchases used approved Link CLI one-time cards; Growth completed through hosted Link. All five recurring add-ons had renewal cancellation confirmed before cleanup.
-- [x] **Finish initial live benefit and refund reconciliation.** All $248 is fully refunded in two equal stages per SKU. Verified exact half/full minute reversals, storage 100→50→0 GB, and office-seat rounding 1→1→0. All 500 purchased minutes are revoked, all five recurring add-ons are canceled, and all six jobs are complete with no remaining debt. The unrelated Solo allowance remains unrevoked. Add-on refunds were initiated in Stripe and reconciled by LGQ's signed webhooks and scheduled worker. Initial Voice grants and storage period reconciliation depended on the hourly worker; see the dated report. Refunds do not replenish the spent $248 gross cap.
+- [x] **Finish initial live benefit and refund reconciliation.** All $248 is fully refunded in two equal stages per SKU. Verified exact half/full minute reversals, storage 100â†’50â†’0 GB, and office-seat rounding 1â†’1â†’0. All 500 purchased minutes are revoked, all five recurring add-ons are canceled, and all six jobs are complete with no remaining debt. The unrelated Solo allowance remains unrevoked. Add-on refunds were initiated in Stripe and reconciled by LGQ's signed webhooks and scheduled worker. Initial Voice grants and storage period reconciliation depended on the hourly worker; see the dated report. Refunds do not replenish the spent $248 gross cap.
 - [x] **Recover and verify real duplicate and stale refund deliveries.** A Stripe resend initially returned 500 because duplicate detection compared the entire body hash. Applied `20260909233336_addon_refund_delivery_identity.sql`: retain the first hash for audit and deduplicate by verified mode/event/charge. The same live event returned 200 at 23:45:59 UTC; an earlier half-refund event replayed after full reversal returned 200 at 23:54:19 UTC. Receipt count, job revision/attempts and the fully revoked allowance stayed unchanged. Signature, scope, charge identity and browser-role protections remain enforced.
 - [ ] **Verify natural paid renewal and effective period-end cancellation.** These require actual billing periods to elapse and additional renewal spending approval. Existing sandbox lifecycle checks and live cancellation scheduling do not close this item.
 
-## Security and recovery — 2026-09-09
+## Security and recovery â€” 2026-09-09
 
 - [x] **Replace the three documented exposed credentials:** replacement Resend/Supabase/cron credentials configured in Vercel, GitHub and matching local consumers; production rebuilt and checked. Exposed Resend key removed; old Supabase service JWT denied as both API key and bearer JWT; legacy anon denied; old cron secret denied privileged diagnostics. See [dated evidence](docs/runbooks/security-recovery-2026-09-09.md).
 - [x] **Implement and stage-test native admin passkeys:** session-bound WebAuthn grants, TOTP recovery, origin/signature/replay checks and private credential storage implemented. All 22 real staging protocol checks passed; production schema and privileges verified. This is not native-device production acceptance.
@@ -65,39 +120,39 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [x] **Restore the downloaded offsite pack in isolation:** 260 row counts, 258 table/grant definitions, 272 policies, 435 functions/grants, existing-owner RLS and all 38 local object hashes passed. Plaintext temporary data removed. See [restore evidence](docs/runbooks/evidence/dr-downloaded-local-restore-2026-09-09.json).
 - [ ] **Complete hosted, infrastructure and provider recovery:** exact downloaded-pack hosted Auth/Storage/application acceptance, independent recovery-key retrieval, deployment/DNS recovery, and provider recovery/reconciliation remain open. The isolated PostgreSQL restore is not full-disaster recovery.
 
-## Command Center & Operational Telemetry Honesty — 2026-09-09
+## Command Center & Operational Telemetry Honesty â€” 2026-09-09
 
-**Completed:** Verification against `docs/admin-command-center-task-list-2026-09-09.md` across Waves 0–6.
+**Completed:** Verification against `docs/admin-command-center-task-list-2026-09-09.md` across Waves 0â€“6.
 
-- [x] **Wave 1: Zero-risk correctness & telemetry honesty (T5–T8):**
+- [x] **Wave 1: Zero-risk correctness & telemetry honesty (T5â€“T8):**
   - **T5:** Hoisted `requireAdmin()` and MFA checks before `cronJob(jobSlug)` lookup in `runCronJobNowAction`; unauthenticated requests redirect rather than revealing slug validity (`test/admin-actions-auth-guard.test.ts` 21/21 passed).
-  - **T6:** Nullified fabricated SLA numbers (`uptime24hPct: null`, `uptime7dPct: null`, `uptime30dPct: null`) in `src/lib/uptime-monitoring.ts` until persistent probe storage is implemented. Updated `/admin/health` subtitle to "Synthetic probes evaluated on page render" and display unmeasured SLA as `"—"`.
+  - **T6:** Nullified fabricated SLA numbers (`uptime24hPct: null`, `uptime7dPct: null`, `uptime30dPct: null`) in `src/lib/uptime-monitoring.ts` until persistent probe storage is implemented. Updated `/admin/health` subtitle to "Synthetic probes evaluated on page render" and display unmeasured SLA as `"â€”"`.
   - **T7:** Introduced `SubsystemStatus = 'configured'` for the six static environment-check subsystems (`quoting-engine`, `stripe-payments`, `sms-gateway`, `voice-webhook`, `email-resend`, `contractor-cdn`). Mapped to neutral badge; does not artificially degrade or claim false active synthetic probe status.
   - **T8:** Hardened gate in `test/service-health-telemetry.test.ts` asserting that any subsystem returning `operational` must provide an active numeric `latencyMs` probe. Proven to bite by temporarily flipping static check to `operational` with `null` latency and asserting test failure.
-- [x] **Wave 2: Observability cluster resolution (T10–T12):**
+- [x] **Wave 2: Observability cluster resolution (T10â€“T12):**
   - **T10 & T11:** Removed unbuffered module-level APM request tiles, slowest routes, and unbacked exceptions table from `/admin/health` to eliminate empty/unmeasured serverless artifacts.
   - **T12:** Wired `dispatchOnCallPage` to real operational triggers (`logIncidentAction` for critical and high severity platform incidents). Implemented 15-minute deduplication and debounce keyed on `incidentKey` (`test/reliability-operations-center.test.ts` verified).
 - [x] **Wave 3: Real insert-first campaign idempotency (T13):**
   - Created migration `migrations/20260909150000_platform_campaign_dispatches.sql` with `idempotency_key text primary key`, RLS enabled, and `REVOKE ALL ... FROM public, anon, authenticated`. Asserted in `test/admin-platform-campaigns.test.ts`.
   - Switched `sendPlatformCampaignBlastAction` to insert-first into `platform_campaign_dispatches` before entering the dispatch loop; duplicate sends blocked by Postgres unique constraint (`23505`). Dropped 60s subject-match fallback. Verified with concurrent dispatch test.
-- [x] **Wave 4: Data hygiene & failure diagnosis (T14–T16):**
+- [x] **Wave 4: Data hygiene & failure diagnosis (T14â€“T16):**
   - **T14:** Created migration `migrations/20260909130000_ignore_test_mode_subscription_rehearsals.sql` with RPC `ignore_test_mode_stripe_billing_subscription_event` to update 185 test-mode rehearsal rows in `billing_events` to `'ignored'`.
   - **T15:** Updated subscription projector to gracefully classify `livemode = false` events as `ignored_test_mode` rather than failing them (`test/subscription-event-projector.test.ts` 14/14 passed).
   - **T16:** Propagated underlying failure reason strings from batch workers into `cron_runs.error` via `extractLogicalFailureReason` (`test/cron-jobs.test.ts` passed).
-- [x] **Wave 5: Rotting decisions resolution & route inventory gate (T17–T25):**
-  - **T17–T22:** Retired `smart-dunning` and deferred `activation-autopilot` with clear non-executable status envelopes.
+- [x] **Wave 5: Rotting decisions resolution & route inventory gate (T17â€“T25):**
+  - **T17â€“T22:** Retired `smart-dunning` and deferred `activation-autopilot` with clear non-executable status envelopes.
   - **T23:** Renamed `safeActionsExecuted` to `auditActionsLogged` across `engine.ts`, `OperatorCockpit.tsx`, and `operator-briefing` to truthfully reflect audit ledger records rather than outbound messages sent.
   - **T24:** Added route inventory gate in `test/cron-jobs.test.ts` ensuring all directories under `src/app/api/cron/` are scheduled in `vercel.json` + `cron-jobs.ts` or listed in an explicit allowlist with substantive reasons. Proven to bite by creating a dummy orphan directory and observing test failure.
   - **T25:** Renamed privacy request resolution button to "Mark responded" in `/admin/accounts/[id]` and `/admin/privacy-requests` to truthfully reflect staff handling without implying hard deletion of foreign-key restricted records. Published direct monitored intake address (`privacy@letsgetquoted.com`) on `/privacy`.
-- [x] **Wave 6: Operator relay & billing verification (T26–T27):**
+- [x] **Wave 6: Operator relay & billing verification (T26â€“T27):**
   - **T27:** Documented Google Cloud billing active status beside AI privacy claims at `src/app/privacy/page.tsx` line 115, certifying enterprise zero-retention / non-training tier.
 
-## Operational failure alerts and recovery — 2026-09-09
+## Operational failure alerts and recovery â€” 2026-09-09
 
 **Completed and deployed:** [PR #46](https://github.com/wideeyephoto/lets-get-quoted/pull/46), production commit `48dee526b6c25a020758e42f4684bd5698ef54e2`. Owner and approved inbox: **hello@letsgetquoted.com**. See the [dated verification report](docs/operational-alerts-verification-2026-09-09.md) for source IDs, timing, scope and replay evidence.
 
 - [x] **Audit and repair monitoring paths.** Five-minute application scanning plus an independent GitHub watchdog now cover unresolved webhook, billing, SMS, dispute and cron failures. Durable delivery evidence distinguishes provider acceptance from delivery. Rejected sends no longer report success; the SRE helper cannot falsely resolve unprocessed webhooks.
-- [x] **Trigger controlled failures and prove automatic arrival within 60 minutes.** Five marked production source fixtures were created at 14:12:34 UTC. The normal scheduler detected all five; signed delivery receipts show **2m 44.4s–2m 55.2s** to the approved inbox. All five were directly verified in Gmail Inbox within six minutes, with source references, recovery instructions and admin links. No manual monitor invocation drove the initial delivery.
+- [x] **Trigger controlled failures and prove automatic arrival within 60 minutes.** Five marked production source fixtures were created at 14:12:34 UTC. The normal scheduler detected all five; signed delivery receipts show **2m 44.4sâ€“2m 55.2s** to the approved inbox. All five were directly verified in Gmail Inbox within six minutes, with source references, recovery instructions and admin links. No manual monitor invocation drove the initial delivery.
 - [x] **Verify monitor-failure notification.** An isolated invalid database credential triggered the real fallback automatically; delivery took **3.469 seconds**. Two monitor attempts and the dependency-free fallback reused the same provider message.
 - [x] **Verify recovery without duplicate effects.** Replaying all five live alert requests returned the original provider IDs. Fixture cleanup changed five marked records; repeat cleanup changed zero. Charges, credit grants, customer messages and SMS tasks/provider IDs stayed zero. Billing audit history was preserved as ignored. The independent recovery run cleared all five findings with **zero queued, claimed or sent emails and zero delivery failures**.
 - [x] **Release validation.** Final CI passed **14,221 tests / 1,108 files**, security audit, typecheck, lint, SEO, stock and production build. Focused recovery regression: **114/114**. Disposable PostgreSQL verification: **9/9**. Production applied-migration audit: **zero gaps**.
@@ -111,11 +166,11 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Tenant isolation and office-user production verification — 2026-09-09
+## Tenant isolation and office-user production verification â€” 2026-09-09
 
 - [x] **Verify tenant isolation and office-user access with authenticated production identities (COMPLETED 2026-09-09):** Followed the [comprehensive execution checklist](docs/tenant-office-production-verification-plan-2026-09-09.md) and executed the automated verification suite (`npm run verify:tenant-office`, script `scripts/verify-tenant-office-suite.mjs`). All **83 cases** across 11 categories passed cleanly (**83 passed, 0 failed, 0 blocked**):
   - **Identities & Workspaces:** Two test workspaces (Midwest Glass and BrokePipes) with positive owner controls and office users verified with explicit grant snapshots.
-  - **Financial Confidentiality & Remediation:** Lifetime value and per-job quote amounts on `clients/[id]` and Focus API (`/api/clients/[id]/detail`) were identified and remediated to require quotes/reports capability (`canSeeQuotes`), masking amounts (`'—'`) for unauthorized office members. Raw responses, RSC streams, and Data API column requests verified.
+  - **Financial Confidentiality & Remediation:** Lifetime value and per-job quote amounts on `clients/[id]` and Focus API (`/api/clients/[id]/detail`) were identified and remediated to require quotes/reports capability (`canSeeQuotes`), masking amounts (`'â€”'`) for unauthorized office members. Raw responses, RSC streams, and Data API column requests verified.
   - **Cross-Workspace Denial:** Bidirectional isolation (A $\to$ B, B $\to$ A) proven across deep links, JSON APIs, server actions, RPCs, Storage, and Realtime channels. Dual-membership user workspace-switching verified with zero authority leakage.
   - **DB Authorization & RLS:** Complete inventory of 14 exposed tables, policies, functions, views, and failure semantics tested. Tenant reassignment and cross-tenant parent injection denied.
   - **Invitations & Lifecycle:** Invitation replay, wrong-recipient denial, atomic permission replacement, and capacity enforcement verified (84/84 checks passed in `verify:office-seat-collision`).
@@ -124,7 +179,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## AI Voice release and operational closeout fixes (PRs #29, #31, #35–#38, #40–#45, #48, #49) — 2026-09-08 to 2026-09-09
+## AI Voice release and operational closeout fixes (PRs #29, #31, #35â€“#38, #40â€“#45, #48, #49) â€” 2026-09-08 to 2026-09-09
 
 **Implementation released across the PRs below:** Core lifecycle, transfer, timeout, callback authentication and operator recovery fixes are deployed. This does not close every live acceptance gate. The [September 9 acceptance record](docs/voice-acceptance-2026-09-09.md) records the latest handset failure, successful speech diagnostic and remaining checks.
 
@@ -154,7 +209,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Customer SMS launch acceptance and dispatch recovery — 2026-09-08 to 2026-09-09
+## Customer SMS launch acceptance and dispatch recovery â€” 2026-09-08 to 2026-09-09
 
 **Completed checks & evidence:** Customer launch acceptance register (`docs/customer-sms-launch-acceptance-2026-09-09.md`), branch `test/customer-sms-acceptance-20260909` (commit `9bd5a672e`), and 30-task send preview plan (`004cd78d2`).
 
@@ -169,7 +224,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Billing rehearsal noise classification and operational reviews — 2026-09-09
+## Billing rehearsal noise classification and operational reviews â€” 2026-09-09
 
 **Completed in branch `fix/billing-rehearsal-noise-20260909` (commit `e9802a4bf`):** Resolves operational alert noise while preserving immutable historical records and keeping genuine live failures actionable. See `docs/billing-rehearsal-noise-fix-plan-2026-09-09.md` and `docs/historical-failure-backlog-triage-plan-2026-09-09.md`.
 
@@ -182,11 +237,11 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Contractor custom email sending domains allowlisting and reconciler — 2026-09-08 to 2026-09-09
+## Contractor custom email sending domains allowlisting and reconciler â€” 2026-09-08 to 2026-09-09
 
 **Completed:** Commits `36da9930d`, `8b41b282a`, `b41604ece`, `901feda8b`. See runbook `docs/contractor-email-domain-go-live-checklist-2026-09-09.md`.
 
-- [x] **Rollout allowlisting, durable admin suspension & cleanup recovery (`36da9930d`):** Implemented workspace allowlisting (`LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST`), domain suspension guards, and cleanup recovery. The September 9 audit adds recovery fixes and corrects incomplete C05/C10 claims; C01–C11 are not a blanket release sign-off.
+- [x] **Rollout allowlisting, durable admin suspension & cleanup recovery (`36da9930d`):** Implemented workspace allowlisting (`LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST`), domain suspension guards, and cleanup recovery. The September 9 audit adds recovery fixes and corrects incomplete C05/C10 claims; C01â€“C11 are not a blanket release sign-off.
 - [x] **Daily domain reconciler (`8b41b282a`):** Implemented daily reconciler cron scheduled at `23 6 * * *` to audit DNS/DKIM/SPF alignment and provider registration status.
 - [x] **Connect action defect resolution (`b41604ece`):** Fixed fatal provider status union mismatch against column CHECK constraint and corrected unique index shape (resolving PostgreSQL error 42P10).
 - [x] **Feature flag extraction and onboarding auditor (`901feda8b`):** Extracted flag helpers from server actions and hardened onboarding audit gates.
@@ -194,7 +249,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Custom website domains TLS & certificate watcher — 2026-09-08 to 2026-09-09
+## Custom website domains TLS & certificate watcher â€” 2026-09-08 to 2026-09-09
 
 **Completed:** Commits `103097369`, `bd7129cdf` / `3446f93ff`.
 
@@ -203,7 +258,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Admin security, WebAuthn & Apple Passwords MFA setup — 2026-09-06 to 2026-09-09
+## Admin security, WebAuthn & Apple Passwords MFA setup â€” 2026-09-06 to 2026-09-09
 
 **Completed:** Commit `100ff42d1` (branch `fix/mfa-setup-apple-passwords`) and commits `937e5e89e`, `b923b2060`.
 
@@ -212,7 +267,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Dashboard orientation tour orchestration & navigation integrity — 2026-09-08 to 2026-09-09
+## Dashboard orientation tour orchestration & navigation integrity â€” 2026-09-08 to 2026-09-09
 
 **Completed:** Commits `92d4d190f`, `6cf9c6a35`, `9a1c4c0fa`. See `docs/plan-dashboard-orientation-tour-2026-09-08.md`.
 
@@ -222,7 +277,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Homeowner financing (Acorn Finance) contract alignment & protection — 2026-09-08 to 2026-09-09
+## Homeowner financing (Acorn Finance) contract alignment & protection â€” 2026-09-08 to 2026-09-09
 
 **Completed:** Commits `2579a9ced`, `18d047547`, `c81f76801`, `8d4b8609f`, `8a2772add`, `491ba8e72`. See `docs/plan-acorn-homeowner-financing-2026-09-08.md`.
 
@@ -233,7 +288,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Spatial LiDAR room scans and takeoff persistence (PR #26) — 2026-09-05 to 2026-09-08
+## Spatial LiDAR room scans and takeoff persistence (PR #26) â€” 2026-09-05 to 2026-09-08
 
 **Completed:** PR #26 (`ea6ab4653` / `694f1dc75`) and migration `migrations/20260905163943_room_spatial_scans.sql`.
 
@@ -241,7 +296,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Paid-ad marketing surface truthfulness & theme contrast — 2026-09-08
+## Paid-ad marketing surface truthfulness & theme contrast â€” 2026-09-08
 
 **Completed:** Commits `2dcdcf057`, `25bdd1d91`, `145cf53ac`, `f16f3a592`.
 
@@ -251,13 +306,13 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ---
 
-## Six-SKU post-launch verification update — 2026-09-08
+## Six-SKU post-launch verification update â€” 2026-09-08
 
 **Policy: keep all six released products available; exhaustion blocking stays OFF.** This update records the work completed in the six-SKU execution task and supersedes conflicting older statements about its progress or an automatic date for enabling enforcement. A staging pass does not close a production gate. No production merge, deployment, schema change, or real-money purchase was performed by this task.
 
 **Review state:** [draft PR #33](https://github.com/wideeyephoto/lets-get-quoted/pull/33), head `904be70b16e82612ec249785de59ada4ab8f407d`, pushed with Brett's approval. Local validation passed; GitHub CI and Vercel preview for this head were still running at the latest check. The [execution register](C:/dev/six-sku-execution-register-2026-09-08.md) records detailed evidence and the [execution plan](C:/dev/six-sku-post-launch-plan-2026-09-08.md) retains the full acceptance criteria.
 
-### Completed — implementation and staging evidence
+### Completed â€” implementation and staging evidence
 
 - [x] **Partial-balance voice correction implemented and verified in staging.** Measurement mode preserves the normal ten-minute allowed duration at balances 0/1/2/9/10/15, debits only reserved credit, and records absorbed usage. Retry snapshots, duplicate settlement and database failures are covered. Fifteen disposable PostgreSQL checks and the installed staging matrix passed. This is not proof of a ten-minute real-carrier cutoff or production deployment.
 - [x] **Transfer observation/history correction implemented and verified in staging.** Provider callbacks retain confirmed answered-transfer history across late AI summaries. Nine PostgreSQL checks plus callback regression tests passed. The approved controlled call proved that the forwarding phone received caller audio; return audio and failure/recovery acceptance remain open below.
@@ -269,7 +324,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [x] **Office/storage staging boundary subset passed.** Eighteen transactional office checks covered purchased seat limits, invitation acceptance/replay/recipient checks, owner-only grants, removal/reuse and anonymous denial. The actual storage upload module rejected an at-limit upload, accepted an exact fit, and allowed existing download/delete above the reduced cap; final storage sweep returned zero bytes. Near-limit usage was synthetic. This does not close concurrent uploads or full office client/job UI permissions.
 - [x] **Local regression/build and refund database checks passed.** Commit `904be70b1`: 13,981 tests / 1,091 files, typecheck, lint, isolated production build (418 static pages), SEO 22/22 and stock 14/14. Refund-specific PostgreSQL checks: portable 14/14 and hosted rehearsal 28/28. Build-generated configuration edits were restored. Staging security review added no WARN findings from refund changes; four additional RLS/no-policy INFO notices are intentional service-only ledgers, with browser access denied. Logs: [suite](C:/dev/six-sku-refund-full-suite-final.log), [PostgreSQL](C:/dev/six-sku-refund-pg17.log), [build](C:/dev/six-sku-refund-build-isolated.log).
 
-### Still open — do not mark launch acceptance complete
+### Still open â€” do not mark launch acceptance complete
 
 - [ ] **Production rollout and exact deployed-revision verification.** Complete PR CI/review, then obtain production approval for the concrete migrations, application deployment, webhook refund event configuration and worker flag. Verify the deployed SHA and operational behavior. Draft PR approval does not authorize this rollout.
 - [ ] **Controlled real purchases and natural renewal/cancellation.** Confirm payer, eligible designated workspaces and an exact spending limit before actual funds move. Reconcile payment, usable benefit, refund, renewal and effective cancellation. Sandbox transactions do not close the separate live connected-payment refund gate elsewhere in this list.
@@ -278,53 +333,53 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [ ] **Finish office and storage UI/concurrency boundaries.** Staging client/job capabilities remain globally disabled; a transaction-only grant-predicate test is not page/RLS activation proof. Verify actual office client/job access and denied writes/financial data, cross-workspace acceptance/switching, concurrent uploads and over-limit cancellation with existing data retained.
 - [ ] **Daily and full provider-period reconciliation, monitoring and separate enforcement decision.** Establish at least seven healthy daily comparisons and reconcile the actual SignalWire invoice period, including forwarding, rounding and absorbed usage. September 23 remains a checkpoint until the provider period is verified. Exhaustion blocking stays OFF unless Brett later explicitly chooses enforcement after reviewing the evidence.
 
-## Whole-platform go-live gates — 2026-09-08
+## Whole-platform go-live gates â€” 2026-09-08
 
 **Every remaining launch blocker, sequenced by which sale it must precede.** Full evidence, PASS criteria and the orderings that cause harm are in [docs/platform-go-live-2026-09-08.md](docs/platform-go-live-2026-09-08.md). Claims below were re-checked against source, `git`, GitHub Actions or a live probe on 2026-09-08 rather than carried forward from older sections; where they contradict an earlier entry, this section supersedes it. Status tags: **VERIFIED TODAY** = read/ran/probed on 2026-09-08. **INHERITED** = carried from a prior audit, not re-verified. **CLAIMED, NO ARTIFACT** = a document asserts it and nothing proves it.
 
-### State hygiene — no gate below means anything until this is done
+### State hygiene â€” no gate below means anything until this is done
 
-- [ ] **Reconcile the diverged checkout before running any gate (VERIFIED TODAY)**: local `main` `11ed8a776` vs `origin/main` `bee028f35` — **10 ahead, 8 behind**, 53 files / +1185 −203 apart (13 ahead after two further local commits landed mid-audit). The local custom-domain certificate watcher, admin command-center fixes, marketing accuracy/contrast work and welcome trade search are **not deployed**; the remote six-SKU release is **not in this working tree**, which is why `src/lib/billing/catalog.ts` reads as fully withheld locally while production sells all six. Another agent commits into this tree live. Merge, resolve, push, then re-read every gate against the merged tree.
-- [ ] **Re-audit the 380-commit range since the last audit frontier (VERIFIED TODAY)**: the newest real audit is [live-integrations-e2e-audit-2026-09-01.md](docs/live-integrations-e2e-audit-2026-09-01.md); `origin/main` has taken **380 commits** since. This is the same shape as the 135-commit wave that [audit-post-sweep-features-2026-08-31.md](docs/audit-post-sweep-features-2026-08-31.md) found was "mostly theater, and all live" — nearly three times larger, and this range contains the decision to start selling six SKUs.
-- [x] **Freeze one SHA and run the gates unpiped (Run 2026-09-10 at `0495b2e5d`)**: `.next/types` deleted, all 7 gates run unpiped. Results: (1) `typecheck` → EXIT 0 ✅, (2) `npm test` → 14,877/14,877 passed EXIT 0 ✅, (3) `lint` → 0 errors EXIT 0 ✅ (warnings only), (4) `next build` → EXIT 0 ✅, (5) `check:schema:order` → EXIT 0 ✅, (6) `check:schema:messaging` → EXIT 0 ✅, (7) `audit:applied` → EXIT 1 ⚠️ (4 pre-existing gaps: 1 MISSING `signalwire_dedicated_number_provisioning` older function body, 1 MISSING `ignore_test_mode_subscription_rehearsals` stale body, 2 PARTIAL source-patched functions). **6/7 gates zero.** Gate 7 gap is pre-existing migration body drift, not a regression. Vercel production deployment verification remains an operator step.
+- [ ] **Reconcile the diverged checkout before running any gate (VERIFIED TODAY)**: local `main` `11ed8a776` vs `origin/main` `bee028f35` â€” **10 ahead, 8 behind**, 53 files / +1185 âˆ’203 apart (13 ahead after two further local commits landed mid-audit). The local custom-domain certificate watcher, admin command-center fixes, marketing accuracy/contrast work and welcome trade search are **not deployed**; the remote six-SKU release is **not in this working tree**, which is why `src/lib/billing/catalog.ts` reads as fully withheld locally while production sells all six. Another agent commits into this tree live. Merge, resolve, push, then re-read every gate against the merged tree.
+- [ ] **Re-audit the 380-commit range since the last audit frontier (VERIFIED TODAY)**: the newest real audit is [live-integrations-e2e-audit-2026-09-01.md](docs/live-integrations-e2e-audit-2026-09-01.md); `origin/main` has taken **380 commits** since. This is the same shape as the 135-commit wave that [audit-post-sweep-features-2026-08-31.md](docs/audit-post-sweep-features-2026-08-31.md) found was "mostly theater, and all live" â€” nearly three times larger, and this range contains the decision to start selling six SKUs.
+- [x] **Freeze one SHA and run the gates unpiped (Run 2026-09-10 at `0495b2e5d`)**: `.next/types` deleted, all 7 gates run unpiped. Results: (1) `typecheck` â†’ EXIT 0 âœ…, (2) `npm test` â†’ 14,877/14,877 passed EXIT 0 âœ…, (3) `lint` â†’ 0 errors EXIT 0 âœ… (warnings only), (4) `next build` â†’ EXIT 0 âœ…, (5) `check:schema:order` â†’ EXIT 0 âœ…, (6) `check:schema:messaging` â†’ EXIT 0 âœ…, (7) `audit:applied` â†’ EXIT 1 âš ï¸ (4 pre-existing gaps: 1 MISSING `signalwire_dedicated_number_provisioning` older function body, 1 MISSING `ignore_test_mode_subscription_rehearsals` stale body, 2 PARTIAL source-patched functions). **6/7 gates zero.** Gate 7 gap is pre-existing migration body drift, not a regression. Vercel production deployment verification remains an operator step.
 
-### P0 — gates the first paying stranger
+### P0 â€” gates the first paying stranger
 
-- [ ] **Verify a live Stripe Price exists for all six SKUs that went on sale today (VERIFIED TODAY)**: on `origin/main` `bee028f35`, `TOP_UPS_WITHHELD` is now `Object.freeze({})` — `ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, `voice_minutes_100`, `storage_100gb` and `office_user` are all sellable, released across PRs #27, #28 and #30 between 13:57 and 15:50 UTC. **PR #30's own body states "Stripe Prices still require the canonical catalog metadata."** Top-ups do not bind through env vars — they resolve at runtime by metadata search on `lgq_top_up_id` + `lgq_catalog_version` — so nothing fails at build or boot and the first symptom is a customer clicking Buy on a $55/mo SKU and getting an error. Run `npm run inspect:live-top-ups` (strictly read-only; refuses any key that is not the read-only `rk_live_`). **Operator required** — this checkout has no `.env.live.local`. **PASS =** for all six: Price exists, `active`, `unit_amount` matches `priceCents`, `recurring` matches the catalog flag, metadata carries the current `PRICING_CATALOG_VERSION`. Anything short of six for six → re-withhold the missing SKUs in the same commit. **This supersedes the withheld-SKU entries in §2's Top-Up Add-Ons contract audit.**
-- [ ] **Confirm the voice metering flag is actually present in Production (VERIFIED TODAY)**: the catalog now records "Voice launches with metering on and exhaustion blocking off. LGQ absorbs unmetered usage while provider reconciliation continues." That is a deliberate decision with three unconfirmed conditions: (a) `LGQ_VOICE_MINUTE_METER_ENABLED` must be **present** — every flag reader is `env[FLAG] === '1'`, so absent silently means off and LGQ would not be absorbing measured usage but flying blind; (b) Production env is **baked at build**, so the flag does nothing until a redeploy, and turning it on is an ADD, not an edit; (c) the [AI Voice go-live runbook](docs/ai-voice-go-live-runbook.md) requires reconciling a **full billing period** against the SignalWire invoice before the gate flips. **PASS =** one external read returns the flag on, and a named date exists by which reconciliation completes and the gate flips.
+- [ ] **Verify a live Stripe Price exists for all six SKUs that went on sale today (VERIFIED TODAY)**: on `origin/main` `bee028f35`, `TOP_UPS_WITHHELD` is now `Object.freeze({})` â€” `ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, `voice_minutes_100`, `storage_100gb` and `office_user` are all sellable, released across PRs #27, #28 and #30 between 13:57 and 15:50 UTC. **PR #30's own body states "Stripe Prices still require the canonical catalog metadata."** Top-ups do not bind through env vars â€” they resolve at runtime by metadata search on `lgq_top_up_id` + `lgq_catalog_version` â€” so nothing fails at build or boot and the first symptom is a customer clicking Buy on a $55/mo SKU and getting an error. Run `npm run inspect:live-top-ups` (strictly read-only; refuses any key that is not the read-only `rk_live_`). **Operator required** â€” this checkout has no `.env.live.local`. **PASS =** for all six: Price exists, `active`, `unit_amount` matches `priceCents`, `recurring` matches the catalog flag, metadata carries the current `PRICING_CATALOG_VERSION`. Anything short of six for six â†’ re-withhold the missing SKUs in the same commit. **This supersedes the withheld-SKU entries in Â§2's Top-Up Add-Ons contract audit.**
+- [ ] **Confirm the voice metering flag is actually present in Production (VERIFIED TODAY)**: the catalog now records "Voice launches with metering on and exhaustion blocking off. LGQ absorbs unmetered usage while provider reconciliation continues." That is a deliberate decision with three unconfirmed conditions: (a) `LGQ_VOICE_MINUTE_METER_ENABLED` must be **present** â€” every flag reader is `env[FLAG] === '1'`, so absent silently means off and LGQ would not be absorbing measured usage but flying blind; (b) Production env is **baked at build**, so the flag does nothing until a redeploy, and turning it on is an ADD, not an edit; (c) the [AI Voice go-live runbook](docs/ai-voice-go-live-runbook.md) requires reconciling a **full billing period** against the SignalWire invoice before the gate flips. **PASS =** one external read returns the flag on, and a named date exists by which reconciliation completes and the gate flips.
 - [x] **Live LGQ refund-engine proof verified September 9.** The September 7 programmatic $1.00 refund is reconciled to Stripe request flags, transfer reversal, platform-fee refund and LGQ records. See the current Live payments and refunds section and [dated evidence](docs/prelaunch-payments-verification-2026-09-09.md). A new dashboard-click/full-refund exercise and the paid add-on gate remain distinct.
-- [ ] **Reconcile all 67 production feature flags — the env table lists 12 (VERIFIED TODAY)**: `grep -rhoE "LGQ_[A-Z0-9_]+" src/ | sort -u` returns **67** distinct flags against the 12 in §7. Absent == off, silently, with no boot complaint, and CI declares zero `LGQ_*` vars so CI has only ever exercised the OFF path for all 67. Latent yesterday, P0 today because six SKUs just went on sale. The ordering that will burn the first stranger: **`LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED` and `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED` must be ON before `LGQ_TOP_UP_PURCHASE_ENABLED`** — otherwise Stripe charges the card, [stripe-top-up-webhook.ts:38](src/lib/billing/stripe-top-up-webhook.ts#L38) refuses the delivery before reading it, credits are never granted, and there is **no failed cron and no dead letter** to notice it by. [top-up-purchases-go-live-runbook.md:48](docs/top-up-purchases-go-live-runbook.md) forbids the wrong ordering. **PASS =** one table of flag / expected Production value / actual Production value / redeploy that baked it, for every flag on a rail that can take money.
-- [ ] **Complete a real restore drill — staging database/Auth/Storage acceptance passes (2026-09-09)**: Approved restore, baseline grants/policy/function parity, existing-member sign-in, all 38 Storage objects, invoice generation and local app/admin smoke are verified. The staged crew-completion correction passes all 35 real RLS tests; Auth fields and private Storage cross-account denial also pass. Production still needs that migration. This broader gate remains open: PITR is disabled and offsite/provider/infrastructure recovery remains unproven. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md) and [measured backup posture](docs/backup-posture.md).
-- [x] **Repair the failure-to-human channel, then drill it (COMPLETED 2026-09-09):** deployed in PR #46. All five failure classes reached hello@letsgetquoted.com automatically in 2m 44.4s–2m 55.2s and were verified in Gmail Inbox. Exact-request notification replay reused all five provider IDs; repeated guarded recovery caused zero business effects or new notifications. See the current operational-alert update above and its dated evidence report. Historical failures remain available for triage.
-- [x] **Prove what the now-sellable office seat actually buys (COMPLETED 2026-09-09)**: `office_user` access and financial confidentiality verified through automated suite `scripts/verify-tenant-office-suite.mjs` (83/83 passed). Office members receive positive owner-assigned capabilities, `canSeeQuotes` (`canSeeFinancials`) masks lifetime value and per-job quote amounts as `"—"` across `clients/[id]` and Focus API `/api/clients/[id]/detail`, and all database queries enforce tenant scoping. RLS, deep links, server actions, Storage, and Realtime channels verified with 0 unwanted ledger, payment, or message side effects.
+- [ ] **Reconcile all 67 production feature flags â€” the env table lists 12 (VERIFIED TODAY)**: `grep -rhoE "LGQ_[A-Z0-9_]+" src/ | sort -u` returns **67** distinct flags against the 12 in Â§7. Absent == off, silently, with no boot complaint, and CI declares zero `LGQ_*` vars so CI has only ever exercised the OFF path for all 67. Latent yesterday, P0 today because six SKUs just went on sale. The ordering that will burn the first stranger: **`LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED` and `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED` must be ON before `LGQ_TOP_UP_PURCHASE_ENABLED`** â€” otherwise Stripe charges the card, [stripe-top-up-webhook.ts:38](src/lib/billing/stripe-top-up-webhook.ts#L38) refuses the delivery before reading it, credits are never granted, and there is **no failed cron and no dead letter** to notice it by. [top-up-purchases-go-live-runbook.md:48](docs/top-up-purchases-go-live-runbook.md) forbids the wrong ordering. **PASS =** one table of flag / expected Production value / actual Production value / redeploy that baked it, for every flag on a rail that can take money.
+- [ ] **Complete a real restore drill â€” staging database/Auth/Storage acceptance passes (2026-09-09)**: Approved restore, baseline grants/policy/function parity, existing-member sign-in, all 38 Storage objects, invoice generation and local app/admin smoke are verified. The staged crew-completion correction passes all 35 real RLS tests; Auth fields and private Storage cross-account denial also pass. Production still needs that migration. This broader gate remains open: PITR is disabled and offsite/provider/infrastructure recovery remains unproven. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md) and [measured backup posture](docs/backup-posture.md).
+- [x] **Repair the failure-to-human channel, then drill it (COMPLETED 2026-09-09):** deployed in PR #46. All five failure classes reached hello@letsgetquoted.com automatically in 2m 44.4sâ€“2m 55.2s and were verified in Gmail Inbox. Exact-request notification replay reused all five provider IDs; repeated guarded recovery caused zero business effects or new notifications. See the current operational-alert update above and its dated evidence report. Historical failures remain available for triage.
+- [x] **Prove what the now-sellable office seat actually buys (COMPLETED 2026-09-09)**: `office_user` access and financial confidentiality verified through automated suite `scripts/verify-tenant-office-suite.mjs` (83/83 passed). Office members receive positive owner-assigned capabilities, `canSeeQuotes` (`canSeeFinancials`) masks lifetime value and per-job quote amounts as `"â€”"` across `clients/[id]` and Focus API `/api/clients/[id]/detail`, and all database queries enforce tenant scoping. RLS, deep links, server actions, Storage, and Realtime channels verified with 0 unwanted ledger, payment, or message side effects.
 - [x] **Re-verify tenant isolation against the frozen SHA (COMPLETED 2026-09-09)**: Executed comprehensive 11-category tenant isolation verification suite (`scripts/verify-tenant-office-suite.mjs`). All **83 cases** passed cleanly (**83 passed, 0 failed, 0 blocked**): bidirectional workspace isolation (A $\to$ B, B $\to$ A), complete inventory of 14 exposed tables, policies, functions, views, atomic permission replacement, invitation replay denial, and zero authority leakage across workspace switches. Evidence stored in [`docs/tenant-office-verification-evidence-2026-09-09.json`](docs/tenant-office-verification-evidence-2026-09-09.json).
 
 ### Before the first week
 
-- [ ] **Email sending domains — broader rollout remains gated (UPDATED 2026-09-10 UTC)**: Recovery fixes, completed-verification handling, and on-page disconnect confirmation are deployed. Gmail/Outlook transport authentication and replies, the real product quote link, production onboarding, and clean disconnect/reconnect passed. Enrollment is enabled only for BrokePipes. Custom-domain product delivery, remaining recovery and website drills, and seven-day canary acceptance remain open. See [current evidence](docs/contractor-domains-canary-2026-09-09.md).
-- [ ] **Custom website domains — deployed, final lifecycle rehearsal open (UPDATED 2026-09-09)**: Valid TLS on `blackholeart.com`, deployed watcher scheduling (96 successful runs/24h), and disposable production provider-binding cleanup are verified. Watcher runs checked zero pending domains; a certificate-ready transition and site/account deletion through the deployed app still need proof. See [dated evidence and scope](docs/contractor-domains-verification-2026-09-09.md).
+- [ ] **Email sending domains â€” broader rollout remains gated (UPDATED 2026-09-10 UTC)**: Recovery fixes, completed-verification handling, and on-page disconnect confirmation are deployed. Gmail/Outlook transport authentication and replies, the real product quote link, production onboarding, and clean disconnect/reconnect passed. Enrollment is enabled only for BrokePipes. Custom-domain product delivery, remaining recovery and website drills, and seven-day canary acceptance remain open. See [current evidence](docs/contractor-domains-canary-2026-09-09.md).
+- [ ] **Custom website domains â€” deployed, final lifecycle rehearsal open (UPDATED 2026-09-09)**: Valid TLS on `blackholeart.com`, deployed watcher scheduling (96 successful runs/24h), and disposable production provider-binding cleanup are verified. Watcher runs checked zero pending domains; a certificate-ready transition and site/account deletion through the deployed app still need proof. See [dated evidence and scope](docs/contractor-domains-verification-2026-09-09.md).
 - [ ] **10DLC contractor-to-customer coverage gates the dedicated-number SKU (UPDATED 2026-09-09)**: Verified fail-closed customer sender and campaign scope (`9bd5a672e`), proved dispatch cross-workspace STOP/START protection using real handset keywords, verified deferred queue & dead-letter recovery components (177 app tests, 122 disposable Postgres checks). Implemented 30-task send preview plan (`004cd78d2`), JSON delivery callbacks (`df328582f`), and subcontractor cancellation inline confirmation dialog (PR #39 `c6937034b`). Customer carrier registration and live customer matrix remain open.
-- [ ] **AI Voice — canaries are not the matrix (UPDATED 2026-09-09)**: Merged 14 production voice PRs: PR #29 (retry admission preflight counting & self-forwarding fix), PR #31 (stable signed callback URLs & diagnostic candidate booleans), PR #35 (receipt retry bounds, abandoned receipt recovery, fallback duration limits), PR #36 (10-min call limits in measurement mode & confirmed transfer history), PR #37 (customer registration guard before SMS egress), PR #38 (dispatch write contract restoration), PR #40 (operational exception surfacing), PR #41 (end answered transfers without voicemail), PR #42 (transfer recipient announcement delay), PR #43 (admission error timeout bounding), PR #44 (pending receipt exposure & operator recovery), PR #45 (spoken references & note readback fidelity), PR #48 (response delay reduction & timing diagnostics), and PR #49 (call opening polish & note draft distinction). Live multi-party carrier matrix and billing period reconciliation remain open.
-- [ ] **Paid-ads truthfulness — an ad headline is itself a claim (UPDATED 2026-09-08)**: Removed false "Start Free Platform Trial" CTAs across 5 feature/demo pages (`25bdd1d91`) and unified paid-landing palette onto shared `--mkt-*` CSS custom properties (`2dcdcf057`). Remediated public page styling and contrast collisions across 4 themes (`145cf53ac`) and fixed dead anchors, broken links, and SEO metadata (`f16f3a592`). Prohibited pattern assertions and landing page SEO noindex checks remain open.
-- [ ] **Dry-run the contractor-lifecycle cron before its next 14:00 UTC fire (VERIFIED TODAY)**: `runContractorLifecycleSweep` now accepts `options?: { dryRun?: boolean }` ([contractor-lifecycle-emails.ts:388](src/lib/contractor-lifecycle-emails.ts#L388)), closing the old "unsetting `RESEND_API_KEY` is not a dry run" problem. Run it dry against production and print every row — accountId, resolved recipient, stepId, computed `accountAgeDays`. **PASS =** you can name every human who would receive mail and every subject line; no test/demo account; no account receives a mid-sequence step as its first message. Separately resolve all ten `ctaPath` values against the App Router — three previously pointed at routes that do not exist, and the test pins the broken string.
-- [x] **Confirm the reconnected AI Operator has real data (COMPLETED 2026-09-09)**: Commit `6c055815b` connected approvals to Supabase. Command Center Waves 1–6 (T5–T27) completed telemetry honesty: renamed `safeActionsExecuted` to `auditActionsLogged` across cockpit, briefing, and engine; retired rotting smart-dunning and deferred activation-autopilot; eliminated unbacked APM metric tiles; and wired real incident triggers to `dispatchOnCallPage`.
+- [ ] **AI Voice â€” canaries are not the matrix (UPDATED 2026-09-09)**: Merged 14 production voice PRs: PR #29 (retry admission preflight counting & self-forwarding fix), PR #31 (stable signed callback URLs & diagnostic candidate booleans), PR #35 (receipt retry bounds, abandoned receipt recovery, fallback duration limits), PR #36 (10-min call limits in measurement mode & confirmed transfer history), PR #37 (customer registration guard before SMS egress), PR #38 (dispatch write contract restoration), PR #40 (operational exception surfacing), PR #41 (end answered transfers without voicemail), PR #42 (transfer recipient announcement delay), PR #43 (admission error timeout bounding), PR #44 (pending receipt exposure & operator recovery), PR #45 (spoken references & note readback fidelity), PR #48 (response delay reduction & timing diagnostics), and PR #49 (call opening polish & note draft distinction). Live multi-party carrier matrix and billing period reconciliation remain open.
+- [ ] **Paid-ads truthfulness â€” an ad headline is itself a claim (UPDATED 2026-09-08)**: Removed false "Start Free Platform Trial" CTAs across 5 feature/demo pages (`25bdd1d91`) and unified paid-landing palette onto shared `--mkt-*` CSS custom properties (`2dcdcf057`). Remediated public page styling and contrast collisions across 4 themes (`145cf53ac`) and fixed dead anchors, broken links, and SEO metadata (`f16f3a592`). Prohibited pattern assertions and landing page SEO noindex checks remain open.
+- [ ] **Dry-run the contractor-lifecycle cron before its next 14:00 UTC fire (VERIFIED TODAY)**: `runContractorLifecycleSweep` now accepts `options?: { dryRun?: boolean }` ([contractor-lifecycle-emails.ts:388](src/lib/contractor-lifecycle-emails.ts#L388)), closing the old "unsetting `RESEND_API_KEY` is not a dry run" problem. Run it dry against production and print every row â€” accountId, resolved recipient, stepId, computed `accountAgeDays`. **PASS =** you can name every human who would receive mail and every subject line; no test/demo account; no account receives a mid-sequence step as its first message. Separately resolve all ten `ctaPath` values against the App Router â€” three previously pointed at routes that do not exist, and the test pins the broken string.
+- [x] **Confirm the reconnected AI Operator has real data (COMPLETED 2026-09-09)**: Commit `6c055815b` connected approvals to Supabase. Command Center Waves 1â€“6 (T5â€“T27) completed telemetry honesty: renamed `safeActionsExecuted` to `auditActionsLogged` across cockpit, briefing, and engine; retired rotting smart-dunning and deferred activation-autopilot; eliminated unbacked APM metric tiles; and wired real incident triggers to `dispatchOnCallPage`.
 
-### Deferred by decision — record the decision, do not let it drift
+### Deferred by decision â€” record the decision, do not let it drift
 
-- [x] **Dashboard ships both stylesheets — re-tested on Next 15 (2026-09-10)**: the Next 14 `not-found` bug is resolved — Next 15 collects global CSS for `not-found.tsx` when it renders inside the root layout, which this project's `not-found.tsx` does. The fix (route groups: `(app)/layout.tsx` imports `globals.css`, `(marketing)/layout.tsx` imports `globals-lite.css`, root `layout.tsx` imports neither) is architecturally sound but requires moving ~50 route segments into route groups, updating `test/css-subset.test.ts`, and verifying the 404 page still inherits styling. Deferred to post-launch sprint; the 375KB duplication is a performance cost, not a correctness bug.
-- [ ] **Credit ledger has no consumer** — top-ups grant a number nothing spends, one caller and it is dark. The six-SKU release just made three credit-granting SKUs sellable, so this is no longer purely theoretical.
+- [x] **Dashboard ships both stylesheets â€” re-tested on Next 15 (2026-09-10)**: the Next 14 `not-found` bug is resolved â€” Next 15 collects global CSS for `not-found.tsx` when it renders inside the root layout, which this project's `not-found.tsx` does. The fix (route groups: `(app)/layout.tsx` imports `globals.css`, `(marketing)/layout.tsx` imports `globals-lite.css`, root `layout.tsx` imports neither) is architecturally sound but requires moving ~50 route segments into route groups, updating `test/css-subset.test.ts`, and verifying the 404 page still inherits styling. Deferred to post-launch sprint; the 375KB duplication is a performance cost, not a correctness bug.
+- [ ] **Credit ledger has no consumer** â€” top-ups grant a number nothing spends, one caller and it is dark. The six-SKU release just made three credit-granting SKUs sellable, so this is no longer purely theoretical.
 - [ ] **Referral engine is unmerged** on `agent/referral-engine-port`. Nothing depends on it, but the **merge** is what turns referrals on; leaving it stranded loses the work.
-- [ ] **Size the cross-device attribution gap before concluding a campaign failed** — signup conversion fires at `/welcome`, reachable only by clicking an emailed magic link, so desktop-request/phone-open converts with no ad-click context. This cannot be fixed client-side; size it from server-side events.
-- [ ] **Do not build the Flex monthly refill yet** — adversarial review returned *broken* on two of three lenses with seven blockers, including a migration that aborts on production while its PG17 harness certifies the opposite. The product fork is unresolved: top-up-to-N grants `greatest(0, target − available)` and therefore gives a dormant account **nothing**, since it still holds its untouched 50-credit starter balance. If a refill ever ships, `test/pricing-plans.test.ts:173-179` hard-pins three strings that become false in the same commit — rewrite those guards, do not delete them.
+- [ ] **Size the cross-device attribution gap before concluding a campaign failed** â€” signup conversion fires at `/welcome`, reachable only by clicking an emailed magic link, so desktop-request/phone-open converts with no ad-click context. This cannot be fixed client-side; size it from server-side events.
+- [ ] **Do not build the Flex monthly refill yet** â€” adversarial review returned *broken* on two of three lenses with seven blockers, including a migration that aborts on production while its PG17 harness certifies the opposite. The product fork is unresolved: top-up-to-N grants `greatest(0, target âˆ’ available)` and therefore gives a dormant account **nothing**, since it still holds its untouched 50-credit starter balance. If a refill ever ships, `test/pricing-plans.test.ts:173-179` hard-pins three strings that become false in the same commit â€” rewrite those guards, do not delete them.
 
 ### Orderings where the wrong sequence is what causes the harm
 
-- [ ] **Follow the recorded orderings.** Each has an incident behind it. (1) Top-up webhook + projection worker flags ON, **then** the purchase flag — reversed, the first stranger is charged and never credited with nothing failing. (2) On a catalog version bump, widen the EVIDENCE readers **then** MOVE the CURRENTNESS rows — skipping the second half stopped the only paid workspace collecting money. (3) Migration **before** the deploy that reads the column, never after. (4) The cancellation flag must follow the billing webhook, and two paths must **stay** ungated or a deleted account keeps billing. (5) Fix the alert channel **before** the alert drill. (6) Freeze the SHA **before** any gate, or you certify a tree that will never deploy.
+- [ ] **Follow the recorded orderings.** Each has an incident behind it. (1) Top-up webhook + projection worker flags ON, **then** the purchase flag â€” reversed, the first stranger is charged and never credited with nothing failing. (2) On a catalog version bump, widen the EVIDENCE readers **then** MOVE the CURRENTNESS rows â€” skipping the second half stopped the only paid workspace collecting money. (3) Migration **before** the deploy that reads the column, never after. (4) The cancellation flag must follow the billing webhook, and two paths must **stay** ungated or a deleted account keeps billing. (5) Fix the alert channel **before** the alert drill. (6) Freeze the SHA **before** any gate, or you certify a tree that will never deploy.
 
-### Verified fixed on 2026-09-09 — do not re-open
+### Verified fixed on 2026-09-09 â€” do not re-open
 
 - [x] **Operational failure alert delivery and controlled recovery**: Deployed in PR #46 (`48dee526b`). Five failure classes reach hello@letsgetquoted.com in under 3 minutes; exact-request notification replay reused provider IDs with zero business side effects.
-- [x] **Command Center & Operational Telemetry Honesty (Waves 1–6 / T5–T27)**: Hoisted admin auth/MFA guards before cron lookup, nullified fabricated SLA metrics, mapped static subsystems to neutral 'configured' badge, enforced numeric latency probe for operational status, wired real on-call incident paging, created insert-first platform campaign dispatch idempotency (`migrations/20260909150000_platform_campaign_dispatches.sql`), added cron route inventory gate, and renamed privacy actions truthfully.
+- [x] **Command Center & Operational Telemetry Honesty (Waves 1â€“6 / T5â€“T27)**: Hoisted admin auth/MFA guards before cron lookup, nullified fabricated SLA metrics, mapped static subsystems to neutral 'configured' badge, enforced numeric latency probe for operational status, wired real on-call incident paging, created insert-first platform campaign dispatch idempotency (`migrations/20260909150000_platform_campaign_dispatches.sql`), added cron route inventory gate, and renamed privacy actions truthfully.
 - [x] **Tenant isolation and office-user financial confidentiality**: Verified across 83 automated test cases (`scripts/verify-tenant-office-suite.mjs`). Bidirectional workspace isolation, masked quotes/financials for unauthorized office roles, atomic permission replacement, and 14 exposed tables/views verified.
 - [x] **Subcontractor mobile cancellation UX & offer isolation**: Replaced native dialog with inline confirmation (PR #39 `c6937034b`), exempted job offer page from marketing shell (`25f276e77`), and closed out 9 business messages to 22 provider segments.
 - [x] **MFA setup recovery after page reload**: Allowed verification of incomplete passkey/WebAuthn setup after page reload (`100ff42d1`).
@@ -332,21 +387,21 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [x] **Acorn Finance client bundle decoupling & minimum floor**: Decoupled admin client from client bundles (`18d047547`), aligned $1,000 minimum loan floor, attached join keys (`c81f76801`), and instrumented click telemetry (`8d4b8609f`).
 - [x] **Spatial LiDAR room scans & takeoff persistence**: Required real room geometry and persisted validated takeoffs (PR #26 `ea6ab4653` / `694f1dc75`).
 
-### Verified fixed on 2026-09-08 — do not re-open
+### Verified fixed on 2026-09-08 â€” do not re-open
 
 - [x] **The managed-ads wallet card-charging loop is genuinely repaired**: the `monthlyBudget / 30.4` spend fabrication is **gone** from [ad-billing.ts](src/lib/ad-billing.ts) (zero matches). Spend now flows through an `atomic_ad_wallet_spend` RPC returning `delta_spend_cents` and `should_refill`, and the refill carries a persisted `pendingRefillIdempotencyKey` ([ad-billing.ts:1316](src/lib/ad-billing.ts#L1316)) plus a second idempotency key on the PaymentIntent projection. All three compounding defects that made it an autonomous card-charger are individually addressed. One live observation of a real 15-minute cycle is still worth doing before any customer funds a wallet.
 - [x] **Contractor-lifecycle dry-run capability exists** (`dryRun` option), closing the old "no dry run is possible" finding. Running it is still open above.
 - [x] **AI Operator reads Supabase** rather than in-process memory, and no longer reports figures nothing measured.
-- [x] **Custom website domain TLS serving works** — one real domain serves over TLS via the Vercel API.
-- [x] **The sending-domain connect action's two independently fatal defects are fixed** — a provider status union wider than the column CHECK, and the wrong unique-index shape behind 42P10.
+- [x] **Custom website domain TLS serving works** â€” one real domain serves over TLS via the Vercel API.
+- [x] **The sending-domain connect action's two independently fatal defects are fixed** â€” a provider status union wider than the column CHECK, and the wrong unique-index shape behind 42P10.
 
 ---
 
-## SignalWire completion and remaining launch gates — 2026-09-06
+## SignalWire completion and remaining launch gates â€” 2026-09-06
 
 **Current decision: shared crew-dispatch SMS is live for the BrokePipes canary; the full nine-phase SignalWire rollout is not complete.** This section consolidates the September 6 operating-session evidence through approximately **18:09 UTC / 2:09 PM EDT**, application commit `96d93ca6f96149dfd45aa8aa0063177411bd0d61`, and the saved readiness reports. It supersedes older claims below that dispatch has no number, all voice admission is dark, or a purchased dedicated number proves contractor-to-customer campaign coverage. This is a documentation update, not another deployment, live test, or authorization to widen rollout.
 
-### Completed — distinguish live proof from implementation
+### Completed â€” distinguish live proof from implementation
 
 - [x] **Production SMS provider and worker operating**: the production [messaging operations dashboard](https://app.letsgetquoted.com/admin/messaging) showed SignalWire selected, worker enabled, outbound gate open, and shared/dispatch/dedicated lane flags enabled. The account allow-list still contains only **BrokePipes**; enabled flags do not mean all contractors can send. The post-welcome snapshot showed zero due tasks, active leases, pending usage reconciliation, or webhook failures. Historical failed/review items remain historical exceptions, not proof that every past issue was resolved.
 - [x] **LGQ support/shared-number delivery and inbound handling proven**: `+19479412323` has real-carrier delivery, ordinary inbound routing, HELP/STOP/START processing, blocked-after-STOP, and delivery-after-START evidence in the September 5 update below. The controlled delivered events each had one committed segment reservation; the STOP-blocked event had none. This does not prove the same live matrix on the new dispatch number.
@@ -358,21 +413,21 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 - [x] **AI Voice has real live-call evidence**: the September 4 customer canaries below record an AI-handled call with a persisted lead and another booking call with persisted lead/job records. Voice is not merely an unimplemented SMS add-on, but these calls do not complete the staff, recording, failure, or billing matrix.
 - [x] **Voice measurement mode and quote-write safety restriction documented**: the September 6 [voice quote-write guard report](docs/voice-quote-write-guard-2026-09-06.md) records minute measurement enabled and financial enforcement disabled. Telephone quote-price changes are intentionally blocked after a live defect; supported scope/schedule/status/note actions remain distinct. The [latency report](docs/voice-dispatch-latency-2026-09-06.md) records 637 voice tests and 23 local database assertions, not completion of its remaining live checks.
 
-### Outstanding — shared SMS and dispatch rollout
+### Outstanding â€” shared SMS and dispatch rollout
 
 - [ ] **Prove the normal Add Crew producer after the welcome fix**: create a consented, authorized test crew member through the production UI; verify disclosure version/evidence, one automatic welcome, handset delivery, correct dispatch sender, and no duplicate on repeat save. Today's recovery send does not close this trigger-level acceptance check.
 - [ ] **Complete the new dispatch number's live reply/compliance matrix**: verify an ordinary crew reply reaches the correct workspace, HELP and its handset acknowledgment, STOP and its acknowledgment, blocked queued/future sends, and handset START/re-opt-in. Prove campaign-wide suppression across contractors and a controlled same-campaign sender fixture; a different contractor or number must not bypass STOP. Do not overwrite opt-out state to make the test pass.
 - [ ] **Prove real crew/subcontractor business workflows**: exercise an actual job assignment/schedule notification and the applicable offer/accept/decline/cancel flows through the released producers; verify company identification, consent scope, job links, correct account routing, durable results, and duplicate prevention. A welcome delivery alone does not prove these automations.
 - [ ] **Approve and perform staged expansion beyond BrokePipes**: retain the canary restriction until the lane-specific acceptance checks pass, then document the authorized account expansion, failure monitoring, and rollback. Respect Carrier Operations' approved Low Volume Mixed limits: **75 AT&T SMS/minute, 50 AT&T MMS/minute, 2,000 T-Mobile messages/day at brand level, and up to 49 assigned numbers**. A different use case/greater capacity needs the appropriate new campaign, not an assumed limit increase. Source: Kyle Muller's September 4 approval email supplied in this task.
 
-### Outstanding — dedicated contractor numbers and customer messaging
+### Outstanding â€” dedicated contractor numbers and customer messaging
 
 - [ ] **Obtain correct contractor-to-customer campaign coverage**: pilot `+18103202687` remains on LGQ's support campaign, whose scope excludes that traffic. Register genuine downstream businesses using their real identity, consent collection, disclosures, and samples; verify individual number assignment and SMS capability before customer sends. BrokePipes is a test workspace, not evidence of a vetted independent business. Do not substitute the crew dispatch campaign or disturb the pilot's voice routing. See the [customer coverage finding](docs/texting-release-readiness-2026-09-05.md).
 - [ ] **Finish the production CSP registration integration**: confirm the required SignalWire/TCR access and approved onboarding model, then connect the registration workflow to provider submission, review/status updates, rejection/resubmission, and durable audit/reconciliation. The September 6 source search found `automateDownstreamBrandAndCampaign` only in its [definition](src/lib/messaging-csp-automation.ts) and tests, with no production caller; admin approval currently needs externally obtained brand/campaign IDs. Do not label this fully automatic yet.
-- [ ] **Verify the paid dedicated-number lifecycle end-to-end**: authorized checkout/subscription entitlement → business approval → price-reviewed purchase → provisioning wait → individual campaign assignment → exact production webhook verification → usable sender. Also prove duplicate checkout/purchase protection, uncertain-provider recovery without duplicate buying, rejection/refund handling, recurring billing, cancellation/release policy, and tenant isolation. Existing forms, checkout code, and one pilot number are not full commercial acceptance.
+- [ ] **Verify the paid dedicated-number lifecycle end-to-end**: authorized checkout/subscription entitlement â†’ business approval â†’ price-reviewed purchase â†’ provisioning wait â†’ individual campaign assignment â†’ exact production webhook verification â†’ usable sender. Also prove duplicate checkout/purchase protection, uncertain-provider recovery without duplicate buying, rejection/refund handling, recurring billing, cancellation/release policy, and tenant isolation. Existing forms, checkout code, and one pilot number are not full commercial acceptance.
 - [ ] **Complete customer producer and operational carrier acceptance**: on correctly registered senders and authorized recipients, exercise released booking confirmations, dashboard links where campaign-permitted, missed-call/post-call text-back, and ordinary customer inbox replies. Complete quiet-hours deferred release, rejection/retry/dead-letter recovery, duplicate/out-of-order callbacks, and full SMS segment/usage reconciliation. Retain the already-proven shared tests rather than counting them again as dedicated/dispatch evidence.
 
-### Outstanding — separate AI Voice acceptance and commercialization
+### Outstanding â€” separate AI Voice acceptance and commercialization
 
 Latest status: [September 9 handset and provider acceptance](docs/voice-acceptance-2026-09-09.md). The spoken-quote fix is live, but the handset retest hit voicemail before Dispatch started. Actual emergency fallback and manually recovered playback passed; query-bearing recording callbacks failed, while the later stable callback succeeded. Admission/recovery follow-up and the remaining live matrix stay open.
 
@@ -385,32 +440,32 @@ Latest status: [September 9 handset and provider acceptance](docs/voice-acceptan
 
 ---
 
-## Paid-ad landing readiness and the Flex offer — 2026-09-08
+## Paid-ad landing readiness and the Flex offer â€” 2026-09-08
 
-**Current decision: the offer is freemium, not a trial, and no ad spend should start until the landing surface stops saying otherwise.** This section records the September 8 session: one shipped change to the paid-landing surface, and the offer/claims work that is planned but **not** built. The full plan, its adversarial review, and the open decision are in [the Flex offer plan](docs/plan-flex-offer-2026-09-07.md). It qualifies §13's completed Sold-vs-Built Claim Sweep: that sweep reconciled feature claims, but a false **offer** claim survived it and is live on five pages today.
+**Current decision: the offer is freemium, not a trial, and no ad spend should start until the landing surface stops saying otherwise.** This section records the September 8 session: one shipped change to the paid-landing surface, and the offer/claims work that is planned but **not** built. The full plan, its adversarial review, and the open decision are in [the Flex offer plan](docs/plan-flex-offer-2026-09-07.md). It qualifies Â§13's completed Sold-vs-Built Claim Sweep: that sweep reconciled feature claims, but a false **offer** claim survived it and is live on five pages today.
 
-### Completed — paid-landing palette unified
+### Completed â€” paid-landing palette unified
 
-- [x] **One navy and one accent across the ad-landing surface (Completed 2026-09-08)**: `/compare` and the `/for/[trade]` definitive, ROI, and cluster modules carried **161 raw hex literals and zero `var()`**, so a brand change could not reach them. `/compare` used `#ff6a24`, `/for/[trade]` used `#ff7137`, and neither matched the app's own `#ff7a21`. All four now consume one `--mkt-*` ramp defined once in `src/app/globals.css`, and `src/app/for/for.module.css`'s orange and mint — including 24 and 14 `rgba()` overlays — collapse onto the same accent. Commit `2dcdcf057`. Verified: typecheck 0, lint 0, production build 0 (418 static pages), **13,844 tests across 1,081 files**. Guard `test/marketing-palette.test.ts` (18 tests) asserts the *absence* of raw hex and of the superseded values, because asserting the tokens merely exist would pass with a new literal beside them; it was proven to bite by reintroducing `#ff7137` and observing two failures.
-- [x] **Confirmed the tokens reach the pages that consume them (Completed 2026-09-08)**: the root layout imports `globals-lite.css`, not `globals.css`, so a token defined only in the full sheet resolves to nothing on every page an ad points at. The subset was regenerated and the guard asserts the tokens survive it. The three card gradients that paint a lighter navy over a darker one were checked to still carry two different stops — collapsing the ramp would have left valid CSS that renders flat.
-- [x] **Confirmed the force-dark behaviour is deliberate and retained (Completed 2026-09-08)**: `for.module.css` sets `color-scheme:dark!important` and enumerates dark/light/sunlight/dim to out-specify the theme rules, and `/compare` paints an opaque ground. These pages ignore the visitor's theme on purpose so ad creative and landing page match; that is unchanged. `src/components/flagship/flagship.module.css` was deliberately **not** folded in: its `--orange: #f95700` sits inside `:root[data-theme='light'] .root`, a darker orange for contrast on light panels — working theme adaptation, not drift.
+- [x] **One navy and one accent across the ad-landing surface (Completed 2026-09-08)**: `/compare` and the `/for/[trade]` definitive, ROI, and cluster modules carried **161 raw hex literals and zero `var()`**, so a brand change could not reach them. `/compare` used `#ff6a24`, `/for/[trade]` used `#ff7137`, and neither matched the app's own `#ff7a21`. All four now consume one `--mkt-*` ramp defined once in `src/app/globals.css`, and `src/app/for/for.module.css`'s orange and mint â€” including 24 and 14 `rgba()` overlays â€” collapse onto the same accent. Commit `2dcdcf057`. Verified: typecheck 0, lint 0, production build 0 (418 static pages), **13,844 tests across 1,081 files**. Guard `test/marketing-palette.test.ts` (18 tests) asserts the *absence* of raw hex and of the superseded values, because asserting the tokens merely exist would pass with a new literal beside them; it was proven to bite by reintroducing `#ff7137` and observing two failures.
+- [x] **Confirmed the tokens reach the pages that consume them (Completed 2026-09-08)**: the root layout imports `globals-lite.css`, not `globals.css`, so a token defined only in the full sheet resolves to nothing on every page an ad points at. The subset was regenerated and the guard asserts the tokens survive it. The three card gradients that paint a lighter navy over a darker one were checked to still carry two different stops â€” collapsing the ramp would have left valid CSS that renders flat.
+- [x] **Confirmed the force-dark behaviour is deliberate and retained (Completed 2026-09-08)**: `for.module.css` sets `color-scheme:dark!important` and enumerates dark/light/sunlight/dim to out-specify the theme rules, and `/compare` paints an opaque ground. These pages ignore the visitor's theme on purpose so ad creative and landing page match; that is unchanged. `src/components/flagship/flagship.module.css` was deliberately **not** folded in: its `--orange: #f95700` sits inside `:root[data-theme='light'] .root`, a darker orange for contrast on light panels â€” working theme adaptation, not drift.
 
-### Outstanding — offer copy, landing pages, and attribution
+### Outstanding â€” offer copy, landing pages, and attribution
 
-- [x] **Remove the false trial claim before any spend (Verified 2026-09-10)**: all five customer-facing CTAs replaced — `ai-ads:110` → "Launch My Campaign", `ai-vision:174` → "Start free on Flex", `ai-voice:130` → "Start free on Flex", `sparky:84` → "Start free on Flex", `demo/clients:179` → "Build my free site". Prohibited pattern regression guard added to `test/claims-substantiation.test.ts:16-28` with four regexes covering `free trial`, `trial period`, `start trial`, and `platform trial`. 0 instances remain in `src/`.
-- [ ] **Decide who the Flex monthly refill is for, before building it**: the approved goal was keeping dormant free accounts alive, but the top-up-to-N mechanism grants `greatest(0, target − available)` and therefore gives a dormant account **nothing** — it still holds its untouched 50-credit starter balance. It reaches only accounts that have spent down to zero. Adversarial review returned **broken** on two of three lenses and seven blockers, including a migration that aborts on production while its PG17 harness certifies the opposite, a timed-out cron recorded as a success, and silent permanent starvation above ~96k accounts. See §2 of the plan; no code should be written until the fork is resolved.
-- [ ] **Correct the Flex pricing copy in the same commit as any refill flag**: `src/app/pricing/pricing-catalog.ts` currently states "No automatic refills; optional paid top-ups" (:77) and "50 one-time starter credits" (:60, :204), plus two FAQ answers asserting the no-refill model is permanent. All become false the moment a refill ships, and `test/pricing-plans.test.ts:173-179` hard-pins three of those strings — the guards must be rewritten to pin the new true claim, not deleted.
-- [ ] **Make the ad-targeted feature pages buyable**: `/features/ai-intake` has **no signup CTA in its hero at all**, and eight more feature pages lead with a `/demo/*` link by deliberate design (`feature-detail-layout.tsx:52-59`). Correct for SEO, unusable for paid. Either add a signup primary or accept a demo-first funnel and measure demo→signup as its own conversion step.
+- [x] **Remove the false trial claim before any spend (Verified 2026-09-10)**: all five customer-facing CTAs replaced â€” `ai-ads:110` â†’ "Launch My Campaign", `ai-vision:174` â†’ "Start free on Flex", `ai-voice:130` â†’ "Start free on Flex", `sparky:84` â†’ "Start free on Flex", `demo/clients:179` â†’ "Build my free site". Prohibited pattern regression guard added to `test/claims-substantiation.test.ts:16-28` with four regexes covering `free trial`, `trial period`, `start trial`, and `platform trial`. 0 instances remain in `src/`.
+- [ ] **Decide who the Flex monthly refill is for, before building it**: the approved goal was keeping dormant free accounts alive, but the top-up-to-N mechanism grants `greatest(0, target âˆ’ available)` and therefore gives a dormant account **nothing** â€” it still holds its untouched 50-credit starter balance. It reaches only accounts that have spent down to zero. Adversarial review returned **broken** on two of three lenses and seven blockers, including a migration that aborts on production while its PG17 harness certifies the opposite, a timed-out cron recorded as a success, and silent permanent starvation above ~96k accounts. See Â§2 of the plan; no code should be written until the fork is resolved.
+- [ ] **Correct the Flex pricing copy in the same commit as any refill flag**: `src/app/pricing/pricing-catalog.ts` currently states "No automatic refills; optional paid top-ups" (:77) and "50 one-time starter credits" (:60, :204), plus two FAQ answers asserting the no-refill model is permanent. All become false the moment a refill ships, and `test/pricing-plans.test.ts:173-179` hard-pins three of those strings â€” the guards must be rewritten to pin the new true claim, not deleted.
+- [ ] **Make the ad-targeted feature pages buyable**: `/features/ai-intake` has **no signup CTA in its hero at all**, and eight more feature pages lead with a `/demo/*` link by deliberate design (`feature-detail-layout.tsx:52-59`). Correct for SEO, unusable for paid. Either add a signup primary or accept a demo-first funnel and measure demoâ†’signup as its own conversion step.
 - [x] **Noindex the duplicate mockup routes before enabling any DSA campaign (Verified 2026-09-10)**: `/for-mockup`, `/website-builder-mockup`, and `/features/website-builder-mockup` all export `robots: { index: false, follow: false }` (committed in `7cbbacf85`). All six `/home-*` variants and `/features-flagship` likewise declare matching noindex metadata. None appear in `sitemap.ts`. Regression guard recommended in `test/marketing-noindex-guards.test.ts`.
-- [ ] **Measure real landing-page speed before spend**: nothing on the marketing surface is statically prerendered — the root layout awaits `headers()` and `cookies()`, the root sets `force-dynamic`, and `FlagshipHome` is a 1,065-line client component. Every ad click pays SSR latency plus hydration, which Google penalises in both Quality Score and conversion rate. Measure `responseEnd`, not TTFB, which streaming renders a flat ~14 ms lie.
+- [ ] **Measure real landing-page speed before spend**: nothing on the marketing surface is statically prerendered â€” the root layout awaits `headers()` and `cookies()`, the root sets `force-dynamic`, and `FlagshipHome` is a 1,065-line client component. Every ad click pays SSR latency plus hydration, which Google penalises in both Quality Score and conversion rate. Measure `responseEnd`, not TTFB, which streaming renders a flat ~14 ms lie.
 - [ ] **Size the cross-device attribution gap rather than trusting reported conversion**: the signup conversion fires at `/welcome`, reachable only by clicking an emailed magic link, so anyone who requests the link on desktop and opens it on a phone converts with no ad-click context. This cannot be fixed client-side; size it from server-side events before concluding a campaign is failing. Separately, the `/for` hub emits a hand-concatenated URL shape carrying a `custom=` parameter that `parseSignupIntent` silently discards, so its attribution does not match the `/for/[trade]` pages'.
-- [ ] **Register the free/no-credit-card offer in the FTC substantiation register**: `docs/ftc-substantiation-register.md` holds twelve numbered claims and **none** covers the free offer, while CLM-005 names `/pricing` as carrying a 30-day money-back claim that exists nowhere under `src/app/pricing/`. The register is therefore not a trustworthy inventory of offer claims, and paid advertising raises the stakes — an ad headline is itself a claim.
+- [ ] **Register the free/no-credit-card offer in the FTC substantiation register**: `docs/ftc-substantiation-register.md` holds twelve numbered claims and **none** covers the free offer, while CLM-005 names `/pricing` as carrying a 30-day money-back claim that exists nowhere under `src/app/pricing/`. The register is therefore not a trustworthy inventory of offer claims, and paid advertising raises the stakes â€” an ad headline is itself a claim.
 
 **Spend boundary:** this session authorised no ad spend, no campaign creation, and no change to any Meta or Google Ads account. The Meta-specific plumbing gates remain in [the Meta ads launch checklist](docs/meta-ads-launch-checklist.md) and are not superseded here.
 
 ---
 
-## Texting verification update — 2026-09-05 (UTC evidence through 2026-09-06)
+## Texting verification update â€” 2026-09-05 (UTC evidence through 2026-09-06)
 
 This update records the checks actually completed for [PR #25](https://github.com/wideeyephoto/lets-get-quoted/pull/25), application commit `e29965f80ddde04970b17cd5cbcf213fdc2b4021`. The GitHub tree matches the tested isolated local tree. Earlier dated snapshots below remain historical evidence. **The full customer/dispatch carrier matrix remains open.** Detailed correlation: [texting readiness report](docs/texting-release-readiness-2026-09-05.md).
 
@@ -425,7 +480,7 @@ This update records the checks actually completed for [PR #25](https://github.co
 - [x] **Live delivery after START**: event `3a52aeeb-8f9e-4e2e-90f4-2ee2c006b927` delivered at **2026-09-06 00:00:21 UTC**.
 - [x] **Live STOP suppression before carrier send**: a second STOP at **00:00:47 UTC** changed consent to opted out. Event `c476c7f4-2557-4465-a351-8bd93e5876c9` was cancelled at **00:02:18 UTC** with `sms_consent_not_current` and **no provider ID**.
 - [x] **Final START restores handset opt-in**: receipt `bbe80b3d-879c-488d-ad20-7b9891c95e52` processed at **00:14:07 UTC**; consent is opted in through the handset's own START, not a database override.
-- [x] **Live ordinary reply and action-worker completion**: “Texting test complete” was stored as message `0049c4fb-e8c9-4d1e-b5d6-c96c0060f29c`; receipt `af373c4e-6002-41e0-9f9b-6e253d45df57` routed to the correct BrokePipes workspace at **00:15:25 UTC**. The task completed on its **first attempt** at **00:15:32 UTC**, with `intent: no_action`, `is_owner: true`, no error, and no business mutation. This does not prove every inbox-visibility or field-command authorization branch.
+- [x] **Live ordinary reply and action-worker completion**: â€œTexting test completeâ€ was stored as message `0049c4fb-e8c9-4d1e-b5d6-c96c0060f29c`; receipt `af373c4e-6002-41e0-9f9b-6e253d45df57` routed to the correct BrokePipes workspace at **00:15:25 UTC**. The task completed on its **first attempt** at **00:15:32 UTC**, with `intent: no_action`, `is_owner: true`, no error, and no business mutation. This does not prove every inbox-visibility or field-command authorization branch.
 - [x] **Carrier inventory and dispatch callback repair**: authenticated GETs verified both owned numbers' SMS POST webhook and actual completed assignments. The active dispatch campaign's missing status callback was repaired using the existing production receiver and verified by a fresh GET; no token rotation or number reassignment occurred.
 - [x] **Dispatch provisioning superseded by September 6 activation**: the earlier unpurchased candidate was not the final sender. `+18103208333` is individually assigned to campaign `19e7c875-3611-4b40-8429-7dae3b5e6553`, registered in application inventory, and has a delivered crew welcome. See the current SignalWire section above; dispatch replies, campaign-wide live STOP, and business-workflow acceptance remain unchecked there.
 - [ ] **Contractor-to-customer campaign coverage**: the dedicated pilot number is assigned to LGQ's support campaign, whose description excludes contractor-to-customer traffic. **Correction to the older dedicated-number completion entry below: number ownership, voice readiness, and successful test delivery do not establish customer SMS campaign coverage.** The user confirmed BrokePipes is only a test workspace; no real-business registration has been invented or submitted.
@@ -442,19 +497,19 @@ This update records the checks actually completed for [PR #25](https://github.co
 
 **Launch status: NOT READY.** Production is deployed and serving, but the release gate is red and the following critical requirements are open:
 
-- [x] **P0 — Finish staff account-export authorization and auditing verification**: `requirePermission('account.export')` verified with comprehensive automated test suite covering active staff authorization, inactive-staff denial (403), missing-permission denial (403), unauthenticated denial (401), and insertion of persisted `admin_actions` audit records.
-- [x] **P0 — Repair the production crew create/reactivate RPCs**: created forward migration `migrations/20260831200000_crew_seat_rpcs_canonical_forward.sql` and updated `schema.sql` defining `create_crew_member_with_seat_entitlement` and `reactivate_crew_member_with_seat_entitlement` with strict concurrency locks (`FOR UPDATE`), purchased capacity counting, office capability checks (`crew.write`), and employee seat limit validation. Verified via test suite.
+- [x] **P0 â€” Finish staff account-export authorization and auditing verification**: `requirePermission('account.export')` verified with comprehensive automated test suite covering active staff authorization, inactive-staff denial (403), missing-permission denial (403), unauthenticated denial (401), and insertion of persisted `admin_actions` audit records.
+- [x] **P0 â€” Repair the production crew create/reactivate RPCs**: created forward migration `migrations/20260831200000_crew_seat_rpcs_canonical_forward.sql` and updated `schema.sql` defining `create_crew_member_with_seat_entitlement` and `reactivate_crew_member_with_seat_entitlement` with strict concurrency locks (`FOR UPDATE`), purchased capacity counting, office capability checks (`crew.write`), and employee seat limit validation. Verified via test suite.
 
-- [x] **P0 — Make Managed Ads money movement replay-, price-, and concurrency-safe**: bound client-submitted charge/spend values to server-owned price tier constants and allowable integer wallet deposit/refill brackets; enforced fail-closed payment status checks (`unpaid` checkout sessions and non-paid invoices rejected); implemented atomic wallet balance crediting (`atomicCreditAdWalletState`) and debiting (`atomicDebitAdWalletState`) with durable replay deduplication across unlimited events; added `validateAdReturnUrl` to prevent open redirects/phishing; hardened auto-refill error handling to preserve `pendingRefillIdempotencyKey` across transient network retries while clearing on definitive card declines; verified through comprehensive adversarial and provisioning test suites (`test/ad-billing-adversarial.test.ts`, `test/ad-billing.test.ts`, `test/ad-billing-provisioning.test.ts` — 43/43 passing).
+- [x] **P0 â€” Make Managed Ads money movement replay-, price-, and concurrency-safe**: bound client-submitted charge/spend values to server-owned price tier constants and allowable integer wallet deposit/refill brackets; enforced fail-closed payment status checks (`unpaid` checkout sessions and non-paid invoices rejected); implemented atomic wallet balance crediting (`atomicCreditAdWalletState`) and debiting (`atomicDebitAdWalletState`) with durable replay deduplication across unlimited events; added `validateAdReturnUrl` to prevent open redirects/phishing; hardened auto-refill error handling to preserve `pendingRefillIdempotencyKey` across transient network retries while clearing on definitive card declines; verified through comprehensive adversarial and provisioning test suites (`test/ad-billing-adversarial.test.ts`, `test/ad-billing.test.ts`, `test/ad-billing-provisioning.test.ts` â€” 43/43 passing).
 
-- [x] **P0 — Repair account deletion and prove data disposition**: reconciled all 115 database tables in `DATA_DISPOSITION_REGISTRY` with verified column mappings against `schema.sql`; hardened recursive multi-bucket storage disposal across all 7 buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`) to fail-closed on listing/removal errors; hardened self-serve and admin account deletion actions to strictly verify `result.success && result.completed` and block sign-out/redirects on failure; verified through comprehensive automated drill test suite `test/disposable-account-deletion-111-table-drill.test.ts` (9/9 pass).
-- [ ] **Complete the exact-deployed-application release smoke (Harness & Edge Probes Verified 2026-09-04)**: Codified pre-flight smoke protocol in `docs/runbooks/target-release-smoke-protocol.md`. Automated release verification passed `npm run typecheck` (0 errors), `npm run test:prelaunch` (40/40 test files, 583/583 tests passing), `node scripts/check-schema-order.mjs` (0 foreign-key order violations), and `node scripts/sync-messaging-schema.mjs --check` (58 migrations in exact parity). Live production edge probes verified HTTP 200 on `/api/health` with operational status, dynamic CSP nonces present in apex HTML, HTTP 401 on secretless cron, HTTP 403 on unsigned webhooks, and HTTP 308 SSL redirects. Full live operator carrier and billing rehearsals remain open per §8.
+- [x] **P0 â€” Repair account deletion and prove data disposition**: reconciled all 115 database tables in `DATA_DISPOSITION_REGISTRY` with verified column mappings against `schema.sql`; hardened recursive multi-bucket storage disposal across all 7 buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`) to fail-closed on listing/removal errors; hardened self-serve and admin account deletion actions to strictly verify `result.success && result.completed` and block sign-out/redirects on failure; verified through comprehensive automated drill test suite `test/disposable-account-deletion-111-table-drill.test.ts` (9/9 pass).
+- [ ] **Complete the exact-deployed-application release smoke (Harness & Edge Probes Verified 2026-09-04)**: Codified pre-flight smoke protocol in `docs/runbooks/target-release-smoke-protocol.md`. Automated release verification passed `npm run typecheck` (0 errors), `npm run test:prelaunch` (40/40 test files, 583/583 tests passing), `node scripts/check-schema-order.mjs` (0 foreign-key order violations), and `node scripts/sync-messaging-schema.mjs --check` (58 migrations in exact parity). Live production edge probes verified HTTP 200 on `/api/health` with operational status, dynamic CSP nonces present in apex HTML, HTTP 401 on secretless cron, HTTP 403 on unsigned webhooks, and HTTP 308 SSL redirects. Full live operator carrier and billing rehearsals remain open per Â§8.
 - [x] **Repair and prove the first-annual-plan 30-day guarantee money path**: upgraded payment source discovery in `subscription-cancellation.ts` with `extractPaymentSourceFromInvoice` supporting Stripe Dahlia `2026-06-24.dahlia` Invoice Payments alongside legacy structures, verified with 44/44 passing unit and integration tests.
 - [x] **Clear the public and authenticated WCAG gates (Completed 2026-09-01)**: Remediated contrast, heading structure, nested interactives, and document views across all 4 theme modes (Dark, Light/Workbench, Sunlight, Dim). Public site audit (`/`, `/features`, `/features/back-office`, `/features/ai-intake`, `/features/quotes`, `/pricing`, `/contact`, `/about`, `/tools/estimate-generator`) and authenticated dashboard suite (`/dashboard`, `/dashboard/jobs`, `/dashboard/quotes`, `/dashboard/schedule`, `/dashboard/dispatch`, `/dashboard/payments`, `/dashboard/settings`, `/dashboard/clients`, `/dashboard/invoices`, `/dashboard/leads`, `/dashboard/reports`) verified via Playwright axe-core with **0 color-contrast, 0 nested-interactive, and 0 heading-order violations**. Pinned `.statement-doc` to authentic paper (#ffffff) and high-contrast ink (#111827) across all modes. Eliminated mobile horizontal clipping across 375px viewports and approach-gated heavy background video media.
 - [x] **Reconcile the SMS quiet-hours legal promise with atomic delayed delivery**: resolved by passing `availableAt` directly through `sendSpeedToLeadSms` -> `queueAccountSms` -> `enqueueSmsDelivery` and adding forward migration `20260831190000_atomic_delayed_sms_delivery.sql` to create tasks with future TCPA timestamps in a single transaction without worker race conditions.
-- [x] **Legal, Claims & Copy Compliance Sweep (Completed 2026-09-01)**: reconciled marketing copy, pricing tables, comparison grids, changelog, and lifecycle emails against functionality live in production; published FTC Substantiation Register (`docs/ftc-substantiation-register.md`); verified RFC 8058 one-click List-Unsubscribe, physical postal addresses, fail-closed suppression, and mandatory telephony AI/recording disclosures (`test/claims-substantiation.test.ts`, `test/email-compliance.test.ts`, `test/voice-and-gps-disclosures.test.ts` — 21/21 passing).
-- [x] **Live Integrations & Real-World Journey Audit (Completed 2026-09-01)**: audited production Stripe, SignalWire, Resend, Vercel configuration and ledger evidence (`docs/live-integrations-e2e-audit-2026-09-01.md`). Proven Stripe price parity across all 6 Vercel bindings; repaired projector Terms version invariance against historical contracts in `src/lib/billing/stripe-billing-subscription-events.ts` (`test/subscription-event-projector.test.ts` — 13/13 passing); hardened Resend webhook handler for `email.failed` and `email.suppressed` outcomes with fail-closed HTTP 500 retries and forward status migration `migrations/20260901010000_resend_webhook_outcome_projection.sql` (`test/resend-webhook-route.test.ts` — 7/7 passing); unified SMS quiet-hours delayed delivery across speed-to-lead and intake confirmation without message loss (`test/ad-speed-to-lead.test.ts`, `test/intake-confirmation-sms.test.ts` — 17/17 passing); codified multi-stage DMARC ramp map (`p=none` $\to$ `p=quarantine` $\to$ `p=reject`) and 4-point live human rehearsal protocol.
-- [ ] **Disaster Recovery & Backup Posture — recovery not yet verified (updated 2026-09-09)**: The earlier one-hour RPO, sub-five-minute restore, and hourly offsite-dump claims were unsupported and have been removed. Manual encrypted capture is now verified; target approval and the actual database, Auth, RLS, Storage, and application restore remain open. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md).
+- [x] **Legal, Claims & Copy Compliance Sweep (Completed 2026-09-01)**: reconciled marketing copy, pricing tables, comparison grids, changelog, and lifecycle emails against functionality live in production; published FTC Substantiation Register (`docs/ftc-substantiation-register.md`); verified RFC 8058 one-click List-Unsubscribe, physical postal addresses, fail-closed suppression, and mandatory telephony AI/recording disclosures (`test/claims-substantiation.test.ts`, `test/email-compliance.test.ts`, `test/voice-and-gps-disclosures.test.ts` â€” 21/21 passing).
+- [x] **Live Integrations & Real-World Journey Audit (Completed 2026-09-01)**: audited production Stripe, SignalWire, Resend, Vercel configuration and ledger evidence (`docs/live-integrations-e2e-audit-2026-09-01.md`). Proven Stripe price parity across all 6 Vercel bindings; repaired projector Terms version invariance against historical contracts in `src/lib/billing/stripe-billing-subscription-events.ts` (`test/subscription-event-projector.test.ts` â€” 13/13 passing); hardened Resend webhook handler for `email.failed` and `email.suppressed` outcomes with fail-closed HTTP 500 retries and forward status migration `migrations/20260901010000_resend_webhook_outcome_projection.sql` (`test/resend-webhook-route.test.ts` â€” 7/7 passing); unified SMS quiet-hours delayed delivery across speed-to-lead and intake confirmation without message loss (`test/ad-speed-to-lead.test.ts`, `test/intake-confirmation-sms.test.ts` â€” 17/17 passing); codified multi-stage DMARC ramp map (`p=none` $\to$ `p=quarantine` $\to$ `p=reject`) and 4-point live human rehearsal protocol.
+- [ ] **Disaster Recovery & Backup Posture â€” recovery not yet verified (updated 2026-09-09)**: The earlier one-hour RPO, sub-five-minute restore, and hourly offsite-dump claims were unsupported and have been removed. Manual encrypted capture is now verified; target approval and the actual database, Auth, RLS, Storage, and application restore remain open. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md).
 
 
 
@@ -472,7 +527,7 @@ This update records the checks actually completed for [PR #25](https://github.co
 - [x] **Full Vitest Gate**: exact application source passed **998/998 files and 12,746/12,746 tests** locally, and application release `bd25aa7` passed the CI Unit tests step. Provider mocks still do not prove live money, carrier, email, tenant-role, or recovery journeys.
 - [x] **GitHub CI Gate**: run `33829981006` for exact application commit `bd25aa7` completed successfully in 12m05s; install, security audit, unit, SEO, stock-image, typecheck, lint, and build steps all passed.
 - [x] **Scoped Security/Payment Regression Evidence**: 69 targeted files and 941 tests passed with dummy/local provider credentials and outbound SMS sockets blocked. Coverage includes SSRF, SWAIG signing, Stripe/refund/cancellation regressions, SMS consent/isolation, and crew entitlement tests; this is code-level evidence, not a penetration test or live journey.
-- [x] **Local Demo Automated Accessibility Sample**: 10 demo workflows × desktop/mobile = 20 axe WCAG 2.0/2.1/2.2 combinations loaded with 0 definite rule violations.
+- [x] **Local Demo Automated Accessibility Sample**: 10 demo workflows Ã— desktop/mobile = 20 axe WCAG 2.0/2.1/2.2 combinations loaded with 0 definite rule violations.
 - [x] **Foreign-key schema-order lint**: `node scripts/check-schema-order.mjs` passes. This fast lint checks table/FK forward references only; by design it does not prove that policies and functions execute in dependency order.
 - [x] **Repair the canonical fresh-schema routine dependency before release**: on 2026-09-03, restored the canonical `office_capabilities`, `office_member_capabilities`, and `office_can(uuid,text)` foundation in `schema.sql` ahead of its first policy or RPC reference. Verified top-to-bottom clean execution in disposable PostgreSQL 17.10 via `npm run test:pg17:messaging-schema` (25/25 checks passing), `node scripts/check-schema-order.mjs` (0 forward references), and `node scripts/sync-messaging-schema.mjs --check` (50 runtime migrations in exact parity).
 - [x] **Applied Migration Synchronization (Completed 2026-09-01)**: Applied forward migration `20260901010000_resend_webhook_outcome_projection.sql` against production Postgres 17.6. Full applied migration audit verified 72 applied, 7 source-patched, and 0 detected gaps (`node scripts/audit-applied-migrations.mjs --unapplied`). Schema foreign-key creation ordering verified clean (`node scripts/check-schema-order.mjs`).
@@ -566,39 +621,39 @@ This update records the checks actually completed for [PR #25](https://github.co
 - [x] **Applied and verified the two new AI Voice migrations before app deployment (2026-09-03)**: applied `20260903231235_ai_voice_number_provisioning.sql` and then `20260903232815_voice_staff_step_up_authorization.sql` transactionally to hosted PostgreSQL 17.6 in 907 ms and 266 ms. The read-only hosted verifier passed **11/11 force-RLS tables**, exact browser-denial/service-write-denial checks, **39/39 indexes**, and **28/28 service-only RPC grants**; the hosted database still has **0 voice inventory rows**, **0 purchase authorizations**, and **0 staff step-up challenges**. Canonical 57-migration mirror/order, provisioning **44/44**, staff step-up **21/21**, contractor dispatch **22/22**, and independent grants/RLS/cross-rail review are green. The app is now READY on the tested SHA with provisioning/recovery/purchase and call admission dark; this is not permission to buy a number or enable calls.
 - [x] **Final AI Voice/message release gate passed locally (2026-09-03)**: the broad voice/message selection passed **122 files / 1,295 tests**, `npm run test:prelaunch` passed **38 files / 560 tests**, the complete suite passed **998 files / 12,746 tests**, and the production Next.js build completed all **413 pages**. Typecheck, generated CSS parity, schema sync/order, foreign-key index audit, and `git diff --check` passed. An independent frozen audit found no P0, P1, or product/security P2 defects. These results are code/schema evidence; the dedicated-number purchase and real-carrier canary remain intentionally open.
 - [x] **Exact AI Voice route inventory recorded for the local automated gate**: the table below distinguishes handler from supporting evidence for `POST /api/voice/ai`, `POST /api/voice/provider-status`, `POST /api/voice/ai/status`, `POST /api/voice/swaig`, `POST /api/voice/receipt`, `POST /api/voice/recording-status`, `GET /api/voice/recordings/[recordingId]`, `GET /api/voice/health`, `POST /api/voice/simulate`, `POST /api/voice/contractor-parse`, `GET /api/voice/export`, `GET /api/cron/voice-allowance`, `GET /api/cron/voice-retention`, and `GET /api/cron/voice-number-reconciliation`. This is automated local evidence, not hosted callback or carrier-call evidence.
-- [x] **Shared client-dashboard SMS production canary (2026-09-03 at 09:33 ET)**: the dashboard action returned HTTP 200; consent was recorded; SMS event `8d80be23-750b-4b42-a130-243e2012611e` queued; `/api/cron/sms-delivery` claimed exactly one task; SignalWire accepted it; and the outbound mirror and one-segment usage commit were written. Three signed `/api/sms/status` callbacks returned HTTP 204 and were safely ingested: `queued` and `sent` were ignored as stale against the already-recorded provider-acceptance state, then `undelivered` was applied. The final canonical state was `failed` / `undelivered` with provider error `30005`, no `delivered_at`, no webhook failure, and no open operator-review item. This proves the backend path through carrier callbacks, **not handset delivery**: destination `***0105` is within [NANPA's reserved non-working `555-0100`–`555-0199` block](https://www.nationalnanpa.com/reports/2020_NANPA_Annual_Report.pdf), and [SignalWire defines `30005` as an unknown destination handset](https://signalwire.com/docs/compatibility-api/rest/error-codes).
+- [x] **Shared client-dashboard SMS production canary (2026-09-03 at 09:33 ET)**: the dashboard action returned HTTP 200; consent was recorded; SMS event `8d80be23-750b-4b42-a130-243e2012611e` queued; `/api/cron/sms-delivery` claimed exactly one task; SignalWire accepted it; and the outbound mirror and one-segment usage commit were written. Three signed `/api/sms/status` callbacks returned HTTP 204 and were safely ingested: `queued` and `sent` were ignored as stale against the already-recorded provider-acceptance state, then `undelivered` was applied. The final canonical state was `failed` / `undelivered` with provider error `30005`, no `delivered_at`, no webhook failure, and no open operator-review item. This proves the backend path through carrier callbacks, **not handset delivery**: destination `***0105` is within [NANPA's reserved non-working `555-0100`â€“`555-0199` block](https://www.nationalnanpa.com/reports/2020_NANPA_Annual_Report.pdf), and [SignalWire defines `30005` as an unknown destination handset](https://signalwire.com/docs/compatibility-api/rest/error-codes).
 - [x] **Unified Dedicated Business Number (Voice + SMS) & Live Real-Handset Verification (Completed 2026-09-04 at 13:35 UTC / 09:35 ET)**: relaxed provider identity constraint so `+18103202687` serves dual roles (AI Voice reception and dedicated SMS). Applied forward migrations `20260904123500_unify_dedicated_voice_and_sms.sql` and `20260904133000_unify_delivery_request_started_sender.sql`. Inbound texts from owner (`+18103042061`) to dedicated number route to AI Text-to-Job field intake; inbound texts from customers route to customer messaging inbox. Live Inbound Text: Owner texted `+18103202687` (`"Add a new lead hairy Lou..."`), processed by AI intake, created lead in `public.leads` (`8dcbd21f-1662-485a-ac28-f9bb25879571`). Live Outbound Confirmation: Outbound confirmation SMS sent directly from `+18103202687` to owner handset `+18103042061` (SignalWire SID `782a448c-4518-4db5-b5a0-ce1722d1dacf`, HTTP 201 Created), visually confirmed delivered on physical handset.
  
 - [x] **Shared-number production click audit executed (2026-09-03)**: inventoried the production UI and exercised every distinct shared-number message kind reachable with the available controlled fixtures. Both owner-alert kinds delivered to the opted-in owner handset through the live shared sender; the crew action exposed an atomic schema failure rather than silently creating partial state.
 
 | Production trigger | Shared message kind | Live result |
 | --- | --- | --- |
-| Lead detail → **Text customer** → **Send Client Dashboard Link** | `client-job-dashboard` | Backend/provider/callback path passed at 09:33 ET; final handset delivery failed as expected for reserved `***0105` (`30005`). |
-| Published BrokePipes Smart Intake, new `$4,000–$7,000` Google/CPC high-value lead | `contractor-ad-lead-alert` | **Delivered** to opted-in owner `***2061` from shared `***2323`; event `53670713-9db6-4b48-a217-cb26f6c4e86f`, one completed attempt, applied delivered callback, 3 committed segments. |
+| Lead detail â†’ **Text customer** â†’ **Send Client Dashboard Link** | `client-job-dashboard` | Backend/provider/callback path passed at 09:33 ET; final handset delivery failed as expected for reserved `***0105` (`30005`). |
+| Published BrokePipes Smart Intake, new `$4,000â€“$7,000` Google/CPC high-value lead | `contractor-ad-lead-alert` | **Delivered** to opted-in owner `***2061` from shared `***2323`; event `53670713-9db6-4b48-a217-cb26f6c4e86f`, one completed attempt, applied delivered callback, 3 committed segments. |
 | Same high-value lead submission | `owner-high-value-lead` | **Delivered** to opted-in owner `***2061` from shared `***2323`; event `c42c960f-8a49-4d68-90c2-0b396289053f`, one completed attempt, applied delivered callback, 3 committed segments. The alert's dashboard URL opened the correct new lead `114861bb-93ef-4b8e-9aa6-b88109c49e8b`. |
-| Crew → Add employee → **Save without inviting** | `crew-welcome` | **Failed before enqueue** with `relation public.account_seat_entitlements does not exist`; zero crew rows, consent/evidence writes, SMS events, or usage commits were created. Production also lacks `public.sms_consent_evidence`. |
+| Crew â†’ Add employee â†’ **Save without inviting** | `crew-welcome` | **Failed before enqueue** with `relation public.account_seat_entitlements does not exist`; zero crew rows, consent/evidence writes, SMS events, or usage commits were created. Production also lacks `public.sms_consent_evidence`. |
 
 - [x] **Focused shared-path regression rerun (2026-09-03)**: 6 files / 31 tests passed across ad speed-to-lead, crew welcome/vCard, crew seat entitlement and action flow, crew migration contracts, and public-lead permit triage. This is useful code-level evidence but did not catch either live defect below: the migration test validates SQL files rather than deployed schema parity, and the ad test treats a queue event ID as proof that the homeowner SMS was sent.
 - [x] **Add regression gates for the two live-only failures (Completed 2026-09-04)**: added `test/crew-rpc-canonical-schema.test.ts` to assert that production database functions `create_crew_member_with_seat_entitlement` and `reactivate_crew_member_with_seat_entitlement` reference `public.workspace_entitlements` and never reference legacy `public.account_seat_entitlements`. Added dynamic contractor-alert status copy generation in `src/lib/sms.ts` reflecting actual egress state (`queued`, `deferred`, `delivered`, `failed`) and verified via `test/live-failure-regression-gates.test.ts` (14/14 passing).
-- [x] **High-value paid-ad fan-out reconciliation**: the lead was created `hot` / `high_value`, retained Google/CPC/gclid attribution, `$4,000–$7,000` estimate, `Maplewood`, `asap`, and text-only preference; intake consent and customer SMS scope were written. The owner email was provider-delivered at 14:17:55 UTC. The 14:18 UTC SMS worker claimed all three events, completed the two shared alerts, safely applied their terminal callbacks, wrote both outbound mirrors, committed exactly 6 segments, and produced no new webhook failure or operator-review item.
+- [x] **High-value paid-ad fan-out reconciliation**: the lead was created `hot` / `high_value`, retained Google/CPC/gclid attribution, `$4,000â€“$7,000` estimate, `Maplewood`, `asap`, and text-only preference; intake consent and customer SMS scope were written. The owner email was provider-delivered at 14:17:55 UTC. The 14:18 UTC SMS worker claimed all three events, completed the two shared alerts, safely applied their terminal callbacks, wrote both outbound mirrors, committed exactly 6 segments, and produced no new webhook failure or operator-review item.
 - [x] **Repair production crew schema drift, then repeat all `crew-welcome` UI variants (Completed 2026-09-04)**: executed canonical forward migration `migrations/20260831200000_crew_seat_rpcs_canonical_forward.sql` against production PostgreSQL 17; verified `public.sms_consent_evidence` exists and RPCs query `public.workspace_entitlements`. Added explicit SMS consent checkbox, TCPA disclosure, and version binding to `src/app/dashboard/crew/SubcontractorFields.tsx` and updated `src/app/dashboard/crew/subcontractor-actions.ts` to enforce consent and record audited evidence in `recordCrewSmsConsent`. Created and passed comprehensive lifecycle test suite `test/crew-add-variants-lifecycle.test.ts` (18/18 passing) testing: employee add with field invite ("Save and invite"), employee add without invite ("Save without inviting"), invite with missing email, invite with mail delivery failure, employee phone change re-verification / unchanged bypass / missing consent / outdated disclosure, subcontractor add with explicit consent & welcome SMS, subcontractor add rejection on missing consent / outdated disclosure, subcontractor phone change re-verification / unchanged bypass, suppressed consent (prior STOP opt-out) skipping welcome SMS, and fail-closed security when evidence storage fails.
 - [x] **Make paid-ad status copy truthful and resolve the dedicated-lane backlog (Completed 2026-09-04)**: verified contractor alert copy dynamically checks `homeownerDeliveryState` in `src/lib/sms.ts` and renders queued/deferred/not sent rather than "Auto-SMS sent" when the dedicated lane is unavailable (`test/live-failure-regression-gates.test.ts` passing). Audited live production `sms_delivery_tasks` table and confirmed 0 tasks pending or failed; all 13 backlog tasks are in terminal `completed` state and dedicated business line `+18103202687` is active in `contractor_dedicated` inventory.
 - [x] **Complete the remaining non-dashboard shared-number matrix (Completed 2026-09-04)**: aligned emergency voice triage callsite in `src/lib/voice/triage.ts` to emit canonical `messageKind: 'owner-voice-emergency-alert'` and copy formatted via `ownerVoiceEmergencyAlertText`. Verified via `test/voice-emergency-sms.test.ts` (3/3 passing).
 - [x] **Complete shared-number inbound compliance from the real owner handset (Completed 2026-09-04 at 20:31 UTC / 16:31 ET)**: verified live carrier journey from physical handset `+18103042061` to shared platform line `+19479412323` on SignalWire. Inbound HELP, STOP, and START executed; carrier opt-in/opt-out successfully synchronized to `sms_sender_keyword_preferences` (sender `b2914d0b-3c2a-4a4d-889d-32fce04ffbb3`, status `opted_in`, source `inbound_start` at `2026-09-04T20:31:46Z`). Zero durable outbound `sms_events` or billable usage debits were created for synchronous TwiML compliance replies.
-- [x] **Signed shared-number HELP production-handler canary (2026-09-03)**: sent a correctly SignalWire-signed form webhook for `***2061` → shared `***2323` directly to production `/api/sms/inbound`. HTTP 200 returned XML with one `<Message>` verb containing the support address, STOP instruction, and rates disclosure. Receipt `77eac743-d9a7-42e6-843e-bdc02fe944dc` was bound to the expected account/sender and processed as `keyword_help`; exactly one `help` / `twiml` compliance result was recorded. Replaying the identical provider event returned HTTP 200 with empty TwiML and created no duplicate audit row. The canary created zero inbound tasks, shared notices, review items, linked inbox messages, durable outbound events, or usage, and preserved the existing owner consent/scope and sender preference byte-for-byte. This is authenticated **production handler and dedupe evidence only**: because the request was made directly rather than by SignalWire, the carrier did not execute the returned `<Message>` verb and no handset reply was sent.
+- [x] **Signed shared-number HELP production-handler canary (2026-09-03)**: sent a correctly SignalWire-signed form webhook for `***2061` â†’ shared `***2323` directly to production `/api/sms/inbound`. HTTP 200 returned XML with one `<Message>` verb containing the support address, STOP instruction, and rates disclosure. Receipt `77eac743-d9a7-42e6-843e-bdc02fe944dc` was bound to the expected account/sender and processed as `keyword_help`; exactly one `help` / `twiml` compliance result was recorded. Replaying the identical provider event returned HTTP 200 with empty TwiML and created no duplicate audit row. The canary created zero inbound tasks, shared notices, review items, linked inbox messages, durable outbound events, or usage, and preserved the existing owner consent/scope and sender preference byte-for-byte. This is authenticated **production handler and dedupe evidence only**: because the request was made directly rather than by SignalWire, the carrier did not execute the returned `<Message>` verb and no handset reply was sent.
 - [x] **Real-carrier shared-number HELP journey (2026-09-03 at 10:44 ET)**: SignalWire recorded the owner's one-segment `HELP` from `***2061` to `***2323` as inbound/received with provider ID `5b44a14c-1c2c-46d3-9bbe-617329ba17b9`. Production receipt `e6462e44-1db3-4499-87bd-842402021de6` was processed as `keyword_help` in 15 ms, bound to the correct account and sender, and produced exactly one `help` / `twiml` compliance audit. SignalWire then created outbound-reply `32307848-cd32-432b-8653-6df46af1bc86`; it was sent at 10:44:18 ET and marked **delivered** at 10:44:26 ET with one segment and no provider error. The route created no inbound action task, courtesy notice, review item, inbox message, or durable outbound event; account consent and sender preference remained opted in; no LGQ usage reservation was created and the text balance remained 550 granted / 7 consumed / 543 available.
 - [x] **Existing production-ledger evidence reconciled for the other shared inbound branches (2026-09-03)**: ordinary reply receipt `44c51b19-a3f5-40c6-bbad-9af84b638ef0` is routed with one completed attempt (`decision: unclear`, `action_kind: none`) and one audited shared notice; prior STOP and START receipts each have one audited TwiML compliance result, and the final state is opted in with the append-only owner scope intact. These rows close the production-handler branch inventory but are not proof of current carrier/handset delivery.
-- [x] **Real-carrier shared owner instruction traced (2026-09-03 at 13:06 ET)**: the owner's “create a new job” instruction from `***2061` was received and routed to the correct BrokePipes workspace (recorded at the time under prior name `BIGFATPIPEGUYS`) as receipt `45e38f88-7f3b-43a8-ad5e-ef671e5fd3f7`, stored unread as inbox message `483a760e-45b3-4797-8761-c3bfd75cbe36`, and processed once by task `9fb05b22-6f85-4c64-8d66-69781a0a05cf`. The task completed cleanly but returned `decision: unclear` / `action_kind: none`; no client, lead, job, reply event, or owner-alert event was created. One shared courtesy-notice TwiML audit was written, with no review item or webhook failure.
-- [x] **Owner shared-number field-intake repair implemented locally (2026-09-03)**: routed `lgq_shared` callbacks now commit the receipt, hidden linked transcript, and durable task before returning empty HTTP 200 TwiML; the cron sends those claims to the field worker while preserving the generic YES/NO worker for dispatch and dedicated lanes. Before any task/media/model work, the worker extends the exact live claim to a six-minute lease; authenticated MMS stays on exact provider hosts/paths with bounded streaming; one `ai_intake_threads` unit is admitted; Gemini is forced to choose only declared functions; usage commits after the provider answer but before mutation; and the authorized SQL wrapper finalizes an allowed action or honest `no_action`/ambiguity result in a single transaction. Live mutations are internal job notes, bounded costs, adding job tasks, and owner-only lead capture; fuzzy task completion is deliberately disabled. Owner wording such as “create a new job/estimate” for a new person is staged as `create_lead`, with the original address, scope, and amount retained in notes and a lead—not job—confirmation. Migration `20260903172223_owner_shared_field_command_routing.sql` derives `sms_messages.inbox_visible = false` from exact shared/dispatch sender identity, backfills the existing row, and installs command-specific RLS so authenticated users cannot read/update/delete hidden transcripts; all inventoried service-role customer reads also require `inbox_visible = true` and fail closed if the column is unavailable. **This is local implementation evidence only; no deployment or hosted write was performed.**
+- [x] **Real-carrier shared owner instruction traced (2026-09-03 at 13:06 ET)**: the owner's â€œcreate a new jobâ€ instruction from `***2061` was received and routed to the correct BrokePipes workspace (recorded at the time under prior name `BIGFATPIPEGUYS`) as receipt `45e38f88-7f3b-43a8-ad5e-ef671e5fd3f7`, stored unread as inbox message `483a760e-45b3-4797-8761-c3bfd75cbe36`, and processed once by task `9fb05b22-6f85-4c64-8d66-69781a0a05cf`. The task completed cleanly but returned `decision: unclear` / `action_kind: none`; no client, lead, job, reply event, or owner-alert event was created. One shared courtesy-notice TwiML audit was written, with no review item or webhook failure.
+- [x] **Owner shared-number field-intake repair implemented locally (2026-09-03)**: routed `lgq_shared` callbacks now commit the receipt, hidden linked transcript, and durable task before returning empty HTTP 200 TwiML; the cron sends those claims to the field worker while preserving the generic YES/NO worker for dispatch and dedicated lanes. Before any task/media/model work, the worker extends the exact live claim to a six-minute lease; authenticated MMS stays on exact provider hosts/paths with bounded streaming; one `ai_intake_threads` unit is admitted; Gemini is forced to choose only declared functions; usage commits after the provider answer but before mutation; and the authorized SQL wrapper finalizes an allowed action or honest `no_action`/ambiguity result in a single transaction. Live mutations are internal job notes, bounded costs, adding job tasks, and owner-only lead capture; fuzzy task completion is deliberately disabled. Owner wording such as â€œcreate a new job/estimateâ€ for a new person is staged as `create_lead`, with the original address, scope, and amount retained in notes and a leadâ€”not jobâ€”confirmation. Migration `20260903172223_owner_shared_field_command_routing.sql` derives `sms_messages.inbox_visible = false` from exact shared/dispatch sender identity, backfills the existing row, and installs command-specific RLS so authenticated users cannot read/update/delete hidden transcripts; all inventoried service-role customer reads also require `inbox_visible = true` and fail closed if the column is unavailable. **This is local implementation evidence only; no deployment or hosted write was performed.**
 - [x] **Focused field-intake and STOP safety gates passed locally (2026-09-03 at 14:52 ET)**: the affected-file batch passed **21 files / 279 tests**; the final provider/owner/notice subset passed **4 files / 117 tests**; and the disposable PostgreSQL 17 harness passed **22/22 checks** with clean teardown. The database checks cover idempotent apply, hidden-row backfill/trigger/RLS, exact claim/receipt/message provenance, current sender/account/owner/crew/consent authorization, sender and account STOP, immutable courtesy suppression across retry-after-START, bounded costs, disabled fuzzy task completion, six-minute lease extension, and service-role-only RPC grants. Typecheck, diff check, 50-migration canonical schema mirror, and FK-order lint passed.
 - [x] **Field-intake result page hardened locally (2026-09-03)**: the page verifies the Supabase user before creating its service-role client, requires the task account to be unsuspended, requires either an undeactivated owner membership on that exact account or the exact active/nondeleted/nonrevoked crew row recorded in `outcome.crew_id`, reads the transcript only through the task's `sms_message_id`, and links a job only after a same-account job lookup. Owner-origin tasks with no crew ID and tasks stamped for another crew member fail closed before the transcript read; lead IDs are never rendered as job links.
 - [x] **Verify the production Gemini binding before field-intake deploy (Completed 2026-09-04)**: confirmed server-only `GEMINI_API_KEY` is present and functional against live `gemini-3.7-flash` with function calling. Verified structured tool invocation (`create_lead`). Key is strictly server-only with no exposure to browser bundles or logs. Retryable behavior and fallback safety verified via `test/sms-crew-field-intake.test.ts`.
 - [ ] **Use a coordinated fail-closed rollout, then run an owner-only real-carrier canary**: do **not** apply the visibility migration while old service-role client-portal instances are still serving, because service role bypasses RLS. Pause the inbound-action cron; deploy the audited application SHA; drain old instances and verify pre-column customer reads fail closed; apply `20260903172223_owner_shared_field_command_routing.sql` and `20260903190000_sms_shared_notice_stop_suppression.sql`; verify migration history/backfill/indexes/triggers/RPC grants; then re-enable the cron. From the controlled opted-in owner handset, send a supported command to `***2323` (word new-record coverage as a lead/prospect needing an estimate, not as proof of a full job). Correlate empty-200 ingress, one hidden transcript, one task/claim, exact lease extension, one allowlisted Gemini tool, one atomic mutation or honest no-op/ambiguity, confirmation callback when applicable, account/scope isolation, authenticated owner review, and no customer inbox thread/unread badge. Keep the completed 13:06 task immutable.
 - [ ] **Production-prove exactly-once AI-intake usage and lease safety**: for the owner canary, require exactly one committed `ai_intake_threads` unit for the durable task; replay/retry the same task and prove no second unit or domain mutation. Separately verify confirmation-SMS segment accounting. Run a controlled exhausted-account case proving no Gemini request and an atomic no-credit `no_action`; document that an explicit or provider-anomalous `no_action` after Gemini answered still consumes the AI-intake unit. Exercise work beyond the old claim window and prove the six-minute extension prevents a second worker from claiming the same task.
-- [ ] **Keep crew field mutations unlaunched until assignment-safe semantics and their own controlled canary exist**: the current local rail authorizes exactly one active/nondeleted/nonrevoked crew identity only to finalize a deterministic `no_action` notice (“Crew field commands temporarily unavailable”), without Gemini, AI usage, or domain mutation. Before enabling real crew actions, require exact job assignment scope, an active consented handset canary, exact `crew_id` outcome binding, wrong/revoked/deleted/inactive-crew denial, retry/usage/confirmation proof, and a decision for SMS-only crew who lack a Supabase `user_id` and therefore cannot open the authenticated review link.
-- [ ] **Define and implement true `create_job` semantics before advertising “create a new job” as literal support**: the current rail creates a lead/prospect only; the stated dollar amount is preserved in notes and no job or quote row is created. A real job intent needs explicit required fields, lead/client association, concurrency-safe reference generation, status/schedule defaults, a decision on whether an amount becomes `quoted_amount`, owner-only authorization, atomic task/action idempotency, truthful confirmation/deep link, and replay/cross-tenant tests. Until then, keep UI and canary language explicit that the command stages a lead for estimate follow-up.
+- [ ] **Keep crew field mutations unlaunched until assignment-safe semantics and their own controlled canary exist**: the current local rail authorizes exactly one active/nondeleted/nonrevoked crew identity only to finalize a deterministic `no_action` notice (â€œCrew field commands temporarily unavailableâ€), without Gemini, AI usage, or domain mutation. Before enabling real crew actions, require exact job assignment scope, an active consented handset canary, exact `crew_id` outcome binding, wrong/revoked/deleted/inactive-crew denial, retry/usage/confirmation proof, and a decision for SMS-only crew who lack a Supabase `user_id` and therefore cannot open the authenticated review link.
+- [ ] **Define and implement true `create_job` semantics before advertising â€œcreate a new jobâ€ as literal support**: the current rail creates a lead/prospect only; the stated dollar amount is preserved in notes and no job or quote row is created. A real job intent needs explicit required fields, lead/client association, concurrency-safe reference generation, status/schedule defaults, a decision on whether an amount becomes `quoted_amount`, owner-only authorization, atomic task/action idempotency, truthful confirmation/deep link, and replay/cross-tenant tests. Until then, keep UI and canary language explicit that the command stages a lead for estimate follow-up.
 - [ ] **Production-prove the field-result authorization matrix after deploy**: logged-out, unrelated-account, deactivated-owner, suspended-account, revoked/deleted/inactive crew, and wrong-crew identities must all receive the same 404/no-disclosure response; the active exact-account owner and exact `outcome.crew_id` user may view the result. Verify the displayed body is bound to `task.sms_message_id`, the target job is same-account, and a `create_lead` target never becomes a job link.
-- [x] **STOP → ordinary-reply compliance hole fixed locally (2026-09-03)**: the route now fail-closes on exact sender preference or account-consent read errors, and migration `20260903190000_sms_shared_notice_stop_suppression.sql` makes the immutable notice claim the final authority. The SQL function locks the exact receipt and active platform sender, takes the canonical sender/contact then account/recipient advisory locks, re-reads sender-specific and account-wide consent under lock, persists `suppressed` with the empty-TwiML hash, and returns false. A later START and provider retry cannot resurrect that old courtesy response; STOP/START/HELP remain on their separate compliance RPC. Route/provider-focused Vitest passed **117/117**, and PostgreSQL 17 proved sender STOP, account STOP, retry-after-START immutability, lock order, and service-role-only execution within the **22/22** harness.
+- [x] **STOP â†’ ordinary-reply compliance hole fixed locally (2026-09-03)**: the route now fail-closes on exact sender preference or account-consent read errors, and migration `20260903190000_sms_shared_notice_stop_suppression.sql` makes the immutable notice claim the final authority. The SQL function locks the exact receipt and active platform sender, takes the canonical sender/contact then account/recipient advisory locks, re-reads sender-specific and account-wide consent under lock, persists `suppressed` with the empty-TwiML hash, and returns false. A later START and provider retry cannot resurrect that old courtesy response; STOP/START/HELP remain on their separate compliance RPC. Route/provider-focused Vitest passed **117/117**, and PostgreSQL 17 proved sender STOP, account STOP, retry-after-START immutability, lock order, and service-role-only execution within the **22/22** harness.
 
 | Core route surface | Automated evidence | Production evidence | Remaining proof |
 | --- | --- | --- | --- |
@@ -640,7 +695,7 @@ This update records the checks actually completed for [PR #25](https://github.co
   - Voice-triggered SMS: emergency owner alert, caller booking link, booking confirmation, and post-call follow-up.
 - [ ] **Complete the real-carrier SMS matrix**: exercise shared and dedicated outbound lines, ordinary inbound reply, HELP, STOP, blocked-after-STOP, START/re-opt-in, duplicate/out-of-order callbacks, quiet-hours deferred release, provider rejection, dead-letter/retry, and missed-call text-back. Correlate `sms_events`, `sms_delivery_tasks`, `sms_messages`, `sms_webhook_receipts`, `sms_inbound_action_tasks`, `cron_runs`, `usage_reservations`, and `webhook_failures` by event/provider ID and timestamp.
 - [ ] **Rehearse every outbound function group above on controlled recipients**: verify template/body, sender lane, consent scope, deep link, recipient-visible delivery, reply behavior, durable status, usage accounting, deduplication, and operator-facing failure recovery. Never use seeded `555-01xx` data as evidence of handset delivery.
-- [x] **Align every dashboard “Voice & Text” hint with the implemented rail before launch (Completed 2026-09-03)**: aligned `FieldIntakeHint` across all page configs to supported internal notes, bounded costs, adding tasks, and owner lead capture. Correctly labeled SMS/voice memos as AI Intake usage (`ai_intake_threads`) and live calls as Voice credits. Explicitly noted that crew field commands, calendar rescheduling, and direct job creations are unlaunched and managed in the dashboard. Verified via `test/live-failure-regression-gates.test.ts` (Gate 5) and `test/text-to-job-verified-phone.test.ts`.
+- [x] **Align every dashboard â€œVoice & Textâ€ hint with the implemented rail before launch (Completed 2026-09-03)**: aligned `FieldIntakeHint` across all page configs to supported internal notes, bounded costs, adding tasks, and owner lead capture. Correctly labeled SMS/voice memos as AI Intake usage (`ai_intake_threads`) and live calls as Voice credits. Explicitly noted that crew field commands, calendar rescheduling, and direct job creations are unlaunched and managed in the dashboard. Verified via `test/live-failure-regression-gates.test.ts` (Gate 5) and `test/text-to-job-verified-phone.test.ts`.
 - [ ] **Complete the live AI Voice matrix after the successful customer canary (canary evidence: 2026-09-04 at 19:41 UTC / 15:41 ET; completion corrected 2026-09-06)**: the customer canary and RLS repair below are completed evidence, not a pass for every remaining acceptance requirement.
   - **Live Customer Voice Canary Verified**: call received from Hermione Granger (`+12485630746`) to dedicated number `+18103202687` (`voice_calls.id`: `3bf526b0-b699-415d-992b-5cd63c9f1094`). AI conversational agent successfully captured details ("Small leak under the kitchen sink", 82 East Street), executed `book_appointment_slot`, created lead `cde0b498-2634-44e9-81b0-6413c616b25f`, created job `cf243a1a-b61f-42d5-a96a-a84bee1e2c5e`, and dispatched confirmation SMS to contractor alert line.
   - **Voice Calls Workspace RLS Repaired**: diagnosed missing relation `public.account_memberships` in `voice_transcript_retention_interval` which previously caused RLS to fail closed and return 0 calls to contractors. Created canonical compatibility view `public.account_memberships` (`migrations/20260904213000_account_memberships_view_for_rls.sql`) with active status projection from `public.memberships`. All calls now successfully load in the contractor workspace.
@@ -662,18 +717,18 @@ This update records the checks actually completed for [PR #25](https://github.co
 - [x] **Resend Sending-Domain DNS Readiness**: verified 2026-08-31; Resend reports its DKIM, SPF/MAIL-FROM records ready. Root-domain SPF, real-inbox header alignment, bounce/complaint behavior, and moving DMARC beyond monitoring-only `p=none` remain open in the deliverability matrix.
 - [x] **API Key**: `RESEND_API_KEY` is present in Vercel Production (verified 2026-08-31), and production requests reach Resend without an authentication error.
 - [x] **Resend Webhook Outcome & Fail-Closed Suppression (Completed 2026-09-01)**: added support for official `email.failed` and `email.suppressed` event outcomes in `src/app/api/resend/webhook/route.ts`; local suppression database errors return HTTP 500 for automatic provider retry; forward migration `migrations/20260901010000_resend_webhook_outcome_projection.sql` locks delivery status transitions against concurrent out-of-order regressions. Verified via `test/resend-webhook-route.test.ts` (7/7 passing).
-- [x] **Deliverability & Recovery Matrix (Completed 2026-09-04)**: Published root-domain SPF (`v=spf1 include:_spf.google.com ~all`, Vercel DNS `rec_8d738e6765badf260772f997`) protecting Google Workspace direct sending; executed staged DMARC policy ramp from monitoring (`p=none`) through quarantine (`p=quarantine; pct=10` $\to$ `p=quarantine; pct=100`) to full enforcement (`p=reject`, Vercel DNS `rec_294d7cb7a0b683222002452a`, verified live via DoH/DNS). Seed tested transactional flows across real Gmail (the designated payer) and Outlook/Live (`brett.arnold@live.com`) inboxes for Magic Links, Interactive Quotes, and Invoices with real attached `%PDF` buffers generated via `generateInvoicePdf` — all 12 seed messages confirmed delivered with 0 bounces, 0 suppressions, and 0 webhook failures in Supabase `email_events`. Verified SPF, DKIM, and DMARC alignment and template contracts via `test/deliverability-recovery-matrix.test.ts` (8/8 passing) and the full email test suite (119/119 passing). Tooling codified in `scripts/manage-dmarc-transition.mjs` and `scripts/run-deliverability-seed-test.mjs`.
+- [x] **Deliverability & Recovery Matrix (Completed 2026-09-04)**: Published root-domain SPF (`v=spf1 include:_spf.google.com ~all`, Vercel DNS `rec_8d738e6765badf260772f997`) protecting Google Workspace direct sending; executed staged DMARC policy ramp from monitoring (`p=none`) through quarantine (`p=quarantine; pct=10` $\to$ `p=quarantine; pct=100`) to full enforcement (`p=reject`, Vercel DNS `rec_294d7cb7a0b683222002452a`, verified live via DoH/DNS). Seed tested transactional flows across real Gmail (the designated payer) and Outlook/Live (`brett.arnold@live.com`) inboxes for Magic Links, Interactive Quotes, and Invoices with real attached `%PDF` buffers generated via `generateInvoicePdf` â€” all 12 seed messages confirmed delivered with 0 bounces, 0 suppressions, and 0 webhook failures in Supabase `email_events`. Verified SPF, DKIM, and DMARC alignment and template contracts via `test/deliverability-recovery-matrix.test.ts` (8/8 passing) and the full email test suite (119/119 passing). Tooling codified in `scripts/manage-dmarc-transition.mjs` and `scripts/run-deliverability-seed-test.mjs`.
 
-### Customer-owned sending domains (Scope A) — audited 2026-09-08
+### Customer-owned sending domains (Scope A) â€” audited 2026-09-08
 
-Feature built 2026-09-07 (`45f3f0eb3`…`aa3961e2c`) against `docs/plan-custom-email-domains-2026-09-07.md`. Audited the following day; the audit found the connect action could never have succeeded, and both causes are fixed below.
+Feature built 2026-09-07 (`45f3f0eb3`â€¦`aa3961e2c`) against `docs/plan-custom-email-domains-2026-09-07.md`. Audited the following day; the audit found the connect action could never have succeeded, and both causes are fixed below.
 
 - [x] **Two P0 defects in the connect path, found and fixed (2026-09-08)**. Both proved against real PostgreSQL 17, both in `createEmailSendingDomainAction`, and each on its own was enough to make *every* "Connect domain" click fail:
-  - **Status vocabulary mismatch (23514).** `resend-domains.ts` answers in the provider's vocabulary, which includes `not_started` and `temporary_failure`; `email_sending_domains.status` is constrained to `pending|verified|failed|disabled`. Resend returns `not_started` for a domain it has just created, so the first write of every attempt violated the check constraint. Fixed by `toStoredStatus()` mapping provider → column, keeping the transient/absent distinction in `failure_reason`. No migration needed — the table is already applied in production.
-  - **Un-inferable conflict target (42P10).** The write used `.upsert(..., { onConflict: 'domain' })`, emitting `ON CONFLICT (domain)`; the only unique index is on `lower(domain)`, an expression index Postgres cannot infer from a bare column. Fixed by branching explicitly on the caller's own row. **Deliberately not fixed by adding a plain unique index on `domain`** — that would have silenced the error while keeping the worse half, since `do update` assigns `account_id` from the incoming row and a request racing the ownership check would have moved another tenant's verified sending domain onto the caller's account.
-- [x] **Why the existing gates were green throughout.** Typecheck, lint, `next build`, 13,844 unit tests and all 11 PG17 contract checks passed with both defects live. The PG17 script only ever inserted `'verified'` and `'pending'` — the two statuses that happen to be legal — and nothing exercised the upsert at all. Coverage extended to 15 checks: every mapped status is accepted, both raw provider statuses are refused, `ON CONFLICT (domain)` is asserted un-inferable, and a second account is refused a domain another holds. Both new source guards were proven to *bite* by running them against the pre-fix file from git.
+  - **Status vocabulary mismatch (23514).** `resend-domains.ts` answers in the provider's vocabulary, which includes `not_started` and `temporary_failure`; `email_sending_domains.status` is constrained to `pending|verified|failed|disabled`. Resend returns `not_started` for a domain it has just created, so the first write of every attempt violated the check constraint. Fixed by `toStoredStatus()` mapping provider â†’ column, keeping the transient/absent distinction in `failure_reason`. No migration needed â€” the table is already applied in production.
+  - **Un-inferable conflict target (42P10).** The write used `.upsert(..., { onConflict: 'domain' })`, emitting `ON CONFLICT (domain)`; the only unique index is on `lower(domain)`, an expression index Postgres cannot infer from a bare column. Fixed by branching explicitly on the caller's own row. **Deliberately not fixed by adding a plain unique index on `domain`** â€” that would have silenced the error while keeping the worse half, since `do update` assigns `account_id` from the incoming row and a request racing the ownership check would have moved another tenant's verified sending domain onto the caller's account.
+- [x] **Why the existing gates were green throughout.** Typecheck, lint, `next build`, 13,844 unit tests and all 11 PG17 contract checks passed with both defects live. The PG17 script only ever inserted `'verified'` and `'pending'` â€” the two statuses that happen to be legal â€” and nothing exercised the upsert at all. Coverage extended to 15 checks: every mapped status is accepted, both raw provider statuses are refused, `ON CONFLICT (domain)` is asserted un-inferable, and a second account is refused a domain another holds. Both new source guards were proven to *bite* by running them against the pre-fix file from git.
 - [x] **Stage 5 Gmail header rehearsal (2026-09-09).** An actual quote from `hello@blackholeart.com` arrived in Gmail with SPF PASS for `rsend.blackholeart.com`, DKIM PASS with `d=blackholeart.com`, and DMARC PASS. Reply-To and real provider-rejection fallback were exercised. This used the actual send function with a staging fixture; its shared-provider callback incident was subsequently repaired and explicitly dispositioned. Outlook authentication/reply and the real production quote link also passed. Full new-binding production acceptance remains open. See [current evidence](docs/contractor-domains-canary-2026-09-09.md).
-- [x] **Daily reconciler cron (plan §10) — built 2026-09-08.** `/api/cron/email-domain-reconcile` at `23 6 * * *`, worker in `src/lib/email-sending-domain-reconciler.ts`, registered in both `vercel.json` and `src/lib/cron-jobs.ts` (parity enforced four ways by `test/cron-jobs.test.ts`). Closes the one silent, customer-visible failure: a contractor whose DKIM record is deleted after verification kept a `verified` row while the provider refused their mail. Behaviour worth knowing: it re-checks `failed` rows too, so a domain recovers on its own once the record is restored; a provider 404 (domain deleted at Resend) is a downgrade, not a skip; the owner is emailed **from the platform address** on the verified→broken transition only, so one email per breakage rather than one per day; the platform's own domain is excluded from the orphan sweep, and a failed provider listing is distinguished from an empty one so nothing is ever mass-reported as orphaned. Bounded at 100 domains per run, oldest-checked first, with the remainder reported in the summary rather than silently dropped. 12 tests in `test/email-sending-domain-reconciler.test.ts`, three of which assert the summary shape still drives `cronSummaryHasFailures` — renaming the `errors` key would otherwise turn this job's failures green.
+- [x] **Daily reconciler cron (plan Â§10) â€” built 2026-09-08.** `/api/cron/email-domain-reconcile` at `23 6 * * *`, worker in `src/lib/email-sending-domain-reconciler.ts`, registered in both `vercel.json` and `src/lib/cron-jobs.ts` (parity enforced four ways by `test/cron-jobs.test.ts`). Closes the one silent, customer-visible failure: a contractor whose DKIM record is deleted after verification kept a `verified` row while the provider refused their mail. Behaviour worth knowing: it re-checks `failed` rows too, so a domain recovers on its own once the record is restored; a provider 404 (domain deleted at Resend) is a downgrade, not a skip; the owner is emailed **from the platform address** on the verifiedâ†’broken transition only, so one email per breakage rather than one per day; the platform's own domain is excluded from the orphan sweep, and a failed provider listing is distinguished from an empty one so nothing is ever mass-reported as orphaned. Bounded at 100 domains per run, oldest-checked first, with the remainder reported in the summary rather than silently dropped. 12 tests in `test/email-sending-domain-reconciler.test.ts`, three of which assert the summary shape still drives `cronSummaryHasFailures` â€” renaming the `errors` key would otherwise turn this job's failures green.
 - [x] **Email reconciler scheduled execution verified (2026-09-09 to 2026-09-10).** September 9 run `e7162394-5a37-45e2-8fb3-e45c44db4f36` proved empty-inventory scheduling. September 10 run `93219051-6b33-40be-84fd-b68ce8f588d5` at 06:23:20 UTC checked the active BrokePipes binding with zero errors or orphans and advanced its `last_checked_at` to 06:23:21.089 UTC. The seven-day observation remains unstarted pending recovery acceptance; see the [canary record](docs/contractor-domains-canary-2026-09-09.md).
 - [x] **Production enrollment enabled for BrokePipes only (2026-09-09).** The owner-approved `LGQ_EMAIL_SENDING_DOMAINS_ENABLED=true` and exact BrokePipes workspace allowlist were applied and deployed. Production UI onboarding and another workspace's hidden enrollment section were observed. General enrollment remains closed; the [current canary record](docs/contractor-domains-canary-2026-09-09.md) supersedes the earlier dark-production flag assumption.
 
@@ -730,7 +785,7 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 - [x] **Complete Secret-Rotation Drill (Completed 2026-09-01)**: Codified zero-downtime key rotation protocols, emergency revocation playbooks, and rolling secret migration in `docs/runbooks/secret-rotation-drill.md`. Verified AES-256 dual-key re-encryption, webhook signing secret rotation, and cron fail-closed mechanisms via `test/secret-rotation-resilience.test.ts` (3/3 passing).; prove old credentials fail.
 - [x] **Google Ads Production Credentials (Completed 2026-09-01)**: Provisioned all five required `GOOGLE_ADS_*` credentials as encrypted, Production-only Vercel variables; linked the manager and advertiser accounts, issued an Explorer Access developer token, completed the OAuth refresh flow, redeployed Production to READY, and verified OAuth refresh plus Google Ads API v25 access returned HTTP 200. Secret-free setup record: `docs/google-ads-production-credential-setup.md`.
 - [x] **Google Ads Sign-Up Attribution (Completed 2026-09-01)**: Configured the paired public `NEXT_PUBLIC_GOOGLE_TAG_ID` and `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID` values for Vercel Production and deployed the corrected first-run trigger plus CSP allowlist in READY release `97761d26`. Production browser verification proved `gtag.js` HTTP 200 on approved marketing routes, no tag or data layer on a token-bearing route, zero conversion on page arrival, one labeled conversion command with a Google HTTP 204 response, and no Google CSP violation. The server action now emits only after a persisted initial onboarding, excludes failed/returning Terms acceptance, and supplies a stable opaque transaction ID for deduplication; focused regression coverage passed.
-- [x] **Upgrade Google Ads API Compatibility to v25 & Provisioning Contract (Completed 2026-09-04)**: Upgraded Google Ads API client to v25 default, retired legacy v17 conversions, pruned retired LSA endpoints in favor of `src/lib/google-lsa`, and verified offline conversion and provisioning contracts. Codified write-path verification runner `scripts/verify-google-ads-v25-write-path.mjs` (OAuth 2.0 refresh, `customers:listAccessibleCustomers` account isolation, budget mutation, paused campaign creation with `status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, `maximizeConversions: {}`, and status toggle with immediate `status: 'REMOVED'` teardown). Codified offline conversion allowlist verifier `scripts/verify-google-ads-offline-conversions.mjs` to detect Google's June 15, 2026 `CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE` restriction (which mandates Google Data Manager API for new tokens). Verified via contract suites `test/google-ads-write-path.test.ts` (6/6 passing), `test/google-ads-offline-conversions.test.ts` (6/6 passing), `test/google-ads-hardening-gates.test.ts` (10/10 passing), `test/google-ads-api.test.ts` (22/22 passing), and `test/google-ads-v20-provisioning.test.ts` (7/7 passing) — total 51/51 Google Ads suite tests passing.
+- [x] **Upgrade Google Ads API Compatibility to v25 & Provisioning Contract (Completed 2026-09-04)**: Upgraded Google Ads API client to v25 default, retired legacy v17 conversions, pruned retired LSA endpoints in favor of `src/lib/google-lsa`, and verified offline conversion and provisioning contracts. Codified write-path verification runner `scripts/verify-google-ads-v25-write-path.mjs` (OAuth 2.0 refresh, `customers:listAccessibleCustomers` account isolation, budget mutation, paused campaign creation with `status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, `maximizeConversions: {}`, and status toggle with immediate `status: 'REMOVED'` teardown). Codified offline conversion allowlist verifier `scripts/verify-google-ads-offline-conversions.mjs` to detect Google's June 15, 2026 `CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE` restriction (which mandates Google Data Manager API for new tokens). Verified via contract suites `test/google-ads-write-path.test.ts` (6/6 passing), `test/google-ads-offline-conversions.test.ts` (6/6 passing), `test/google-ads-hardening-gates.test.ts` (10/10 passing), `test/google-ads-api.test.ts` (22/22 passing), and `test/google-ads-v20-provisioning.test.ts` (7/7 passing) â€” total 51/51 Google Ads suite tests passing.
 - [x] **Execute Live Google Ads API v25 Write-Path & Offline Conversion Network Probes (Completed 2026-09-07)**: Executed live production write-path and offline conversion verifications via authenticated production endpoint `/api/admin/verify-google-ads` against serving customer `228-567-1544` under MCC `***-***-7203`. All 6 write-path operations succeeded against Google's live network: (1) OAuth 2.0 token refresh HTTP 200, (2) `customers:listAccessibleCustomers` isolated serving advertiser `228-567-1544` out of 2 accessible accounts, (3) `googleAds:search` confirmed production account settings (`timeZone: America/New_York`, `currency: USD`, `testAccount: false`), (4) `campaignBudgets:mutate` created live budget (`campaignBudgets/15859183194`, HTTP 200), (5) `campaigns:mutate` created live search campaign with `status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, and `maximizeConversions: {}` (`campaigns/24231331135`, HTTP 200), and (6) `campaigns:mutate` tested updateMask status toggle and cleanly tore down the test campaign with immediate `status: 'REMOVED'` (HTTP 200). Verified `uploadClickConversions` endpoint reachability (`allowlisted: true`, `requiresDataManagerApi: false`, HTTP 200) proving the developer token is active and allowlisted on production without blocking errors. All Google Ads write and conversion paths are fully verified against real Google infrastructure.
 - [x] **Verify Google Ads Mediation Production Requirements: Billing Setup, Offline Conversions, and Checkout Gate (Completed 2026-09-07)**: Verified all three operational requirements for mediated ads against live Google Ads infrastructure and Vercel Production:
   - **Live Account Billing Setup**: Queried `billing_setup` on serving customer `228-567-1544` via Google Ads API v25. Confirmed status is `APPROVED` (Billing Setup ID `8543915872`, Payments Account ID `3762-6471-1254-0675`), ensuring Google will actively serve live paid impressions without billing holds.
@@ -791,15 +846,15 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 - [x] **Current Production Deployment Identified and Smoked**: `304b2b06` / `dpl_EsbseHxJFQhvR7m97CP1qm54rqUM` is READY with apex/subdomain aliases. Targeted live homepage/login/SEO/export requests produced 22 sampled 200s plus the expected opaque export 404, with no runtime-error cluster in the initial post-deploy window.
 - [x] **Deploy an Audited Green Revision**: exact release `304b2b06` passed local/code-equivalent lint, typecheck, 11,476 tests, dependency/schema checks and a 386-page build; CI run `33446878196` is green; Vercel built and promoted the same SHA with no alias error.
-- [ ] **Complete Exact-Release Post-Deploy Verification (Updated 2026-09-04)**: Established formal deployment verification and rollback protocol in `docs/runbooks/target-release-smoke-protocol.md`. Automated release suite verified clean: `npm run typecheck` passed with 0 errors; `npm run test:prelaunch` passed 40 files / 583 tests; `check-schema-order.mjs` verified 0 foreign key forward dependencies; `sync-messaging-schema.mjs --check` confirmed 58 migrations in exact canonical parity; `npm audit --omit=dev` verified 0 vulnerabilities. Live edge verification of production proved HTTP 200 on `/api/health` with operational uptime status, dynamic nonces across script tags on the apex homepage, HTTP 401 on secretless cron invocation (`/api/cron/voice-number-reconciliation`), HTTP 403 on unsigned provider callbacks (`/api/voice/provider-status`), and HTTP 308 on unencrypted HTTP requests. Live operator carrier and billing journeys remain open per §8.
+- [ ] **Complete Exact-Release Post-Deploy Verification (Updated 2026-09-04)**: Established formal deployment verification and rollback protocol in `docs/runbooks/target-release-smoke-protocol.md`. Automated release suite verified clean: `npm run typecheck` passed with 0 errors; `npm run test:prelaunch` passed 40 files / 583 tests; `check-schema-order.mjs` verified 0 foreign key forward dependencies; `sync-messaging-schema.mjs --check` confirmed 58 migrations in exact canonical parity; `npm audit --omit=dev` verified 0 vulnerabilities. Live edge verification of production proved HTTP 200 on `/api/health` with operational uptime status, dynamic nonces across script tags on the apex homepage, HTTP 401 on secretless cron invocation (`/api/cron/voice-number-reconciliation`), HTTP 403 on unsigned provider callbacks (`/api/voice/provider-status`), and HTTP 308 on unencrypted HTTP requests. Live operator carrier and billing journeys remain open per Â§8.
 - [x] **Read-Only Live Price Contract Verification**:
   - **Verification status (2026-08-31)**: passed 3 of 3 tests. All 6 local Price bindings were checked against Stripe Live catalog `2026-08-18-preview` for currency, interval, exact unit amount, active state, and `loadVerifiedStripePlanPrices` compatibility:
-    - `STRIPE_PRICE_SOLO_MONTHLY` (`price_1U5n8eGqh5LFKuTCh9KIQFws` - $39/mo) — `ok`
-    - `STRIPE_PRICE_SOLO_ANNUAL` (`price_1U5n8eGqh5LFKuTCTSUmI5CR` - $420/yr) — `ok`
-    - `STRIPE_PRICE_GROWTH_MONTHLY` (`price_1U5n8eGqh5LFKuTCZKW7rINt` - $129/mo) — `ok`
-    - `STRIPE_PRICE_GROWTH_ANNUAL` (`price_1U5n8fGqh5LFKuTCjJRhOzQ9` - $1,188/yr) — `ok`
-    - `STRIPE_PRICE_SCALE_MONTHLY` (`price_1U5n8fGqh5LFKuTCUBcPBlFY` - $329/mo) — `ok`
-    - `STRIPE_PRICE_SCALE_ANNUAL` (`price_1U5n8fGqh5LFKuTCOEm7ACLn` - $3,588/yr) — `ok`
+    - `STRIPE_PRICE_SOLO_MONTHLY` (`price_1U5n8eGqh5LFKuTCh9KIQFws` - $39/mo) â€” `ok`
+    - `STRIPE_PRICE_SOLO_ANNUAL` (`price_1U5n8eGqh5LFKuTCTSUmI5CR` - $420/yr) â€” `ok`
+    - `STRIPE_PRICE_GROWTH_MONTHLY` (`price_1U5n8eGqh5LFKuTCZKW7rINt` - $129/mo) â€” `ok`
+    - `STRIPE_PRICE_GROWTH_ANNUAL` (`price_1U5n8fGqh5LFKuTCjJRhOzQ9` - $1,188/yr) â€” `ok`
+    - `STRIPE_PRICE_SCALE_MONTHLY` (`price_1U5n8fGqh5LFKuTCUBcPBlFY` - $329/mo) â€” `ok`
+    - `STRIPE_PRICE_SCALE_ANNUAL` (`price_1U5n8fGqh5LFKuTCOEm7ACLn` - $3,588/yr) â€” `ok`
 - [x] **Vercel Production Price-Binding Verification (Completed 2026-09-01)**: directly verified all six production Vercel Price environment bindings against Stripe Live catalog `2026-08-18-preview` with exact matching IDs. Subscription projector hardened to retain immutable checkout Terms version compatibility (`VALID_TERMS_VERSIONS`).
 - [x] **Historical Live Checkout & Webhook Receipt**:
   - **Verification status**: a Solo Monthly live subscription checkout ($39/mo, `price_1U5n8eGqh5LFKuTCh9KIQFws`) was created around 2026-08-23; its Stripe/application records were inspected and reconfirmed on 2026-08-31. This does not validate later webhook rewrites or the current release candidate.
@@ -823,7 +878,7 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
   - Implemented fail-closed validation, cancellation idempotency in Stripe request options, and status reconciliation in a single transaction.
   - Verified with 44/44 passing unit and integration tests.
 - [x] **Clean-Slate Onboarding E2E (Automated Journey Verified 2026-09-07)**: Verified 8 distinct lifecycle gates via automated auditor in `scripts/verify-clean-slate-onboarding-journey.mjs` against workspace `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`: account existence, terms acceptance timestamp & version, active owner membership, Stripe Connect merchant readiness (`acct_1Tz4L1KFaZ6LmdiP`), quote/job creation, payment settlement (`pi_3UC0RuGqh5LFKuTC1xJvrcv7`), programmatic LGQ fee-protected refund (provider evidence reverified September 9), and email delivery telemetry (all 8/8 checks passed).
-- [x] **Stripe↔Application Ledger Reconciliation & Money-Rail Rehearsal (Live Rehearsal Verified 2026-09-07)**:
+- [x] **Stripeâ†”Application Ledger Reconciliation & Money-Rail Rehearsal (Live Rehearsal Verified 2026-09-07)**:
   - Built production ledger reconciler in `scripts/reconcile-stripe-live-ledger.mjs` to cross-examine Stripe charges, refunds, subscriptions, and open failures against database `payments`, `invoices`, and `billing_subscriptions`.
   - Verified connected destination refund loss protection (`reverse_transfer: true` + `refund_application_fee: true` in `src/lib/payments.ts`).
   - Executed live-mode programmatic refund rehearsal on connected payment `97128a7f-02c7-41e9-8d86-bb8f249245b9` (`pi_3UC0RuGqh5LFKuTC1xJvrcv7`):
@@ -860,8 +915,8 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 - [x] **Stop app-theme tokens from leaking into fixed document/form surfaces (Completed 2026-09-01)**: Pinned `.statement-doc` ink tokens for statements, quotes, invoices, and payment requests preventing theme bleed.
 - [x] **Clear high-density authenticated clusters (Completed 2026-09-01)**: Verified Voice Assistant/Calls, imports, Quick Stops, Managed Ads, lead details, reports, and services in 4-theme matrix.
 - [x] **Local redirect transport evidence only**:
-  - `/dashboard/payroll?probe=1` → `/dashboard/crew?probe=1` with 308.
-  - `/dashboard/crew/requests/new?draft=x` → `/dashboard/schedule/requests?draft=x` with 308.
+  - `/dashboard/payroll?probe=1` â†’ `/dashboard/crew?probe=1` with 308.
+  - `/dashboard/crew/requests/new?draft=x` â†’ `/dashboard/schedule/requests?draft=x` with 308.
   - The affected destinations exist and signed-out requests follow the expected 307 to login.
 - [x] **Canonical Route Inventory & Health Gate (Completed 2026-09-01)**: `/dashboard/inventory` guarded with `requireOfficeContext('jobs.read')` with valid tenant persistence and role authorization.
 - [x] **Complete Manual Interaction, Responsive & Role Review (Completed 2026-09-01)**: Verified menus, tabs, dialogs, drawers, popovers, tooltips, pickers, maps, and tables across phone/tablet/desktop.
@@ -873,8 +928,8 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 
 - [x] **Supabase Project Health Snapshot**: production project `mfuvvtrkipkigwqqtcal` is `ACTIVE_HEALTHY` in `us-west-2` on PostgreSQL `17.6.1.141`.
 - [x] **Supabase Advisor Audit Performed**:
-  - Security: 108 notices — 63 INFO and 45 WARN (4 mutable search paths, 15 anon-executable SECURITY DEFINER functions, 25 authenticated-executable SECURITY DEFINER functions, and leaked-password protection disabled).
-  - Performance: 582 notices — 213 INFO and 369 WARN (132 unindexed foreign keys, 13 auth/RLS init-plan findings, 81 unused indexes, and 356 multiple-permissive-policy findings).
+  - Security: 108 notices â€” 63 INFO and 45 WARN (4 mutable search paths, 15 anon-executable SECURITY DEFINER functions, 25 authenticated-executable SECURITY DEFINER functions, and leaked-password protection disabled).
+  - Performance: 582 notices â€” 213 INFO and 369 WARN (132 unindexed foreign keys, 13 auth/RLS init-plan findings, 81 unused indexes, and 356 multiple-permissive-policy findings).
 - [x] **Remediate and Re-run Supabase Security Advisor (Completed 2026-09-01)**: Remediated all 148 `SECURITY DEFINER` functions in `schema.sql` to declare immutable `SET search_path = public, pg_temp` or `SET search_path = pg_catalog, pg_temp`; generated 81 covering indexes for previously unindexed foreign key constraints in forward migration `migrations/20260901000000_supabase_security_advisor_remediations.sql` and synchronized with `schema.sql`. Verified via `test/supabase-security-advisor.test.ts` (3/3 passing).
 - [x] **Close confirmed information oracles & reconcile canonical schema (Remediated 2026-08-31)**:
   - Reconciled canonical `schema.sql` and forward migration `migrations/20260831180000_oracle_hardening_and_function_security.sql`.
@@ -898,7 +953,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Enforced fail-closed sign-out gating in `deleteAccountAction` and `closeAndAnonymizeAccountAction`.
   - Added full automated disposable account deletion & DSAR export drill in `test/disposable-account-deletion-111-table-drill.test.ts` (9/9 tests pass).
 - [ ] **Backup, PITR & Restore Drill (sign-off withdrawn 2026-09-09)**:
-  - PITR remains disabled by the user’s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
+  - PITR remains disabled by the userâ€™s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
   - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download authentication passes; provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
   - The [dated drill record](docs/runbooks/dr-drill-record-2026-09-09.md) preserves timings, initial failures, remediation and remaining scope. The broader sign-off stays open.
 
@@ -934,7 +989,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Verified via `test/vercel-rollback-schema-compatibility.test.ts` (3/3 passing).
 
 - [ ] **Disaster Recovery & Supabase PITR Drill (sign-off withdrawn 2026-09-09)**:
-  - PITR remains disabled by the user’s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
+  - PITR remains disabled by the userâ€™s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
   - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download authentication passes; provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
   - The [dated drill record](docs/runbooks/dr-drill-record-2026-09-09.md) preserves timings, initial failures, remediation and remaining scope. The broader sign-off stays open.
 
@@ -963,7 +1018,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Hardened customer payment and token pages (`/pay/[id]`, `/invoice/[id]`, `/portal/view/[token]`, `/track/[token]`, `/review/[token]`, `/client/jobs/[token]`) for mobile viewports across iOS Safari and Android Chrome.
   - Added `width: 'device-width'`, `initialScale: 1`, and `viewportFit: 'cover'` to `generateViewport` in `src/app/layout.tsx` to enable proper dynamic safe-area insets.
   - Hardened `globals.css` and `globals-lite.css`: added safe-area bottom padding (`padding-bottom: calc(2.2rem + env(safe-area-inset-bottom, 0px))`) on `.payment-shell` and `.cbrand-foot` to clear iOS Safari's floating bottom toolbar; added `padding-top: env(safe-area-inset-top, 0px)` on `.cbrand` to clear notches and Dynamic Island; guaranteed `min-height: 44px` on all `.btn` controls; added `scroll-margin-top: calc(72px + env(safe-area-inset-top, 0px))` for sticky header clearance; and enforced full-width (`width: 100%`) and `min-height: 48px` on payment buttons under 640px viewports.
-  - Codified standalone multi-engine Playwright test runner `scripts/verify-token-mobile-matrix.mjs` (`npm run verify:mobile-matrix`) evaluating WebKit (iPhone SE 320×568, iPhone 14 390×844, iPhone 15 Pro Max 430×932) and Chromium (Pixel 7 412×915). Verified 0 horizontal overflow, 0 clipped brand titles, sticky header preservation, non-occluded elementFromPoint button hit, and 100% touch target compliance (44px minimum).
+  - Codified standalone multi-engine Playwright test runner `scripts/verify-token-mobile-matrix.mjs` (`npm run verify:mobile-matrix`) evaluating WebKit (iPhone SE 320Ã—568, iPhone 14 390Ã—844, iPhone 15 Pro Max 430Ã—932) and Chromium (Pixel 7 412Ã—915). Verified 0 horizontal overflow, 0 clipped brand titles, sticky header preservation, non-occluded elementFromPoint button hit, and 100% touch target compliance (44px minimum).
   - Verified via `test/mobile-cross-device-matrix.test.ts` (10/10 passing) and `npm run verify:mobile-matrix` (16/16 checks passing).
 - [x] **Independent Penetration Test & External Security Assessment (Completed 2026-09-04)**:
   - Conducted external and internal defensive penetration assessment covering all 4 core security boundaries: Tenant Isolation & IDOR, Service-Role Query Scoping, SSRF Egress Containment, and Webhook Signature Verification.
@@ -972,7 +1027,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Verified service-role query scoping: static AST check across 142 route handlers and server actions enforcing pre-execution authentication, cryptographic webhook signatures, cron secret bearer tokens, or single-use HMAC tokens prior to `createAdminClient` execution, plus mandatory `account_id` filtering on all tenant queries.
   - Verified SSRF resistance: `isAllowedProxyUrl` blocks AWS/GCP cloud metadata (`169.254.169.254`, `metadata.google.internal`), IPv6 mapped equivalents (`[::ffff:169.254.169.254]`), loopback, RFC 1918 private subnets, non-HTTP protocols (`file:`, `gopher:`), and enforces bounded egress timeouts.
   - Verified webhook signature verification & replay resistance: Stripe HMAC raw-body signature validation, SignalWire `validateRequest` checking, Resend Svix HMAC verification with 300s replay window enforcement, and idempotent event inbox deduplication.
-  - Verified via `test/security-penetration-testing.test.ts` (14/14 passing), `test/service-role-scoping-audit.test.ts` (3/3 passing), `test/lead-photo-proxy-ssrf.test.ts` (17/17 passing), `test/storage-realtime-tenancy-matrix.test.ts` (14/14 passing), `test/tenant-idor-guard.test.ts` (2/2 passing), `test/stripe-connected-payment-webhook-route.test.ts` (17/17 passing), `test/resend-webhook-route.test.ts` (7/7 passing), and `test/voice-webhook-auth.test.ts` (18/18 passing) — total 102/102 security tests passing.
+  - Verified via `test/security-penetration-testing.test.ts` (14/14 passing), `test/service-role-scoping-audit.test.ts` (3/3 passing), `test/lead-photo-proxy-ssrf.test.ts` (17/17 passing), `test/storage-realtime-tenancy-matrix.test.ts` (14/14 passing), `test/tenant-idor-guard.test.ts` (2/2 passing), `test/stripe-connected-payment-webhook-route.test.ts` (17/17 passing), `test/resend-webhook-route.test.ts` (7/7 passing), and `test/voice-webhook-auth.test.ts` (18/18 passing) â€” total 102/102 security tests passing.
 
 ---
 
@@ -992,13 +1047,13 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 
 - [x] **Outbound-Email Compliance Invariant (Completed 2026-08-31)**:
   - Verified RFC 8058 one-click unsubscribe headers (`List-Unsubscribe: <url>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) and footer links across all marketing email senders (`sendCampaignEmail`, `sendRebookInviteEmail`, `sendReviewRequestEmail`, `admin-platform-campaigns.ts`, `contractor-lifecycle-emails.ts`).
-  - Standardized legal entity postal address (`Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758`) across platform announcements and contractor onboarding mailings.
+  - Standardized legal entity postal address (`Letâ€™s Get Quoted LLC Â· 11801 Domain Blvd, 3rd Floor Â· Austin, TX 78758`) across platform announcements and contractor onboarding mailings.
   - Hardened contractor marketing campaign actions (`src/app/dashboard/marketing/actions.ts`) to strictly require the contractor's own verified business mailing address, preventing spoofing or fallback omission.
   - Enforced fail-closed suppression queries across single and batch send paths (`loadSuppressedEmails`, `isEmailSuppressed`, `resolvePlatformCampaignRecipients`, `runContractorLifecycleSweep`).
   - Verified via `test/email-compliance.test.ts` (10/10 passing).
 
 - [x] **Privacy-Egress & Subprocessor Reconciliation (Completed 2026-09-01)**:
-  - Reconciled all outbound service integrations in `src/app/privacy/page.tsx` §4 & §5 and `src/app/terms/page.tsx`.
+  - Reconciled all outbound service integrations in `src/app/privacy/page.tsx` Â§4 & Â§5 and `src/app/terms/page.tsx`.
   - Documented Google Gemini API & OpenAI zero-retention / non-training enterprise guarantees for quote calculations, photo analysis, transcription, and assistant inference.
   - Documented multi-bucket storage AES-256 encryption at rest, TLS 1.3 in transit, and Row Level Security isolation with short-lived signed URLs for homeowner media.
   - Documented 30-day soft deletion quarantine and automated 115-table cascade deletion lifecycle.
@@ -1007,7 +1062,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 - [x] **Recording, Monitoring & State-Law Review (Completed 2026-08-31)**:
   - Verified mandatory AI assistant caller disclosure (`AI_VOICE_DISCLOSURE`) and call recording disclosure (`RECORDING_DISCLOSURE`) are automatically announced to inbound callers prior to audio capture at the SWML/SignalWire provider boundary in `src/lib/voice/provider.ts` and `src/lib/voice/signalwire.ts`.
   - Verified field crew GPS tracking notices and on-shift indicators in `FieldClock.tsx` and `useWorkLocationTracker.ts`.
-  - Verified terms of service disclosures in `src/app/terms/page.tsx` §3 & §4 covering two-party/one-party call recording wiretap compliance, prohibition on unlawful outbound AI telemarketing, and employee electronic monitoring notice obligations under state labor statutes.
+  - Verified terms of service disclosures in `src/app/terms/page.tsx` Â§3 & Â§4 covering two-party/one-party call recording wiretap compliance, prohibition on unlawful outbound AI telemarketing, and employee electronic monitoring notice obligations under state labor statutes.
   - Verified via `test/voice-and-gps-disclosures.test.ts` (6/6 passing).
 
 ---
@@ -1019,9 +1074,9 @@ This section is the definitive inventory of all **254 App Router page surfaces**
 ### Page Freshness Breakdown
 
 - **Total App Router Pages**: **254** distinct `page.tsx` surfaces.
-- 🟢 **Fresh / Recently Touched (Sep 1–4, 2026)**: **151 pages** (59%) — actively validated during final pre-launch hardening, WCAG remediation, voice/SMS contractor dispatch, and insights updates.
-- 🟡 **Stable (Aug 20–31, 2026)**: **91 pages** (36%) — hardened during late August feature sprints (Stripe Connect, schedule waitlists, marketing campaigns, permissions).
-- 🔴 **Stale / Neglected (>3 Weeks Ago — Prior to Aug 20, 2026)**: **12 pages** (5%) — flagged for explicit verification below.
+- ðŸŸ¢ **Fresh / Recently Touched (Sep 1â€“4, 2026)**: **151 pages** (59%) â€” actively validated during final pre-launch hardening, WCAG remediation, voice/SMS contractor dispatch, and insights updates.
+- ðŸŸ¡ **Stable (Aug 20â€“31, 2026)**: **91 pages** (36%) â€” hardened during late August feature sprints (Stripe Connect, schedule waitlists, marketing campaigns, permissions).
+- ðŸ”´ **Stale / Neglected (>3 Weeks Ago â€” Prior to Aug 20, 2026)**: **12 pages** (5%) â€” flagged for explicit verification below.
 
 ### Neglected Page Triage & Disposition Matrix
 
@@ -1048,312 +1103,312 @@ The following **12 pages** have not been touched in over 3 weeks. Each surface h
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/dashboard` | `src/app/dashboard/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/activity` | `src/app/dashboard/activity/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
-| `/dashboard/automations` | `src/app/dashboard/automations/page.tsx` | 2026-09-05 | `cdc726cac` | 🟢 Fresh |
-| `/dashboard/cash-flow` | `src/app/dashboard/cash-flow/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/claims` | `src/app/dashboard/claims/page.tsx` | 2026-09-05 | `d56aabcb9` | 🟢 Fresh |
-| `/dashboard/clients` | `src/app/dashboard/clients/page.tsx` | 2026-09-05 | `5ba1a8884` | 🟢 Fresh |
-| `/dashboard/clients/[id]` | `src/app/dashboard/clients/[id]/page.tsx` | 2026-09-05 | `5ba1a8884` | 🟢 Fresh |
-| `/dashboard/clients/[id]/statement` | `src/app/dashboard/clients/[id]/statement/page.tsx` | 2026-09-05 | `b9fd05905` | 🟢 Fresh |
-| `/dashboard/clients/import` | `src/app/dashboard/clients/import/page.tsx` | 2026-09-05 | `b9fd05905` | 🟢 Fresh |
-| `/dashboard/crew` | `src/app/dashboard/crew/page.tsx` | 2026-09-06 | `24d05d92c` | 🟢 Fresh |
-| `/dashboard/crew/requests/[id]` | `src/app/dashboard/crew/requests/[id]/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
-| `/dashboard/crew/requests/new` | `src/app/dashboard/crew/requests/new/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/expenses` | `src/app/dashboard/expenses/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/forms` | `src/app/dashboard/forms/page.tsx` | 2026-09-02 | `bff437d13` | 🟢 Fresh |
-| `/dashboard/forms/[id]` | `src/app/dashboard/forms/[id]/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
-| `/dashboard/forms/builder` | `src/app/dashboard/forms/builder/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
-| `/dashboard/help` | `src/app/dashboard/help/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/help/[caseId]` | `src/app/dashboard/help/[caseId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/import` | `src/app/dashboard/import/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
-| `/dashboard/insights` | `src/app/dashboard/insights/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/inventory` | `src/app/dashboard/inventory/page.tsx` | 2026-09-05 | `262334caf` | 🟢 Fresh |
-| `/dashboard/jobs` | `src/app/dashboard/jobs/page.tsx` | 2026-09-06 | `9f45d36b1` | 🟢 Fresh |
-| `/dashboard/jobs/[id]` | `src/app/dashboard/jobs/[id]/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/jobs/[id]/forms/[submissionId]/print` | `src/app/dashboard/jobs/[id]/forms/[submissionId]/print/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
-| `/dashboard/jobs/[id]/invoices/[invoiceId]` | `src/app/dashboard/jobs/[id]/invoices/[invoiceId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/jobs/[id]/quote` | `src/app/dashboard/jobs/[id]/quote/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/jobs/import` | `src/app/dashboard/jobs/import/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
-| `/dashboard/jobs/import-invoices` | `src/app/dashboard/jobs/import-invoices/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
-| `/dashboard/leads` | `src/app/dashboard/leads/page.tsx` | 2026-09-06 | `9f45d36b1` | 🟢 Fresh |
-| `/dashboard/leads/[leadId]` | `src/app/dashboard/leads/[leadId]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/dashboard/marketing` | `src/app/dashboard/marketing/page.tsx` | 2026-09-06 | `123adafe2` | 🟢 Fresh |
-| `/dashboard/marketing/ads` | `src/app/dashboard/marketing/ads/page.tsx` | 2026-09-06 | `123adafe2` | 🟢 Fresh |
-| `/dashboard/marketing/blog` | `src/app/dashboard/marketing/blog/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
-| `/dashboard/marketing/blog/[id]` | `src/app/dashboard/marketing/blog/[id]/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
-| `/dashboard/marketing/campaigns` | `src/app/dashboard/marketing/campaigns/page.tsx` | 2026-09-02 | `2caba713d` | 🟢 Fresh |
-| `/dashboard/marketing/email-theme` | `src/app/dashboard/marketing/email-theme/page.tsx` | 2026-08-30 | `d311d6527` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/marketing/links` | `src/app/dashboard/marketing/links/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/marketing/merchandise` | `src/app/dashboard/marketing/merchandise/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/dashboard/marketing/performance` | `src/app/dashboard/marketing/performance/page.tsx` | 2026-09-05 | `4e3fc2f5e` | 🟢 Fresh |
-| `/dashboard/marketing/referrals` | `src/app/dashboard/marketing/referrals/page.tsx` | 2026-09-05 | `d56aabcb9` | 🟢 Fresh |
-| `/dashboard/merchandise` | `src/app/dashboard/merchandise/page.tsx` | 2026-09-06 | `05f73a558` | 🟢 Fresh |
-| `/dashboard/messages` | `src/app/dashboard/messages/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/messages/dedicated-number` | `src/app/dashboard/messages/dedicated-number/page.tsx` | 2026-09-01 | `3627683c9` | 🟢 Fresh |
-| `/dashboard/payments` | `src/app/dashboard/payments/page.tsx` | 2026-09-07 | `204f78148` | 🟢 Fresh |
-| `/dashboard/payroll` | `src/app/dashboard/payroll/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/quick-stops` | `src/app/dashboard/quick-stops/page.tsx` | 2026-09-04 | `19b4543d9` | 🟢 Fresh |
-| `/dashboard/rebook` | `src/app/dashboard/rebook/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/recurring` | `src/app/dashboard/recurring/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
-| `/dashboard/reports` | `src/app/dashboard/reports/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/reviews` | `src/app/dashboard/reviews/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/schedule` | `src/app/dashboard/schedule/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/schedule/booking` | `src/app/dashboard/schedule/booking/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/schedule/dispatch` | `src/app/dashboard/schedule/dispatch/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/schedule/intake` | `src/app/dashboard/schedule/intake/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/schedule/plan` | `src/app/dashboard/schedule/plan/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/schedule/requests` | `src/app/dashboard/schedule/requests/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/schedule/settings` | `src/app/dashboard/schedule/settings/page.tsx` | 2026-09-03 | `1ced5fca3` | 🟢 Fresh |
-| `/dashboard/schedule/waitlist` | `src/app/dashboard/schedule/waitlist/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/services` | `src/app/dashboard/services/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/services/import` | `src/app/dashboard/services/import/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
-| `/dashboard/sites` | `src/app/dashboard/sites/page.tsx` | 2026-09-07 | `bbcb8b9fa` | 🟢 Fresh |
-| `/dashboard/sites/preview` | `src/app/dashboard/sites/preview/page.tsx` | 2026-08-23 | `333d702a3` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/stripe-merchant/refresh` | `src/app/dashboard/stripe-merchant/refresh/page.tsx` | 2026-08-16 | `fde575acb` | 🔴 Neglected (>3 wks) |
-| `/dashboard/stripe-merchant/return` | `src/app/dashboard/stripe-merchant/return/page.tsx` | 2026-08-16 | `fde575acb` | 🔴 Neglected (>3 wks) |
-| `/dashboard/stripe-return` | `src/app/dashboard/stripe-return/page.tsx` | 2026-09-01 | `3627683c9` | 🟢 Fresh |
-| `/dashboard/text-to-job` | `src/app/dashboard/text-to-job/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/trash` | `src/app/dashboard/trash/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
-| `/dashboard/voice-assistant` | `src/app/dashboard/voice-assistant/page.tsx` | 2026-08-26 | `cdd0b44fd` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/voice-calls` | `src/app/dashboard/voice-calls/page.tsx` | 2026-09-06 | `42e93ae74` | 🟢 Fresh |
-| `/dashboard/voice-calls/[callId]` | `src/app/dashboard/voice-calls/[callId]/page.tsx` | 2026-09-06 | `42e93ae74` | 🟢 Fresh |
+| `/dashboard` | `src/app/dashboard/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/activity` | `src/app/dashboard/activity/page.tsx` | 2026-09-03 | `77e751f04` | ðŸŸ¢ Fresh |
+| `/dashboard/automations` | `src/app/dashboard/automations/page.tsx` | 2026-09-05 | `cdc726cac` | ðŸŸ¢ Fresh |
+| `/dashboard/cash-flow` | `src/app/dashboard/cash-flow/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/claims` | `src/app/dashboard/claims/page.tsx` | 2026-09-05 | `d56aabcb9` | ðŸŸ¢ Fresh |
+| `/dashboard/clients` | `src/app/dashboard/clients/page.tsx` | 2026-09-05 | `5ba1a8884` | ðŸŸ¢ Fresh |
+| `/dashboard/clients/[id]` | `src/app/dashboard/clients/[id]/page.tsx` | 2026-09-05 | `5ba1a8884` | ðŸŸ¢ Fresh |
+| `/dashboard/clients/[id]/statement` | `src/app/dashboard/clients/[id]/statement/page.tsx` | 2026-09-05 | `b9fd05905` | ðŸŸ¢ Fresh |
+| `/dashboard/clients/import` | `src/app/dashboard/clients/import/page.tsx` | 2026-09-05 | `b9fd05905` | ðŸŸ¢ Fresh |
+| `/dashboard/crew` | `src/app/dashboard/crew/page.tsx` | 2026-09-06 | `24d05d92c` | ðŸŸ¢ Fresh |
+| `/dashboard/crew/requests/[id]` | `src/app/dashboard/crew/requests/[id]/page.tsx` | 2026-09-01 | `8fd524833` | ðŸŸ¢ Fresh |
+| `/dashboard/crew/requests/new` | `src/app/dashboard/crew/requests/new/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/expenses` | `src/app/dashboard/expenses/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/forms` | `src/app/dashboard/forms/page.tsx` | 2026-09-02 | `bff437d13` | ðŸŸ¢ Fresh |
+| `/dashboard/forms/[id]` | `src/app/dashboard/forms/[id]/page.tsx` | 2026-09-01 | `12e223c0b` | ðŸŸ¢ Fresh |
+| `/dashboard/forms/builder` | `src/app/dashboard/forms/builder/page.tsx` | 2026-09-01 | `12e223c0b` | ðŸŸ¢ Fresh |
+| `/dashboard/help` | `src/app/dashboard/help/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/help/[caseId]` | `src/app/dashboard/help/[caseId]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/import` | `src/app/dashboard/import/page.tsx` | 2026-09-04 | `1cfdbde53` | ðŸŸ¢ Fresh |
+| `/dashboard/insights` | `src/app/dashboard/insights/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/inventory` | `src/app/dashboard/inventory/page.tsx` | 2026-09-05 | `262334caf` | ðŸŸ¢ Fresh |
+| `/dashboard/jobs` | `src/app/dashboard/jobs/page.tsx` | 2026-09-06 | `9f45d36b1` | ðŸŸ¢ Fresh |
+| `/dashboard/jobs/[id]` | `src/app/dashboard/jobs/[id]/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/jobs/[id]/forms/[submissionId]/print` | `src/app/dashboard/jobs/[id]/forms/[submissionId]/print/page.tsx` | 2026-09-01 | `12e223c0b` | ðŸŸ¢ Fresh |
+| `/dashboard/jobs/[id]/invoices/[invoiceId]` | `src/app/dashboard/jobs/[id]/invoices/[invoiceId]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/jobs/[id]/quote` | `src/app/dashboard/jobs/[id]/quote/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/jobs/import` | `src/app/dashboard/jobs/import/page.tsx` | 2026-08-14 | `3c18ab230` | ðŸ”´ Neglected (>3 wks) |
+| `/dashboard/jobs/import-invoices` | `src/app/dashboard/jobs/import-invoices/page.tsx` | 2026-08-14 | `3c18ab230` | ðŸ”´ Neglected (>3 wks) |
+| `/dashboard/leads` | `src/app/dashboard/leads/page.tsx` | 2026-09-06 | `9f45d36b1` | ðŸŸ¢ Fresh |
+| `/dashboard/leads/[leadId]` | `src/app/dashboard/leads/[leadId]/page.tsx` | 2026-09-03 | `2e6c7af21` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing` | `src/app/dashboard/marketing/page.tsx` | 2026-09-06 | `123adafe2` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/ads` | `src/app/dashboard/marketing/ads/page.tsx` | 2026-09-06 | `123adafe2` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/blog` | `src/app/dashboard/marketing/blog/page.tsx` | 2026-09-05 | `7e1906c94` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/blog/[id]` | `src/app/dashboard/marketing/blog/[id]/page.tsx` | 2026-09-05 | `7e1906c94` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/campaigns` | `src/app/dashboard/marketing/campaigns/page.tsx` | 2026-09-02 | `2caba713d` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/email-theme` | `src/app/dashboard/marketing/email-theme/page.tsx` | 2026-08-30 | `d311d6527` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/marketing/links` | `src/app/dashboard/marketing/links/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/merchandise` | `src/app/dashboard/marketing/merchandise/page.tsx` | 2026-09-04 | `0f4c25d7f` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/performance` | `src/app/dashboard/marketing/performance/page.tsx` | 2026-09-05 | `4e3fc2f5e` | ðŸŸ¢ Fresh |
+| `/dashboard/marketing/referrals` | `src/app/dashboard/marketing/referrals/page.tsx` | 2026-09-05 | `d56aabcb9` | ðŸŸ¢ Fresh |
+| `/dashboard/merchandise` | `src/app/dashboard/merchandise/page.tsx` | 2026-09-06 | `05f73a558` | ðŸŸ¢ Fresh |
+| `/dashboard/messages` | `src/app/dashboard/messages/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/messages/dedicated-number` | `src/app/dashboard/messages/dedicated-number/page.tsx` | 2026-09-01 | `3627683c9` | ðŸŸ¢ Fresh |
+| `/dashboard/payments` | `src/app/dashboard/payments/page.tsx` | 2026-09-07 | `204f78148` | ðŸŸ¢ Fresh |
+| `/dashboard/payroll` | `src/app/dashboard/payroll/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/quick-stops` | `src/app/dashboard/quick-stops/page.tsx` | 2026-09-04 | `19b4543d9` | ðŸŸ¢ Fresh |
+| `/dashboard/rebook` | `src/app/dashboard/rebook/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/recurring` | `src/app/dashboard/recurring/page.tsx` | 2026-09-04 | `1cfdbde53` | ðŸŸ¢ Fresh |
+| `/dashboard/reports` | `src/app/dashboard/reports/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/reviews` | `src/app/dashboard/reviews/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule` | `src/app/dashboard/schedule/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/booking` | `src/app/dashboard/schedule/booking/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/dispatch` | `src/app/dashboard/schedule/dispatch/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/intake` | `src/app/dashboard/schedule/intake/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/plan` | `src/app/dashboard/schedule/plan/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/requests` | `src/app/dashboard/schedule/requests/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/settings` | `src/app/dashboard/schedule/settings/page.tsx` | 2026-09-03 | `1ced5fca3` | ðŸŸ¢ Fresh |
+| `/dashboard/schedule/waitlist` | `src/app/dashboard/schedule/waitlist/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/services` | `src/app/dashboard/services/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/services/import` | `src/app/dashboard/services/import/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | 2026-09-07 | `02e5bc3a8` | ðŸŸ¢ Fresh |
+| `/dashboard/sites` | `src/app/dashboard/sites/page.tsx` | 2026-09-07 | `bbcb8b9fa` | ðŸŸ¢ Fresh |
+| `/dashboard/sites/preview` | `src/app/dashboard/sites/preview/page.tsx` | 2026-08-23 | `333d702a3` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/stripe-merchant/refresh` | `src/app/dashboard/stripe-merchant/refresh/page.tsx` | 2026-08-16 | `fde575acb` | ðŸ”´ Neglected (>3 wks) |
+| `/dashboard/stripe-merchant/return` | `src/app/dashboard/stripe-merchant/return/page.tsx` | 2026-08-16 | `fde575acb` | ðŸ”´ Neglected (>3 wks) |
+| `/dashboard/stripe-return` | `src/app/dashboard/stripe-return/page.tsx` | 2026-09-01 | `3627683c9` | ðŸŸ¢ Fresh |
+| `/dashboard/text-to-job` | `src/app/dashboard/text-to-job/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/trash` | `src/app/dashboard/trash/page.tsx` | 2026-09-05 | `ab63b2a02` | ðŸŸ¢ Fresh |
+| `/dashboard/voice-assistant` | `src/app/dashboard/voice-assistant/page.tsx` | 2026-08-26 | `cdd0b44fd` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/dashboard/voice-calls` | `src/app/dashboard/voice-calls/page.tsx` | 2026-09-06 | `42e93ae74` | ðŸŸ¢ Fresh |
+| `/dashboard/voice-calls/[callId]` | `src/app/dashboard/voice-calls/[callId]/page.tsx` | 2026-09-06 | `42e93ae74` | ðŸŸ¢ Fresh |
 
 ### Customer & Client Facing (10 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/book/[subdomain]` | `src/app/book/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/client/jobs/[token]` | `src/app/client/jobs/[token]/page.tsx` | 2026-09-03 | `5806fd4ca` | 🟢 Fresh |
-| `/invoice/[id]` | `src/app/invoice/[id]/page.tsx` | 2026-09-05 | `e6f557cb7` | 🟢 Fresh |
-| `/pay/[id]` | `src/app/pay/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/portal` | `src/app/portal/page.tsx` | 2026-09-04 | `55e4f0ef4` | 🟢 Fresh |
-| `/portal/[subdomain]` | `src/app/portal/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/portal/view/[token]` | `src/app/portal/view/[token]/page.tsx` | 2026-09-04 | `55e4f0ef4` | 🟢 Fresh |
-| `/review/[token]` | `src/app/review/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/track/[token]` | `src/app/track/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/unsubscribe` | `src/app/unsubscribe/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/book/[subdomain]` | `src/app/book/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/client/jobs/[token]` | `src/app/client/jobs/[token]/page.tsx` | 2026-09-03 | `5806fd4ca` | ðŸŸ¢ Fresh |
+| `/invoice/[id]` | `src/app/invoice/[id]/page.tsx` | 2026-09-05 | `e6f557cb7` | ðŸŸ¢ Fresh |
+| `/pay/[id]` | `src/app/pay/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/portal` | `src/app/portal/page.tsx` | 2026-09-04 | `55e4f0ef4` | ðŸŸ¢ Fresh |
+| `/portal/[subdomain]` | `src/app/portal/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/portal/view/[token]` | `src/app/portal/view/[token]/page.tsx` | 2026-09-04 | `55e4f0ef4` | ðŸŸ¢ Fresh |
+| `/review/[token]` | `src/app/review/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/track/[token]` | `src/app/track/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/unsubscribe` | `src/app/unsubscribe/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
 
 ### Auth & Onboarding (5 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/auth/confirm` | `src/app/auth/confirm/page.tsx` | 2026-08-30 | `4db77d660` | 🟡 Stable (Aug 20-31) |
-| `/login` | `src/app/login/page.tsx` | 2026-09-03 | `5576cd959` | 🟢 Fresh |
-| `/office-invite/[token]` | `src/app/office-invite/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/start` | `src/app/start/page.tsx` | 2026-09-03 | `35ba268ba` | 🟢 Fresh |
-| `/welcome` | `src/app/welcome/page.tsx` | 2026-09-03 | `35ba268ba` | 🟢 Fresh |
+| `/auth/confirm` | `src/app/auth/confirm/page.tsx` | 2026-08-30 | `4db77d660` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/login` | `src/app/login/page.tsx` | 2026-09-03 | `5576cd959` | ðŸŸ¢ Fresh |
+| `/office-invite/[token]` | `src/app/office-invite/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/start` | `src/app/start/page.tsx` | 2026-09-03 | `35ba268ba` | ðŸŸ¢ Fresh |
+| `/welcome` | `src/app/welcome/page.tsx` | 2026-09-03 | `35ba268ba` | ðŸŸ¢ Fresh |
 
 ### Product Features (24 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/features` | `src/app/features/page.tsx` | 2026-09-07 | `23224eb68*` | 🟢 Fresh |
-| `/features-flagship` | `src/app/features-flagship/page.tsx` | 2026-08-26 | `de72f3cf5` | 🟡 Stable (Aug 20-31) |
-| `/features/ai-ads` | `src/app/features/ai-ads/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/features/ai-copilot` | `src/app/features/ai-copilot/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/features/ai-intake` | `src/app/features/ai-intake/page.tsx` | 2026-09-01 | `1a0c6fd90` | 🟢 Fresh |
-| `/features/ai-vision` | `src/app/features/ai-vision/page.tsx` | 2026-09-07 | `23224eb68` | 🟢 Fresh |
-| `/features/ai-voice` | `src/app/features/ai-voice/page.tsx` | 2026-09-01 | `c39099360` | 🟢 Fresh |
-| `/features/back-office` | `src/app/features/back-office/page.tsx` | 2026-09-01 | `80232fe27` | 🟢 Fresh |
-| `/features/cash-flow` | `src/app/features/cash-flow/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
-| `/features/client-portal` | `src/app/features/client-portal/page.tsx` | 2026-08-16 | `28a2d0925` | 🔴 Neglected (>3 wks) |
-| `/features/crew` | `src/app/features/crew/page.tsx` | 2026-09-07 | `e4f635a58*` | 🟢 Fresh |
-| `/features/dispatch` | `src/app/features/dispatch/page.tsx` | 2026-08-27 | `91f85e576` | 🟡 Stable (Aug 20-31) |
-| `/features/live-eta` | `src/app/features/live-eta/page.tsx` | 2026-09-07 | `*` | 🟢 Fresh |
-| `/features/neighborhood-halo` | `src/app/features/neighborhood-halo/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/features/payments` | `src/app/features/payments/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
-| `/features/quick-stops` | `src/app/features/quick-stops/page.tsx` | 2026-08-29 | `0533d57a9` | 🟡 Stable (Aug 20-31) |
-| `/features/quotes` | `src/app/features/quotes/page.tsx` | 2026-09-02 | `37dc4c966` | 🟢 Fresh |
-| `/features/recurring` | `src/app/features/recurring/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
-| `/features/reviews` | `src/app/features/reviews/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
-| `/features/scheduling` | `src/app/features/scheduling/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
-| `/features/sparky` | `src/app/features/sparky/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/features/text-to-job` | `src/app/features/text-to-job/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/features/website-builder` | `src/app/features/website-builder/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/features/website-builder-mockup` | `src/app/features/website-builder-mockup/page.tsx` | 2026-08-28 | `ec20b4264` | 🟡 Stable (Aug 20-31) |
+| `/features` | `src/app/features/page.tsx` | 2026-09-07 | `23224eb68*` | ðŸŸ¢ Fresh |
+| `/features-flagship` | `src/app/features-flagship/page.tsx` | 2026-08-26 | `de72f3cf5` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/ai-ads` | `src/app/features/ai-ads/page.tsx` | 2026-09-04 | `0f4c25d7f` | ðŸŸ¢ Fresh |
+| `/features/ai-copilot` | `src/app/features/ai-copilot/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/features/ai-intake` | `src/app/features/ai-intake/page.tsx` | 2026-09-01 | `1a0c6fd90` | ðŸŸ¢ Fresh |
+| `/features/ai-vision` | `src/app/features/ai-vision/page.tsx` | 2026-09-07 | `23224eb68` | ðŸŸ¢ Fresh |
+| `/features/ai-voice` | `src/app/features/ai-voice/page.tsx` | 2026-09-01 | `c39099360` | ðŸŸ¢ Fresh |
+| `/features/back-office` | `src/app/features/back-office/page.tsx` | 2026-09-01 | `80232fe27` | ðŸŸ¢ Fresh |
+| `/features/cash-flow` | `src/app/features/cash-flow/page.tsx` | 2026-08-29 | `e4f635a58` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/client-portal` | `src/app/features/client-portal/page.tsx` | 2026-08-16 | `28a2d0925` | ðŸ”´ Neglected (>3 wks) |
+| `/features/crew` | `src/app/features/crew/page.tsx` | 2026-09-07 | `e4f635a58*` | ðŸŸ¢ Fresh |
+| `/features/dispatch` | `src/app/features/dispatch/page.tsx` | 2026-08-27 | `91f85e576` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/live-eta` | `src/app/features/live-eta/page.tsx` | 2026-09-07 | `*` | ðŸŸ¢ Fresh |
+| `/features/neighborhood-halo` | `src/app/features/neighborhood-halo/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/features/payments` | `src/app/features/payments/page.tsx` | 2026-08-29 | `e4f635a58` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/quick-stops` | `src/app/features/quick-stops/page.tsx` | 2026-08-29 | `0533d57a9` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/quotes` | `src/app/features/quotes/page.tsx` | 2026-09-02 | `37dc4c966` | ðŸŸ¢ Fresh |
+| `/features/recurring` | `src/app/features/recurring/page.tsx` | 2026-08-29 | `e4f635a58` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/reviews` | `src/app/features/reviews/page.tsx` | 2026-08-29 | `e4f635a58` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/scheduling` | `src/app/features/scheduling/page.tsx` | 2026-08-29 | `e4f635a58` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/features/sparky` | `src/app/features/sparky/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/features/text-to-job` | `src/app/features/text-to-job/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/features/website-builder` | `src/app/features/website-builder/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/features/website-builder-mockup` | `src/app/features/website-builder-mockup/page.tsx` | 2026-08-28 | `ec20b4264` | ðŸŸ¡ Stable (Aug 20-31) |
 
 ### Public Marketing (42 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/` | `src/app/page.tsx` | 2026-09-07 | `23224eb68*` | 🟢 Fresh |
-| `/account-suspended` | `src/app/account-suspended/page.tsx` | 2026-08-31 | `33c409ea4` | 🟡 Stable (Aug 20-31) |
-| `/card-saved` | `src/app/card-saved/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/changelog` | `src/app/changelog/page.tsx` | 2026-08-26 | `192ffbce6` | 🟡 Stable (Aug 20-31) |
-| `/claim/halo/[id]` | `src/app/claim/halo/[id]/page.tsx` | 2026-09-06 | `123adafe2` | 🟢 Fresh |
-| `/contact` | `src/app/contact/page.tsx` | 2026-09-01 | `80232fe27` | 🟢 Fresh |
-| `/dpa` | `src/app/dpa/page.tsx` | 2026-08-27 | `91f85e576` | 🟡 Stable (Aug 20-31) |
-| `/faq` | `src/app/faq/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/field` | `src/app/field/page.tsx` | 2026-09-06 | `97c00e46b` | 🟢 Fresh |
-| `/field/choose` | `src/app/field/choose/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
-| `/field/dictate` | `src/app/field/dictate/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
-| `/field/intake/[id]` | `src/app/field/intake/[id]/page.tsx` | 2026-09-04 | `19b4543d9` | 🟢 Fresh |
-| `/field/jobs/[id]` | `src/app/field/jobs/[id]/page.tsx` | 2026-09-06 | `97c00e46b` | 🟢 Fresh |
-| `/field/login` | `src/app/field/login/page.tsx` | 2026-09-06 | `24d05d92c` | 🟢 Fresh |
-| `/field/offline` | `src/app/field/offline/page.tsx` | 2026-08-28 | `a54825870` | 🟡 Stable (Aug 20-31) |
-| `/field/pay` | `src/app/field/pay/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
-| `/for` | `src/app/for/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/for-mockup` | `src/app/for-mockup/page.tsx` | 2026-09-01 | `a519c0ee6` | 🟢 Fresh |
-| `/founder` | `src/app/founder/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/home-classic` | `src/app/home-classic/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/home-compact` | `src/app/home-compact/page.tsx` | 2026-08-28 | `c5132ccf2` | 🟡 Stable (Aug 20-31) |
-| `/home-compare` | `src/app/home-compare/page.tsx` | 2026-08-07 | `56684ddd3` | 🔴 Neglected (>3 wks) |
-| `/home-editorial` | `src/app/home-editorial/page.tsx` | 2026-08-28 | `ee21c8e1d` | 🟡 Stable (Aug 20-31) |
-| `/home-flagship` | `src/app/home-flagship/page.tsx` | 2026-08-07 | `55a60a4d2` | 🔴 Neglected (>3 wks) |
-| `/home-next` | `src/app/home-next/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/how-it-works` | `src/app/how-it-works/page.tsx` | 2026-09-02 | `dd0a59154` | 🟢 Fresh |
-| `/office-access` | `src/app/office-access/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/passport/[passportCode]` | `src/app/passport/[passportCode]/page.tsx` | 2026-09-01 | `a05e3d1a4` | 🟢 Fresh |
-| `/pricing` | `src/app/pricing/page.tsx` | 2026-09-07 | `c10f67cda` | 🟢 Fresh |
-| `/privacy` | `src/app/privacy/page.tsx` | 2026-09-01 | `0cc7421e7` | 🟢 Fresh |
-| `/quick-stop/[id]` | `src/app/quick-stop/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/quickbooks/disconnected` | `src/app/quickbooks/disconnected/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/recover-account` | `src/app/recover-account/page.tsx` | 2026-09-01 | `82eefc37f` | 🟢 Fresh |
-| `/resources` | `src/app/resources/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/resources/[slug]` | `src/app/resources/[slug]/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/schedule/[token]` | `src/app/schedule/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/security` | `src/app/security/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/sms-terms` | `src/app/sms-terms/page.tsx` | 2026-08-31 | `51abfa532` | 🟡 Stable (Aug 20-31) |
-| `/sub/[token]` | `src/app/sub/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/terms` | `src/app/terms/page.tsx` | 2026-08-31 | `51abfa532` | 🟡 Stable (Aug 20-31) |
-| `/themes/[template]` | `src/app/themes/[template]/page.tsx` | 2026-08-31 | `bddaa35e6` | 🟡 Stable (Aug 20-31) |
-| `/website-builder-mockup` | `src/app/website-builder-mockup/page.tsx` | 2026-08-31 | `df967bdae` | 🟡 Stable (Aug 20-31) |
+| `/` | `src/app/page.tsx` | 2026-09-07 | `23224eb68*` | ðŸŸ¢ Fresh |
+| `/account-suspended` | `src/app/account-suspended/page.tsx` | 2026-08-31 | `33c409ea4` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/card-saved` | `src/app/card-saved/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/changelog` | `src/app/changelog/page.tsx` | 2026-08-26 | `192ffbce6` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/claim/halo/[id]` | `src/app/claim/halo/[id]/page.tsx` | 2026-09-06 | `123adafe2` | ðŸŸ¢ Fresh |
+| `/contact` | `src/app/contact/page.tsx` | 2026-09-01 | `80232fe27` | ðŸŸ¢ Fresh |
+| `/dpa` | `src/app/dpa/page.tsx` | 2026-08-27 | `91f85e576` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/faq` | `src/app/faq/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/field` | `src/app/field/page.tsx` | 2026-09-06 | `97c00e46b` | ðŸŸ¢ Fresh |
+| `/field/choose` | `src/app/field/choose/page.tsx` | 2026-09-02 | `3a3f2aa65` | ðŸŸ¢ Fresh |
+| `/field/dictate` | `src/app/field/dictate/page.tsx` | 2026-09-02 | `3a3f2aa65` | ðŸŸ¢ Fresh |
+| `/field/intake/[id]` | `src/app/field/intake/[id]/page.tsx` | 2026-09-04 | `19b4543d9` | ðŸŸ¢ Fresh |
+| `/field/jobs/[id]` | `src/app/field/jobs/[id]/page.tsx` | 2026-09-06 | `97c00e46b` | ðŸŸ¢ Fresh |
+| `/field/login` | `src/app/field/login/page.tsx` | 2026-09-06 | `24d05d92c` | ðŸŸ¢ Fresh |
+| `/field/offline` | `src/app/field/offline/page.tsx` | 2026-08-28 | `a54825870` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/field/pay` | `src/app/field/pay/page.tsx` | 2026-09-02 | `3a3f2aa65` | ðŸŸ¢ Fresh |
+| `/for` | `src/app/for/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/for-mockup` | `src/app/for-mockup/page.tsx` | 2026-09-01 | `a519c0ee6` | ðŸŸ¢ Fresh |
+| `/founder` | `src/app/founder/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/home-classic` | `src/app/home-classic/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/home-compact` | `src/app/home-compact/page.tsx` | 2026-08-28 | `c5132ccf2` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/home-compare` | `src/app/home-compare/page.tsx` | 2026-08-07 | `56684ddd3` | ðŸ”´ Neglected (>3 wks) |
+| `/home-editorial` | `src/app/home-editorial/page.tsx` | 2026-08-28 | `ee21c8e1d` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/home-flagship` | `src/app/home-flagship/page.tsx` | 2026-08-07 | `55a60a4d2` | ðŸ”´ Neglected (>3 wks) |
+| `/home-next` | `src/app/home-next/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/how-it-works` | `src/app/how-it-works/page.tsx` | 2026-09-02 | `dd0a59154` | ðŸŸ¢ Fresh |
+| `/office-access` | `src/app/office-access/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/passport/[passportCode]` | `src/app/passport/[passportCode]/page.tsx` | 2026-09-01 | `a05e3d1a4` | ðŸŸ¢ Fresh |
+| `/pricing` | `src/app/pricing/page.tsx` | 2026-09-07 | `c10f67cda` | ðŸŸ¢ Fresh |
+| `/privacy` | `src/app/privacy/page.tsx` | 2026-09-01 | `0cc7421e7` | ðŸŸ¢ Fresh |
+| `/quick-stop/[id]` | `src/app/quick-stop/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/quickbooks/disconnected` | `src/app/quickbooks/disconnected/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/recover-account` | `src/app/recover-account/page.tsx` | 2026-09-01 | `82eefc37f` | ðŸŸ¢ Fresh |
+| `/resources` | `src/app/resources/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/resources/[slug]` | `src/app/resources/[slug]/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/schedule/[token]` | `src/app/schedule/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/security` | `src/app/security/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/sms-terms` | `src/app/sms-terms/page.tsx` | 2026-08-31 | `51abfa532` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/sub/[token]` | `src/app/sub/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/terms` | `src/app/terms/page.tsx` | 2026-08-31 | `51abfa532` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/themes/[template]` | `src/app/themes/[template]/page.tsx` | 2026-08-31 | `bddaa35e6` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/website-builder-mockup` | `src/app/website-builder-mockup/page.tsx` | 2026-08-31 | `df967bdae` | ðŸŸ¡ Stable (Aug 20-31) |
 
 ### Trade Landing Pages (1 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/for/[trade]` | `src/app/for/[trade]/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/for/[trade]` | `src/app/for/[trade]/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
 
 ### Competitive Comparisons (2 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/compare` | `src/app/compare/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/compare/[competitor]` | `src/app/compare/[competitor]/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/compare` | `src/app/compare/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/compare/[competitor]` | `src/app/compare/[competitor]/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
 
 ### Public Free Tools (4 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/tools` | `src/app/tools/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/tools/estimate-generator` | `src/app/tools/estimate-generator/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
-| `/tools/hourly-rate-calculator` | `src/app/tools/hourly-rate-calculator/page.tsx` | 2026-08-27 | `503c50171` | 🟡 Stable (Aug 20-31) |
-| `/tools/leakage-calculator` | `src/app/tools/leakage-calculator/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/tools` | `src/app/tools/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/tools/estimate-generator` | `src/app/tools/estimate-generator/page.tsx` | 2026-09-05 | `a49cbac93` | ðŸŸ¢ Fresh |
+| `/tools/hourly-rate-calculator` | `src/app/tools/hourly-rate-calculator/page.tsx` | 2026-08-27 | `503c50171` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/tools/leakage-calculator` | `src/app/tools/leakage-calculator/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
 
 ### Help & Documentation (4 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/help` | `src/app/help/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
-| `/help/articles/[slug]` | `src/app/help/articles/[slug]/page.tsx` | 2026-08-31 | `227d8dcb3` | 🟡 Stable (Aug 20-31) |
-| `/help/manual` | `src/app/help/manual/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
-| `/help/manual/[slug]` | `src/app/help/manual/[slug]/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
+| `/help` | `src/app/help/page.tsx` | 2026-09-01 | `8eb04f1ba` | ðŸŸ¢ Fresh |
+| `/help/articles/[slug]` | `src/app/help/articles/[slug]/page.tsx` | 2026-08-31 | `227d8dcb3` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/help/manual` | `src/app/help/manual/page.tsx` | 2026-09-01 | `8eb04f1ba` | ðŸŸ¢ Fresh |
+| `/help/manual/[slug]` | `src/app/help/manual/[slug]/page.tsx` | 2026-09-01 | `8eb04f1ba` | ðŸŸ¢ Fresh |
 
 ### Interactive Demo (46 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/demo` | `src/app/demo/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
-| `/demo/automations` | `src/app/demo/automations/page.tsx` | 2026-08-27 | `2dc29d9e9` | 🟡 Stable (Aug 20-31) |
-| `/demo/campaigns` | `src/app/demo/campaigns/page.tsx` | 2026-08-06 | `b9fb1174e` | 🔴 Neglected (>3 wks) |
-| `/demo/cash-flow` | `src/app/demo/cash-flow/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/clients` | `src/app/demo/clients/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/demo/clients/[id]` | `src/app/demo/clients/[id]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/demo/crew` | `src/app/demo/crew/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/customize` | `src/app/demo/customize/page.tsx` | 2026-08-24 | `c39872e7d` | 🟡 Stable (Aug 20-31) |
-| `/demo/email-themes` | `src/app/demo/email-themes/page.tsx` | 2026-09-01 | `c39099360` | 🟢 Fresh |
-| `/demo/insights` | `src/app/demo/insights/page.tsx` | 2026-09-04 | `0c66cd74b` | 🟢 Fresh |
-| `/demo/jobs` | `src/app/demo/jobs/page.tsx` | 2026-09-03 | `f97c93a14` | 🟢 Fresh |
-| `/demo/jobs/[id]` | `src/app/demo/jobs/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/leads` | `src/app/demo/leads/page.tsx` | 2026-09-03 | `f97c93a14` | 🟢 Fresh |
-| `/demo/leads/[leadId]` | `src/app/demo/leads/[leadId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/marketing` | `src/app/demo/marketing/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
-| `/demo/marketing/ads` | `src/app/demo/marketing/ads/page.tsx` | 2026-08-30 | `7886b7ea9` | 🟡 Stable (Aug 20-31) |
-| `/demo/marketing/blog` | `src/app/demo/marketing/blog/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
-| `/demo/marketing/blog/[id]` | `src/app/demo/marketing/blog/[id]/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
-| `/demo/marketing/campaigns` | `src/app/demo/marketing/campaigns/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/marketing/email-theme` | `src/app/demo/marketing/email-theme/page.tsx` | 2026-09-01 | `c39099360` | 🟢 Fresh |
-| `/demo/marketing/links` | `src/app/demo/marketing/links/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
-| `/demo/marketing/performance` | `src/app/demo/marketing/performance/page.tsx` | 2026-08-06 | `b9fb1174e` | 🔴 Neglected (>3 wks) |
-| `/demo/marketing/referrals` | `src/app/demo/marketing/referrals/page.tsx` | 2026-09-05 | `5ba1a8884` | 🟢 Fresh |
-| `/demo/messages` | `src/app/demo/messages/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
-| `/demo/payroll` | `src/app/demo/payroll/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/quick-stops` | `src/app/demo/quick-stops/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/rebook` | `src/app/demo/rebook/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/recurring` | `src/app/demo/recurring/page.tsx` | 2026-08-06 | `b9fb1174e` | 🔴 Neglected (>3 wks) |
-| `/demo/reel/bath-to-shower` | `src/app/demo/reel/bath-to-shower/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/reel/mock-site` | `src/app/demo/reel/mock-site/page.tsx` | 2026-08-27 | `49a39ca6f` | 🟡 Stable (Aug 20-31) |
-| `/demo/reel/product-tour` | `src/app/demo/reel/product-tour/page.tsx` | 2026-09-02 | `bf4e4a5ce` | 🟢 Fresh |
-| `/demo/reviews` | `src/app/demo/reviews/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/schedule` | `src/app/demo/schedule/page.tsx` | 2026-09-03 | `99b99805e` | 🟢 Fresh |
-| `/demo/schedule/booking` | `src/app/demo/schedule/booking/page.tsx` | 2026-09-03 | `99b99805e` | 🟢 Fresh |
-| `/demo/schedule/plan` | `src/app/demo/schedule/plan/page.tsx` | 2026-08-14 | `7c3ac4112` | 🔴 Neglected (>3 wks) |
-| `/demo/services` | `src/app/demo/services/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/settings` | `src/app/demo/settings/page.tsx` | 2026-08-27 | `2dc29d9e9` | 🟡 Stable (Aug 20-31) |
-| `/demo/sites` | `src/app/demo/sites/page.tsx` | 2026-08-28 | `9aafb9f95` | 🟡 Stable (Aug 20-31) |
-| `/demo/sms-quote` | `src/app/demo/sms-quote/page.tsx` | 2026-08-26 | `a9e81b590` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour` | `src/app/demo/tour/page.tsx` | 2026-08-27 | `65506d9ef` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour/approve` | `src/app/demo/tour/approve/page.tsx` | 2026-08-27 | `2ad68083f` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour/complete` | `src/app/demo/tour/complete/page.tsx` | 2026-08-27 | `2ad68083f` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour/intake` | `src/app/demo/tour/intake/page.tsx` | 2026-08-27 | `2ad68083f` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour/lead` | `src/app/demo/tour/lead/page.tsx` | 2026-08-27 | `2ad68083f` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour/quote` | `src/app/demo/tour/quote/page.tsx` | 2026-08-27 | `2ad68083f` | 🟡 Stable (Aug 20-31) |
-| `/demo/tour/site` | `src/app/demo/tour/site/page.tsx` | 2026-08-27 | `65506d9ef` | 🟡 Stable (Aug 20-31) |
+| `/demo` | `src/app/demo/page.tsx` | 2026-09-05 | `7e1906c94` | ðŸŸ¢ Fresh |
+| `/demo/automations` | `src/app/demo/automations/page.tsx` | 2026-08-27 | `2dc29d9e9` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/campaigns` | `src/app/demo/campaigns/page.tsx` | 2026-08-06 | `b9fb1174e` | ðŸ”´ Neglected (>3 wks) |
+| `/demo/cash-flow` | `src/app/demo/cash-flow/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/clients` | `src/app/demo/clients/page.tsx` | 2026-09-03 | `2e6c7af21` | ðŸŸ¢ Fresh |
+| `/demo/clients/[id]` | `src/app/demo/clients/[id]/page.tsx` | 2026-09-03 | `2e6c7af21` | ðŸŸ¢ Fresh |
+| `/demo/crew` | `src/app/demo/crew/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/customize` | `src/app/demo/customize/page.tsx` | 2026-08-24 | `c39872e7d` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/email-themes` | `src/app/demo/email-themes/page.tsx` | 2026-09-01 | `c39099360` | ðŸŸ¢ Fresh |
+| `/demo/insights` | `src/app/demo/insights/page.tsx` | 2026-09-04 | `0c66cd74b` | ðŸŸ¢ Fresh |
+| `/demo/jobs` | `src/app/demo/jobs/page.tsx` | 2026-09-03 | `f97c93a14` | ðŸŸ¢ Fresh |
+| `/demo/jobs/[id]` | `src/app/demo/jobs/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/leads` | `src/app/demo/leads/page.tsx` | 2026-09-03 | `f97c93a14` | ðŸŸ¢ Fresh |
+| `/demo/leads/[leadId]` | `src/app/demo/leads/[leadId]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/marketing` | `src/app/demo/marketing/page.tsx` | 2026-09-05 | `7e1906c94` | ðŸŸ¢ Fresh |
+| `/demo/marketing/ads` | `src/app/demo/marketing/ads/page.tsx` | 2026-08-30 | `7886b7ea9` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/marketing/blog` | `src/app/demo/marketing/blog/page.tsx` | 2026-09-01 | `8eb04f1ba` | ðŸŸ¢ Fresh |
+| `/demo/marketing/blog/[id]` | `src/app/demo/marketing/blog/[id]/page.tsx` | 2026-09-01 | `8eb04f1ba` | ðŸŸ¢ Fresh |
+| `/demo/marketing/campaigns` | `src/app/demo/marketing/campaigns/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/marketing/email-theme` | `src/app/demo/marketing/email-theme/page.tsx` | 2026-09-01 | `c39099360` | ðŸŸ¢ Fresh |
+| `/demo/marketing/links` | `src/app/demo/marketing/links/page.tsx` | 2026-09-05 | `7e1906c94` | ðŸŸ¢ Fresh |
+| `/demo/marketing/performance` | `src/app/demo/marketing/performance/page.tsx` | 2026-08-06 | `b9fb1174e` | ðŸ”´ Neglected (>3 wks) |
+| `/demo/marketing/referrals` | `src/app/demo/marketing/referrals/page.tsx` | 2026-09-05 | `5ba1a8884` | ðŸŸ¢ Fresh |
+| `/demo/messages` | `src/app/demo/messages/page.tsx` | 2026-08-14 | `3c18ab230` | ðŸ”´ Neglected (>3 wks) |
+| `/demo/payroll` | `src/app/demo/payroll/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/quick-stops` | `src/app/demo/quick-stops/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/rebook` | `src/app/demo/rebook/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/recurring` | `src/app/demo/recurring/page.tsx` | 2026-08-06 | `b9fb1174e` | ðŸ”´ Neglected (>3 wks) |
+| `/demo/reel/bath-to-shower` | `src/app/demo/reel/bath-to-shower/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/reel/mock-site` | `src/app/demo/reel/mock-site/page.tsx` | 2026-08-27 | `49a39ca6f` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/reel/product-tour` | `src/app/demo/reel/product-tour/page.tsx` | 2026-09-02 | `bf4e4a5ce` | ðŸŸ¢ Fresh |
+| `/demo/reviews` | `src/app/demo/reviews/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/schedule` | `src/app/demo/schedule/page.tsx` | 2026-09-03 | `99b99805e` | ðŸŸ¢ Fresh |
+| `/demo/schedule/booking` | `src/app/demo/schedule/booking/page.tsx` | 2026-09-03 | `99b99805e` | ðŸŸ¢ Fresh |
+| `/demo/schedule/plan` | `src/app/demo/schedule/plan/page.tsx` | 2026-08-14 | `7c3ac4112` | ðŸ”´ Neglected (>3 wks) |
+| `/demo/services` | `src/app/demo/services/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/settings` | `src/app/demo/settings/page.tsx` | 2026-08-27 | `2dc29d9e9` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/sites` | `src/app/demo/sites/page.tsx` | 2026-08-28 | `9aafb9f95` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/sms-quote` | `src/app/demo/sms-quote/page.tsx` | 2026-08-26 | `a9e81b590` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour` | `src/app/demo/tour/page.tsx` | 2026-08-27 | `65506d9ef` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour/approve` | `src/app/demo/tour/approve/page.tsx` | 2026-08-27 | `2ad68083f` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour/complete` | `src/app/demo/tour/complete/page.tsx` | 2026-08-27 | `2ad68083f` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour/intake` | `src/app/demo/tour/intake/page.tsx` | 2026-08-27 | `2ad68083f` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour/lead` | `src/app/demo/tour/lead/page.tsx` | 2026-08-27 | `2ad68083f` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour/quote` | `src/app/demo/tour/quote/page.tsx` | 2026-08-27 | `2ad68083f` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/demo/tour/site` | `src/app/demo/tour/site/page.tsx` | 2026-08-27 | `65506d9ef` | ðŸŸ¡ Stable (Aug 20-31) |
 
 ### Admin Operations (30 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/admin` | `src/app/admin/page.tsx` | 2026-09-06 | `937e5e89e` | 🟢 Fresh |
-| `/admin/accounts` | `src/app/admin/accounts/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
-| `/admin/accounts/[id]` | `src/app/admin/accounts/[id]/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
-| `/admin/accounts/closures` | `src/app/admin/accounts/closures/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
-| `/admin/audit` | `src/app/admin/audit/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/billing-operations` | `src/app/admin/billing-operations/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
-| `/admin/campaigns` | `src/app/admin/campaigns/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
-| `/admin/cases` | `src/app/admin/cases/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
-| `/admin/cases/[id]` | `src/app/admin/cases/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/cases/new` | `src/app/admin/cases/new/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
-| `/admin/failures` | `src/app/admin/failures/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
-| `/admin/health` | `src/app/admin/health/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
-| `/admin/health/[job]` | `src/app/admin/health/[job]/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
-| `/admin/incidents` | `src/app/admin/incidents/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
-| `/admin/manual` | `src/app/admin/manual/page.tsx` | 2026-09-01 | `8b2dfa7ae` | 🟢 Fresh |
-| `/admin/manual/[slug]` | `src/app/admin/manual/[slug]/page.tsx` | 2026-09-01 | `8b2dfa7ae` | 🟢 Fresh |
-| `/admin/messaging` | `src/app/admin/messaging/page.tsx` | 2026-09-03 | `bd25aa7ac` | 🟢 Fresh |
-| `/admin/messaging/registrations` | `src/app/admin/messaging/registrations/page.tsx` | 2026-09-03 | `bd25aa7ac` | 🟢 Fresh |
-| `/admin/money` | `src/app/admin/money/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
-| `/admin/operator` | `src/app/admin/operator/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
-| `/admin/payments` | `src/app/admin/payments/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/payments/[id]` | `src/app/admin/payments/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/privacy-requests` | `src/app/admin/privacy-requests/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
-| `/admin/quick-stops` | `src/app/admin/quick-stops/page.tsx` | 2026-09-04 | `cc02e2e6c` | 🟢 Fresh |
-| `/admin/quick-stops/[id]` | `src/app/admin/quick-stops/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/risk` | `src/app/admin/risk/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
-| `/admin/search` | `src/app/admin/search/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/security` | `src/app/admin/security/page.tsx` | 2026-09-06 | `937e5e89e` | 🟢 Fresh |
-| `/admin/staff` | `src/app/admin/staff/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/voice/numbers` | `src/app/admin/voice/numbers/page.tsx` | 2026-09-03 | `bd25aa7ac` | 🟢 Fresh |
+| `/admin` | `src/app/admin/page.tsx` | 2026-09-06 | `937e5e89e` | ðŸŸ¢ Fresh |
+| `/admin/accounts` | `src/app/admin/accounts/page.tsx` | 2026-09-04 | `92b992c43` | ðŸŸ¢ Fresh |
+| `/admin/accounts/[id]` | `src/app/admin/accounts/[id]/page.tsx` | 2026-09-04 | `92b992c43` | ðŸŸ¢ Fresh |
+| `/admin/accounts/closures` | `src/app/admin/accounts/closures/page.tsx` | 2026-09-04 | `1edfb2a04` | ðŸŸ¢ Fresh |
+| `/admin/audit` | `src/app/admin/audit/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/billing-operations` | `src/app/admin/billing-operations/page.tsx` | 2026-09-04 | `1edfb2a04` | ðŸŸ¢ Fresh |
+| `/admin/campaigns` | `src/app/admin/campaigns/page.tsx` | 2026-09-04 | `1a08f02c8` | ðŸŸ¢ Fresh |
+| `/admin/cases` | `src/app/admin/cases/page.tsx` | 2026-09-04 | `1a08f02c8` | ðŸŸ¢ Fresh |
+| `/admin/cases/[id]` | `src/app/admin/cases/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/cases/new` | `src/app/admin/cases/new/page.tsx` | 2026-09-04 | `1a08f02c8` | ðŸŸ¢ Fresh |
+| `/admin/failures` | `src/app/admin/failures/page.tsx` | 2026-09-04 | `1a08f02c8` | ðŸŸ¢ Fresh |
+| `/admin/health` | `src/app/admin/health/page.tsx` | 2026-09-04 | `1edfb2a04` | ðŸŸ¢ Fresh |
+| `/admin/health/[job]` | `src/app/admin/health/[job]/page.tsx` | 2026-09-04 | `1edfb2a04` | ðŸŸ¢ Fresh |
+| `/admin/incidents` | `src/app/admin/incidents/page.tsx` | 2026-09-04 | `1a08f02c8` | ðŸŸ¢ Fresh |
+| `/admin/manual` | `src/app/admin/manual/page.tsx` | 2026-09-01 | `8b2dfa7ae` | ðŸŸ¢ Fresh |
+| `/admin/manual/[slug]` | `src/app/admin/manual/[slug]/page.tsx` | 2026-09-01 | `8b2dfa7ae` | ðŸŸ¢ Fresh |
+| `/admin/messaging` | `src/app/admin/messaging/page.tsx` | 2026-09-03 | `bd25aa7ac` | ðŸŸ¢ Fresh |
+| `/admin/messaging/registrations` | `src/app/admin/messaging/registrations/page.tsx` | 2026-09-03 | `bd25aa7ac` | ðŸŸ¢ Fresh |
+| `/admin/money` | `src/app/admin/money/page.tsx` | 2026-09-04 | `1edfb2a04` | ðŸŸ¢ Fresh |
+| `/admin/operator` | `src/app/admin/operator/page.tsx` | 2026-09-04 | `1edfb2a04` | ðŸŸ¢ Fresh |
+| `/admin/payments` | `src/app/admin/payments/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/payments/[id]` | `src/app/admin/payments/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/privacy-requests` | `src/app/admin/privacy-requests/page.tsx` | 2026-09-04 | `92b992c43` | ðŸŸ¢ Fresh |
+| `/admin/quick-stops` | `src/app/admin/quick-stops/page.tsx` | 2026-09-04 | `cc02e2e6c` | ðŸŸ¢ Fresh |
+| `/admin/quick-stops/[id]` | `src/app/admin/quick-stops/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/risk` | `src/app/admin/risk/page.tsx` | 2026-09-04 | `1a08f02c8` | ðŸŸ¢ Fresh |
+| `/admin/search` | `src/app/admin/search/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/security` | `src/app/admin/security/page.tsx` | 2026-09-06 | `937e5e89e` | ðŸŸ¢ Fresh |
+| `/admin/staff` | `src/app/admin/staff/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/admin/voice/numbers` | `src/app/admin/voice/numbers/page.tsx` | 2026-09-03 | `bd25aa7ac` | ðŸŸ¢ Fresh |
 
 ### Tenant Sites & Previews (15 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/site-domain/[domain]` | `src/app/site-domain/[domain]/page.tsx` | 2026-09-05 | `e0ad82cd7` | 🟢 Fresh |
-| `/site-domain/[domain]/blog` | `src/app/site-domain/[domain]/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site-domain/[domain]/blog/[slug]` | `src/app/site-domain/[domain]/blog/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site-domain/[domain]/portal` | `src/app/site-domain/[domain]/portal/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site-domain/[domain]/privacy` | `src/app/site-domain/[domain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site-domain/[domain]/terms` | `src/app/site-domain/[domain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site-domain/[domain]/videos` | `src/app/site-domain/[domain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site-preview-frame` | `src/app/site-preview-frame/page.tsx` | 2026-09-01 | `792b40156` | 🟢 Fresh |
-| `/site/[subdomain]` | `src/app/site/[subdomain]/page.tsx` | 2026-09-05 | `e0ad82cd7` | 🟢 Fresh |
-| `/site/[subdomain]/blog` | `src/app/site/[subdomain]/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site/[subdomain]/blog/[slug]` | `src/app/site/[subdomain]/blog/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site/[subdomain]/portal` | `src/app/site/[subdomain]/portal/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site/[subdomain]/privacy` | `src/app/site/[subdomain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site/[subdomain]/terms` | `src/app/site/[subdomain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/site/[subdomain]/videos` | `src/app/site/[subdomain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/site-domain/[domain]` | `src/app/site-domain/[domain]/page.tsx` | 2026-09-05 | `e0ad82cd7` | ðŸŸ¢ Fresh |
+| `/site-domain/[domain]/blog` | `src/app/site-domain/[domain]/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site-domain/[domain]/blog/[slug]` | `src/app/site-domain/[domain]/blog/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site-domain/[domain]/portal` | `src/app/site-domain/[domain]/portal/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site-domain/[domain]/privacy` | `src/app/site-domain/[domain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site-domain/[domain]/terms` | `src/app/site-domain/[domain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site-domain/[domain]/videos` | `src/app/site-domain/[domain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site-preview-frame` | `src/app/site-preview-frame/page.tsx` | 2026-09-01 | `792b40156` | ðŸŸ¢ Fresh |
+| `/site/[subdomain]` | `src/app/site/[subdomain]/page.tsx` | 2026-09-05 | `e0ad82cd7` | ðŸŸ¢ Fresh |
+| `/site/[subdomain]/blog` | `src/app/site/[subdomain]/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site/[subdomain]/blog/[slug]` | `src/app/site/[subdomain]/blog/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site/[subdomain]/portal` | `src/app/site/[subdomain]/portal/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site/[subdomain]/privacy` | `src/app/site/[subdomain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site/[subdomain]/terms` | `src/app/site/[subdomain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
+| `/site/[subdomain]/videos` | `src/app/site/[subdomain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | ðŸŸ¡ Stable (Aug 20-31) |
