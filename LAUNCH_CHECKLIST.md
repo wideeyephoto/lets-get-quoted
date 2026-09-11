@@ -25,7 +25,9 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
 
-## Contractor domains verification — 2026-09-09 to 2026-09-10
+## Contractor domains verification — 2026-09-09 to 2026-09-11
+
+- [ ] **Production Gmail quote acceptance (September 11):** Preparing the existing $0 test quote exposed HTTP 500 from the quick-contact editor writing nonexistent `jobs.updated_at`. The original recipient remained unchanged and nothing was sent. The candidate fixes all three quick-edit actions; seven regression checks and 18 focused checks passed. Release, the actual Gmail receipt and receiver authentication are pending in the [canary record](docs/contractor-domains-canary-2026-09-09.md#september-11-gmail-preparation-quick-edit-failure).
 
 - [x] **Verification audit and recovery fixes:** Real `blackholeart.com` quote received in Gmail with aligned SPF, DKIM, and DMARC PASS; configured Gmail Reply-To exercised. A real provider rejection recovered once through the platform sender and arrived in Gmail. Fixed paused-enrollment management, unsafe provider-domain adoption, disconnect recovery, and cleanup failure reporting. [PR #64](https://github.com/wideeyephoto/lets-get-quoted/pull/64) was released as `dpl_955shMPfprmxsadkAEui6PqeaKC9`, SHA `18a412404d`; subsequent releases are recorded below. Full CI passed 14,590 tests and the production build. See [current release evidence](docs/contractor-domains-canary-2026-09-09.md).
 - [x] **Website production observations:** Valid TLS on the existing website; deployed watcher has 96 successful scheduled runs in 24 hours. Actual release helper removed a disposable binding from the production Vercel project, confirmed absent afterward. Runs checked zero pending domains; the provider cleanup used CLI authorization.
