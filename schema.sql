@@ -38391,6 +38391,20 @@ create policy "office_users_write_marketing_tracking_links"
 grant select, insert, update, delete on public.marketing_tracking_links to authenticated;
 revoke all on public.marketing_tracking_links from anon, public;
 
+-- FK-covering indexes for inventory, custody log, and insurance claims tables
+-- (required by Supabase security advisor: every FK column must lead an index)
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_assigned_crew ON public.inventory_tools(assigned_crew_id) WHERE assigned_crew_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_assigned_job ON public.inventory_tools(assigned_job_id) WHERE assigned_job_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_location_fk ON public.inventory_tools(location_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_primary_driver ON public.inventory_vehicles(primary_driver_id) WHERE primary_driver_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_items_location_fk ON public.inventory_stock_items(location_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_transfers_item ON public.inventory_stock_transfers(item_id);
+create index if not exists idx_inv_tool_custody_tool on public.inventory_tool_custody_log(tool_id);
+create index if not exists idx_inv_tool_custody_crew on public.inventory_tool_custody_log(crew_id);
+create index if not exists idx_inv_tool_custody_job on public.inventory_tool_custody_log(job_id) where job_id is not null;
+create index if not exists idx_insurance_claims_client_id on public.insurance_claims(client_id);
+create index if not exists idx_insurance_claims_job_id on public.insurance_claims(job_id);
+
 commit;
 
 
