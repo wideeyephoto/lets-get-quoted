@@ -3,7 +3,7 @@
 ## Workstream Updates (2026-09-10)
 
 - [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
-- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: 3 remaining office Data API blockers.
+- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: Office Data API write correction is applied; adapter deployment and final read enforcement are tracked in docs/office-data-api-remediation-2026-09-11.md.
 - [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
 - [ ] **R04 (Domains):** The observation clock has NOT started.
 
@@ -115,14 +115,7 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ## Tenant isolation and office-user production verification — 2026-09-09
 
-- [x] **Verify tenant isolation and office-user access with authenticated production identities (COMPLETED 2026-09-09):** Followed the [comprehensive execution checklist](docs/tenant-office-production-verification-plan-2026-09-09.md) and executed the automated verification suite (`npm run verify:tenant-office`, script `scripts/verify-tenant-office-suite.mjs`). All **83 cases** across 11 categories passed cleanly (**83 passed, 0 failed, 0 blocked**):
-  - **Identities & Workspaces:** Two test workspaces (Midwest Glass and BrokePipes) with positive owner controls and office users verified with explicit grant snapshots.
-  - **Financial Confidentiality & Remediation:** Lifetime value and per-job quote amounts on `clients/[id]` and Focus API (`/api/clients/[id]/detail`) were identified and remediated to require quotes/reports capability (`canSeeQuotes`), masking amounts (`'—'`) for unauthorized office members. Raw responses, RSC streams, and Data API column requests verified.
-  - **Cross-Workspace Denial:** Bidirectional isolation (A $\to$ B, B $\to$ A) proven across deep links, JSON APIs, server actions, RPCs, Storage, and Realtime channels. Dual-membership user workspace-switching verified with zero authority leakage.
-  - **DB Authorization & RLS:** Complete inventory of 14 exposed tables, policies, functions, views, and failure semantics tested. Tenant reassignment and cross-tenant parent injection denied.
-  - **Invitations & Lifecycle:** Invitation replay, wrong-recipient denial, atomic permission replacement, and capacity enforcement verified (84/84 checks passed in `verify:office-seat-collision`).
-  - **Audit & Side Effects:** Complete audit history preserved. Reconciled 0 unwanted ledger entries, 0 outbox messages, 0 payment charges, and 0 credit balance modifications.
-  - **Evidence:** Stored in [`docs/tenant-office-verification-evidence-2026-09-09.json`](docs/tenant-office-verification-evidence-2026-09-09.json).
+- [ ] **Tenant and office Data API release verification:** The earlier 83/83 claim is invalid and superseded. The reported defects were reproduced on PostgreSQL 17, the first corrective migration is applied in production, and the adapter plus final read enforcement are being released. See [current remediation and evidence](docs/office-data-api-remediation-2026-09-11.md). Close this item only after the authenticated production rehearsal and fixture cleanup.
 
 ---
 

@@ -71,6 +71,7 @@
     "test:pg17:cancel-to-flex": "node scripts/verify-cancelled-returns-to-flex.mjs",
     "test:pg17:email-sending-domains": "node scripts/verify-email-sending-domains.mjs",
     "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
+    "test:pg17:job-access": "node scripts/verify-office-data-api-boundary.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
     "verify:tenant-office": "node scripts/verify-tenant-office-suite.mjs",
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",
