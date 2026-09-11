@@ -75,7 +75,15 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   recording, employee-monitoring sufficiency, state privacy rights, or ADA posture. Named as
   "Lawyer, not an agent" in `docs/unrun-prelaunch-audits-2026-08-31.md:311` and never tracked. Close
   with dispositions recorded per question in `docs/legal-review-2026-09.md`. Longest lead time on
-  this list — engage now.
+  this list — engage now. **Brief assembled 2026-09-11:**
+  [legal-review-brief-2026-09.md](docs/legal-review-brief-2026-09.md), nine sourced questions ready
+  to send. Reading the code to write it surfaced three items nothing had tracked before: the lien
+  NOI/waiver generators take no state parameter at all (one template for 50 statutory regimes); the
+  in-product "Surcharge Lab" tells contractors surcharging is "compliant nationwide" and claims an
+  automatic fee disclosure that does not exist anywhere in the codebase, while its own "Apply
+  Policy" button persists nothing; and the FTC substantiation register quotes an AI-call disclosure
+  sentence that no longer matches what `src/lib/voice/provider.ts` actually plays. Engaging counsel
+  and sending the brief remain operator steps.
 - [ ] **Post-cutover watch window:** §4 covers flag orderings and go-live §6 covers preparation
   ownership; nothing defines hours 0–72. Close with `docs/runbooks/launch-watch-window.md` carrying
   numeric thresholds for failed payments, dead-letter depth, SMS stalls, cron failures, 5xx and AI
