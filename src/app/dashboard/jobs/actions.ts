@@ -289,7 +289,6 @@ export async function updateJobClientNameAction(jobId: string, clientName: strin
 
   const updated = await patchJob(supabase, accountId, jobId, {
     client_name: trimmed,
-    updated_at: new Date().toISOString(),
   });
 
   await createJobFeedEvent(supabase, accountId, jobId, {
@@ -313,7 +312,6 @@ export async function updateJobContactAction(jobId: string, clientPhone: string 
   const updated = await patchJob(supabase, accountId, jobId, {
     client_phone: phone,
     client_email: email,
-    updated_at: new Date().toISOString(),
   });
 
   await createJobFeedEvent(supabase, accountId, jobId, {
@@ -335,7 +333,6 @@ export async function updateJobAddressAction(jobId: string, address: string | nu
 
   const updated = await patchJob(supabase, accountId, jobId, {
     address: normalized,
-    updated_at: new Date().toISOString(),
   });
 
   await createJobFeedEvent(supabase, accountId, jobId, {

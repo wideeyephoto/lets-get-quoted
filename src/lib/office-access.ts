@@ -224,3 +224,20 @@ export function officeCanOpen(pathname: string, capabilities: Iterable<string>):
 export function officeLandingPath(capabilities: Iterable<string>): string {
   return officeRoutesFor(capabilities)[0]?.href ?? OFFICE_NO_ACCESS_PATH;
 }
+
+/**
+ * Resolve denials for the owner dashboard and the client/job read pages before
+ * the dashboard loading boundary streams. Next 15's streamed redirect can raise
+ * React #310 during hydration. Page guards still recheck on every navigation.
+ * Match record UUIDs explicitly: nested invoices, statements and import pages
+ * have different capabilities and must continue to use their own guards.
+ */
+export function officeReadPageRedirect(pathname: string | null, capabilities: Iterable<string>): string | null {
+  const held = new Set(capabilities);
+  if (pathname === '/dashboard') return officeLandingPath(held);
+  if (!pathname) return null;
+  const recordRead = /^\/dashboard\/(?:clients|jobs)$/.test(pathname)
+    || /^\/dashboard\/(?:clients|jobs)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pathname)
+    || /^\/dashboard\/jobs\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/quote$/i.test(pathname);
+  return recordRead && !officeCanOpen(pathname, held) ? officeLandingPath(held) : null;
+}

@@ -3,7 +3,7 @@
  * marked fixture data; credentials, cookies, magic links and tokens never enter evidence.
  */
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
 import { chromium } from 'playwright';
@@ -17,6 +17,9 @@ assert.equal(m.accounts.length,2,'Two prepared fixture accounts required');
 assert(!m.cleanedAt,'Prepare new fixtures; this audit was already cleaned up');
 const evidence={ startedAt:new Date().toISOString(), origin, project, fixtureMarker:m.marker,
   release:{commit:options['--commit'],deployment:options['--deployment'],workingTree:local},
+  sourceHashes:Object.fromEntries(['src/lib/job-access-fetch.ts','src/lib/supabase.ts','src/lib/supabase-server.ts',
+    'migrations/20260911154456_repair_office_job_write_boundary.sql','migrations/20260911154457_enforce_office_job_read_boundary.sql']
+    .map(file=>[file,createHash('sha256').update(readFileSync(resolve(file))).digest('hex')])),
   method:'Chromium magic-link callback; Auth-issued session cookies and their access tokens; no mocked responses or SQL role impersonation',
   cases:[],grantTransitions:[],actors:Object.fromEntries(Object.entries(m.actors).map(([k,v])=>[k,v.id])) };
 const output=resolve(options['--evidence'] || 'docs/tenant-office-browser-evidence-2026-09-09.json');
@@ -74,6 +77,21 @@ async function page(actor,path,file){
     await p.waitForLoadState('load');
     await p.locator('main[aria-busy="true"]').waitFor({state:'hidden'});
   }
+  // Text can arrive before hydration and a CSS entrance transition settles.
+  // Require a visible heading through all its ancestors before scoring/capture.
+  await p.waitForFunction(() => {
+    const heading=document.querySelector('main h1, h1') || document.querySelector('main');
+    // A legitimate denied/not-found page may render only a paragraph.
+    if (!heading?.textContent?.trim() || heading.getBoundingClientRect().height === 0 || document.querySelector('main[aria-busy="true"]')) return false;
+    for(let node=heading;node;node=node.parentElement) {
+      const style=getComputedStyle(node);
+      if(style.display==='none'||style.visibility==='hidden'||Number(style.opacity)<0.99)return false;
+    }
+    return true;
+  });
+  if(await p.locator('h1').count()) await p.locator('h1').first().click({trial:true});
+  assert.equal(await p.locator('[data-nextjs-dialog],.vite-error-overlay').count(),0);
+  assert.deepEqual(sessions[actor].errors.slice(errorsStart),[]);
   const body=await p.locator('body').innerText(); const html=await p.content();
   // Finish finite entrance animations so evidence captures the rendered page,
   // rather than a transparent initial frame after its text is already present.
@@ -100,6 +118,15 @@ try{
   browser=await chromium.launch({headless:true});
   for(const label of ['ownerA','ownerB','officeA']) await check('SIGNIN-'+label,`Real browser sign-in and identity check: ${label}`,()=>signin(label));
   assert(Object.keys(sessions).length===3,'All positive-control sessions required');
+  await check('SERVICE-ROLE-PRICE','Real admin client changes the marked price and the database confirms it',async()=>{
+    const before=await exactJob();
+    try {
+      const {data,error}=await admin.from('jobs').update({quoted_amount:a.amount+2}).eq('id',a.job).eq('test_marker',m.marker).select('id,quoted_amount').single();
+      assert.ifError(error);assert.equal(data.quoted_amount,a.amount+2);
+      assert.equal(Number((await exactJob()).quoted_amount),a.amount+2);
+      return {id:data.id,quoted_amount:data.quoted_amount};
+    } finally {await db.query('update jobs set quoted_amount=$2 where id=$1 and test_marker=$3',[a.job,before.quoted_amount,m.marker]);}
+  });
   for(const [label,own,other] of [['ownerA',a,b],['ownerB',b,a]]){
     await check('OWNER-'+label,'Owner retrieves exact own fixture and nonzero quote',async()=>{
       const r=await rest(label,`job_access?id=eq.${own.job}&select=id,account_id,quoted_amount,quote_items`);
@@ -118,6 +145,14 @@ try{
   });
   await check('CLIENT-ONLY-JOB-DENIAL','Client-only office cannot open job page',async()=>{const r=await page('officeA',`/dashboard/jobs/${a.job}`);assert(!r.body.includes(`Operational scope A`));assert(r.path!==`/dashboard/jobs/${a.job}` || r.status===404);return {path:r.path,status:r.status};});
   await grant(['clients.read','jobs.read']);
+  await check('PERMIT-SESSION-GETJOB','Owner and restricted office getJob-backed permit history remains available',async()=>{
+    const rows=[];
+    for (const actor of ['ownerA','officeA']) {
+      const r=await api(actor,`/api/jobs/${a.job}/permits/history`);
+      assert.equal(r.status,200);noMoney(r.data);rows.push({actor,...r});
+    }
+    return rows;
+  });
   await check('CLIENT-DETAIL-PAGE','Reader sees useful client detail with money redacted',async()=>{
     const r=await page('officeA',`/dashboard/clients/${a.client}`,'office-client-detail.png');assert(r.body.includes(a.clientName));noMoney(r.html);return {path:r.path,status:r.status,clientVisible:true,quoteAbsent:true};
   });
@@ -199,7 +234,7 @@ try{
   await check('WRITER-FOREIGN','Operational writer cannot update B job or move A job to B',async()=>{
     const before=await exactJob();const foreign=await rest('officeA',`jobs?id=eq.${b.job}&select=id,scope`,{method:'PATCH',body:{scope:'forbidden foreign edit'}});
     const move=await rest('officeA',`jobs?id=eq.${a.job}&select=id,account_id`,{method:'PATCH',body:{account_id:b.id}});
-    assert.equal(foreign.status,200);assert.deepEqual(foreign.data,[]);assert.equal(move.data.message,'job_workspace_cannot_change');
+    assert.equal(foreign.status,200);assert.deepEqual(foreign.data,[]);assert.equal(move.status,403);assert.equal(move.data.code,'42501');assert.equal(move.data.message,'job_identity_cannot_change');
     assert.deepEqual(await exactJob(),before);assert.equal((await db.query('select scope from jobs where id=$1',[b.job])).rows[0].scope,'Operational scope B');return {foreign,move};
   });
   await check('WRITER-FOREIGN-PARENT','Writer cannot attach A job to foreign B client',async()=>{
@@ -244,6 +279,14 @@ try{
       assert.equal(r.data.code,'quoted_amount' in change?'42501':'23503');assert.deepEqual(await exactJob(),before);results.push(r);
     }
     return results;
+  });
+  await check('JOB-DELETE-FINANCE','Operational writer cannot delete and recreate a priced job',async()=>{
+    const before=await exactJob();const rows=[];
+    for (const table of ['jobs','job_access']) {
+      const r=await rest('officeA',`${table}?id=eq.${a.job}&select=id`,{method:'DELETE'});
+      assert.equal(r.status,403);assert.equal(r.data.code,'42501');assert.deepEqual(await exactJob(),before);rows.push(r);
+    }
+    return rows;
   });
   await grant(['clients.read','jobs.read']);
   await check('DUAL-SETUP','Fixture actor acquires legitimate B ownership for workspace switch test',async()=>{

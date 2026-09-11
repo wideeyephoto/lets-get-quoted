@@ -2126,7 +2126,20 @@ create policy site_owner on sites for all using ( is_owner(account_id) );
 -- assigned job and a trigger had to claw it back. crew_set_job_status() (above)
 -- is the replacement: one function, the two transitions the field app offers,
 -- assignment checked in the database.
-create policy job_owner       on jobs for all    using ( is_owner(account_id) );
+-- Match the capability-aware policies installed by the office core-work migrations.
+drop policy if exists job_owner_read on public.jobs;
+drop policy if exists job_owner_insert on public.jobs;
+drop policy if exists job_owner_update on public.jobs;
+drop policy if exists job_owner_delete on public.jobs;
+create policy job_owner_read on public.jobs
+  for select using (public.office_can(account_id, 'jobs.read'));
+create policy job_owner_insert on public.jobs
+  for insert with check (public.office_can(account_id, 'jobs.write'));
+create policy job_owner_update on public.jobs
+  for update using (public.office_can(account_id, 'jobs.write'))
+  with check (public.office_can(account_id, 'jobs.write'));
+create policy job_owner_delete on public.jobs
+  for delete using (public.office_can(account_id, 'jobs.write'));
 create policy job_crew_read   on jobs for select using ( crew_on_job(id) );
 
 -- CREW_ASSIGNMENTS: owners manage; crew read only their OWN assignment rows
@@ -38679,11 +38692,10 @@ commit;
 create index if not exists admin_passkey_challenges_session_idx
   on public.admin_passkey_challenges(session_id);
 
--- Canonical mirror: 20260909212204_job_access_financial_boundary.sql
--- Additive first step: deploy the job_access client adapter before the separate
--- column-revocation migration. Keep jobs/FKs/publication identities unchanged.
-begin;
-set local lock_timeout = '5s';
+-- OFFICE DATA API BOUNDARY (2026-09-11)
+-- Phase 1: restore service-role writes, guard all financial mutations and add
+-- the session-compatible masking view. Deploy the adapter before phase 2.
+-- Replaces the incomplete 20260911000000 migration without editing its history.
 
 create schema if not exists private;
 revoke create on schema private from public, anon, authenticated;
@@ -38740,32 +38752,58 @@ grant select,insert,update,delete on public.job_access to authenticated,service_
 -- only at UI controls or the view would leave the original PATCH exploit open.
 create or replace function private.guard_job_protected_fields()
 returns trigger language plpgsql security invoker set search_path = '' as $$
-declare old_money jsonb; new_money jsonb;
+declare old_money jsonb; new_money jsonb; actor_account uuid;
   protected text[] := array['quoted_amount','quote_items','deposit_gate',
     'reschedule_discount_percent','reschedule_discount_note','reschedule_discount_agreed_at',
     'quote_signer_name','quote_signed_at','quote_signature_path','quote_signature_method'];
 begin
-  if auth.uid() is null then return new; end if;
-  if tg_op='UPDATE' and new.account_id is distinct from old.account_id then
-    raise exception 'job_workspace_cannot_change' using errcode='42501';
+  -- Trust the database role, never user-editable claims or a missing auth.uid().
+  -- SECURITY DEFINER RPCs retain request role=authenticated and still pass this guard.
+  if current_setting('role',true) = 'service_role'
+    or (current_setting('role',true) = 'none' and current_user in ('postgres','supabase_admin')) then
+    if tg_op='DELETE' then return old; end if;
+    return new;
   end if;
-  if public.office_can(new.account_id,'quotes.write') then return new; end if;
-  select jsonb_object_agg(key,value) into new_money from jsonb_each(to_jsonb(new)) where key=any(protected);
-  if tg_op='INSERT' then
+  if auth.uid() is null then raise exception 'job_actor_required' using errcode='42501'; end if;
+  if tg_op='UPDATE' and (new.account_id is distinct from old.account_id or new.id is distinct from old.id) then
+    raise exception 'job_identity_cannot_change' using errcode='42501';
+  end if;
+  actor_account := case when tg_op='DELETE' then old.account_id else new.account_id end;
+  if public.office_can(actor_account,'quotes.write') then
+    if tg_op='DELETE' then return old; end if;
+    return new;
+  end if;
+  if tg_op <> 'INSERT' then
+    select jsonb_object_agg(key,value) into old_money from jsonb_each(to_jsonb(old)) where key=any(protected);
+  end if;
+  if tg_op <> 'DELETE' then
+    select jsonb_object_agg(key,value) into new_money from jsonb_each(to_jsonb(new)) where key=any(protected);
+  end if;
+  if tg_op='UPDATE' and new_money is not distinct from old_money then return new; end if;
+  if tg_op='DELETE' then
+    if old.quoted_amount=0 and not exists (
+      select 1 from jsonb_each(old_money) where key<>'quoted_amount' and value<>'null'::jsonb
+    ) then return old; end if;
+  elsif tg_op='INSERT' then
     if new.quoted_amount=0 and not exists (
       select 1 from jsonb_each(new_money) where key<>'quoted_amount' and value<>'null'::jsonb
     ) then return new; end if;
-  else
-    select jsonb_object_agg(key,value) into old_money from jsonb_each(to_jsonb(old)) where key=any(protected);
-    if new_money is not distinct from old_money then return new; end if;
   end if;
   raise exception 'job_quote_write_required' using errcode='42501';
 end;
 $$;
 revoke all on function private.guard_job_protected_fields() from public,anon,authenticated;
 drop trigger if exists job_protected_fields_guard on public.jobs;
-create trigger job_protected_fields_guard before insert or update on public.jobs
+create trigger job_protected_fields_guard before insert or update or delete on public.jobs
 for each row execute function private.guard_job_protected_fields();
+
+-- Supersede the deployed UPDATE-only guard that rejects service-role writes.
+drop trigger if exists jobs_finance_guard_trigger on public.jobs;
+drop function if exists public.jobs_finance_guard();
+drop trigger if exists jobs_client_tenancy_guard_trigger on public.jobs;
+drop function if exists public.jobs_client_tenancy_guard();
+revoke truncate on public.jobs from public,anon,authenticated;
+grant select,insert,update,delete on public.jobs to service_role;
 
 -- DML on the permission-aware view stays SECURITY INVOKER. Base RLS and the
 -- quote guard remain the authority. UPDATE changes only fields distinct from
@@ -38809,25 +38847,26 @@ for each row execute function private.write_job_access();
 -- authorized caller changes a parent, creates a row, or uses ON CONFLICT UPDATE.
 create unique index if not exists clients_account_id_id_key on public.clients(account_id,id);
 create index if not exists jobs_account_id_client_id_idx on public.jobs(account_id,client_id);
-alter table public.jobs add constraint jobs_client_same_workspace_fkey
-  foreign key(account_id,client_id) references public.clients(account_id,id)
-  on delete set null (client_id) not valid;
-alter table public.jobs validate constraint jobs_client_same_workspace_fkey;
--- Retain the existing relationship name used by PostgREST hints, with exactly
--- one jobs-to-clients FK so embedding does not become ambiguous.
-alter table public.jobs drop constraint jobs_client_id_fkey;
-alter table public.jobs rename constraint jobs_client_same_workspace_fkey to jobs_client_id_fkey;
-
-notify pgrst,'reload schema';
-commit;
-
-
--- Canonical mirror: 20260909212423_revoke_raw_job_financial_reads.sql
+do $fk$
+begin
+  if not exists (
+    select 1 from pg_constraint where conrelid='public.jobs'::regclass
+      and conname='jobs_client_id_fkey' and contype='f'
+      and confrelid='public.clients'::regclass
+      and pg_get_constraintdef(oid) = 'FOREIGN KEY (account_id, client_id) REFERENCES clients(account_id, id) ON DELETE SET NULL (client_id)'
+  ) then
+    alter table public.jobs add constraint jobs_client_same_workspace_fkey
+      foreign key(account_id,client_id) references public.clients(account_id,id)
+      on delete set null (client_id) not valid;
+    alter table public.jobs validate constraint jobs_client_same_workspace_fkey;
+    alter table public.jobs drop constraint if exists jobs_client_id_fkey;
+    alter table public.jobs rename constraint jobs_client_same_workspace_fkey to jobs_client_id_fkey;
+  end if;
+end;
+$fk$;
 -- Final enforcement step, after application clients use public.job_access.
 -- Operational columns retain ordinary RLS; financial values are available only
 -- through the view's actor-checked private helper. New columns fail closed.
-begin;
-set local lock_timeout='5s';
 revoke select on public.jobs from public,anon,authenticated;
 do $grants$
 declare allowed text; restricted text;
@@ -38847,5 +38886,3 @@ begin
   end if;
 end;
 $grants$;
-notify pgrst,'reload schema';
-commit;
