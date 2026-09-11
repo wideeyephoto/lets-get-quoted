@@ -507,6 +507,7 @@ export type PlatformIncidentRow = {
   root_cause: string | null;
   resolution_summary: string | null;
   external_url: string | null;
+  published?: boolean;
 };
 
 export type ListIncidentsResult = {
@@ -526,7 +527,7 @@ export async function getIncidentsPaged(
   const { data, error, count } = await admin
     .from('platform_incidents')
     .select(
-      'id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url',
+      'id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url, published',
       { count: 'exact' },
     )
     .order('created_at', { ascending: false })
@@ -543,7 +544,7 @@ export async function getOpenIncidents(admin: SupabaseClient, opts?: SignalOptio
   const { data, error } = await admin
     .from('platform_incidents')
     .select(
-      'id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url',
+      'id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url, published',
     )
     .eq('kind', 'incident')
     .is('resolved_at', null)

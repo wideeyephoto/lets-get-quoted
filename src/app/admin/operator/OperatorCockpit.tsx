@@ -406,6 +406,7 @@ export default function OperatorCockpit({
           </p>
         </div>
         <div className={styles.headerControls}>
+          <Link className={styles.digestBtn} href="/admin/incidents#new-incident">Open a public incident</Link>
           <div className={`${styles.statusPill} ${isDegraded ? styles.degraded : ''}`}>
             <span className={styles.pulseDot} />
             {isDegraded ? 'SRE Issues Detected' : 'Autonomous Loops Active'}

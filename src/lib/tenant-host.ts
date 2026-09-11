@@ -134,6 +134,7 @@ const MARKETING_PATHS = [
   '/faq',
   '/help',
   '/security',
+  '/status',
   '/resources',
   '/changelog',
   '/contact',

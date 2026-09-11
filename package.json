@@ -76,6 +76,9 @@
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",
     "inspect:cron-health:strict": "node scripts/inspect-cron-health.mjs 90 --strict",
     "inspect:live-top-ups": "node scripts/inspect-live-top-up-prices.mjs",
+    "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
+    "test:incident-rehearsal": "node --test scripts/rehearse-incident-cycle.test.mjs",
+    "test:incident-policy": "node --test scripts/incident-public-boundary.test.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
     "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
   },

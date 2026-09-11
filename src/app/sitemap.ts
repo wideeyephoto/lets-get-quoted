@@ -104,6 +104,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/tools/leakage-calculator`, lastModified, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${origin}/faq`, lastModified, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${origin}/security`, lastModified, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${origin}/status`, changeFrequency: 'hourly', priority: 0.6 },
     { url: `${origin}/resources`, lastModified, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${origin}/changelog`, lastModified: '2026-08-26', changeFrequency: 'weekly', priority: 0.7 },
     { url: `${origin}/help`, lastModified: '2026-08-29', changeFrequency: 'weekly', priority: 0.8 },
