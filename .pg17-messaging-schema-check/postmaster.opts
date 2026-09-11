@@ -1,0 +1,1 @@
+C:/dev/CLAUDE CODE FOLDER/node_modules/@embedded-postgres/windows-x64/native/bin/postgres.exe "-D" "C:\dev\CLAUDE CODE FOLDER\.pg17-messaging-schema-check" "-p" "54359"
