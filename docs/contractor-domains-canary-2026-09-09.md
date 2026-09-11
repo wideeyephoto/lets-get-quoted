@@ -1,6 +1,6 @@
 # Contractor domains: Outlook, lifecycle, and canary record
 
-Updated September 10, 2026 at 14:44 UTC (September 10 in America/New_York). **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
+Updated September 11, 2026 at 12:48 UTC. **Seven-day observation started September 11, 2026 (Day 1).** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
 
 Current binding after the provider-loss drill: database **`ac8aff96-573a-4ec1-8cfa-25d48c551e05`**, Resend **`e36d84f4-13e1-4c52-a1ef-3b53514945ec`**, verified through LGQ at **12:50:48.309 UTC**. Both September 10 normal deliberate test allowances are used: Outlook quote and Gmail owner alert. The routine 12:00 UTC daily digest is separate ordinary scheduled mail. **Brett explicitly approved saving the certificate-fixture CNAME and one extra website-connected Gmail alert; that exception was used at 13:30 UTC. No further deliberate test messages are authorized today.**
 
@@ -201,7 +201,7 @@ Production-built deployment **`dpl_4r5THCtG18aDrULMbbLUrLLbvdRP`**, `lets-get-qu
 
 Read-only post-drill checks at **13:07–13:08 UTC** confirmed the replacement provider and all three DNS records verified, the matching production row verified with `last_checked_at=12:51:56.201 UTC`, zero open notice incidents, zero unresolved Resend callbacks, and zero failed cron runs since the PR #70 merge. The September 10 deliberate email budget remains fully used: one Outlook quote and one Gmail owner alert. This release triggered no further deliberate email, DNS change, or provider lifecycle mutation. The received alert's old link/footer remain historical evidence; the new copy is covered by tests and the deployed direct-link check, not a second inbox receipt.
 
-The existing hourly follow-up remains responsible for the outstanding work under its original recipient limits. Next delivery drills require a new America/New_York daily allowance. The website fixture still needs the owner's Squarespace passkey approval before its DNS can be published, followed by scheduled certificate promotion/owner notice and deployed disposable-account deletion. F03's actual product fallback receipt, F07's failed-notice escalation, the other lifecycle/rollback gates, and the seven-day observation remain open. **The observation clock has not started.**
+The existing hourly follow-up remains responsible for the outstanding work under its original recipient limits. Next delivery drills require a new America/New_York daily allowance. The website fixture still needs the owner's Squarespace passkey approval before its DNS can be published, followed by scheduled certificate promotion/owner notice and deployed disposable-account deletion. F03's actual product fallback receipt, F07's failed-notice escalation, the other lifecycle/rollback gates, and the seven-day observation remain open. **The observation clock started September 11, 2026.**
 
 ## Remaining lifecycle and canary work
 
@@ -219,4 +219,10 @@ The canary needs at least seven elapsed days and seven consecutive successful sc
 
 | Day | Scheduled run / UTC | Domain checked and fresh | Sends / delivery / replies | Outcome |
 | --- | --- | --- | --- | --- |
-| 1–7 | Pending activation and lifecycle recovery | Not yet observed | Initial transport/product evidence above | Observation clock not started |
+| 1 (Sep 11) | `59b08397-67fb-420f-b856-6765d8d3a459` 06:23:20–06:23:22 UTC | checked=1, errors=0, orphans=0; `last_checked_at`=06:23:20 UTC; provider DKIM/MX/SPF all verified | Prior transport evidence (Outlook J-1004, Gmail owner alert); no new deliberate send today | ✅ PASS |
+| 2 (Sep 12) | Pending | Pending | Pending | Pending |
+| 3 (Sep 13) | Pending | Pending | Pending | Pending |
+| 4 (Sep 14) | Pending | Pending | Pending | Pending |
+| 5 (Sep 15) | Pending | Pending | Pending | Pending |
+| 6 (Sep 16) | Pending | Pending | Pending | Pending |
+| 7 (Sep 17) | Pending | Pending | Pending | Pending |

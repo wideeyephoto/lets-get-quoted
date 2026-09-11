@@ -3,7 +3,7 @@
 ## Hard Blockers (must resolve before launch)
 1. Two unapplied database migrations: `20260910104058_marketing_flow_repair.sql` and `20260910121506_overage_recovery_guards.sql` — production worker code calls RPCs that don't exist yet
 2. Three office Data API security vulnerabilities (FINANCE-REST, WRITER-FINANCE, WRITER-FOREIGN-PARENT) — PostgREST returns financial data the UI redacts, and permits cross-tenant writes
-3. R04 domain observation clock — requires 7 consecutive healthy days of scheduled domain reconciliation runs, clock has NOT started
+3. R04 domain observation clock — Day 1 of 7 started September 11; earliest completion September 17. Run `59b08397` passed.
 4. Webhook routing formal sign-off — preview Stripe webhook `we_1U5dHvPqTgiW6iRM8Si0gH56` was pointed at production DB, leaked 185 rows. Disabled but needs operator sign-off
 5. Two failing PG17 test suites: `test:pg17:late-success` and `test:pg17:messaging-schema`
 
