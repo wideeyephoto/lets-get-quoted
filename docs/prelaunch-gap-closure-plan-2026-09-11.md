@@ -364,7 +364,7 @@ shorter than the incident-detection lag, post-incident analysis is impossible by
 construction. Record the number and state it in the DR posture doc.
 
 **G10 — Ads conversion actually recording.** The checklist tracks the cross-device attribution
-gap (lines 317, 406) but never whether the tag fires at all. Run one real end-to-end
+gap (lines 368, 457) but never whether the tag fires at all. Run one real end-to-end
 conversion and confirm it appears in Google Ads and Meta. Do this before spend, not after.
 
 ---
@@ -437,7 +437,7 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   SMS pumping fraud bills to this account. Close with recorded console values.
 - [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
   figure stated in the DR posture doc.
-- [ ] **Ads conversion recording:** attribution gap is tracked (lines 317, 406) but not whether the
+- [ ] **Ads conversion recording:** attribution gap is tracked (lines 368, 457) but not whether the
   tag fires at all. Close with one real end-to-end conversion visible in Google Ads and Meta, before
   spend.
 ```

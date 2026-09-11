@@ -2,6 +2,14 @@
 
 ## Workstream Updates (2026-09-11)
 
+- [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
+- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: The separate office Data API gate is closed with production evidence in docs/office-data-api-remediation-2026-09-11.md; Storage capacity/concurrency acceptance remains separate.
+- [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
+- [ ] **R04 (Domains):** Observation started September 11, 2026. **Day 1 of 7** — run `59b08397` passed (checked=1, errors=0). Completes September 17 at earliest.
+- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI.
+
+This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
+
 ## Coverage gaps opened — 2026-09-11
 
 Ten requirements no prior item covered. Verified absent against this checklist at
@@ -52,18 +60,9 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   SMS pumping fraud bills to this account. Close with recorded console values.
 - [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
   figure stated in the DR posture doc.
-- [ ] **Ads conversion recording:** attribution gap is tracked (lines 317, 406) but not whether the
+- [ ] **Ads conversion recording:** attribution gap is tracked (lines 368, 457) but not whether the
   tag fires at all. Close with one real end-to-end conversion visible in Google Ads and Meta, before
   spend.
-
-
-- [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
-- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: The separate office Data API gate is closed with production evidence in docs/office-data-api-remediation-2026-09-11.md; Storage capacity/concurrency acceptance remains separate.
-- [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
-- [ ] **R04 (Domains):** Observation started September 11, 2026. **Day 1 of 7** — run `59b08397` passed (checked=1, errors=0). Completes September 17 at earliest.
-- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI.
-
-This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
 ## Branch review and integration — September 10, 2026
 
