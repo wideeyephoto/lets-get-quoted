@@ -14,6 +14,25 @@ export type IncidentSeverity = 'info' | 'warning' | 'critical';
 export const INCIDENT_KINDS: IncidentKind[] = ['release', 'incident'];
 export const INCIDENT_SEVERITIES: IncidentSeverity[] = ['info', 'warning', 'critical'];
 
+/** The public database column grant deliberately excludes internal staff fields. */
+export const PUBLIC_INCIDENT_COLUMNS = 'id,kind,title,description,severity,started_at,resolved_at,affected_services,impact_summary,resolution_summary,published,published_at,updated_at';
+
+export interface PublicIncident {
+  id: string;
+  kind: IncidentKind;
+  title: string;
+  description: string | null;
+  severity: IncidentSeverity;
+  started_at: string;
+  resolved_at: string | null;
+  affected_services: string[];
+  impact_summary: string | null;
+  resolution_summary: string | null;
+  published: boolean;
+  published_at: string | null;
+  updated_at: string;
+}
+
 export function isIncidentKind(value: string | null | undefined): value is IncidentKind {
   return !!value && (INCIDENT_KINDS as string[]).includes(value);
 }

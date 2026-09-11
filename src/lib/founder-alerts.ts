@@ -260,6 +260,7 @@ export async function sendOperationalEmergencyAlert(
         ${tableRows}
       </table>
       ${detailsHtml}
+      <p style="margin:16px 0"><a href="${APP_ORIGIN}/admin/incidents#new-incident">Open a public incident</a> after confirming customer impact.</p>
     `;
 
     const result = await resend.emails.send({

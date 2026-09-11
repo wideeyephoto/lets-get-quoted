@@ -37,6 +37,11 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Public incident database boundary and rehearsal checks
+        run: |
+          npm run test:incident-policy
+          npm run test:incident-rehearsal
+
       - name: Account closure domain database checks
         run: npm run test:pg17:closure-domains
 

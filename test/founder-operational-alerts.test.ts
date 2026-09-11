@@ -56,6 +56,8 @@ describe('sendOperationalEmergencyAlert', () => {
       expect(result.recipient).toBe('founder@letsgetquoted.com');
       expect(result.dispatched).toBe(true);
       expect(result.providerId).toBe('provider-email');
+      expect(send.mock.calls.at(-1)?.[0].html).toContain('/admin/incidents#new-incident');
+      expect(send.mock.calls.at(-1)?.[0].html).toContain('Open a public incident');
     }
   });
 

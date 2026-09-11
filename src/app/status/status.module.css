@@ -1,0 +1,23 @@
+.page { max-width: 900px; margin: 0 auto; padding: 64px 24px 88px; color: var(--text, #e8edf3); }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 12px; font-weight: 700; color: var(--muted, #82909e); }
+.page h1 { font-size: clamp(32px, 5vw, 48px); margin: 8px 0 12px; letter-spacing: -.04em; }
+.intro { color: var(--muted, #82909e); max-width: 620px; line-height: 1.7; }
+.summary { display: flex; align-items: flex-start; gap: 18px; margin: 32px 0 44px; padding: 24px; border: 1px solid; border-radius: 16px; }
+.summary svg { flex-shrink: 0; margin-top: 3px; }
+.summary h2 { font-size: 22px; margin: 0 0 8px; }
+.summary p { margin: 0; line-height: 1.6; }
+.clear { border-color: #2e9b72; background: #16805712; }
+.active { border-color: #d18737; background: #d1873712; }
+.unknown { border-color: #8795a5; background: #8795a512; }
+.section { margin-top: 34px; }
+.section h2 { font-size: 23px; margin-bottom: 18px; }
+.incident { padding: 24px; border: 1px solid var(--line, #35404c); border-radius: 14px; margin-bottom: 16px; }
+.incident header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.incident h3 { margin: 0; font-size: 19px; overflow-wrap: anywhere; }
+.badge { font-size: 12px; border: 1px solid var(--line, #35404c); border-radius: 20px; padding: 4px 10px; text-transform: capitalize; }
+.copy { line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.meta { font-size: 13px; color: var(--muted, #82909e); line-height: 1.8; }
+.resolution { border-top: 1px solid var(--line, #35404c); margin-top: 20px; padding-top: 16px; }
+.resolution h4 { margin: 0; font-size: 14px; }
+.page a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 520px) { .page { padding: 36px 18px 60px; } .summary, .incident { padding: 18px; } }

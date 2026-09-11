@@ -12,6 +12,7 @@ import {
 import styles from '../admin.module.css';
 import { logIncidentAction } from './actions';
 import ResolveIncidentButton from './ResolveIncidentButton';
+import IncidentPublicationControls from './IncidentPublicationControls';
 
 /**
  * Releases and incidents.
@@ -30,6 +31,9 @@ export const metadata = { title: 'Incidents' };
 const DONE: Record<string, string> = {
   logged: 'Logged. It is on the Command Center now.',
   resolved: 'Marked resolved.',
+  published: 'Published to the public status page.',
+  unpublished: 'Removed from the public status page.',
+  updated: 'Public update saved.',
 };
 const ERRORS: Record<string, string> = {
   title: 'Give it a title — that is what everyone reads first.',
@@ -38,6 +42,7 @@ const ERRORS: Record<string, string> = {
   failed: 'Could not save that. Try again in a moment.',
   resolution: 'Add a short resolution summary before closing the incident.',
   url: 'Use a complete http or https URL for the external incident link.',
+  public_copy: 'Add a public update or customer impact summary before publishing.',
 };
 
 function fmt(v: string | null): string {
@@ -84,8 +89,8 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
         <p className={styles.eyebrow}>Operations</p>
         <h1 className={styles.title}>Releases &amp; incidents</h1>
         <p className={styles.lead}>
-          Hand-written, on purpose — there is no deploy tracker or incident system wired up yet. What is here is what
-          somebody took the trouble to record, and the Command Center shows the most recent.
+          Record incidents, publish customer updates, and resolve them after recovery.
+          Drafts stay internal until you publish them. <Link href="/status">View public status →</Link>
         </p>
       </header>
 
@@ -138,12 +143,13 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                         <td>{fmt(i.started_at)}</td>
                         <td>{i.kind}</td>
                         <td>
-                          {i.title}
+                          {i.title} <span className={styles.pill}>{i.published ? 'Published' : 'Draft'}</span>
                           {i.description ? <div className={styles.muted} style={{ fontSize: '.8rem' }}>{i.description}</div> : null}
                           {i.impact_summary ? <div style={{ fontSize: '.78rem' }}><strong>Impact:</strong> {i.impact_summary}</div> : null}
                           {i.affected_services.length ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>{i.affected_services.join(', ')}</div> : null}
                           {i.resolution_summary ? <div style={{ fontSize: '.78rem' }}><strong>Resolution:</strong> {i.resolution_summary}</div> : null}
                           {i.external_url ? <div><a className={styles.rowLink} href={i.external_url} target="_blank" rel="noreferrer">Deploy / incident link →</a></div> : null}
+                          {mayManage ? <IncidentPublicationControls incident={i} /> : null}
                         </td>
                         <td>
                           <span className={`${styles.pill} ${i.severity === 'critical' ? styles.bad : i.severity === 'warning' ? styles.warn : styles.neutral}`}>
@@ -170,7 +176,7 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
         </div>
 
         <div>
-          <section className={styles.panel}>
+          <section className={styles.panel} id="new-incident">
             <h2 className={styles.panelTitle}>Log one</h2>
             {!mayManage ? (
               <p className={styles.muted} style={{ fontSize: '.82rem' }}>
@@ -187,7 +193,7 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                 {INCIDENT_KINDS.map((k) => `${k}: ${KIND_HELP[k]}`).join(' · ')}
               </p>
 
-              <label htmlFor="title">Title</label>
+              <label htmlFor="title">Public title</label>
               <input id="title" name="title" className={styles.input} maxLength={200} placeholder="Checkout failing for Connect accounts" />
 
               <label htmlFor="severity">Severity</label>
@@ -207,7 +213,7 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                   once it is understood, not while it is burning. */}
               <input id="started_at" name="started_at" type="datetime-local" className={styles.input} />
 
-              <label htmlFor="description">What happened</label>
+              <label htmlFor="description">Public update</label>
               <textarea id="description" name="description" className={styles.input} rows={4} maxLength={4000} placeholder="What broke, who it hit, what was done." />
 
               <label htmlFor="impact_summary">Customer impact</label>
@@ -221,6 +227,10 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
 
               <label htmlFor="external_url">Deploy, status, or incident URL (optional)</label>
               <input id="external_url" name="external_url" className={styles.input} type="url" placeholder="https://…" />
+
+              <p className={styles.muted}>Title, update, impact, affected services, severity, times, and resolution become public when published. Owner, creator, root cause, and external URL remain internal.</p>
+              <label><input type="checkbox" name="published" value="true" /> Publish this incident to the public status page</label>
+              <p className={styles.muted}>Publish customer-impacting warnings and critical incidents within 15 minutes of confirming impact. Add an update at least every 30 minutes until recovery.</p>
 
               <button type="submit" className="btn primary">Log it</button>
             </form>
