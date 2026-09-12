@@ -84,7 +84,8 @@
     "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
     "test:incident-rehearsal": "node --test scripts/rehearse-incident-cycle.test.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
-    "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
+    "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs",
+    "test:perf": "lhci autorun"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
@@ -113,6 +114,7 @@
     "@iconify-json/lucide": "^1.2.120",
     "@iconify-json/simple-icons": "^1.2.93",
     "@iconify/utils": "^3.1.4",
+    "@lhci/cli": "^0.15.1",
     "@types/google.maps": "^3.65.2",
     "@types/node": "^22.10.1",
     "@types/pdfkit": "^0.17.6",
