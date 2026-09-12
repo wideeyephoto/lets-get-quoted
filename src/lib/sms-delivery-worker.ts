@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/auth';
 import { quoteFollowupDeliveryEligibility } from '@/lib/quote-followup-delivery';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import { lgqSmsDeliveryHold } from '@/lib/sms-brand';
+import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
 import {
   outboundSmsSuppression,
   sendProviderMessage,
@@ -467,6 +468,17 @@ export async function runSmsDeliveryBatch(
       await store.defer(claim, contentHold, 86_400);
       deferredCount += 1;
       continue;
+    }
+
+    if (['customer_message', 'payment_message'].includes(claim.billingCategory)) {
+      const tz = resolveRecipientTimeZone({ phone: claim.phoneNumber });
+      const check = getTcpaCompliantSendTime(new Date(), tz);
+      if (check.isDelayed) {
+        const delaySeconds = Math.max(1, Math.floor((check.sendAt.getTime() - Date.now()) / 1000));
+        await store.defer(claim, 'sms_quiet_hours', delaySeconds);
+        deferredCount += 1;
+        continue;
+      }
     }
 
     let requestStarted = false;

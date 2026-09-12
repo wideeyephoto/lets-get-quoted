@@ -79,6 +79,23 @@ export async function POST(request: Request) {
         p_sms_event_id: ingressResult.smsEventId,
       });
       if (error) throw new Error(`SMS lead history unavailable (${error.code || 'unknown'}).`);
+
+      if (status.providerErrorCode === '21610') {
+        const { data: event } = await admin
+          .from('sms_events')
+          .select('account_id, phone_number')
+          .eq('id', ingressResult.smsEventId)
+          .single();
+        
+        if (event) {
+          await admin.from('sms_consent').update({
+            status: 'opted_out',
+            opted_out_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            source: 'carrier_21610'
+          }).eq('account_id', event.account_id).eq('phone_number', event.phone_number);
+        }
+      }
     }
   } catch (error) {
     console.error('SMS status webhook handler threw:', error);

@@ -10,6 +10,11 @@ import {
   getCrewSmsDisclosureHash,
 } from '@/lib/crew-sms-disclosure';
 import {
+  CUSTOMER_SMS_DISCLOSURE_VERSION,
+  CUSTOMER_SMS_FULL_DISCLOSURE,
+  getCustomerSmsDisclosureHash,
+} from '@/lib/customer-sms-disclosure';
+import {
   adWalletRefillText,
   appointmentReminderText,
   arrivalTimeChangedText,
@@ -926,6 +931,18 @@ export async function recordSmsConsent(accountId: string, phone: string, source 
           evidence_source: source,
           established_at: now,
         }, { onConflict: 'account_id,phone_number,consent_scope', ignoreDuplicates: true });
+
+      await admin.from('sms_consent_evidence').insert({
+        account_id: accountId,
+        phone_number: normalized,
+        consent_scope: 'customer',
+        disclosure_version: CUSTOMER_SMS_DISCLOSURE_VERSION,
+        disclosure_text: CUSTOMER_SMS_FULL_DISCLOSURE,
+        disclosure_hash: getCustomerSmsDisclosureHash(),
+        consented_at: now,
+        source: source,
+        source_page: 'system_inference',
+      });
     } catch {
       // Non-fatal if scope write fails
     }
@@ -2134,6 +2151,7 @@ export async function sendCampaignSms(params: {
     body: message,
     messageKind: 'campaign',
     category: 'customer_message',
+    context: 'marketing',
     idempotencyKey: params.idempotencyKey,
   });
 }

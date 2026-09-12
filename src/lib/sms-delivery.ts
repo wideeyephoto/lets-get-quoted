@@ -19,6 +19,7 @@ export type SmsDeliveryContext =
   | 'subcontractor'
   | 'owner'
   | 'customer'
+  | 'marketing'
   | 'automation'
   | 'platform';
 
