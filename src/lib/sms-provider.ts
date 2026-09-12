@@ -406,11 +406,18 @@ export function buildSendRequest(
   to: string,
   body: string,
   fromOverride?: string,
+  mediaUrls?: string[],
 ): SendRequest {
   const data = new URLSearchParams({ To: to, Body: body });
   if (fromOverride) data.set('From', fromOverride);
   else if (config.senderPoolId) data.set('MessagingServiceSid', config.senderPoolId);
   else if (config.from) data.set('From', config.from);
+
+  if (mediaUrls && mediaUrls.length > 0) {
+    for (const url of mediaUrls) {
+      data.append('MediaUrl', url);
+    }
+  }
 
   const origin = trustedProviderCallbackOrigin();
   if (!origin) {
@@ -595,6 +602,7 @@ export async function sendProviderMessage(
      * omit it and retain their existing behavior.
      */
     beforeRequest?: (usage: SmsUsageEvidence) => Promise<void>;
+    mediaUrls?: string[];
   }> = {},
 ): Promise<string> {
   const suppressed = outboundSmsSuppression();
@@ -652,7 +660,7 @@ export async function sendProviderMessage(
 
   let requestAttempted = false;
   try {
-    const request = buildSendRequest(config, to, body, options.from);
+    const request = buildSendRequest(config, to, body, options.from, options.mediaUrls);
     const usage: SmsUsageEvidence = lease
       ? Object.freeze({
         kind: 'reservation' as const,

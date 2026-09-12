@@ -43,6 +43,7 @@ export type EnqueueSmsDeliveryInput = Readonly<{
   senderNumberId?: string | null;
   availableAt?: Date | string | null;
   bypassQuietHours?: boolean;
+  mediaUrls?: string[];
 }>;
 
 export type EnqueuedSmsDelivery = Readonly<{
