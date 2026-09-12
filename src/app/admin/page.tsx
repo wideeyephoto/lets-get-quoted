@@ -78,7 +78,7 @@ function metricHref(key: string, range: DateRange): string | undefined {
     case 'newAccounts':
       return `/admin/accounts?joined=${range}`;
     case 'paymentsProcessed':
-      return `/admin/payments?range=${range}`;
+      return undefined;
     // Both land on Money, which now honours the same range. Fees go to the top,
     // where the gross-minus-returned working is; refunds go to the table of the
     // individual refunds that make up the total.

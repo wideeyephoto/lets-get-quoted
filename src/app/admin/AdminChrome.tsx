@@ -50,7 +50,12 @@ export default function AdminChrome({ adminEmail, role }: { adminEmail: string; 
             </div>
             <div className={styles.userInfo}>
               <span className={styles.userEmail}>{adminEmail}</span>
-              <span className={styles.userRolePill}>{roleDisplay(role)}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className={styles.userRolePill}>{roleDisplay(role)}</span>
+                <form action="/auth/signout" method="post" style={{ margin: 0, display: 'flex' }}>
+                  <button type="submit" style={{ background: 'transparent', border: 'none', padding: 0, color: 'rgba(247, 245, 239, 0.5)', fontSize: '0.65rem', cursor: 'pointer', textDecoration: 'underline' }}>Sign out</button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
