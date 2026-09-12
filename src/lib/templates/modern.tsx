@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
@@ -75,7 +76,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.vistaActions}>
-          {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.vistaPhone} data-edit="bizPhone">{site.phone}</CallLink>}
           <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)} <span aria-hidden="true">→</span></a>
         </div>
       </header>
@@ -110,7 +111,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <section className={styles.vistaContact} id="contact">
         <div className={styles.vistaContactCopy}>
           <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
-          {site.phone && <a href={`tel:${site.phone}`}>Call {site.phone} <span aria-hidden="true">↗</span></a>}
+          {site.phone && <CallLink site={site}>Call {site.phone} <span aria-hidden="true">↗</span></CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

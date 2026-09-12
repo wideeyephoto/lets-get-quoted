@@ -15,6 +15,7 @@ type SiteNavLink = {
 };
 
 import { NAV_EDIT_TARGET, navEditTarget } from './nav-edit-target';
+import CallLink from './CallLink';
 export { NAV_EDIT_TARGET, navEditTarget };
 
 type SiteNavLinksProps = {
@@ -118,9 +119,9 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
                 ))}
               </nav>
               {site.phone && (
-                <a className={styles.mobileNavCall} href={`tel:${site.phone}`} onClick={() => setOpen(false)}>
+                <CallLink site={site} className={styles.mobileNavCall} onClick={() => setOpen(false)}>
                   Call {site.phone}
-                </a>
+                </CallLink>
               )}
             </div>
             </>

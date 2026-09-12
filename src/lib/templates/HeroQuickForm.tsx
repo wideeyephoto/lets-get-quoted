@@ -17,6 +17,7 @@ import { resolveMessageMatchHero, type MessageMatchResult } from '@/lib/ad-messa
 import ContactPreferenceControl, { type ContactPreferenceValue } from '@/components/ContactPreferenceControl';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 type HeroQuickFormProps = {
   site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'> & {
@@ -1040,9 +1041,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                 <strong>Emergency Safety Guidance</strong>
                 <p>If water or gas is actively leaking, locate and turn off your main shutoff valve immediately.</p>
                 {site.phone && (
-                  <a className={styles.heroFormEmergencyCallBtn} href={`tel:${site.phone}`}>
+                  <CallLink site={site} className={styles.heroFormEmergencyCallBtn}>
                     📞 Call Emergency Dispatch ({site.phone})
-                  </a>
+                  </CallLink>
                 )}
               </div>
             </div>
@@ -1476,7 +1477,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                   ? 'See My Free Estimate'
                   : 'Get My Free Estimate'}
           </button>
-          {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
+          {site.phone && <CallLink site={site} className={styles.heroFormOrCall}>or call <strong>{site.phone}</strong> — free quote</CallLink>}
           {smartIntakeActive && <button type="button" className={styles.heroFormRestart} onClick={restartWizard} disabled={isSubmitting || isClassifying}>← Edit project details</button>}
         </div>
       )}
@@ -1527,7 +1528,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               <small className={styles.heroFormBookingNote}>Select an available arrival window · No card required</small>
             </div>
           )}
-          {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
+          {site.phone && <CallLink site={site} className={styles.heroFormCall}>Call now to lock it in</CallLink>}
         </div>
       )}
 

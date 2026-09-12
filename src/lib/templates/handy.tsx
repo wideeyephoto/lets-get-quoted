@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // The trust strip used to be a hardcoded ['Licensed & insured', 'Same-day
 // service', 'Free estimates', 'Satisfaction guaranteed'] shown on EVERY Care
@@ -96,7 +97,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={navLinks} />
         <div className={styles.careHeaderActions}>
-          {site.phone && <a className={styles.careHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.careHeaderPhone} data-edit="bizPhone">{site.phone}</CallLink>}
           <a className={styles.careBtn} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
       </header>
@@ -172,7 +173,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.careEyebrow}>Get started</p>
           <h2>Tell us about your project</h2>
           <p>{site.hours ? `We’re available ${site.hours}.` : 'We reply within about an hour.'} Free, no-obligation estimates.</p>
-          {site.phone && <a className={styles.careBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.careBtn}>Call {site.phone}</CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

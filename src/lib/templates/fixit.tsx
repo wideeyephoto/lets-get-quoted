@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // Fixit — clean, professional handyman look (Handify reference): white ground,
 // orange accent, an angular orange shape behind a worker photo with a floating
@@ -88,7 +89,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.fixitHeaderActions}>
-          {site.phone && <a className={styles.fixitHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.fixitHeaderPhone} data-edit="bizPhone"><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</CallLink>}
           <a className={styles.fixitHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
       </header>
@@ -130,7 +131,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           {/* Was "we'll match you with the right pro", which reads as a lead-matching
               marketplace — this is the contractor's own site. */}
           <p>Tell us what you need and we&apos;ll get back to you with a quote — free, no obligation.</p>
-          {site.phone && <a className={styles.fixitBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.fixitBtn}>Call {site.phone}</CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

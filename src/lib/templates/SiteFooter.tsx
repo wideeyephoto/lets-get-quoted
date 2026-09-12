@@ -10,6 +10,7 @@ import SocialLinks from './SocialLinks';
 import { navEditTarget } from './nav-edit-target';
 import { siteLegalLinks } from '@/lib/legal/site-legal';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // One footer for every theme. The layout is the owner's choice (Brand → Footer
 // style): 'columns' | 'cta' | 'centered' | 'grid'. Colors/fonts come entirely
@@ -79,7 +80,7 @@ export default function SiteFooter({ site }: { site: Site }) {
 
   const contactLines = (
     <>
-      {site.phone && <a className={styles.sfPhone} href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}
+      {site.phone && <CallLink site={site} className={styles.sfPhone} data-edit="bizPhone">{site.phone}</CallLink>}
       {areaLine && <span data-edit="bizArea">{areaLine}</span>}
       {site.hours && <span data-edit="bizHours">{site.hours}</span>}
       {site.license && <span data-edit="bizLicense">{site.license}</span>}
@@ -130,7 +131,7 @@ export default function SiteFooter({ site }: { site: Site }) {
           <div className={styles.sfChips}>
             {areaLine && <span className={styles.sfChip} data-edit="bizArea">{PinIcon}{areaLine}</span>}
             {site.hours && <span className={styles.sfChip} data-edit="bizHours">{ClockIcon}{site.hours}</span>}
-            {site.phone && <a className={styles.sfChip} href={`tel:${site.phone}`} data-edit="bizPhone">{PhoneIcon}{site.phone}</a>}
+            {site.phone && <CallLink site={site} className={styles.sfChip} data-edit="bizPhone">{PhoneIcon}{site.phone}</CallLink>}
           </div>
         )}
         {(links.length > 0 || site.license) && (
@@ -168,7 +169,7 @@ export default function SiteFooter({ site }: { site: Site }) {
           {(site.phone || site.license) && (
             <div className={styles.sfCol}>
               <h3>Contact</h3>
-              {site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}
+              {site.phone && <CallLink site={site} data-edit="bizPhone">{site.phone}</CallLink>}
               {site.license && <span data-edit="bizLicense">{site.license}</span>}
             </div>
           )}

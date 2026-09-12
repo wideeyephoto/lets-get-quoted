@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // Reno — dark-navy + golden-yellow renovation look (Renovation/ThemeMove
 // reference): hexagon motifs, an angular slanted hero photo, bold white
@@ -80,9 +81,9 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.renoHeaderActions}>
           {site.phone && (
-            <a className={styles.renoHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>
+            <CallLink site={site} className={styles.renoHeaderPhone} data-edit="bizPhone">
               <span className={styles.renoHex} aria-hidden="true">✆</span>{site.phone}
-            </a>
+            </CallLink>
           )}
           <a className={styles.renoHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
@@ -124,7 +125,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <p className={styles.renoEyebrow}>Get a free estimate</p>
           <h2>Have a project in mind?</h2>
           <p>Tell us what needs doing and we&apos;ll follow up with a plan and a price — free, no obligation.</p>
-          {site.phone && <a className={styles.renoBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.renoBtn}>Call {site.phone}</CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />
