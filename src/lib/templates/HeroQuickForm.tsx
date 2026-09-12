@@ -20,7 +20,7 @@ import styles from './themes.module.css';
 import CallLink from './CallLink';
 
 type HeroQuickFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'> & {
+  site: Pick<Site, 'template' | 'id' | 'template' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'> & {
     subdomain?: string | null;
   };
   /**
