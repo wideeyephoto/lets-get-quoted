@@ -262,8 +262,12 @@ export type SiteStatsContent = {
 export type SiteBeforeAfterItem = {
   id: string;
   beforeUrl: string;
+  beforeWidth?: number;
+  beforeHeight?: number;
   beforeAlt: string;
   afterUrl: string;
+  afterWidth?: number;
+  afterHeight?: number;
   afterAlt: string;
   label: string;
 };
@@ -617,6 +621,8 @@ export type SiteBlogPost = {
   excerpt: string;
   body: string;
   coverImage: string;
+  coverImageWidth?: number;
+  coverImageHeight?: number;
   // Four stored states. "Scheduled" is deliberately NOT one of them — it is
   // derived from publishAt, which is what the nightly cron actually reads, so
   // scheduling keeps a single source of truth. See lib/marketing-status.

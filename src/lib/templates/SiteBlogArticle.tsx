@@ -1,3 +1,4 @@
+import SafeImage from './SafeImage';
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
 import { estimateReadingTime, getColorScheme, getPublishedFaqs, getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
@@ -116,7 +117,7 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
       <header className={styles.blogChromeHeader}>
         <a className={styles.blogChromeBrand} href="/" aria-label={`${site.company_name} home`}>
           {site.logo_url
-            ? <img className={styles.blogChromeLogo} src={site.logo_url} alt="" />
+            ? <SafeImage className={styles.blogChromeLogo} src={site.logo_url} alt=""  />
             : <span className={styles.blogChromeMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           {(!content.hideHeaderCompanyName || content.headerTagline) && (
             <span className={styles.brandText}>
@@ -147,11 +148,11 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
             </header>
             {post.coverImage && (
               <figure className={styles.blogArticleCoverFigure || 'blog-article-cover-figure'}>
-                <img
+                <SafeImage
                   className={styles.blogArticleImg}
                   src={post.coverImage}
                   alt={post.coverAlt || post.title || 'Blog cover photo'}
-                />
+                  width={post.coverImageWidth || undefined} height={post.coverImageHeight || undefined} />
                 {post.photographerName && (
                   <figcaption className={styles.blogArticlePhotoCredit || 'blog-photo-credit'}>
                     Photo by{' '}

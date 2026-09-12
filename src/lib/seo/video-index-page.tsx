@@ -63,9 +63,7 @@ export async function renderSiteVideoIndex(site: Site) {
 
 export function siteVideoIndexMetadata(site: Site): Metadata {
 
-  if (!site)   const base = site ? siteOrigin(site) || 'https://letsgetquoted.com' : 'https://letsgetquoted.com';
-  return {
-    alternates: { canonical: `${base}/videos` }, title: 'Not found' };
+  if (!site) return { title: 'Not found' };
   const entries = getAllPublishedVideos(site.content);
   if (entries.length === 0) return { title: 'Not found' };
   const title = `Videos | ${site.company_name}`;

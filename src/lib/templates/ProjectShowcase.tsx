@@ -1,3 +1,4 @@
+import SafeImage from './SafeImage';
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
@@ -111,7 +112,7 @@ export default function ProjectShowcase({ eyebrow, title, style, items }: Projec
                 data-active={index === active}
                 aria-hidden={index === active ? undefined : true}
               >
-                <img src={item.url} alt={item.alt} loading={index === 0 ? undefined : 'lazy'} decoding="async" draggable={false} />
+                <SafeImage src={item.url} alt={item.alt} loading={index === 0 ? undefined : 'lazy'} decoding="async" draggable={false}   width={(item as any).width || undefined} height={(item as any).height || undefined} />
                 <figcaption>{captionOf(item, index)}</figcaption>
               </figure>
             ))}
@@ -139,7 +140,7 @@ export default function ProjectShowcase({ eyebrow, title, style, items }: Projec
                     zIndex: count - Math.abs(offset),
                   } as CSSProperties}
                 >
-                  <img src={item.url} alt={item.alt} loading={Math.abs(offset) <= 1 ? undefined : 'lazy'} decoding="async" draggable={false} />
+                  <SafeImage src={item.url} alt={item.alt} loading={Math.abs(offset) <= 1 ? undefined : 'lazy'} decoding="async" draggable={false}   width={(item as any).width || undefined} height={(item as any).height || undefined} />
                 </button>
               );
             })}
@@ -152,7 +153,7 @@ export default function ProjectShowcase({ eyebrow, title, style, items }: Projec
       {style === 'spotlight' && (
         <div className={styles.psSpotlight}>
           <figure className={styles.psSpotlightMain}>
-            <img key={activeItem.id} src={activeItem.url} alt={activeItem.alt} decoding="async" draggable={false} />
+            <SafeImage key={activeItem.id} src={activeItem.url} alt={activeItem.alt} decoding="async" draggable={false}  />
             <figcaption aria-live="polite">{captionOf(activeItem, active)}</figcaption>
           </figure>
           {count > 1 && (
@@ -167,7 +168,7 @@ export default function ProjectShowcase({ eyebrow, title, style, items }: Projec
                   aria-label={captionOf(item, index)}
                   onClick={() => go(index)}
                 >
-                  <img src={item.url} alt="" loading="lazy" decoding="async" draggable={false} />
+                  <SafeImage src={item.url} alt="" loading="lazy" decoding="async" draggable={false}   width={(item as any).width || undefined} height={(item as any).height || undefined} />
                 </button>
               ))}
             </div>

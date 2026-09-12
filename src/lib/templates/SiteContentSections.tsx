@@ -198,7 +198,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       const cards = [
         ...testimonials.items.map((item) => (
           <article key={item.id} className={styles.testimonialCard}>
-            {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
+            {item.imageUrl && <SafeImage className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'}    />}
             <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
             <p>“{item.text}”</p>
             <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
@@ -281,7 +281,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
         <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
           {post.coverImage ? (
             <div className={styles.blogCardImgWrap}>
-              <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />
+              <SafeImage className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async"  />
             </div>
           ) : (
             <div className={styles.blogCardFallbackImg}>
@@ -330,7 +330,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
               <a key={post.id} className={styles.blogRow} href={`/blog/${post.slug}`}>
                 {post.coverImage ? (
                   <div className={styles.blogRowImgWrap}>
-                    <img className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />
+                    <SafeImage className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async"  />
                   </div>
                 ) : (
                   <div className={styles.blogRowImgWrap}>
@@ -358,7 +358,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
             <a className={styles.blogMagazineLead} href={`/blog/${posts[0].slug}`}>
               {posts[0].coverImage ? (
                 <div className={styles.blogMagazineLeadImgWrap}>
-                  <img className={styles.blogMagazineLeadImg} src={posts[0].coverImage} alt="" loading="lazy" decoding="async" />
+                  <SafeImage className={styles.blogMagazineLeadImg} src={posts[0].coverImage} alt="" loading="lazy" decoding="async"  />
                 </div>
               ) : (
                 <div className={styles.blogMagazineLeadImgWrap}>
@@ -419,13 +419,13 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
               shown += 1;
               // Drop a parallax band in after every 3rd visible section.
               if (shown % 3 === 0 && bandIndex < bands.length) {
-                nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><img data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async" /></div>);
+                nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><SafeImage data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async"  /></div>);
                 bandIndex += 1;
               }
             }
             // Any leftover bands trail the sections.
             while (bandIndex < bands.length) {
-              nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><img data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async" /></div>);
+              nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><SafeImage data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async"  /></div>);
               bandIndex += 1;
             }
             return nodes;
