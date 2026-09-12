@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import vercel from '../vercel.json';
-import { CRON_JOBS } from '@/lib/cron-jobs';
+import { CRON_JOBS, PARKED_CRON_ROUTES } from '@/lib/cron-jobs';
 
 // Four cron routes once existed on disk, wired to cronRoute, in neither
 // vercel.json nor CRON_JOBS. Nothing fired them and nothing reported them
@@ -27,16 +27,45 @@ const scheduled = new Set(
   (vercel.crons as { path: string }[]).map((c) => c.path.replace('/api/cron/', '')),
 );
 const registered = new Set(CRON_JOBS.map((j) => j.job));
+const parked = new Set(PARKED_CRON_ROUTES.map((p) => p.job));
 
 describe('cron coverage', () => {
-  it('every cron route on disk is scheduled in vercel.json', () => {
-    const orphans = cronRoutesOnDisk().filter((r) => !scheduled.has(r));
-    expect(orphans, 'cron routes that exist but never fire').toEqual([]);
+  // The invariant is no longer "everything is scheduled". Two routes were
+  // scheduled on 2026-09-12 and unscheduled the same day: smart-dunning writes
+  // next_retry_at onto payments the dunning engine had already marked terminal,
+  // and activation-autopilot has no table and no dispatcher. Parking them is
+  // correct — but parking them SILENTLY is the original bug, so the rule is now
+  // that a route is either live and watched, or listed with a reason.
+  it('every cron route on disk is either scheduled or explicitly parked', () => {
+    const unaccounted = cronRoutesOnDisk().filter((r) => !scheduled.has(r) && !parked.has(r));
+    expect(unaccounted, 'cron routes that neither fire nor admit to being parked').toEqual([]);
   });
 
-  it('every cron route on disk is registered for health monitoring', () => {
-    const unwatched = cronRoutesOnDisk().filter((r) => !registered.has(r));
+  it('every scheduled cron route is registered for health monitoring', () => {
+    const unwatched = cronRoutesOnDisk()
+      .filter((r) => scheduled.has(r))
+      .filter((r) => !registered.has(r));
     expect(unwatched, 'cron routes whose silence nothing would report').toEqual([]);
+  });
+
+  it('a parked route is not also scheduled', () => {
+    expect([...parked].filter((p) => scheduled.has(p)), 'parked yet still firing').toEqual([]);
+  });
+
+  it('a parked route is not carried in the health registry', () => {
+    // A registered job that never fires reads as overdue forever.
+    expect([...parked].filter((p) => registered.has(p)), 'parked yet still graded').toEqual([]);
+  });
+
+  it('every parked route gives a substantive reason', () => {
+    for (const entry of PARKED_CRON_ROUTES) {
+      expect(entry.reason.length, `${entry.job} needs a real reason`).toBeGreaterThan(80);
+    }
+  });
+
+  it('every parked route still exists on disk', () => {
+    const onDisk = new Set(cronRoutesOnDisk());
+    expect([...parked].filter((p) => !onDisk.has(p)), 'parked entry for a deleted route').toEqual([]);
   });
 
   it('nothing is scheduled that has no route to answer it', () => {
