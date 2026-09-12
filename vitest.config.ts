@@ -15,9 +15,9 @@ export default defineConfig({
       'server-only': fileURLToPath(new URL('./test/stubs/server-only.ts', import.meta.url)),
     },
   },
-  test: {
+  esbuild: { jsx: 'automatic' }, test: {
     environment: 'node',
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.{ts,tsx}'],
     // Blocks the socket to every SMS provider host. See the file for why the
     // existing in-code gate is not enough on its own.
     setupFiles: ['./test/setup/no-provider-egress.ts'],
@@ -61,6 +61,8 @@ export default defineConfig({
       include: [
         'src/lib/**/*.ts',
         'src/app/api/**/*.ts',
+        'src/app/**/actions.ts',
+        'src/app/**/*actions*.ts',
         'src/middleware.ts',
       ],
       exclude: [
