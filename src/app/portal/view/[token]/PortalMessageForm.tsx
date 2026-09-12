@@ -8,9 +8,10 @@ type Props = {
   token: string;
   businessName: string;
   jobs?: Array<{ id: string; ref: string | null; scope: string | null }>;
+  onOptimisticSend?: (msg: string, jobId: string | null) => void;
 };
 
-export function PortalMessageForm({ token, businessName, jobs = [] }: Props) {
+export function PortalMessageForm({ token, businessName, jobs = [], onOptimisticSend }: Props) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [selectedJobId, setSelectedJobId] = useState<string>('');
@@ -22,6 +23,13 @@ export function PortalMessageForm({ token, businessName, jobs = [] }: Props) {
         startTransition(async () => {
           if (selectedJobId) {
             formData.set('jobId', selectedJobId);
+          }
+          
+          if (onOptimisticSend) {
+            const body = String(formData.get('message') || '').trim();
+            if (body) {
+              onOptimisticSend(body, selectedJobId || null);
+            }
           }
           const res = await sendPortalMessageAction(token, formData);
           if (res.ok) {

@@ -11,6 +11,7 @@ import { loadPortal } from '@/lib/client-portal-data';
 import { generateReferralCode, buildReferralShareText } from '@/lib/referrals';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { PortalMessageForm } from './PortalMessageForm';
+import { PortalMessageThread } from './PortalMessageThread';
 import MailIcon from '@/components/MailIcon';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { customerTogglePlanAction } from './actions';
