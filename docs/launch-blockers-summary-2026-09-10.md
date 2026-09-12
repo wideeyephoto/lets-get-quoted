@@ -2,7 +2,7 @@
 
 ## Hard Blockers (must resolve before launch)
 1. Two unapplied database migrations: `20260910104058_marketing_flow_repair.sql` and `20260910121506_overage_recovery_guards.sql` — production worker code calls RPCs that don't exist yet
-2. R04 domain observation clock — Day 1 of 7 started September 11; earliest completion September 17. Run `59b08397` passed.
+2. R04 domain observation — started September 11 at 16:23:14.731206 UTC (12:23 PM America/New_York); earliest seven-day review September 18 at the same time. **0/7 qualifying scheduled runs as of September 11 18:41 UTC:** the September 11 06:23 run `59b08397` predates the start and is baseline evidence only. One in-window Outlook quote passed delivery/authentication/link checks; both approved inboxes' September 11 test allowances are used. Remaining lifecycle/cleanup gates still block sign-off. See the [current canary record](contractor-domains-canary-2026-09-09.md#september-11-observation-start).
 3. Webhook routing formal sign-off — preview Stripe webhook `we_1U5dHvPqTgiW6iRM8Si0gH56` was pointed at production DB, leaked 185 rows. Disabled but needs operator sign-off
 4. [RESOLVED] Two failing PG17 test suites: `test:pg17:late-success` and `test:pg17:messaging-schema` — fixed in commit 4bd3e2d7c.
 
