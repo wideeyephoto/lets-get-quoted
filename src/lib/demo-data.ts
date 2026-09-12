@@ -5,7 +5,6 @@
 // instantly with zero auth and zero backend cost.
 import { computeMargin, type Cost, type Job, type JobStatus } from '@/lib/jobs';
 import type { CrewMember } from '@/lib/crew';
-import type { SubscriptionTier } from '@/lib/subscriptions';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { Lead, LeadSource, LeadStatus } from '@/lib/leads';
 import type { CashEvent } from '@/lib/cash-forecast';
