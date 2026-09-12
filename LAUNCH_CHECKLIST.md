@@ -212,6 +212,29 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   left alone rather than recorded as a failure, because dunning a settling charge
   is the expensive mistake.
 
+- [x] **Coverage floors are set and enforced (2026-09-12):** `vitest.config.ts`
+  carries `lines`/`statements` 66, `branches` 74, `functions` 73, set from a
+  baseline measured the same day — statements and lines **67.44%**
+  (132,780/196,865), branches **75.60%**, functions **74.87%** over 1,196 files
+  and 15,507 tests. Each floor sits roughly a point under what was measured:
+  tight enough that a real slide fails the build, loose enough that ordinary
+  churn does not fail it for nothing. Enforced because the CI unit-test step now
+  runs coverage. Raise them when the measured figure moves up and holds; do not
+  lower them to turn a red build green.
+- [x] **`src/app/dashboard/payments/actions.ts` has tests (2026-09-12):** 62,
+  in both the `test:prelaunch` and `test:security` gates. This was the single
+  largest block of never-executed logic the audit found — 973 lines, 29 exported
+  actions, 167 branches, zero executions. The audit's advice was to split it
+  before testing it; that is the wrong order for money code, because the split
+  needs a net under it and this is the net. Held: the capability each action
+  demands (`payments.collect` to take money, `payments.refund` to send it back,
+  and collect never standing in for refund); every write scoped to the resolved
+  workspace and not to anything the form posted; a manual payment landing on the
+  `manual` rail with no platform fee, because nothing settles it and no fee is
+  owed on money that never touched Stripe; an absent refund amount read as a full
+  refund rather than as zero; and each amount and id validated before a row is
+  written. Splitting the module is now a safe refactor rather than a prerequisite,
+  and remains optional.
 ### Defect found and fixed — three cron jobs could not report failure
 
 - [x] **`cronSummaryHasFailures` could not see an `errors` array (Medium):** the
@@ -276,32 +299,9 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
 
 - [ ] **`/api/export/insights` remains at zero executed lines** — the one export
   route not covered. It renders through pdfkit, which needs its own fixture.
-- [x] **Coverage floors are set and enforced (2026-09-12):** `vitest.config.ts`
-  carries `lines`/`statements` 66, `branches` 74, `functions` 73, set from a
-  baseline measured the same day — statements and lines **67.44%**
-  (132,780/196,865), branches **75.60%**, functions **74.87%** over 1,196 files
-  and 15,507 tests. Each floor sits roughly a point under what was measured:
-  tight enough that a real slide fails the build, loose enough that ordinary
-  churn does not fail it for nothing. Enforced because the CI unit-test step now
-  runs coverage. Raise them when the measured figure moves up and holds; do not
-  lower them to turn a red build green.
-- [x] **`src/app/dashboard/payments/actions.ts` has tests (2026-09-12):** 62,
-  in both the `test:prelaunch` and `test:security` gates. This was the single
-  largest block of never-executed logic the audit found — 973 lines, 29 exported
-  actions, 167 branches, zero executions. The audit's advice was to split it
-  before testing it; that is the wrong order for money code, because the split
-  needs a net under it and this is the net. Held: the capability each action
-  demands (`payments.collect` to take money, `payments.refund` to send it back,
-  and collect never standing in for refund); every write scoped to the resolved
-  workspace and not to anything the form posted; a manual payment landing on the
-  `manual` rail with no platform fee, because nothing settles it and no fee is
-  owed on money that never touched Stripe; an absent refund amount read as a full
-  refund rather than as zero; and each amount and id validated before a row is
-  written. Splitting the module is now a safe refactor rather than a prerequisite,
-  and remains optional.
 - [ ] **14 of the 17 dark scheduled cron jobs remain** — neither route nor
   worker meaningfully executed. `purge-expired`, `service-reminders` and
-  `plan-installments` are closed (see below); still open are `smart-dunning`
+  `plan-installments` are closed (see above); still open are `smart-dunning`
   (charges), `appointment-reminders` and `weather-morning-alert` (message
   customers), `geocode-backfill`, `google-lsa-sync`, `quick-stop-sweep`, `blog`,
   `daily-digest`, `arrival-confirm`, `arrival-late`, `waitlist-sweep`,
