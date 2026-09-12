@@ -83,6 +83,7 @@ export async function listClientsWithStats(
 
   let clients: Client[];
   let statsData: any[] = [];
+  let data: any;
 
   const fetchAll = options?.fetchAll ?? true;
 

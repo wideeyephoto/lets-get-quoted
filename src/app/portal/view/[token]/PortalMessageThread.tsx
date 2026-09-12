@@ -51,8 +51,8 @@ export function PortalMessageThread({ token, businessName, accountId, initialMes
               createdAt: row.created_at,
               direction: row.direction,
               sender: row.direction === 'inbound' ? 'You' : businessName,
-              mediaUrls: row.media_urls || [], jobId: null, channel: row.channel ?? \'sms\', , channel: row.channel ?? 'sms',
-            }, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              mediaUrls: row.media_urls || [], jobId: null, channel: row.channel ?? 'sms',
+            } as PortalMessage, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           });
         }
       )
@@ -71,8 +71,8 @@ export function PortalMessageThread({ token, businessName, accountId, initialMes
                 direction: 'outbound',
                 sender: row.author || businessName,
                 mediaUrls: [],
-                jobId: row.job_id,
-              }, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                jobId: row.job_id, channel: 'portal_note',
+              } as PortalMessage, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             });
           }
         }
@@ -113,8 +113,8 @@ export function PortalMessageThread({ token, businessName, accountId, initialMes
         direction: 'inbound',
         sender: 'You',
         mediaUrls: [],
-        jobId: jobId,
-      }, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        jobId: jobId, channel: 'portal_note',
+      } as PortalMessage, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     });
     // Scroll to bottom immediately
     if (scrollRef.current) {

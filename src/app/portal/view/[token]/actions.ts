@@ -263,3 +263,7 @@ export async function setupPortalPlanAutopayAction(token: string, planId: string
 export async function payPortalOutstandingAction(token: string) {
   console.log('Pay all open invoices for token', token);
 }
+
+export async function requestPlanRescheduleAction(token: string, planId: string, details: any) {
+  console.log('Reschedule plan', planId, details);
+}
