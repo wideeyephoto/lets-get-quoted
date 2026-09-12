@@ -360,14 +360,6 @@ export async function POST(request: Request) {
       requestUrl: request.url,
     });
 
-    if (ingress.accountId && inbound.fromNumber && inbound.keyword !== 'stop' && inbound.keyword !== 'stopall' && inbound.keyword !== 'unsubscribe' && inbound.keyword !== 'cancel' && inbound.keyword !== 'end' && inbound.keyword !== 'quit' && inbound.keyword !== 'revoke' && inbound.keyword !== 'optout' && inbound.keyword !== 'opt-out') {
-      try {
-        await reaffirmSmsConsent(ingress.accountId, inbound.fromNumber);
-      } catch (e) {
-        console.error('Failed to reaffirm SMS consent on inbound reply:', e);
-      }
-    }
-
     // Check if this inbound text is a reply to an active cancellation waitlist offer
     if (ingress.accountId && inbound.fromNumber && inbound.keyword !== 'stop') {
       try {

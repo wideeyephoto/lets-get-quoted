@@ -1590,6 +1590,7 @@ export async function releaseMessagingNumber(input: Readonly<{
   applicationId: string;
   accountId: string;
   providerNumberId: string;
+  number: string;
   actorReference: string;
   runtime?: MessagingNumberOperationRuntime;
 }>) {
@@ -1599,9 +1600,9 @@ export async function releaseMessagingNumber(input: Readonly<{
     applicationId: input.applicationId,
     operationType: 'release_number',
     idempotencyKey: `messaging:${input.applicationId}:release:${input.providerNumberId}`,
-    payload: { provider_number_id: input.providerNumberId },
-    request: (client) => client.releasePhoneNumber({ id: input.providerNumberId }),
-    result: () => ({ released: true }),
+    payload: { provider_number_id: input.providerNumberId, number: input.number },
+    request: (client) => client.releasePhoneNumber({ providerNumberId: input.providerNumberId, number: input.number }),
+    result: () => ({ id: input.providerNumberId, released: true }),
     runtime,
   });
 }

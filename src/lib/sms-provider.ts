@@ -746,7 +746,7 @@ function isDefinitiveProviderRejection(status: number): boolean {
 
 export type SignatureCheck =
   | { ok: true; provider: SmsProviderId }
-  | { ok: false; reason: 'missing-header' | 'secret-not-configured' | 'mismatch' };
+  | { ok: false; reason: 'missing-header' | 'secret-not-configured' | 'mismatch' | 'twilio_sunset' };
 
 /**
  * Whether this webhook really came from the provider it claims to be.
@@ -807,6 +807,11 @@ export function validateWebhookSignature(
 
   if (!claim) return { ok: false, reason: 'missing-header' };
   if (!claim.key) return { ok: false, reason: 'secret-not-configured' };
+
+  // C4: Hardcoded sunset for legacy Twilio callbacks
+  if (claim.provider === 'twilio' && Date.now() > new Date('2026-10-31T00:00:00Z').getTime()) {
+    return { ok: false, reason: 'twilio_sunset' };
+  }
 
   const urls = candidateUrls(request);
   if (urls.length === 0) return { ok: false, reason: 'mismatch' };
