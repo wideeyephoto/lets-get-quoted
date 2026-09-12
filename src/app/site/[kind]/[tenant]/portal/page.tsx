@@ -1,29 +1,33 @@
+import { cache } from 'react';
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
+
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
+
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createAdminClient } from '@/lib/auth';
-import { getPublicSiteByCustomDomain } from '@/lib/sites';
+
+
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import SitePortalPage from '@/lib/templates/SitePortalPage';
 import PortalRequestForm from '@/app/portal/[subdomain]/PortalRequestForm';
 
-export const dynamic = 'force-dynamic';
-
-// The custom-domain twin of site/[subdomain]/portal. Change one, change both.
+// The portal on the contractor's OWN host, so the "Client Login" link in their
+// header doesn't hop to another company's domain to ask for an email address.
+//
+// Must stay in lockstep with site-domain/[domain]/portal — a route in one tree
+// and not the other is a live 404 on custom domains only, which nothing catches.
 
 type Props = {
-  params: Promise<{ domain: string }>;
+  params: Promise<{ kind: string; tenant: string }>;
 };
 
-async function loadSite(domain: string) {
-  return getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
-}
-
-export default async function CustomDomainPortalPage({ params: paramsPromise }: Props) {
+export default async function PublicPortalPage({ params: paramsPromise }: Props) {
   const params = await paramsPromise;
-  const site = await loadSite(params.domain);
-  if (!site || !site.custom_domain_verified_at) notFound();
+  const admin = createAdminClient();
+  const site = await getPublicSiteBySubdomain(admin, params.tenant);
+  if (!site) notFound();
 
-  const { data: account } = await createAdminClient()
+  const { data: account } = await admin
     .from('accounts')
     .select('client_portal_enabled, business_name')
     .eq('id', site.account_id)
@@ -37,8 +41,6 @@ export default async function CustomDomainPortalPage({ params: paramsPromise }: 
       businessName={businessName}
       enabled={Boolean(account?.client_portal_enabled)}
       form={
-        // The request action resolves the site by SUBDOMAIN, so a row without
-        // one has no way to send. Rare, and a silent no-op form would be worse.
         site.subdomain ? (
           <PortalRequestForm subdomain={site.subdomain} businessName={businessName} />
         ) : null
@@ -49,10 +51,12 @@ export default async function CustomDomainPortalPage({ params: paramsPromise }: 
 
 export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
   const params = await paramsPromise;
-  const site = await loadSite(params.domain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) return { title: 'Not found' };
   return {
     title: { absolute: `Your jobs | ${site.company_name}` },
+    // A door, and a door in a search result is an invitation to try addresses
+    // at it. Never indexed, on any host.
     robots: { index: false, follow: false },
     icons: siteIconsMetadata(site),
   };

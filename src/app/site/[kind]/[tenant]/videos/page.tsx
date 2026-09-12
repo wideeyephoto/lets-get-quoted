@@ -1,11 +1,9 @@
 import type { Metadata } from 'next';
-import { createAdminClient } from '@/lib/auth';
-import { getPublicSiteBySubdomain } from '@/lib/sites';
+
+
 import { renderSiteVideoIndex, siteVideoIndexMetadata } from '@/lib/seo/video-index-page';
 
-export const dynamic = 'force-dynamic';
-
-type Props = { params: Promise<{ subdomain: string }> };
+type Props = { params: Promise<{ kind: string; tenant: string }> };
 
 async function loadSite(subdomain: string) {
   return getPublicSiteBySubdomain(createAdminClient(), subdomain);
@@ -14,7 +12,7 @@ async function loadSite(subdomain: string) {
 export default async function PublicVideoIndexPage({ params: paramsPromise }: Props) {
   const params = await paramsPromise;
   const { subdomain } = await params;
-  return await renderSiteVideoIndex(await loadSite(subdomain));
+  return await renderSiteVideoIndex(loadPublicSite(params.kind, params.tenant));
 }
 
 export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
