@@ -90,6 +90,7 @@ export type { CreateCrewState } from '@/lib/crew-add-state';
 // Imported as well as re-exported: `export type … from` forwards the name to
 // consumers without binding it in this module's own scope.
 import type { CreateCrewState } from '@/lib/crew-add-state';
+import { unstable_rethrow } from 'next/navigation';
 
 /**
  * Add a crew member — optionally inviting them to the field app in the same press.
@@ -222,6 +223,9 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
       invite,
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     // Everything below requireOwnerContext can fail for a reason the owner can
     // act on (a photo that is too big, a duplicate, a dropped connection), and
     // the only useful place to say so is beside the form they are still looking

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { requireOfficeContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
 import { recordCrewSmsConsent, sendCrewWelcomeSms } from '@/lib/sms';
@@ -135,6 +135,9 @@ export async function createSubcontractorAction(
       invite: 'skipped',
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     console.error('createSubcontractorAction failed:', error);
     return {
       status: 'error',

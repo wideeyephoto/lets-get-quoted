@@ -23,6 +23,9 @@ export interface VoiceCallBridgeResult {
 
 import { randomUUID } from 'node:crypto';
 
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
+
 export function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -104,6 +107,7 @@ export async function initiateSpeedToLeadCallBridge(
 
   try {
     const response = await fetch(reqDetails.endpoint, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: {
         Authorization: reqDetails.authHeader,

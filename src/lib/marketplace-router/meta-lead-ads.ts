@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { MarketplaceInboundLead } from './types';
 
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
+
 export const META_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v22.0';
 export const META_GRAPH_API_BASE = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`;
 
@@ -141,6 +144,7 @@ export async function fetchMetaLeadDetails(
   try {
     const url = `${META_GRAPH_API_BASE}/${encodeURIComponent(leadgenId)}?fields=id,created_time,ad_id,form_id,field_data&access_token=${encodeURIComponent(token)}`;
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'GET',
       headers: { Accept: 'application/json' },
     });

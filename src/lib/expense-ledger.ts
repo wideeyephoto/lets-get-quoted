@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cost, CostType } from '@/lib/jobs';
 import type { CostSource } from '@/lib/cost-truth';
 import { fetchAllPages } from '@/lib/pagination';
+import { ilikeAcross } from './postgrest-filter';
 
 export interface ExpenseRow extends Cost {
   job_ref?: string | null;
@@ -79,7 +80,7 @@ export async function listAccountExpenses(
 
   if (filters.query && filters.query.trim()) {
     const q = filters.query.trim();
-    query = query.or(`description.ilike.%${q}%,supplier.ilike.%${q}%,crew_name.ilike.%${q}%`);
+    query = query.or(ilikeAcross(['description', 'supplier', 'crew_name'], q));
   }
 
   const limit = Math.min(5000, Math.max(1, filters.limit ?? 50));

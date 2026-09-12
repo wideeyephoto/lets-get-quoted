@@ -5,6 +5,7 @@ import {
   type ProviderApiCapability,
 } from '@/lib/payroll-api-integration';
 import { PAYROLL_PROVIDERS, type PayrollProvider } from '@/lib/payroll-export';
+import { unstable_rethrow } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,9 @@ export async function GET() {
       recentSyncEvents: recentEvents || [],
     });
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to load payroll status.' },
       { status: 500 },

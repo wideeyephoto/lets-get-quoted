@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { requireOfficeContext, requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -94,6 +94,9 @@ export async function sendReplyAction(
     revalidatePath('/dashboard/messages');
     redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=reply&queued=${encodeURIComponent(eventId)}`);
   } catch (err: unknown) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) {
       throw err;
     }

@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+
 export interface QuickStopPaymentRequest {
   accountId: string;
   contractorName: string;
@@ -21,7 +23,10 @@ export interface QuickStopPaymentSession {
  * Creates a mobile 1-tap quick pay checkout session for field workers on site
  */
 export function createMobileQuickPaySession(req: QuickStopPaymentRequest): QuickStopPaymentSession {
-  const sessionId = `qpay_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  // randomBytes, not Math.random: this id is the only thing standing between a
+  // stranger and somebody's payment page. The four base36 characters it used to
+  // carry are about twenty bits, which is guessable in minutes.
+  const sessionId = `qpay_${randomBytes(18).toString('base64url')}`;
   const amountCents = Math.round(req.amountDollars * 100);
   const checkoutUrl = `https://app.letsgetquoted.com/pay/quick/${sessionId}?acc=${encodeURIComponent(req.accountId)}&amt=${req.amountDollars}`;
 

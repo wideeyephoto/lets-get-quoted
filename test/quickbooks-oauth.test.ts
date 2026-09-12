@@ -4,6 +4,7 @@ import {
   quickBooksEnvironment, quickBooksConfigured, quickBooksRedirectUri, buildAuthorizeUrl,
   ACCESS_TOKEN_SKEW_MS,
 } from '../src/lib/quickbooks/oauth';
+import { buildState, verifyState } from '../src/lib/quickbooks/state';
 
 const saved = { ...process.env };
 beforeEach(() => { process.env = { ...saved }; });
@@ -138,5 +139,61 @@ describe('oauth state', () => {
     expect(verifyState('nonce-1.deadbeef', 'account-A', 'nonce-1')).toBe(false);
     expect(verifyState('nonce-1', 'account-A', 'nonce-1')).toBe(false);
     expect(verifyState('', 'account-A', 'nonce-1')).toBe(false);
+  });
+});
+
+describe('QuickBooks OAuth state: signing key and comparison', () => {
+  const saved = { ...process.env };
+  beforeEach(() => { process.env = { ...saved }; });
+  afterEach(() => { process.env = { ...saved }; });
+
+  it('refuses to sign state when the service role key is unset', () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // An empty HMAC key still signs, so the old `?? ''` produced a state an
+    // attacker could forge from a published algorithm and no secret at all.
+    expect(() => buildState('acct_1', 'nonce_1')).toThrow(/SUPABASE_SERVICE_ROLE_KEY/);
+  });
+
+  it('fails closed rather than throwing when verifying without a key', () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+    const state = buildState('acct_1', 'nonce_1');
+
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // The callback route calls verifyState outside a try; an unverifiable state
+    // must read as "no", not as a 500.
+    expect(() => verifyState(state, 'acct_1', 'nonce_1')).not.toThrow();
+    expect(verifyState(state, 'acct_1', 'nonce_1')).toBe(false);
+  });
+
+  it('round-trips a state it signed itself', () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+    const state = buildState('acct_1', 'nonce_1');
+    expect(verifyState(state, 'acct_1', 'nonce_1')).toBe(true);
+  });
+
+  it('rejects a state signed for a different account', () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+    const state = buildState('acct_1', 'nonce_1');
+    expect(verifyState(state, 'acct_2', 'nonce_1')).toBe(false);
+  });
+
+  it('rejects a state whose nonce does not match the cookie', () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+    const state = buildState('acct_1', 'nonce_1');
+    expect(verifyState(state, 'acct_1', 'nonce_other')).toBe(false);
+  });
+
+  it('rejects a tampered signature of the right length', () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+    const [nonce, signature] = buildState('acct_1', 'nonce_1').split('.');
+    const flipped = (signature![0] === 'a' ? 'b' : 'a') + signature!.slice(1);
+    expect(verifyState(`${nonce}.${flipped}`, 'acct_1', 'nonce_1')).toBe(false);
+  });
+
+  it('rejects a signature of the wrong length without throwing', () => {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
+    // timingSafeEqual throws on mismatched lengths; the guard must absorb that.
+    expect(() => verifyState('nonce_1.short', 'acct_1', 'nonce_1')).not.toThrow();
+    expect(verifyState('nonce_1.short', 'acct_1', 'nonce_1')).toBe(false);
   });
 });

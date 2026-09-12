@@ -3,6 +3,9 @@ import { triageSupportCase } from './support-copilot';
 import { recordOperatorAudit } from './audit';
 import type { SupportCaseTriageResult } from './types';
 
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
+
 export interface InboundSupportTicket {
   id: string;
   account_id?: string | null;
@@ -109,6 +112,7 @@ export async function processInboundSupportTicket(
         const apiKey = process.env.RESEND_API_KEY;
         if (apiKey) {
           await fetch('https://api.resend.com/emails', {
+            signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

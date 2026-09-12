@@ -23,6 +23,7 @@ import {
   type TerminalPaymentIntentResult,
   type TerminalPaymentStatusResult,
 } from '@/lib/stripe-terminal';
+import { unstable_rethrow } from 'next/navigation';
 
 export type ActionState<T = unknown> = {
   success: boolean;
@@ -95,6 +96,9 @@ export async function recordManualPaymentAction(formData: FormData): Promise<Act
     revalidatePath(`/dashboard/jobs/${jobId}`);
     return { success: true, message: `Recorded ${method} payment of $${amount.toFixed(2)}.` };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     console.error('recordManualPaymentAction failed:', error);
     return {
       success: false,

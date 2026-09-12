@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(), jobs: vi.fn(), crew: vi.fn(), assignments: vi.fn(), settings: vi.fn(),
 }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-vi.mock('next/navigation', () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
+vi.mock('next/navigation', () => ({ unstable_rethrow: (t: unknown) => { const d = (t as { digest?: unknown })?.digest; if (typeof d === 'string' && d.startsWith('NEXT_REDIRECT')) throw t; }, redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
 vi.mock('@/lib/auth', () => ({
   requireOfficeContext: async () => ({ supabase: {}, accountId: '11111111-1111-4111-8111-111111111111' }),
   createAdminClient: () => ({ rpc: mocks.rpc }),

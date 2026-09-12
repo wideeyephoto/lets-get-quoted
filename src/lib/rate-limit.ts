@@ -5,10 +5,20 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // in-memory Maps that reset on every cold start. Call with the service-role
 // (admin) client on public routes.
 
-// Best-client-IP from proxy headers. Vercel sets x-forwarded-for; take the first
-// hop. Falls back to a constant so a missing header degrades to a shared bucket
+// Best-client-IP from proxy headers, most trustworthy first.
+//
+// x-vercel-forwarded-for is set by the platform and is not reachable by the
+// client, so it is the one value here a caller cannot choose for themselves.
+// x-forwarded-for is the conventional answer and stays as the fallback, but it
+// is a header anyone can send: keying a limit bucket on it alone means an
+// attacker rotates the header and gets a fresh allowance per request, which is
+// the one thing a rate limit must not allow.
+//
+// Falls back to a constant so a missing header degrades to a shared bucket
 // (still limits total volume) rather than no limit at all.
 export function clientIpFrom(headers: { get(name: string): string | null }): string {
+  const platform = headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim();
+  if (platform) return platform;
   const fwd = headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0]!.trim();
   return headers.get('x-real-ip')?.trim() || 'unknown';

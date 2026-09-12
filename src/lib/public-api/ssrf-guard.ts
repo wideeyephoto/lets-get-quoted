@@ -59,12 +59,47 @@ export function isPrivateOrRestrictedIpv6(ip: string): boolean {
     return true;
   }
 
-  // IPv4-mapped IPv6 (::ffff:192.168.1.1 or ::ffff:c0a8:0101)
+  // IPv4-mapped IPv6, in BOTH spellings — and the hex one is the spelling that
+  // actually shows up.
+  //
+  // `::ffff:192.168.1.1` is the readable form, and it was the only one handled
+  // here. Nothing emits it: `new URL('https://[::ffff:127.0.0.1]/').hostname`
+  // normalizes to `[::ffff:7f00:1]`, and `dns.lookup` returns the hex form too
+  // (measured: an AAAA record for a mapped address comes back as
+  // `::ffff:a9fe:a9fe`, family 6). So the dotted branch below was the only one
+  // that ever ran, and every real mapped address fell past it to the fc/fd/fe8
+  // checks, matched none of them, and was reported SAFE.
+  //
+  // That meant `::ffff:a9fe:a9fe` — 169.254.169.254, the cloud metadata
+  // address this file exists to block — validated as a public host, as did
+  // `::ffff:7f00:1` (127.0.0.1) and `::ffff:c0a8:0101` (192.168.1.1). A
+  // hostname with such an AAAA record is all it took; the kernel routes a
+  // mapped address to the IPv4 host.
   if (clean.startsWith('::ffff:')) {
     const v4Candidate = clean.slice(7);
+
+    // Dotted form: ::ffff:192.168.1.1
     if (isIP(v4Candidate) === 4) {
       return isPrivateOrRestrictedIpv4(v4Candidate);
     }
+
+    // Hex form: ::ffff:c0a8:0101 -> 192.168.1.1
+    const hextets = v4Candidate.split(':');
+    if (hextets.length === 2 && hextets.every((h) => /^[0-9a-f]{1,4}$/.test(h))) {
+      const high = Number.parseInt(hextets[0]!, 16);
+      const low = Number.parseInt(hextets[1]!, 16);
+      const dotted = `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
+      return isPrivateOrRestrictedIpv4(dotted);
+    }
+
+    // A `::ffff:` prefix we cannot decode is not a prefix we can clear.
+    return true;
+  }
+
+  // NAT64 (64:ff9b::/96) embeds an IPv4 address the same way and reaches it
+  // through a translator, so it gets the same treatment rather than a pass.
+  if (clean.startsWith('64:ff9b::')) {
+    return true;
   }
 
   // Unique Local (fc00::/7 -> fc.. or fd..)
@@ -122,7 +157,12 @@ export async function validateWebhookUrl(rawUrl: string): Promise<SsrfValidation
     return { safe: false, reason: `Port "${port}" is forbidden. Only port 443 is permitted.` };
   }
 
-  const hostname = parsed.hostname.toLowerCase().trim();
+  // `URL.hostname` keeps the brackets on an IPv6 literal — `https://[::1]/`
+  // reads back as `[::1]`, which `isIP` rejects. Without stripping them the
+  // IPv6 branch below never runs and the address falls through to a DNS lookup
+  // of the literal string, which only happens to fail closed. Strip them so the
+  // check that is meant to catch these is the one that does.
+  const hostname = parsed.hostname.toLowerCase().trim().replace(/^\[|\]$/g, '');
 
   // 4. Deny localhost and cloud metadata domains explicitly
   if (
