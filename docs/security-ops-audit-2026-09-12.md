@@ -6,7 +6,7 @@ Companion to `docs/security-audit-2026-09-12.md`, which covered authentication, 
 
 One defect was found and fixed: every dashboard guard that denies by redirecting was being swallowed by the surrounding `try/catch`, so a permission denial reached the caller as **HTTP 500 with the body `{"error":"NEXT_REDIRECT"}`**. Twenty call sites were affected. It is not an authorization bypass — the protected work never runs — but it converts routine denials into server errors, which corrupts error-rate alerting and leaves clients unable to distinguish "you may not do this" from "the server broke."
 
-The most significant finding was operational: **four cron routes existed, wired to `cronRoute`, neither scheduled nor monitored.** They never executed in production and nothing reported them missing. One of them, `smart-dunning`, is advertised in the product feature catalog as automatic failed-payment recovery. **All four are now scheduled and registered**, and a test locks the invariant so a fifth cannot appear the same way.
+The most significant finding was operational: **four cron routes existed, wired to `cronRoute`, neither scheduled nor monitored.** They never executed in production and nothing reported them missing. One of them, `smart-dunning`, is advertised in the product feature catalog as automatic failed-payment recovery. **All four are now scheduled and registered**, and a test locks the invariant so a fifth cannot appear the same way. Production acceptance then found that neither `smart-dunning` nor `activation-autopilot` has an outbound dispatcher at all, correcting a claim made in this report — see the correction under finding 2.
 
 Everything else checked in this pass held up, including several things that looked like findings and turned out to be sound designs.
 
@@ -68,7 +68,18 @@ Each sweep has exactly one caller — its own route — and no scheduled job fan
 | `smart-dunning` | `0 * * * *` | Hourly is frequent enough to recover a decline, infrequent enough not to hammer a customer's card. |
 | `activation-autopilot` | `0 15 * * *` | Daily, mid-morning US, because these are nudges and more than one a day is spam. |
 
-**These four now have live side effects.** `smart-dunning` texts customers whose cards were declined, and `activation-autopilot` nudges stalled contractors. Each sweep takes a `dryRun` option and the routes call them live; if either should be observed before it starts messaging real users, pass `dryRun` in that route for a cycle first.
+**CORRECTION (2026-09-12, after production acceptance).** The sentence that stood here claimed these four now have live side effects — that `smart-dunning` texts customers whose cards were declined and `activation-autopilot` nudges stalled contractors. **That was wrong.** Neither worker has an outbound dispatcher. Both say so in their own source:
+
+- `smart-dunning.ts` pushes `"Card update dispatcher not configured; no prompt sent."` for every payment needing a card-update prompt.
+- `activation-nudge.ts` carries the comment *"No SMS or email sender reads this table, so a successful write still is not a message delivered to a contractor"*, and `recordNudge` pushes `"Delivery dispatcher not configured; no outbound message sent."` and returns false.
+
+The claim came from the feature-catalog copy and the workers' own `reasoningSummary` strings, which use the word "dispatched". Neither worker body was read before the claim was made. `smart-dunning` does change real state — retry dates and grace periods — but it sends nothing, and `activation-autopilot` neither sends nor records.
+
+So the warning attached to scheduling these, repeated several times, was unfounded: switching them on did not put messages in front of customers or contractors. What it did switch on is a job that cannot do the thing it is scheduled for.
+
+**A second defect, found in the same acceptance pass.** All four routes returned a hardcoded `ok: true` and dropped the worker's `errors` array, so `cronSummaryHasFailures` had nothing to match and every run recorded healthy regardless. For the two workers above that meant green forever while delivering nothing; for `db-guard` and `webhook-heal` it means their observed "successful" runs do not establish that they were error-free either. Fixed: each route now returns `ok: result.errors.length === 0` alongside an `errors` count and up to five samples, and `test/cron-summary-surfaces-errors.test.ts` holds the coupling to the matcher.
+
+**Consequence worth stating plainly:** with the summary honest, `smart-dunning` and `activation-autopilot` will record FAILED on any run where an item needed a message, because that is what the worker reports. They will keep doing so until a dispatcher exists or the jobs are unscheduled. That is the accurate signal, but it is a behaviour change for alerting.
 
 `test/cron-route-coverage.test.ts` now asserts that every cron route on disk is both scheduled and registered, and that nothing is scheduled without a route. Routes, schedule and health registry all stand at 52 and agree exactly.
 
