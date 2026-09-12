@@ -112,6 +112,47 @@ Dated console capture for both providers · `npm run inspect:ai-tier` output in
 `docs/evidence/` · CLM-014 registered · guard test passing · T27 closed with a pointer to
 the artifact.
 
+**2026-09-12 — steps 4–6 done; the console checks (steps 1–2) are still fully
+open.** Two things turned out to already be true before this gap was even
+opened: `6c89a0a` (2026-09-11, predates this document and this session) had
+already removed the self-certified `(verified: Google Cloud Billing
+active...)` parenthetical quoted in the blockquote above, and the "strict
+zero-data-retention" / "paid enterprise API tiers" language with it — the
+sentence on `/privacy` today is the narrower "Customer data, prompts, job
+notes, photos, and voice transcripts are not used to train public foundation
+models," not what's quoted above. That same commit also added
+`scripts/inspect-ai-provider-tier.mjs` and wired `npm run inspect:ai-tier`
+(step 4), so neither the copy fix nor the script are new work here.
+
+The blockquote above is left as-is: it is an accurate record of what the page
+said when this gap was opened, not what it says now.
+
+What was still genuinely missing, and is now done: the narrower claim was
+**registered nowhere** — grep found zero CLM entries covering it even after
+the rewrite, so a claim requiring the same evidence standard as everything
+else in the register was silently exempt. CLM-014 now covers it in
+[the FTC register](ftc-substantiation-register.md), status `⚠️ UNVERIFIED FOR
+THIS ACCOUNT`, plus a new Rule 5 in that register naming the discredited
+sentence so it can't return verbatim. `test/claims-substantiation.test.ts`
+gained three prohibited-pattern regexes and a dedicated sync test tying the
+`/privacy` sentence to the CLM-014 entry; proved to bite by temporarily
+reintroducing the exact old sentence and watching two tests fail, then
+reverting and confirming green again.
+
+Two things this does **not** close. First, `scripts/inspect-ai-provider-tier.mjs`
+is weaker than step 4 as written: it cannot call either provider's billing
+API with the credentials available, so it only prints which key is
+configured and its prefix and tells the operator what to go check by hand —
+it does not itself write a dated verdict to `docs/evidence/`, and no such
+file exists yet. Second, and substantively: whether the Gemini project is
+actually on the paid tier and whether the OpenAI org actually has ZDR
+granted — the entire reason this gap exists — is exactly as unverified as
+before. Narrower copy is not evidence. Steps 1–2 (Cloud Console billing,
+OpenAI org data controls) and T27 itself still need the operator, and the
+register entry stays `UNVERIFIED FOR THIS ACCOUNT` until a real dated
+console capture lands in `docs/evidence/` and the guard test is updated to
+require it.
+
 ---
 
 ## G2 — Sales tax is enabled in code and may be registered nowhere

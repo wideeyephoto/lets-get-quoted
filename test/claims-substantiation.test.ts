@@ -6,6 +6,15 @@ import { BILLING_PLANS, platformFeePercent } from '@/lib/billing/catalog';
 import { PLATFORM_CAMPAIGN_TEMPLATES } from '@/lib/platform-campaign-templates';
 import { CONTRACTOR_LIFECYCLE_STEPS } from '@/lib/contractor-lifecycle-emails';
 
+const PRIVACY_PAGE = fs.readFileSync(
+  path.resolve(process.cwd(), 'src/app/privacy/page.tsx'),
+  'utf8',
+);
+const FTC_REGISTER = fs.readFileSync(
+  path.resolve(process.cwd(), 'docs/ftc-substantiation-register.md'),
+  'utf8',
+);
+
 describe('Legal & Claims Substantiation Invariants', () => {
   it('prohibits unsubstantiated 100% deliverability or 100% compliance strings in src/', () => {
     const srcDir = path.resolve(process.cwd(), 'src');
@@ -26,6 +35,18 @@ describe('Legal & Claims Substantiation Invariants', () => {
       /\btrial\s+period\b/i,
       /\bstart\s+(free\s+)?(platform\s+)?trial\b/i,
       /\bplatform\s+trial\b/i,
+      // Rule 5, FTC register: a self-certified "(verified: ...)" parenthetical
+      // was published in /privacy for a console check (T27) that was never
+      // actually run -- writing that a check happened is not the check
+      // happening. The exact discredited sentence is blocked by name so it
+      // cannot silently return verbatim; the broader pattern blocks the same
+      // failure under different wording -- an AI-tier or AI-inference claim
+      // asserting itself "verified" anywhere in its own sentence, which is
+      // exactly the shape of claim this register requires an evidence
+      // artifact for, not a claim being trusted to certify itself.
+      /verified:\s*google cloud billing/i,
+      /\b(?:ai[\s-]?(?:tier|inference)|inference\s+platforms?)\b(?:(?!<\/(?:li|p)>)[\s\S]){0,300}\bverified\b/i,
+      /strict\s+zero-data-retention/i,
     ];
 
     function scanDirectory(dir: string): Array<{ file: string; match: string }> {
@@ -54,6 +75,30 @@ describe('Legal & Claims Substantiation Invariants', () => {
 
     const findings = scanDirectory(srcDir);
     expect(findings).toEqual([]);
+  });
+
+  it('privacy page AI inference claim and the CLM-014 register entry stay in sync', () => {
+    // The privacy page's own list item for this claim -- scoped the same way
+    // the prohibited-pattern scanner above stops at a closing </li>, so a
+    // change anywhere ELSE on the page can't accidentally satisfy this.
+    const match = PRIVACY_PAGE.match(
+      /<li><strong>Artificial Intelligence Inference Platforms:<\/strong>([\s\S]*?)<\/li>/,
+    );
+    expect(match, 'the AI inference list item was not found on /privacy in the expected shape').not.toBeNull();
+    const sentence = match![1];
+
+    // The specific claim CLM-014 covers. If this changes, CLM-014's own
+    // "Exact Claim Copy" cell must change with it in the same commit --
+    // this fails loudly rather than letting the register describe a claim
+    // the page no longer makes.
+    expect(sentence).toContain('not used to train public foundation models');
+    expect(FTC_REGISTER).toContain('CLM-014');
+    expect(FTC_REGISTER).toContain('not used to train public foundation models');
+
+    // The register's own status marker for this entry. A future PASS here
+    // requires the marker to change to VERIFIED, which requires a real
+    // evidence artifact under docs/evidence/ per G1 -- not a copy edit alone.
+    expect(FTC_REGISTER).toContain('UNVERIFIED FOR THIS ACCOUNT');
   });
 
   it('pricing catalog accurately qualifies AI Voice Receptionist as preview/rollout', () => {

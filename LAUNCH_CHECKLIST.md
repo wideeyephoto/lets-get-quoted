@@ -19,14 +19,26 @@ Ten requirements no prior item covered. Verified absent against this checklist a
 [prelaunch-gap-closure-plan-2026-09-11.md](docs/prelaunch-gap-closure-plan-2026-09-11.md).
 
 - [ ] **AI inference tier — published as verified, never verified:** `src/app/privacy/page.tsx:116`
-  asserts "paid enterprise API tiers with strict zero-data-retention and non-training guarantees
-  (verified: Google Cloud Billing active on Gemini API project)", added 2026-09-09 in `8ea306817`.
-  The originating task T27 (`docs/admin-command-center-task-list-2026-09-09.md:325`) is still open
-  and no evidence artifact exists. OpenAI zero-data-retention is an approved-account feature, not a
-  default, so the sentence is likely false for that provider as written. Close with dated console
-  captures for both providers, `npm run inspect:ai-tier` output, CLM-014 in the FTC register, and a
-  sync guard in `test/claims-substantiation.test.ts`. Customer photos, transcripts and job notes
-  cross 19 call sites in `src/lib/ai-model-call.ts`.
+  ~~asserts "paid enterprise API tiers with strict zero-data-retention and non-training guarantees
+  (verified: Google Cloud Billing active on Gemini API project)", added 2026-09-09 in `8ea306817`~~ —
+  **that sentence is no longer live.** Commit `6c89a0a` (already in `main` before this gap was
+  opened) narrowed it to "Customer data, prompts, job notes, photos, and voice transcripts are not
+  used to train public foundation models," which drops the self-certified "verified" parenthetical
+  and the "zero-data-retention" claim entirely. **The substantive risk this item exists for is
+  unchanged**, only smaller: Google's Gemini API only carries a no-training guarantee on a
+  Billing-enabled project — an unbilled key makes today's narrower sentence false for the Google
+  half exactly as before. The originating task T27
+  (`docs/admin-command-center-task-list-2026-09-09.md:325`) is still open and no evidence artifact
+  exists. Close with dated console captures for both providers and `npm run inspect:ai-tier`
+  output. **CLM-014 and the sync guard are done (2026-09-12):** `docs/ftc-substantiation-register.md`
+  registers the current sentence as `⚠️ UNVERIFIED FOR THIS ACCOUNT` (a new status distinct from
+  every other entry's `✅ VERIFIED`, since provider terms alone don't confirm this account's
+  billing state), rule 5 prohibits the discredited phrasing returning under any wording, and
+  `test/claims-substantiation.test.ts` fails if either the specific old sentence or the general
+  "AI tier/inference ... verified" shape reappears anywhere in `src/`, or if the register and the
+  page drift apart — proven to bite by reintroducing the exact discredited sentence and watching
+  both new checks fail. Customer photos, transcripts and job notes cross 19 call sites in
+  `src/lib/ai-model-call.ts`.
 - [ ] **Sales tax registrations:** `automatic_tax: { enabled: true }` is live on all three checkout
   paths, which collects nothing where no registration exists. Entity address is Austin, TX, and
   Texas taxes SaaS at 80% of value. Close with `npm run inspect:tax-registrations` showing an active
