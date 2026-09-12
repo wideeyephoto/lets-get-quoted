@@ -173,6 +173,19 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   continues. For the reminder sweep: it addresses the contractor and never the
   homeowner, one email per account rather than per warranty, and the row is
   stamped before the send so a half-failed run cannot send twice.
+- [x] **The payment-plan installment sweep has tests:** 34, also in the
+  `test:prelaunch` gate. This is the job that charges saved cards off-session,
+  unattended, once a day; `src/lib/payment-plans.ts` was at 12.38%. Held: the
+  query takes only plan installments that are due, unpaid and under the
+  four-attempt lifetime cap, bounded at 300 a run; a plan that is not active, or
+  whose payoff lock is held, is never charged, so a client settling their balance
+  cannot also be charged the instalment; the claim moves the row out of
+  `requested` before Stripe is called, and a second run that finds no row bails
+  without charging; the idempotency key is stable within an attempt and different
+  across attempts, so a crash-safe re-run returns Stripe's cached result while a
+  real retry re-hits the card; and a `processing` or `requires_capture` intent is
+  left alone rather than recorded as a failure, because dunning a settling charge
+  is the expensive mistake.
 
 ### Defect found and fixed — three cron jobs could not report failure
 
@@ -196,6 +209,15 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   Regression: `test/purge-worker.test.ts`, which also pins the four
   unauthorised-request shapes that path must refuse.
 
+- [x] **A third instance of the same reporting defect (Medium):**
+  `runDuePlanInstallments` returned `{ due: 0, charged: 0, failed: 0, skipped: 0,
+  reason: 'payment_plans not available' }` when it could not read the payments
+  table. No key in that shape names a failure, so a daily card-charging sweep
+  that reached nothing at all recorded a healthy run — the counts were honestly
+  zero and nothing said why. It now also returns `errors`, which the detector
+  above reads. Regression: `test/plan-installment-sweep.test.ts`. Found by
+  writing the tests, not by a report.
+
 ### Still open from this audit
 
 - [ ] **`/api/export/insights` remains at zero executed lines** — the one export
@@ -208,10 +230,10 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   branches, zero executions, covering refunds, instant pay links, payment-plan
   scheduling, dispute evidence, lien waivers and the Stripe Terminal flow. Close
   by moving that logic into `src/lib` where the existing billing tests live.
-- [ ] **15 of the 17 dark scheduled cron jobs remain** — neither route nor
-  worker meaningfully executed. `purge-expired` and `service-reminders` are
-  closed (see below); still open are `plan-installments` and `smart-dunning`
-  (charge), `appointment-reminders` and `weather-morning-alert` (message
+- [ ] **14 of the 17 dark scheduled cron jobs remain** — neither route nor
+  worker meaningfully executed. `purge-expired`, `service-reminders` and
+  `plan-installments` are closed (see below); still open are `smart-dunning`
+  (charges), `appointment-reminders` and `weather-morning-alert` (message
   customers), `geocode-backfill`, `google-lsa-sync`, `quick-stop-sweep`, `blog`,
   `daily-digest`, `arrival-confirm`, `arrival-late`, `waitlist-sweep`,
   `recurring`, `quickbooks-sync` and `operator-briefing`. Listed with their

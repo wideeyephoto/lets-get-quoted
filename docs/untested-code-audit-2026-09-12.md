@@ -368,7 +368,25 @@ later. Separately, `POST /api/cron/purge-expired` checks `CRON_SECRET` itself
 rather than going through `cronRoute`, so it sat outside that sweep and answered
 a hardcoded `ok: true`; it now reports on the worker's own errors.
 
-Fifteen dark jobs remain, listed above.
+A third job followed: `plan-installments`, 34 tests, the one that charges saved
+cards off-session once a day against a module that was at 12.38%. What it holds
+is the set of guards the module's own comments name. The claim moves the row out
+of `requested` before Stripe is called, so a second run finds nothing and bails
+rather than charging twice. The idempotency key is stable within an attempt and
+different across attempts, so a crash-safe re-run gets Stripe's cached result
+while a real retry re-hits the card. A plan whose payoff lock is held is never
+charged, which is what stops a client settling their balance from also paying the
+instalment. And a `processing` intent is left alone rather than recorded failed,
+because dunning a charge that is quietly settling is the expensive mistake.
+
+That turned up a third instance of the reporting defect, also fixed.
+`runDuePlanInstallments` answered a read failure with zero counts and a
+`reason` string. The counts were honestly zero and no key in that shape names a
+failure, so a daily card-charging sweep that could not reach the payments table
+recorded a healthy run. It now also returns `errors`, which the detector above
+reads.
+
+Fourteen dark jobs remain, listed above.
 
 Steps 4, 5, 7 and 8 below are open.
 

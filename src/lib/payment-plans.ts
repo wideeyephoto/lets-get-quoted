@@ -435,7 +435,20 @@ async function reconcilePlanIfComplete(admin: ReturnType<typeof createAdminClien
 // in flight) or a non-active plan is skipped.
 // ---------------------------------------------------------------------------
 
-export type PlanRunSummary = { due: number; charged: number; failed: number; skipped: number; reason?: string };
+export type PlanRunSummary = {
+  due: number;
+  charged: number;
+  failed: number;
+  skipped: number;
+  reason?: string;
+  /**
+   * What the run could not do at all, as opposed to per-installment failures
+   * which are counted in `failed`. `cronSummaryHasFailures` reads this, and a
+   * `reason` alone it cannot read — so a sweep that could not reach the
+   * payments table used to record a healthy run for a job that charges cards.
+   */
+  errors?: string[];
+};
 
 export async function runDuePlanInstallments(): Promise<PlanRunSummary> {
   const admin = createAdminClient();
@@ -451,7 +464,16 @@ export async function runDuePlanInstallments(): Promise<PlanRunSummary> {
     .lt('charge_attempts', MAX_INSTALLMENT_ATTEMPTS)
     .order('due_date', { ascending: true })
     .limit(MAX_INSTALLMENTS_PER_RUN);
-  if (error) return { due: 0, charged: 0, failed: 0, skipped: 0, reason: 'payment_plans not available' };
+  if (error) {
+    return {
+      due: 0,
+      charged: 0,
+      failed: 0,
+      skipped: 0,
+      reason: 'payment_plans not available',
+      errors: [`Installment read failed: ${error.message}`],
+    };
+  }
 
   let charged = 0;
   let failed = 0;
