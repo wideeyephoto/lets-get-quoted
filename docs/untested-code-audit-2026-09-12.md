@@ -440,7 +440,30 @@ would have been the same problem as a verification script nobody runs.
 orphaned billing modules are the `direct` charge rail, gated off on purpose, and
 should stay. The rest of the 111 still need classifying one at a time.
 
-Step 4 below is open.
+**Step 4 is done, by a different route than the one recommended.** The advice
+above was to split `src/app/dashboard/payments/actions.ts` before testing it.
+That is the wrong order for money code: a refactor of 973 lines and 29 actions
+needs a net under it, and the module had none. So the net came first — 62 tests,
+in both the prelaunch and security gates. Held: the capability each action
+demands, with `payments.collect` never standing in for `payments.refund`; every
+write scoped to the resolved workspace rather than to anything the form posted; a
+manual payment landing on the `manual` rail with no platform fee, because nothing
+settles it and none is owed on money that never touched Stripe; an absent refund
+amount read as a full refund rather than as zero; and every amount and id checked
+before a row is written. Splitting the module is now a safe refactor rather than a
+prerequisite, and it stays optional.
+
+Writing them found a fourth defect. The 2026-09-12 security pass fixed swallowed
+guard redirects in 20 files with `unstable_rethrow`, and reached exactly one of
+the 29 actions in this module. The other 28 turned every error into
+`{ success: false }`, including the `redirect()` a guard throws to deny access —
+so a contractor without `payments.refund` clicking Refund was told the refund had
+failed rather than being sent where they belong. All 28 now rethrow first, and 21
+of the 62 tests fail against the previous code.
+
+Every numbered step is now closed or answered. What remains is listed above and
+in the checklist: fourteen dark cron jobs, the suites CI still does not run, and
+the unclassified orphans.
 
 ## Reproducing this
 

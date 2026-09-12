@@ -162,6 +162,10 @@ export async function recordBatchInvoiceSettlementAction(
       message: `Settled ${settledCount} invoices for a total of $${totalSettled.toFixed(2)}.`,
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('recordBatchInvoiceSettlementAction failed:', error);
     return {
       success: false,
@@ -195,6 +199,10 @@ export async function sendPaymentReminderAction(formData: FormData): Promise<Act
     revalidatePath('/dashboard/payments');
     return { success: true, message: 'Payment reminder sent.' };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendPaymentReminderAction failed:', error);
     return {
       success: false,
@@ -224,6 +232,10 @@ export async function sendPaymentReceiptSmsAction(paymentId: string): Promise<Ac
 
     return { success: true, message: 'Payment receipt sent via SMS.' };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendPaymentReceiptSmsAction failed:', error);
     return {
       success: false,
@@ -269,6 +281,10 @@ export async function batchSendOverdueRemindersAction(_formData?: FormData): Pro
       message: `Broadcast reminders to ${sentCount} ${sentCount === 1 ? 'customer' : 'customers'}.`,
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('batchSendOverdueRemindersAction failed:', error);
     return {
       success: false,
@@ -304,6 +320,10 @@ export async function issueRefundAction(formData: FormData): Promise<ActionState
       message: `Issued ${result.isFull ? 'full' : 'partial'} refund of $${result.amount.toFixed(2)}.`,
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('issueRefundAction failed:', error);
     return {
       success: false,
@@ -373,6 +393,10 @@ export async function createInstantPayLinkAction(formData: FormData): Promise<Ac
       data: { paymentId: payment.id, payUrl },
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('createInstantPayLinkAction failed:', error);
     return {
       success: false,
@@ -419,6 +443,10 @@ export async function createPaymentPlanScheduleAction(
       message: `Created ${milestones.length}-part payment plan.`,
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('createPaymentPlanScheduleAction failed:', error);
     return {
       success: false,
@@ -439,6 +467,10 @@ export async function assembleDisputeEvidenceAction(paymentId: string): Promise<
     }
     return { success: true, data: bundle };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('assembleDisputeEvidenceAction failed:', error);
     return {
       success: false,
@@ -486,6 +518,10 @@ export async function getClientStatementDataAction(clientName: string): Promise<
       },
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('getClientStatementDataAction failed:', error);
     return {
       success: false,
@@ -528,6 +564,10 @@ export async function recordPromiseToPayAction(formData: FormData): Promise<Acti
       message: `Recorded Promise-to-Pay for ${new Date(promisedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}${note ? `: "${note}"` : ''}.`,
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('recordPromiseToPayAction failed:', error);
     return {
       success: false,
@@ -558,6 +598,10 @@ export async function sendCustomPaymentReminderAction(formData: FormData): Promi
     revalidatePath('/dashboard/payments');
     return { success: true, message: 'Custom payment reminder dispatched to client.' };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendCustomPaymentReminderAction failed:', error);
     return {
       success: false,
@@ -615,6 +659,10 @@ export async function generateNoiNoticeAction(input: {
 
     return { success: true, data: noiData };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('generateNoiNoticeAction failed:', error);
     return {
       success: false,
@@ -658,6 +706,10 @@ export async function saveDunningRulesAction(formData: FormData): Promise<Action
       message: enabled ? 'Automated dunning escalation sequence activated.' : 'Dunning rules saved.',
     };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('saveDunningRulesAction failed:', error);
     return {
       success: false,
@@ -713,6 +765,10 @@ export async function generateAccountingJournalCsvAction(format: 'qbo' | 'xero' 
 
     return { success: true, data: csvContent };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('generateAccountingJournalCsvAction failed:', error);
     return {
       success: false,
@@ -763,6 +819,10 @@ export async function generateLienWaiverAction(params: {
 
     return { success: true, data: document };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('generateLienWaiverAction failed:', error);
     return {
       success: false,
@@ -804,6 +864,10 @@ export async function sendLienWaiverSmsAction(params: {
     }
     return { success: true, data: true };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendLienWaiverSmsAction failed:', error);
     return {
       success: false,
@@ -853,6 +917,10 @@ export async function sendNoiNoticeSmsAction(formData: FormData): Promise<Action
     revalidatePath('/dashboard/payments');
     return { success: true, message: 'Statutory NOI notice dispatched via SMS & registered.' };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendNoiNoticeSmsAction failed:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to dispatch notice.' };
   }
@@ -893,6 +961,10 @@ export async function sendCardUpdateReminderAction(formData: FormData): Promise<
     revalidatePath('/dashboard/payments');
     return { success: true, message: 'SMS sent with link for customer to update card.' };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendCardUpdateReminderAction failed:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Failed to send card update link.' };
   }
@@ -968,6 +1040,10 @@ export async function sendRetainageReleaseRequestAction(params: {
 
     return { success: true, data: demand.body };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('sendRetainageReleaseRequestAction failed:', error);
     return {
       success: false,
@@ -1007,6 +1083,10 @@ export async function saveAchIncentiveSettingsAction(params: {
     revalidatePath('/dashboard/payments');
     return { success: true, data: true };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('saveAchIncentiveSettingsAction failed:', error);
     return {
       success: false,
@@ -1046,6 +1126,10 @@ export async function savePaymentRulesAction(params: {
     revalidatePath('/dashboard/payments');
     return { success: true, data: true };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('savePaymentRulesAction failed:', error);
     return {
       success: false,
@@ -1063,6 +1147,10 @@ export async function getTerminalConnectionTokenAction(): Promise<ActionState<Te
     const token = await createTerminalConnectionToken(supabase, accountId);
     return { success: true, data: token };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('getTerminalConnectionTokenAction failed:', error);
     return {
       success: false,
@@ -1080,6 +1168,10 @@ export async function listTerminalReadersAction(locationId?: string): Promise<Ac
     const readers = await listTerminalReaders(supabase, accountId, locationId);
     return { success: true, data: readers };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('listTerminalReadersAction failed:', error);
     return {
       success: false,
@@ -1108,6 +1200,10 @@ export async function registerTerminalReaderAction(
     });
     return { success: true, message: `Registered reader "${reader.label}".`, data: reader };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('registerTerminalReaderAction failed:', error);
     return {
       success: false,
@@ -1134,6 +1230,10 @@ export async function createTerminalPaymentIntentAction(params: {
     revalidatePath(`/dashboard/jobs/${params.jobId}`);
     return { success: true, data: result };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('createTerminalPaymentIntentAction failed:', error);
     return {
       success: false,
@@ -1154,6 +1254,10 @@ export async function simulateTerminalTapAction(
     const result = await simulateTerminalCardTap(supabase, accountId, readerId, paymentIntentId);
     return { success: true, message: result.message };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('simulateTerminalTapAction failed:', error);
     return {
       success: false,
@@ -1177,6 +1281,10 @@ export async function cancelTerminalAction(params: {
     revalidatePath('/dashboard/payments');
     return { success: true, data: true };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('cancelTerminalAction failed:', error);
     return {
       success: false,
@@ -1200,6 +1308,10 @@ export async function confirmTerminalPaymentAction(
     revalidatePath('/dashboard/cash-flow');
     return { success: true, data: result };
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and returned to the caller as an ordinary failure,
+    // so the navigation is lost and the denial reads as a payment error.
+    unstable_rethrow(error);
     console.error('confirmTerminalPaymentAction failed:', error);
     return {
       success: false,

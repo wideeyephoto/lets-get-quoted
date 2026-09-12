@@ -257,6 +257,21 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   load-bearing. A threshold nothing evaluates is the problem this audit found
   everywhere else, not a fix for it.
 
+### Defect found and fixed — 28 actions swallowed permission denials
+
+- [x] **Guard redirects still swallowed across `dashboard/payments/actions.ts`
+  (Medium):** the 2026-09-12 pass fixed this class in 20 files with
+  `unstable_rethrow`, and reached exactly **1 of the 29 actions in this one**.
+  The other 28 wrap their whole body in `try`/`catch` and turn every error into
+  `{ success: false, error }` — including the `redirect()` a guard throws to deny
+  access. A contractor without `payments.refund` clicking Refund was told the
+  refund failed instead of being sent where they belong, and the same for
+  `payments.collect` on every collect action and `messages.send` on every
+  reminder. All 28 now rethrow first. Regression:
+  `test/dashboard-payments-actions.test.ts`, where **21 of the 62 tests fail
+  against the previous code** (22 guard cases less the one already fixed).
+  Found by writing the tests, not by a report.
+
 ### Still open from this audit
 
 - [ ] **`/api/export/insights` remains at zero executed lines** — the one export
@@ -270,11 +285,20 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   churn does not fail it for nothing. Enforced because the CI unit-test step now
   runs coverage. Raise them when the measured figure moves up and holds; do not
   lower them to turn a red build green.
-- [ ] **`src/app/dashboard/payments/actions.ts` is untested and too large to
-  test as a unit:** 973 lines, 29 exported actions, 23 database calls, 167
-  branches, zero executions, covering refunds, instant pay links, payment-plan
-  scheduling, dispute evidence, lien waivers and the Stripe Terminal flow. Close
-  by moving that logic into `src/lib` where the existing billing tests live.
+- [x] **`src/app/dashboard/payments/actions.ts` has tests (2026-09-12):** 62,
+  in both the `test:prelaunch` and `test:security` gates. This was the single
+  largest block of never-executed logic the audit found — 973 lines, 29 exported
+  actions, 167 branches, zero executions. The audit's advice was to split it
+  before testing it; that is the wrong order for money code, because the split
+  needs a net under it and this is the net. Held: the capability each action
+  demands (`payments.collect` to take money, `payments.refund` to send it back,
+  and collect never standing in for refund); every write scoped to the resolved
+  workspace and not to anything the form posted; a manual payment landing on the
+  `manual` rail with no platform fee, because nothing settles it and no fee is
+  owed on money that never touched Stripe; an absent refund amount read as a full
+  refund rather than as zero; and each amount and id validated before a row is
+  written. Splitting the module is now a safe refactor rather than a prerequisite,
+  and remains optional.
 - [ ] **14 of the 17 dark scheduled cron jobs remain** — neither route nor
   worker meaningfully executed. `purge-expired`, `service-reminders` and
   `plan-installments` are closed (see below); still open are `smart-dunning`
