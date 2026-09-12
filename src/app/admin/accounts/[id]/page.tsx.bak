@@ -8,7 +8,6 @@ import { listSupportCases } from '@/lib/support-cases';
 import { accountAttachmentUrl } from '@/lib/account-attachments';
 import styles from '../../admin.module.css';
 import AccountActions from './AccountActions';
-import { UsageAndOveragePanel, AuditPanel } from './extra-panels';
 import AccountDetailView, { type AccountTab } from './AccountDetailView';
 import {
   addAccountNoteAction,
@@ -136,7 +135,7 @@ export default async function AdminAccountDetailPage({
   searchParams: searchParamsPromise,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ done?: string; error?: string; page?: string }>;
+  searchParams: Promise<{ done?: string; error?: string }>;
 }) {
   const params = await paramsPromise;
   const searchParams = (await searchParamsPromise) || {};
@@ -1343,15 +1342,26 @@ export default async function AdminAccountDetailPage({
     </section>
   );
 
+  const renderAuditPanel = () => (
+    <section className={styles.panel}>
+      <h2 className={styles.panelTitle}>Staff actions on this account</h2>
+      {actions.length === 0 ? (
+        <p className={styles.emptyState}>None yet.</p>
+      ) : (
+        <ul className={styles.timeline}>
+          {actions.map((ac) => (
+            <li key={ac.id}>
+              <time>{fmtDateTime(ac.created_at)}</time>
+              <span>
+                <span className={styles.timelineActor}>{ac.admin_email}</span> — {ac.action.replace(/_/g, ' ')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 
-
-  const extraProps = {
-    accountId: params.id,
-    actions,
-    page: parseInt(searchParams?.page || '1', 10) || 1,
-    usageOverage,
-    entitlement,
-  };
   return (
     <>
       <Link href="/admin/accounts" className={styles.backLink}>
@@ -1526,7 +1536,7 @@ export default async function AdminAccountDetailPage({
       </div>
 
       {/* Main Tabbed Detail View */}
-        <AccountDetailView
+      <AccountDetailView
         tabs={tabs}
         defaultTab="overview"
         overviewPanel={
@@ -1566,7 +1576,7 @@ export default async function AdminAccountDetailPage({
           <div className={styles.detailGrid}>
             <div>
               {renderPlanAuthorityPanel()}
-              <UsageAndOveragePanel {...extraProps} />
+              {renderUsageAndOveragePanel()}
               {renderGoogleLsaPanel()}
               {renderPaymentsPanel()}
             </div>
@@ -1622,7 +1632,7 @@ export default async function AdminAccountDetailPage({
               />
             </div>
             <div>
-              <AuditPanel {...extraProps} />
+              {renderAuditPanel()}
             </div>
           </div>
         }
@@ -1631,7 +1641,7 @@ export default async function AdminAccountDetailPage({
             <div>
               {renderProfilePanel()}
               {renderPlanAuthorityPanel()}
-              <UsageAndOveragePanel {...extraProps} />
+              {renderUsageAndOveragePanel()}
               {renderGoogleLsaPanel()}
               {renderPaymentsPanel()}
               {renderRecentPaymentsPanel()}
@@ -1657,7 +1667,7 @@ export default async function AdminAccountDetailPage({
                 payoutsRestricted={payoutsRestricted}
                 synthetic={Boolean(a.test_marker)}
               />
-              <AuditPanel {...extraProps} />
+              {renderAuditPanel()}
             </div>
           </div>
         }

@@ -14,6 +14,7 @@ import { groupEmailFailures, groupSmsFailures, groupWebhookFailures } from '@/li
 import { loadOutboundWebhookFailures } from '@/lib/admin-public-api';
 import { staffCan } from '@/lib/staff';
 import { resolveWebhookGroupAction } from './actions';
+import { BulkWebhookResolve } from './bulk-webhooks';
 import VoiceReceiptFailures from './voice-receipts';
 import { loadPendingVoiceReceipts } from '@/lib/admin-voice-receipts';
 import styles from '../admin.module.css';
@@ -70,13 +71,7 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
         Inbound webhook failures · {formatNumber(totalWebhooks)} total {totalWebhooks > webhooks.length ? `(${webhooks.length} latest in ${webhookGroups.length} groups)` : `in ${webhookGroups.length} groups`}
       </h2>
       {webhookGroups.length === 0 && !diagnostics.failed.includes('webhookFailures') ? <p className={styles.emptyState}>No unresolved inbound webhook failures.</p> : null}
-      {webhookGroups.length ? <div className={styles.tableWrap}><table className={styles.table}>
-        <thead><tr><th>Source</th><th>Event</th><th>Error</th><th className="num">Occurrences</th><th>First / latest</th><th>Action</th></tr></thead>
-        <tbody>{webhookGroups.map((entry) => <tr key={entry.key}>
-          <td>{entry.sample.source.replace(/_/g, ' ')}</td><td>{entry.sample.event_type || '—'}</td><td className={styles.muted}>{entry.sample.error_message}</td><td className="num">{entry.count}</td><td className={styles.muted}>{fmt(entry.firstAt)}<br />{fmt(entry.latestAt)}</td>
-          <td>{canResolve ? <form action={resolveWebhookGroupAction.bind(null, entry.ids)} className={styles.compactForm}><label className={styles.srOnly} htmlFor={`resolve-${entry.ids[0]}`}>Resolution reason</label><input id={`resolve-${entry.ids[0]}`} className={styles.compactInput} name="reason" required minLength={4} placeholder="Resolution reason" /><button className="btn secondary" type="submit">Resolve group</button></form> : '—'}</td>
-        </tr>)}</tbody>
-      </table></div> : null}
+      {webhookGroups.length ? <BulkWebhookResolve webhookGroups={webhookGroups} canResolve={canResolve} /> : null}
     </section>
 
     <section className={styles.panel} id="outbound-webhooks">

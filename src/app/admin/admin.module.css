@@ -1453,3 +1453,8 @@ textarea.input {
   }
 }
 
+
+.navGroup { margin-bottom: 1rem; }
+.navGroupTitle { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-gray-500); padding: 0 0.75rem; margin-bottom: 0.25rem; font-weight: 600; }
+.navBadge { background: var(--color-gray-200); color: var(--color-gray-800); font-size: 0.7rem; padding: 0 0.4rem; border-radius: 1rem; margin-left: auto; font-weight: 500; }
+

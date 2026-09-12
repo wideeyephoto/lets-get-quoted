@@ -86,6 +86,17 @@ export default async function AdminAuditPage({ searchParams: searchParamsPromise
         <input id="audit-to" className={styles.input} name="to" type="date" defaultValue={searchParams.to ?? ''} style={{ flex: '0 1 160px' }} />
         <button className="btn primary" type="submit">Filter</button>
         {actor || action || searchParams.from || searchParams.to ? <Link className="btn secondary" href="/admin/audit">Clear</Link> : null}
+        
+        {actions.length > 0 && (
+          <a
+            className="btn secondary"
+            href={`/admin/audit/export?actor=${encodeURIComponent(actor)}&action=${encodeURIComponent(action)}&from=${encodeURIComponent(searchParams.from ?? '')}&to=${encodeURIComponent(searchParams.to ?? '')}`}
+            download
+            style={{ marginLeft: 'auto' }}
+          >
+            Export CSV
+          </a>
+        )}
       </form>
 
       {!result.available ? <div role="status" className={`${styles.banner} ${styles.err}`}>Audit data is unavailable. No empty history is being inferred.</div> : null}

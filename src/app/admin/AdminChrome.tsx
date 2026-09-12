@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type { StaffRole } from '@/lib/staff';
-import AdminNav from './AdminNav';
+import AdminNav, { type NavCounts } from './AdminNav';
 import SearchBox from './SearchBox';
 import styles from './admin.module.css';
 
@@ -19,7 +19,7 @@ function roleDisplay(role: string): string {
   return role.replace(/_/g, ' ').toUpperCase();
 }
 
-export default function AdminChrome({ adminEmail, role }: { adminEmail: string; role: StaffRole }) {
+export default function AdminChrome({ adminEmail, role, counts }: { adminEmail: string; role: StaffRole; counts?: NavCounts }) {
   const initials = getInitials(adminEmail);
 
   return (
@@ -41,7 +41,7 @@ export default function AdminChrome({ adminEmail, role }: { adminEmail: string; 
       </div>
       <div className={styles.sidebarContents}>
         <SearchBox />
-        <AdminNav role={role} />
+        <AdminNav role={role} counts={counts} />
         <div className={styles.sidebarFoot}>
           <div className={styles.userCard} title={`Signed in as ${adminEmail} (${role})`}>
             <div className={styles.userAvatar}>
