@@ -16,7 +16,11 @@ export function createSupabaseServerClient() {
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production'
+              })
             );
           } catch {
             // setAll was called from a Server Component render, where cookies

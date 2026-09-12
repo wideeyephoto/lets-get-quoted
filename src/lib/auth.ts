@@ -354,23 +354,10 @@ type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
 async function verifiedUser(
   supabase: SupabaseServerClient,
 ): Promise<{ id: string; email: string | null } | null> {
-  const read = async (keys: Awaited<ReturnType<typeof signingKeys>>) =>
-    // `{ jwks }`, not `{ keys }`: auth-js 2.110.5 marks the flat `keys` option
-    // deprecated in favour of it, and a removed option would fail OPEN into the
-    // library's own fetch rather than loudly.
-    supabase.auth.getClaims(undefined, keys ? { jwks: { keys } } : {});
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) return null;
 
-  let { data, error } = await read(await signingKeys());
-  if (error) {
-    // A rotated key is the one failure worth a second look: refetch the set and
-    // try once more before treating it as "not signed in". Any other error is
-    // still just a failed verification, and a second attempt costs one fetch.
-    ({ data, error } = await read(await signingKeys({ force: true })));
-  }
-  if (error || !data?.claims?.sub) return null;
-
-  const claims = data.claims as { sub: string; email?: unknown };
-  return { id: String(claims.sub), email: typeof claims.email === 'string' ? claims.email : null };
+  return { id: data.user.id, email: data.user.email ?? null };
 }
 
 /**

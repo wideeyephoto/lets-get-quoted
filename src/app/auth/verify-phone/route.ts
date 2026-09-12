@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { ensureAccountMembership } from '@/lib/auth';
+import { ensureAccountMembership, createAdminClient } from '@/lib/auth';
 import { recordLoginEvent } from '@/lib/login-events';
-import { clientIpFrom } from '@/lib/rate-limit';
+import { clientIpFrom, checkRateLimitStrict } from '@/lib/rate-limit';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { normalizeUsPhone } from '@/lib/phone';
+
+const VERIFY_IP_LIMIT = 20;
+const VERIFY_PHONE_LIMIT = 5;
+const VERIFY_WINDOW_SECONDS = 15 * 60; // 15 minutes
 
 // Verifies a phone OTP on the SERVER so the session cookies are written by the
 // server (via cookieStore.set) — mirroring /auth/callback for email. Doing this
@@ -26,6 +30,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Enter the six-digit code from the text message.' }, { status: 400 });
   }
 
+  const ip = clientIpFrom(request.headers);
+  const admin = createAdminClient();
+
+  const withinIpLimit = await checkRateLimitStrict(admin, `verify:ip:${ip}`, VERIFY_IP_LIMIT, VERIFY_WINDOW_SECONDS);
+  const withinPhoneLimit = await checkRateLimitStrict(admin, `verify:phone:${phone}`, VERIFY_PHONE_LIMIT, VERIFY_WINDOW_SECONDS);
+
+  if (!withinIpLimit || !withinPhoneLimit) {
+    return NextResponse.json({ error: 'Too many verification attempts. Wait a few minutes and try again.' }, { status: 429 });
+  }
+
   const cookieStore = cookies();
   const supabase = createServerClient(
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -36,7 +50,13 @@ export async function POST(request: Request) {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) => 
+            cookieStore.set(name, value, { 
+              ...options, 
+              httpOnly: true, 
+              secure: process.env.NODE_ENV === 'production' 
+            })
+          );
         },
       },
     }
@@ -45,6 +65,11 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
   if (error || !data.user || !data.session) {
     return NextResponse.json({ error: error?.message ?? 'That code could not be verified.' }, { status: 400 });
+  }
+
+  const { data: authData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (authData?.nextLevel === 'aal2' && authData.currentLevel === 'aal1') {
+    return NextResponse.json({ ok: false, mfa_required: true, redirect: '/login/mfa-challenge' });
   }
 
   try {

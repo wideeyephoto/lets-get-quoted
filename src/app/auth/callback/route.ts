@@ -30,7 +30,11 @@ export async function GET(request: Request) {
           },
           setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production'
+              })
             );
           },
         },
@@ -40,6 +44,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      const { data: authData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (authData?.nextLevel === 'aal2' && authData.currentLevel === 'aal1') {
+        const mfaRedirectUrl = new URL('/login/mfa-challenge', requestUrl.origin);
+        return NextResponse.redirect(mfaRedirectUrl);
+      }
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         try {

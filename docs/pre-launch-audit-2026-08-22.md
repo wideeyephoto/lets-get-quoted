@@ -195,6 +195,38 @@ Six independent findings, one theme: the product decides, then tells the contrac
 
 ---
 
+### 16. Missing Rate Limits on OTP Verification
+**Problem:** The `src/app/auth/verify-phone/route.ts` endpoint accepts OTP codes and proxies them to Supabase Auth without applying local rate limits. Because the request originates from the server, Supabase's per-IP rate limiter sees the Next.js server IP, not the attacker's IP. This allows an attacker to brute-force the 6-digit OTP code directly against the Next.js route.
+**Evidence:** `src/app/auth/verify-phone/route.ts` contains no calls to `checkRateLimit` or `checkRateLimitStrict`, unlike the `sendMagicLinkAction` which implements strict per-email and per-IP rate limits.
+**What the contractor experiences:** An attacker can guess their 6-digit code through repeated requests and hijack their session.
+**Smallest fix:** Apply the existing `checkRateLimitStrict` to `verify-phone/route.ts`, keying by both the client IP and the target phone number.
+
+---
+
+### 17. Improper Session Termination via Local JWKS Validation
+**Problem:** The custom `verifiedUser` function uses local JWKS cryptographic validation (`supabase.auth.getClaims`) instead of calling `supabase.auth.getUser()`. While `src/app/auth/signout/route.ts` clears the session cookie and local state, the JWT remains cryptographically valid. Because the server does not check revocation status with the Supabase backend, a hijacked JWT remains usable until it organically expires.
+**Evidence:** `src/lib/auth.ts:318-350` explicitly documents giving up the Auth server check, stating "a cryptographically valid, unexpired token is now accepted without asking the Auth server whether that user has since been banned or deleted." `src/app/auth/signout/route.ts` calls `supabase.auth.signOut()` but this does not invalidate the JWT for the local JWKS verifier.
+**What the contractor experiences:** If a session token is stolen, logging out does not revoke the attacker's access; the attacker maintains access until the JWT's natural expiry.
+**Smallest fix:** Restore the `supabase.auth.getUser()` check in `verifiedUser` to ensure the session hasn't been revoked or banned on the backend.
+
+---
+
+### 18. Insecure Token Storage (XSS Exposure)
+**Problem:** The Supabase SSR integration creates session cookies without the `HttpOnly` flag so they can be read by the browser-side client. This exposes the JWT session tokens to Cross-Site Scripting (XSS) attacks.
+**Evidence:** `src/lib/supabase-server.ts:16-20` calls `cookieStore.set(name, value, options)` using the default options provided by `@supabase/ssr`, which omits `httpOnly` by default for the session chunk cookies.
+**What the contractor experiences:** If any XSS vulnerability exists on the platform, an attacker can trivially steal their session token via `document.cookie` and hijack the account.
+**Smallest fix:** Override the cookie options in `setAll` within `src/lib/supabase-server.ts`, `callback/route.ts`, and `verify-phone/route.ts` to enforce `httpOnly: true` (and `secure: true` in production).
+
+---
+
+### 19. Lack of Multi-Factor Options (MFA)
+**Problem:** The authentication flow relies purely on single-factor methods (SMS OTP, Magic Link, OAuth) and has no implementation for checking or enforcing Authenticator Assurance Level 2 (AAL2).
+**Evidence:** `src/app/login/page.tsx` handles `signInWithOtp` and `signInWithOAuth`, but neither it nor `src/app/auth/verify-phone/route.ts` contains logic to handle Supabase's `mfa.challenge` or AAL level upgrades.
+**What the contractor experiences:** Users who want to secure their business account with TOTP or WebAuthn cannot do so, and even if they enroll via another means, the platform will not challenge them for it.
+**Smallest fix:** Check `supabase.auth.mfa.getAuthenticatorAssuranceLevel()` after the initial sign-in. If `nextLevel === 'aal2' && currentLevel === 'aal1'`, redirect to a new `/login/mfa-challenge` page to finalize the login.
+
+---
+
 # KNOW ABOUT IT
 
 These are real and verified, but none of them has a victim before you have customers, staff enforcement in use, or texting at volume.

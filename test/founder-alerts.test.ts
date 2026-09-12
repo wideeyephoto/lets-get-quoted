@@ -15,7 +15,7 @@ describe('sendFounderSignupAlert', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.RESEND_API_KEY = 're_test_key_123';
-    process.env.FOUNDER_ALERT_EMAIL = 'brett@letsgetquoted.com';
+    process.env.FOUNDER_ALERT_EMAIL = 'hello@letsgetquoted.com';
   });
 
   it('dispatches signup alert email with contractor trade, business name and postal code', async () => {
