@@ -35,6 +35,12 @@ tests) unless an item says otherwise.
 - [x] **Rate-limit buckets keyed on a spoofable header (Informational):** `clientIpFrom` now prefers `x-vercel-forwarded-for`, which a caller cannot set, falling back to `x-forwarded-for` then `x-real-ip`.
 - [x] **Guessable quick-pay session id (Informational):** rebuilt on `randomBytes(18)`. Was `Math.random` at roughly 20 bits, in a payment URL. Not live — nothing calls it — but it would not have been safe to wire up.
 
+### Vibecoder Security Review Recommendations (Pending)
+
+- [ ] **Marketplace Webhook Spoofing & Toll Fraud:** In `src/app/api/webhooks/marketplace/[provider]/route.ts`, `nextdoor` and custom providers lack signature verification, while Angi and Thumbtack fail open if secrets are unset. Attackers can supply an `accountId` via query, body, or header, allowing unauthenticated lead injection into any account. This triggers `dispatchSpeedToLeadSms`, opening the door for toll fraud and sender reputation damage.
+- [ ] **Marketplace Routing Fallback Flaws:** In `resolveTargetAccount`, if no tenant resolves, it falls back to the oldest account on the platform. Furthermore, the `pageId` branch selects any published site without filtering by `pageId`.
+- [ ] **PostgREST Injection:** `src/lib/marketplace-router/routing-engine.ts:34` interpolates the payload-controlled `partnerId` directly into a PostgREST `.or(\`id.eq.${partnerId}\`)` filter on the `accounts` table. Because there is no `account_id` scope here, this creates an injection vulnerability. Use `filterValue()` from `src/lib/postgrest-filter.ts`.
+
 ### Production acceptance still required
 
 Configuration presence is not runtime proof, and three of the fixes above change
