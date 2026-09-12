@@ -81,7 +81,21 @@ So the warning attached to scheduling these, repeated several times, was unfound
 
 **Consequence worth stating plainly:** with the summary honest, `smart-dunning` and `activation-autopilot` will record FAILED on any run where an item needed a message, because that is what the worker reports. They will keep doing so until a dispatcher exists or the jobs are unscheduled. That is the accurate signal, but it is a behaviour change for alerting.
 
-`test/cron-route-coverage.test.ts` now asserts that every cron route on disk is both scheduled and registered, and that nothing is scheduled without a route. Routes, schedule and health registry all stand at 52 and agree exactly.
+**THIRD CORRECTION: two of the four should not have been scheduled at all.** Scoping the dispatcher decision turned up a conflict the original finding missed, and it is a regression this audit introduced.
+
+`smart-dunning` is not a job waiting for a dispatcher. It duplicates `/api/cron/dunning`, which is already scheduled, already registered, already charges saved cards, and already sends the card-update prompt via `sendCardUpdateSms` — the exact thing the feature catalog advertises and that this report said was missing. Worse, the two overlap destructively:
+
+- `smart-dunning`'s candidate query is `getPaymentsNeedingAttention`, which selects `dunning_state IN ('needs_card', 'exhausted')` — the two **terminal** states `dunning.ts` sets together with `next_retry_at: null` precisely to stop retrying.
+- It then writes a fresh `next_retry_at` onto exactly those rows, hourly.
+- `decline_code` is not in that query's select list, so the value is always undefined and every row falls to the default branch: `now + 48h`, whatever the card actually did.
+
+The blast radius is contained but real. No wrongful charge occurs, because `dunning.ts`'s sweep also requires `dunning_state = 'scheduled'` and `smart-dunning` never writes that column. What does occur is terminal payments carrying a rolling `next_retry_at` that should be null, and `getPaymentsNeedingAttention` feeds that field to the admin command center and the operator briefing — so operators see a "next retry" on payments that will never be retried, while `retriesOptimized` counts the write as work done.
+
+`activation-autopilot` has a simpler problem: no path to success at all. `recordNudge` returns false before writing, because `contractor_onboarding_nudges` does not exist in production, and nothing reads that table even when a write succeeds.
+
+**Both are now unscheduled and parked**, in `PARKED_CRON_ROUTES` with the reason above, because parking them silently is the original bug. `test/cron-route-coverage.test.ts` now asserts the weaker but honest invariant: every route on disk is either scheduled and health-registered, or listed as parked with a substantive reason, and never both. Fifty routes live and watched, two parked, none unaccounted for.
+
+The lesson for the original finding stands inverted: "four jobs are scheduled nowhere" was correct as an observation, and "therefore schedule them" was the wrong inference for half of them. Two were inert because they were unfinished, and one of those was inert for a good reason.
 
 ### 3. Outbound calls without timeouts — Low — **RESOLVED**
 

@@ -29,6 +29,39 @@ export type CronJobSpec = {
   consequence: string;
 };
 
+/**
+ * Routes that exist under /api/cron on purpose but are deliberately NOT
+ * scheduled, with the reason each one is parked.
+ *
+ * This list exists because the alternative is the bug it replaces. Before
+ * 2026-09-12 four routes sat unscheduled and unregistered, and nothing reported
+ * their silence — the watchdog grades CRON_JOBS and cannot miss what it has
+ * never heard of. Scheduling all four then turned out to be wrong for two of
+ * them. Parking them silently would put us back where we started, so a parked
+ * route is recorded here with its reason and asserted by
+ * test/cron-route-coverage.ts: every route on disk is either scheduled and
+ * monitored, or listed below.
+ */
+export type ParkedCronRoute = {
+  /** Route segment under /api/cron. */
+  job: string;
+  /** Why it is not scheduled, and what would have to be true to schedule it. */
+  reason: string;
+};
+
+export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
+  {
+    job: 'smart-dunning',
+    reason:
+      'Duplicates the working `dunning` job and dirties the rows it touches. Its candidate query selects payments whose dunning_state is needs_card or exhausted -- the two TERMINAL states dunning.ts sets together with next_retry_at: null precisely to STOP retrying -- and writes a fresh next_retry_at onto them. It never selects decline_code either, so every row falls through to the default branch and gets now+48h whatever the card actually did. No wrongful charge results: the dunning sweep additionally requires dunning_state = scheduled, and this worker never writes that column. What does result is terminal payments carrying a rolling next_retry_at that should be null, which getPaymentsNeedingAttention feeds to the admin command center and the operator briefing. It also has no outbound dispatcher, so it cannot send the card-update prompt the feature catalog advertises -- dunning.ts already sends that via sendCardUpdateSms. Schedule only if it is rewritten to a purpose that does not overlap dunning.ts.',
+  },
+  {
+    job: 'activation-autopilot',
+    reason:
+      'Has no path to success. recordNudge returns false before writing, because contractor_onboarding_nudges does not exist in production (every insert returns PGRST205), and no SMS or email sender reads that table even when a write succeeds. The sweep scans accounts and records one error per candidate. Scheduling it bought a daily FAILED run and nothing else. Schedule once the table exists AND a dispatcher reads it.',
+  },
+];
+
 export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'operational-alerts', label: 'Operational failure alerts', schedule: '*/5 * * * *',
@@ -402,20 +435,6 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'money',
     consequence: 'Unresolved provider webhook failures are never retried or cleared, so payments and messaging events stay stuck in the queue waiting for somebody to notice them by hand.',
-  },
-  {
-    job: 'smart-dunning',
-    label: 'Failed payment recovery',
-    schedule: '0 * * * *',
-    importance: 'money',
-    consequence: 'A soft card decline is never retried and the customer is never texted a link to update an expired card, so the payment is simply lost. The product page sells this as automatic.',
-  },
-  {
-    job: 'activation-autopilot',
-    label: 'Activation nudges',
-    schedule: '0 15 * * *',
-    importance: 'customer',
-    consequence: 'A contractor who signed up and stalled before their first quote is never nudged, so they churn without anybody knowing they were stuck.',
   },
 ];
 
