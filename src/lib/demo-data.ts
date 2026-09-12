@@ -5,6 +5,8 @@
 // instantly with zero auth and zero backend cost.
 import { computeMargin, type Cost, type Job, type JobStatus } from '@/lib/jobs';
 import type { CrewMember } from '@/lib/crew';
+import type { SubscriptionTier } from '@/lib/subscriptions';
+import { normalizeUsPhone } from '@/lib/phone';
 import type { Lead, LeadSource, LeadStatus } from '@/lib/leads';
 import type { CashEvent } from '@/lib/cash-forecast';
 import type { ScheduledPayment } from '@/lib/cash-forecast-data';
@@ -417,6 +419,7 @@ export const DEMO_LEADS: Lead[] = ALL_LEAD_SEEDS.map((seed) => ({
   status: seed.status,
   name: seed.name,
   phone: seed.phone,
+  normalized_phone: seed.phone ? normalizeUsPhone(seed.phone) : null,
   email: seed.email,
   address: seed.address,
   project_type: seed.project_type,
