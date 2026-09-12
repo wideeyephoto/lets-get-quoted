@@ -88,6 +88,7 @@ function queuedReadClient(responses: DbResponse[]) {
     select: vi.fn((columns: string) => {
       selections.push(columns);
       const query = {
+        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         maybeSingle: vi.fn(async () => responses.shift() ?? { data: null, error: null }),
       };
@@ -111,6 +112,7 @@ function guardOnlyClient(chargeModel: unknown) {
   const table = {
     select: vi.fn(() => {
       const query = {
+        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         maybeSingle: vi.fn(async () => ({ data: row, error: null })),
       };
@@ -135,6 +137,7 @@ function mutationClient(input: {
   const deleteFilters: Array<[string, unknown]> = [];
   const update = vi.fn(() => {
     const query = {
+      is: vi.fn(() => query),
       eq: vi.fn((column: string, value: unknown) => {
         filters.push([column, value]);
         return query;
@@ -147,6 +150,7 @@ function mutationClient(input: {
   });
   const remove = vi.fn(() => {
     const query = {
+      is: vi.fn(() => query),
       eq: vi.fn((column: string, value: unknown) => {
         deleteFilters.push([column, value]);
         return query;
@@ -159,6 +163,7 @@ function mutationClient(input: {
   const table = {
     select: vi.fn((columns: string) => {
       const query = {
+        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         maybeSingle: vi.fn(async () => (
           input.preMigration && columns.includes('charge_model')
@@ -201,7 +206,8 @@ function checkoutRaceAdmin(
       throw new Error('a row that became direct must not persist legacy Checkout state');
     }
     const q = {
-      eq: vi.fn(() => q),
+      is: vi.fn(() => q),
+        eq: vi.fn(() => q),
       in: vi.fn(() => q),
       select: vi.fn(() => q),
       maybeSingle: vi.fn(async () => ({ data: { id: 'pay_guard' }, error: null })),
@@ -243,7 +249,8 @@ function checkoutRaceAdmin(
 
   const query = (response: DbResponse) => {
     const q = {
-      eq: vi.fn(() => q),
+      is: vi.fn(() => q),
+        eq: vi.fn(() => q),
       is: vi.fn(() => q),
       not: vi.fn(() => q),
       gte: vi.fn(() => q),
@@ -305,6 +312,7 @@ function webhookAdmin(
   const update = vi.fn(() => {
     if (!allowUpdates) throw new Error('a direct/malformed webhook row must not be updated');
     const query = {
+      is: vi.fn(() => query),
       eq: vi.fn((column: string, value: unknown) => {
         filters.push([column, value]);
         return query;
@@ -318,6 +326,7 @@ function webhookAdmin(
   const table = {
     select: vi.fn(() => {
       const query = {
+        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         maybeSingle: vi.fn(async () => ({ data: row, error: null })),
       };
@@ -338,7 +347,8 @@ function queuedWebhookMutationAdmin(input: {
 
   function chained(queue: DbResponse[]) {
     const query = {
-      eq: vi.fn(() => query),
+      is: vi.fn(() => query),
+        eq: vi.fn(() => query),
       in: vi.fn(() => query),
       limit: vi.fn(() => query),
       or: vi.fn(() => query),

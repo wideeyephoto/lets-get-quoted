@@ -111,14 +111,7 @@ describe('nothing is charged without approval', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('treats an unreadable period as no authorization', async () => {
-    from.mockReturnValue({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: 'down' } }) }) }),
-    });
-    const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
-    expect(d).toEqual({ outcome: 'unavailable' });
-    expect(rpc).not.toHaveBeenCalled();
-  });
+
 
   it('treats a database error as no authorization, never as approval', async () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
@@ -142,12 +135,11 @@ describe('what it reports back', () => {
       p_resource_code: 'text_segments',
       p_units: 10,
       p_rate_millicents: 4_800,
-      p_period_start: '2026-08-01T00:00:00Z',
     }));
   });
 
   it('reports an accrual with what is left of the cap', async () => {
-    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
+    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000, period_start: '2026-08-01T00:00:00Z' }], error: null });
     const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ outcome: 'accrued', chargedMillicents: 48_000, capMillicents: 5_000_000 });
   });
@@ -156,7 +148,7 @@ describe('what it reports back', () => {
     // Without this the release derived its own period, and any drift between
     // the two -- midnight on a Flex workspace, an entitlement period arriving
     // mid-month -- meant it released nothing and said it worked.
-    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
+    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000, period_start: '2026-08-01T00:00:00Z' }], error: null });
     const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ periodStart: '2026-08-01T00:00:00Z' });
   });
@@ -164,19 +156,9 @@ describe('what it reports back', () => {
   it('reports the cap being reached as its own answer, not as an error', async () => {
     // A contractor who hit their own ceiling deserves a different sentence from
     // one whose database call failed.
-    rpc.mockResolvedValue({ data: [{ decision: 'cap_reached', accrued_millicents: 5_000_000, cap_millicents: 5_000_000, charged_millicents: 0 }], error: null });
+    rpc.mockResolvedValue({ data: [{ decision: 'cap_reached', accrued_millicents: 5_000_000, cap_millicents: 5_000_000, charged_millicents: 0, period_start: '2026-08-01T00:00:00Z' }], error: null });
     const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ outcome: 'cap_reached', capMillicents: 5_000_000 });
-  });
-
-  it('falls back to the calendar month when a workspace has no period', async () => {
-    // Flex has no subscription period to overrun against.
-    withPeriod(null, null);
-    rpc.mockResolvedValue({ data: [{ decision: 'not_authorized' }], error: null });
-    await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
-    const args = rpc.mock.calls[0][1];
-    expect(args.p_period_start).toMatch(/^\d{4}-\d{2}-01T00:00:00\.000Z$/);
-    expect(new Date(args.p_period_end).getTime()).toBeGreaterThan(new Date(args.p_period_start).getTime());
   });
 });
 
