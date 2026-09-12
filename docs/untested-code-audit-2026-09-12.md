@@ -282,6 +282,33 @@ Worth stating plainly, because the findings above are one-sided:
    commented-out block already in `vitest.config.ts`. Floors prevent the slide;
    a number without a floor only records it.
 
+## Closed since this audit
+
+**Step 1 is done.** The token-authenticated server actions now have tests: 129
+of them across five files, covering `client/jobs/[token]` (the action module
+plus its selection, change-order and form siblings), `portal/view/[token]`,
+`sub/[token]`, `schedule/[token]`, `review/[token]` and `quick-stop/[id]`, and
+`resolveJobAccess` itself — the resolver all four client-job modules depend on,
+which was at 2.17%.
+
+The reachability pass moves accordingly: server actions go from 42 executed to
+51, and from 38 untouched to 29. What the tests assert is the boundary rather
+than the happy path — that an action refuses a revoked or expired link before
+writing, that account and job scope come from the resolved access and never
+from posted fields, that a rate limit is checked first, and that a failed
+request does not revalidate a page.
+
+Writing them turned up one defect, now fixed. `selectScheduleOptionAction` and
+`selectClientJobScheduleOptionAction` validated the chosen slot with
+`Number(formData.get('optionIndex'))`, and `Number(null)` is `0`. A request
+omitting the field entirely passed the guard and booked the first offered slot,
+which the contractor then saw as a choice the customer had made. The page posts
+the value in a hidden input, so the normal UI never hit it; a server action is
+reachable by anyone holding the link, which is the case the guard existed for.
+Both now reject an absent or blank field before coercion.
+
+Steps 2 through 8 below are open.
+
 ## Reproducing this
 
 ```

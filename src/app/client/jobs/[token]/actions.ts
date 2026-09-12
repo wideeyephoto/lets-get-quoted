@@ -119,8 +119,14 @@ export async function submitJobFeedbackAction(
 }
 
 export async function selectClientJobScheduleOptionAction(token: string, formData: FormData) {
-  const optionIndex = Number(formData.get('optionIndex'));
-  if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 2) throw new Error('Choose a valid schedule option.');
+  // Read before coercion: Number(null) and Number('') are both 0, so an absent
+  // optionIndex would book the first slot and show the contractor a choice the
+  // customer never made. See the same guard in app/schedule/[token]/actions.ts.
+  const rawOptionIndex = optionalText(formData.get('optionIndex'));
+  const optionIndex = Number(rawOptionIndex);
+  if (rawOptionIndex === null || !Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 2) {
+    throw new Error('Choose a valid schedule option.');
+  }
 
   await selectClientJobScheduleOption(token, optionIndex, optionalText(formData.get('notes')));
   revalidatePath(`/client/jobs/${token}`);
