@@ -69,7 +69,7 @@
 .site[data-button='outline'] .careBtn,
 .site[data-button='outline'] .vistaMenu,
 .site[data-button='outline'] .guildQuote {
-  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-bottom-width: 2px; border-radius: var(--theme-radius, 8px); box-shadow: none; filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 2px solid var(--theme-accent); border-bottom-width: 2px; border-radius: var(--theme-radius, 8px); box-shadow: none; filter: none;
 }
 .site[data-button='ghost'] .primaryCta,
 .site[data-button='ghost'] .heroQuickForm button[type='submit'],
@@ -87,7 +87,7 @@
 .site[data-button='ghost'] .careBtn,
 .site[data-button='ghost'] .vistaMenu,
 .site[data-button='ghost'] .guildQuote {
-  background: transparent; color: var(--theme-accent); border: 0; border-bottom: 2px solid var(--theme-accent); border-radius: 0; box-shadow: none; filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 0; border-bottom: 2px solid var(--theme-accent); border-radius: 0; box-shadow: none; filter: none;
 }
 
 /* Glow (#8): keep the theme's solid fill, add a luminous accent halo. */
@@ -112,7 +112,7 @@
 .site[data-button='double'] .coatBtn, .site[data-button='double'] .coatHeaderCta, .site[data-button='double'] .coatFooterCall,
 .site[data-button='double'] .fixitBtn, .site[data-button='double'] .fixitFooterCall, .site[data-button='double'] .renoBtn,
 .site[data-button='double'] .renoFooterCall, .site[data-button='double'] .careBtn, .site[data-button='double'] .vistaMenu, .site[data-button='double'] .guildQuote {
-  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
   box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--theme-accent) 22%, transparent);
 }
 .site[data-button='double'] .primaryCta:hover, .site[data-button='double'] .heroQuickForm button[type='submit']:hover, .site[data-button='double'] .desktopCtaQuote:hover,
@@ -150,7 +150,7 @@
 .site[data-button='sweep'] .fixitBtn, .site[data-button='sweep'] .fixitFooterCall, .site[data-button='sweep'] .renoBtn,
 .site[data-button='sweep'] .renoFooterCall, .site[data-button='sweep'] .careBtn, .site[data-button='sweep'] .vistaMenu, .site[data-button='sweep'] .guildQuote {
   position: relative; overflow: hidden; z-index: 0; isolation: isolate;
-  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
 }
 .site[data-button='sweep'] .primaryCta::before, .site[data-button='sweep'] .heroQuickForm button[type='submit']::before, .site[data-button='sweep'] .desktopCtaQuote::before,
 .site[data-button='sweep'] .shineBtn::before, .site[data-button='sweep'] .shineHeaderCta::before, .site[data-button='sweep'] .shineFooterCall::before,
@@ -183,7 +183,7 @@
    "Call" button, but that one is outside <header> and has no data-edit, so it
    keeps the page style. */
 .site[data-header-button='outline'] header a[data-edit='quoteForm'] {
-  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-bottom-width: 2px; border-radius: var(--theme-radius, 8px); box-shadow: none; filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 2px solid var(--theme-accent); border-bottom-width: 2px; border-radius: var(--theme-radius, 8px); box-shadow: none; filter: none;
 }
 .site[data-header-button='glow'] header a[data-edit='quoteForm'] {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-accent) 40%, transparent), 0 0 22px 2px color-mix(in srgb, var(--theme-accent) 55%, transparent);
@@ -192,7 +192,7 @@
   box-shadow: 0 0 0 1px var(--theme-accent), 0 0 30px 5px color-mix(in srgb, var(--theme-accent) 70%, transparent);
 }
 .site[data-header-button='double'] header a[data-edit='quoteForm'] {
-  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
   box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--theme-accent) 22%, transparent);
 }
 .site[data-header-button='double'] header a[data-edit='quoteForm']:hover {
@@ -208,7 +208,7 @@
 }
 .site[data-header-button='sweep'] header a[data-edit='quoteForm'] {
   position: relative; overflow: hidden; z-index: 0; isolation: isolate;
-  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
+  background: transparent; color: var(--theme-accent-text, var(--theme-accent)); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
 }
 .site[data-header-button='sweep'] header a[data-edit='quoteForm']::before {
   content: ''; position: absolute; inset: 0; background: var(--theme-accent); transform: translateY(101%); transition: transform .24s ease; z-index: -1;

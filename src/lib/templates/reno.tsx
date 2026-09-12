@@ -43,8 +43,8 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
     '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#1b2431'),
     '--theme-accent-text': site.accent_override
-      ? readableAccentText(site.accent_override, [scheme?.bg || '#111722', scheme?.surface || '#1b2431'])
-      : (scheme?.accentText || defaultAccent),
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#ffffff', scheme?.surface || '#f4f5f7'])
+      : (scheme?.accentText || readableAccentText(defaultAccent, ['#ffffff', '#f4f5f7'])),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
     '--c-on-deep': scheme?.onDeep || '#ffffff',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),

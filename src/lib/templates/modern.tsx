@@ -40,8 +40,8 @@ export default function VistaTemplate({ site }: TemplateProps) {
     '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#111'),
     '--theme-accent-text': site.accent_override
-      ? readableAccentText(site.accent_override, [scheme?.bg || '#0f1115', scheme?.surface || '#171a20'])
-      : (scheme?.accentText || defaultAccent),
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#f4f5f3', scheme?.surface || '#ffffff'])
+      : (scheme?.accentText || readableAccentText(defaultAccent, ['#f4f5f3', '#ffffff'])),
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
     '--c-on-photo': scheme?.onPhoto || '#f0f2f5',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
