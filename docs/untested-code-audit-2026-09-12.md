@@ -340,7 +340,37 @@ The reachability pass across all of this work: files no test executes fall from
 1,151 to 1,121 of 2,300, server actions from 75 never-executed to 66, and route
 handlers from 74 executed to 91.
 
-Steps 4 through 8 below are open.
+**Step 6 has started.** Two of the seventeen dark cron jobs are covered: 55
+tests across `test/purge-worker.test.ts` and
+`test/service-reminder-sweep.test.ts`, both added to the `test:prelaunch` gate.
+`runPurgeWorker` went first because it is the only code in the product that
+destroys data permanently, and it was executing 0% of its lines. What the tests
+hold is the set of answers that cannot be taken back: a legal hold stops the
+deletion and releases the claim rather than leaving the row locked, the hold is
+re-read from the account rather than trusted from the claimed row, the delete is
+narrowed to the owning account as well as the row, each entity type resolves to
+its own table and an unrecognised one deletes nothing, and one failed item does
+not strand the rest of the batch. The reminder sweep holds its two stated
+design decisions: the message goes to the contractor and never the homeowner,
+and the row is stamped before the send so a half-failed run cannot send twice.
+
+Writing those turned up a second defect, now fixed, in the same family as the
+one the 2026-09-12 security pass closed. That pass made four cron routes able to
+report failure by converting their worker's `errors` array into a **count**,
+because a count was a shape `cronSummaryHasFailures` could read. The array shape
+stayed invisible to it: an array is neither number, boolean nor string, so it
+fell past every branch and returned a clean run. Three scheduled jobs hand their
+worker's result to `cronRoute` untouched and so recorded Healthy on every
+failure they collected — `purge-expired`, `google-lsa-sync` and
+`weather-morning-alert`. A non-empty array under a failure-named key is now a
+failure, which fixes all three at the source and any worker written the same way
+later. Separately, `POST /api/cron/purge-expired` checks `CRON_SECRET` itself
+rather than going through `cronRoute`, so it sat outside that sweep and answered
+a hardcoded `ok: true`; it now reports on the worker's own errors.
+
+Fifteen dark jobs remain, listed above.
+
+Steps 4, 5, 7 and 8 below are open.
 
 ## Reproducing this
 

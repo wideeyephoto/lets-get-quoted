@@ -502,6 +502,11 @@ export function cronSummaryHasFailures(summary: Record<string, unknown> | null |
   }
   return Object.entries(summary).some(([key, value]) => {
     if (!/(^|_)(failed|failures|errors|error_count|pauseFailures|pause_failures|no_customer|no_stripe_customer|completion_unconfirmed)$/i.test(key)) return false;
+    // A list of what went wrong is the commonest shape a worker returns, and it
+    // used to fall past every branch below and read as a clean run: three
+    // scheduled jobs recorded Healthy on every failure they collected. Checked
+    // first, because an array is also typeof 'object' and would match nothing.
+    if (Array.isArray(value)) return value.length > 0;
     if (typeof value === 'number') return Number.isFinite(value) && value > 0;
     if (typeof value === 'boolean') return value;
     return typeof value === 'string' && value.trim() !== '' && value.trim() !== '0';

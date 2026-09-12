@@ -24,7 +24,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const result = await runPurgeWorker();
-    return NextResponse.json({ ok: true, ...result });
+    // The worker catches its own per-item failures and returns them, so it
+    // almost never throws. A hardcoded ok:true here reported a run that purged
+    // nothing and errored on every item as a success.
+    return NextResponse.json({ ok: result.errors.length === 0, ...result });
   } catch (err) {
     console.error('Purge expired cron worker failure:', err);
     return NextResponse.json(

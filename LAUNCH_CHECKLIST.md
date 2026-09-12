@@ -160,6 +160,41 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
 - [x] **The security gate covers the token boundary:** `npm run test:security`
   previously ran six files with no token-boundary or export-tenancy coverage in
   them. It now runs eleven.
+- [x] **The purge worker and the service reminder sweep have tests:** 55 across
+  two files, both added to the `test:prelaunch` gate. `runPurgeWorker` is the
+  only code in the product that destroys data permanently — it hard deletes rows
+  whose 30-day trash window expired, removes their quarantined storage files and
+  finalises closed accounts — and it executed 0% of its lines. Held: a legal hold
+  stops the deletion, releases the claim and marks the row rather than leaving it
+  locked; the hold is re-read from the account rather than trusted from the
+  claimed row; the delete is narrowed to the owning account as well as the row;
+  each of the five entity types resolves to its own table and an unrecognised one
+  deletes nothing; a failure on one item releases that item's lock and the batch
+  continues. For the reminder sweep: it addresses the contractor and never the
+  homeowner, one email per account rather than per warranty, and the row is
+  stamped before the send so a half-failed run cannot send twice.
+
+### Defect found and fixed — three cron jobs could not report failure
+
+- [x] **`cronSummaryHasFailures` could not see an `errors` array (Medium):** the
+  2026-09-12 fix above made four routes report failure by converting their
+  worker's `errors` array into a **count**, because a count was a shape the
+  detector could read. The array shape itself stayed invisible to it — an array
+  is neither number, boolean nor string, so it fell past every branch and read as
+  a clean run. That left three scheduled jobs recording Healthy on every failure
+  they collected: `purge-expired`, `google-lsa-sync` and `weather-morning-alert`,
+  whose routes hand the worker's result to `cronRoute` untouched. A non-empty
+  array under a failure-named key is now a failure, which fixes all three at the
+  source rather than patching each route, and covers any worker written the same
+  way later. Regression: `test/cron-summary-surfaces-errors.test.ts` (10 added
+  tests). Found by writing the purge-worker tests, not by a report.
+- [x] **`POST /api/cron/purge-expired` hardcoded `ok: true` (Low):** that path
+  checks `CRON_SECRET` itself rather than going through `cronRoute`, so it was
+  outside the sweep above. The worker catches its own per-item failures and
+  returns them instead of throwing, so a run that purged nothing and errored on
+  every item answered `ok: true`. Now `ok: result.errors.length === 0`.
+  Regression: `test/purge-worker.test.ts`, which also pins the four
+  unauthorised-request shapes that path must refuse.
 
 ### Still open from this audit
 
@@ -173,11 +208,14 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   branches, zero executions, covering refunds, instant pay links, payment-plan
   scheduling, dispute evidence, lien waivers and the Stripe Terminal flow. Close
   by moving that logic into `src/lib` where the existing billing tests live.
-- [ ] **17 scheduled cron jobs are dark end to end** — neither route nor worker
-  meaningfully executed, among them `purge-expired` (deletes), `plan-installments`
-  and `smart-dunning` (charge), and `appointment-reminders`,
-  `service-reminders` and `weather-morning-alert` (message customers). Listed
-  with their workers' executed-line figures in the audit report.
+- [ ] **15 of the 17 dark scheduled cron jobs remain** — neither route nor
+  worker meaningfully executed. `purge-expired` and `service-reminders` are
+  closed (see below); still open are `plan-installments` and `smart-dunning`
+  (charge), `appointment-reminders` and `weather-morning-alert` (message
+  customers), `geocode-backfill`, `google-lsa-sync`, `quick-stop-sweep`, `blog`,
+  `daily-digest`, `arrival-confirm`, `arrival-late`, `waitlist-sweep`,
+  `recurring`, `quickbooks-sync` and `operator-briefing`. Listed with their
+  workers' executed-line figures in the audit report.
 
 ## Coverage gaps opened — 2026-09-11
 
