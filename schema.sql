@@ -1244,6 +1244,9 @@ create table if not exists leads (
 
 alter table leads add column if not exists status lead_status not null default 'new';
 alter table leads add column if not exists email text;
+alter table leads add column if not exists normalized_phone text;
+create index if not exists leads_normalized_phone_idx on leads (normalized_phone) where normalized_phone is not null;
+create index if not exists leads_email_idx on leads (email) where email is not null;
 alter table leads add column if not exists project_type text;
 alter table leads add column if not exists estimated_hours numeric(8,2);
 alter table leads add column if not exists quote_visit jsonb;

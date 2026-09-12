@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
   // field to decide which owners get interrupted, and never make lead creation
   // wait on an external geocoder. A bare ZIP stays unknown for now; the live
   // form asks for a town or city so normal submissions are deterministic.
-  if (fromWizard && filters.serviceAreaGate) {
+  if (location && filters.serviceAreaGate) {
     const servedCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
     if ((await serviceAreaVerdict(location, servedCities)) === false) flags.push('out_of_area');
   }
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
   // not check" must never render identically to "we checked": the lead still
   // goes through, because rejecting real customers over our own configuration
   // is worse, but it is flagged as unchecked rather than silently unflagged.
-  if (filters.phoneVerification && text(data, 'wizard', 4) === '1') {
+  if (filters.phoneVerification) {
     const verificationReadiness = await loadLeadPhoneVerificationReadiness(
       site.account_id,
       admin,
@@ -386,17 +386,20 @@ export async function POST(request: NextRequest) {
   // duplicate card on the board.
   if (normalizedPhone || email) {
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recent } = await admin
-      .from('leads')
-      .select('*')
-      .eq('account_id', site.account_id)
-      .in('status', ['new', 'contacted', 'quoted'])
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
-      .limit(25);
-    const duplicate = (recent ?? []).find((lead) =>
-      (normalizedPhone && lead.phone && normalizeUsPhone(lead.phone) === normalizedPhone) ||
-      (email && lead.email === email));
+    const checks: PromiseLike<Lead | undefined>[] = [];
+    if (normalizedPhone) {
+      checks.push(
+        admin.from('leads').select('*').eq('account_id', site.account_id).eq('normalized_phone', normalizedPhone).in('status', ['new', 'contacted', 'quoted']).gte('created_at', cutoff).order('created_at', { ascending: false }).limit(1).then(({ data }) => (data?.[0] as Lead | undefined))
+      );
+    }
+    if (email) {
+      checks.push(
+        admin.from('leads').select('*').eq('account_id', site.account_id).eq('email', email).in('status', ['new', 'contacted', 'quoted']).gte('created_at', cutoff).order('created_at', { ascending: false }).limit(1).then(({ data }) => (data?.[0] as Lead | undefined))
+      );
+    }
+    
+    const results = await Promise.all(checks);
+    const duplicate = results.find(Boolean);
     if (duplicate) {
       const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const mergedMessage = `${duplicate.message || ''}\n\n— Repeat request (${stamp}): ${message || '(no new details)'}`.trim().slice(0, 6000);

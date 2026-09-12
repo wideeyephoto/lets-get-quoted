@@ -3,6 +3,7 @@ import { createJob, deleteJob, getJob, parseQuoteItems, type Job, type QuoteItem
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
+import { normalizeUsPhone } from '@/lib/phone';
 import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import { sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
 export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
@@ -291,6 +292,7 @@ export type Lead = {
   status: LeadStatus;
   name: string | null;
   phone: string | null;
+  normalized_phone: string | null;
   email: string | null;
   address: string | null;
   project_type: string | null;
@@ -450,6 +452,7 @@ export async function createLead(
     status: 'new',
     name: input.name.trim(),
     phone: input.phone?.trim() || null,
+    normalized_phone: input.phone ? normalizeUsPhone(input.phone) : null,
     email: input.email?.trim().toLowerCase() || null,
     address: input.address?.trim() || null,
     project_type: input.projectType?.trim() || null,
@@ -823,6 +826,7 @@ export async function updateLeadDetails(
     .update({
       name: input.name.trim() || null,
       phone: input.phone?.trim() || null,
+      normalized_phone: input.phone ? normalizeUsPhone(input.phone) : null,
       email: input.email?.trim().toLowerCase() || null,
       address: input.address?.trim() || null,
       project_type: input.projectType?.trim() || null,
