@@ -12,7 +12,7 @@ import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatin
 import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
-import { ALLOWED_TYPES } from '@/lib/lead-photo-storage';
+import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 import { getOrCaptureAttribution } from '@/lib/attribution';
 import { resolveMessageMatchHero, type MessageMatchResult } from '@/lib/ad-message-match';
 import ContactPreferenceControl, { type ContactPreferenceValue } from '@/components/ContactPreferenceControl';

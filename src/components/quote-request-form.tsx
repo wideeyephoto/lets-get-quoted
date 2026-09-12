@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
-import { ALLOWED_TYPES } from '@/lib/lead-photo-storage';
+import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';

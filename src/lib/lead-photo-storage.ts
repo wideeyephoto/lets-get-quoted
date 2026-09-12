@@ -4,14 +4,7 @@ import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const LEAD_PHOTOS_BUCKET = 'lead-photos';
 const MAX_PHOTO_BYTES = 35 * 1024 * 1024;
-export const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-]);
+import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 
 async function ensureLeadPhotosBucket() {
   const admin = createAdminClient();
