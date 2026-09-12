@@ -462,6 +462,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       setStep('qa');
       return;
     }
+    if (result?.continuationToken || result?.responseId) {
+      setChatResponseId((result.continuationToken as string) || (result.responseId as string));
+    }
     const min = Number(result?.min);
     const max = Number(result?.max);
     const basis = typeof result?.basis === 'string' ? result.basis.trim().slice(0, 60) : '';
@@ -831,6 +834,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         }
         if (fit.excluded) data.set('excluded', 'true');
         data.set('wizard', '1');
+        if (chatResponseId) data.set('continuationToken', chatResponseId);
+        if (visualObservation) data.set('visualObservation', visualObservation);
         if (verify && verifyCode.trim()) {
           data.set('verifyToken', verify.token);
           data.set('verifyExpires', String(verify.expiresAt));

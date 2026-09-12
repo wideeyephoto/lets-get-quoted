@@ -19,6 +19,7 @@ import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
+import { verifyContinuationToken } from '@/lib/estimate-continuation-token';
 
 export const runtime = 'nodejs';
 
@@ -104,7 +105,56 @@ export async function POST(request: NextRequest) {
   const name = text(data, 'name', 100);
   const phone = text(data, 'phone', 40);
   const email = text(data, 'email', 160).toLowerCase();
-  const message = text(data, 'message', 3000);
+  let message = text(data, 'message', 3000);
+  
+  const continuationToken = text(data, 'continuationToken', 10000);
+  if (continuationToken) {
+    const tokenData = verifyContinuationToken(continuationToken, siteId);
+    if (tokenData && Array.isArray(tokenData.history)) {
+      const qaLines: string[] = [];
+      for (const item of tokenData.history) {
+        if (!item || typeof item !== 'object') continue;
+        const role = (item as any).role;
+        
+        if (role === 'assistant') {
+          const content = (item as any).content;
+          if (Array.isArray(content)) {
+            const textPart = content.find((p: any) => p?.type === 'output_text');
+            if (textPart?.text) {
+              try {
+                const parsed = JSON.parse(textPart.text);
+                if (parsed.question) qaLines.push(`Q: ${parsed.question}`);
+              } catch {
+                // Ignore JSON parse errors
+              }
+            }
+          }
+        } else if (role === 'user') {
+          const content = (item as any).content;
+          let answerText = '';
+          if (typeof content === 'string') {
+            answerText = content.replace(/\n\nRespond with json only\.$/, '');
+          } else if (Array.isArray(content)) {
+            const textPart = content.find((p: any) => p?.type === 'input_text');
+            if (textPart?.text) {
+              answerText = textPart.text.replace(/\n\nRespond with json only\.$/, '');
+            }
+          }
+          if (qaLines.length > 0 && answerText) {
+            qaLines.push(`A: ${answerText}`);
+          }
+        }
+      }
+      if (qaLines.length > 0) {
+        message += `\n\n=== AI Intake Details ===\n${qaLines.join('\n')}`;
+      }
+    }
+  }
+
+  const visualObservation = text(data, 'visualObservation', 2000);
+  if (visualObservation) {
+    message += `\n\nAI Photo Observation: ${visualObservation}`;
+  }
   if (!siteId || !name) {
     return NextResponse.json({ error: 'Add your name to send this request.' }, { status: 400 });
   }
@@ -280,23 +330,41 @@ export async function POST(request: NextRequest) {
   let permitTriage: LeadTriage['permit'] = undefined;
   if (location && location.trim().length >= 3) {
     try {
-      const jurisdiction = resolveJurisdiction({
-        raw: location,
-        city: location,
-        state: 'MI',
-        formattedAddress: location,
-        isValid: true,
-      });
-      const req = evaluatePermitRequirement(jurisdiction.authorityId, {
-        trade: 'roofing',
-        scope: 'replacement',
-        estimatedCost: estimate?.max || 8500,
-      });
-      permitTriage = {
-        required: req.decision === 'required',
-        authorityName: jurisdiction.authorityName,
-        estimatedFee: req.estimatedGovernmentFee?.estimatedTotal ?? null,
+      const stateMatch = location.match(/\b([A-Z]{2})\b/);
+      const parsedState = stateMatch ? stateMatch[1] : undefined;
+      
+      const tradeMap: Record<string, any> = {
+        electrician: 'electrical',
+        plumber: 'plumbing',
+        hvac: 'mechanical',
+        roofer: 'roofing',
+        roofing: 'roofing',
       };
+      const rawTrade = (siteContent.trade || '').toLowerCase();
+      const mappedTrade = tradeMap[rawTrade] || 'general';
+
+      if (parsedState) {
+        const jurisdiction = resolveJurisdiction({
+          raw: location,
+          city: location,
+          state: parsedState,
+          formattedAddress: location,
+          isValid: true,
+        });
+        
+        if (jurisdiction) {
+          const req = evaluatePermitRequirement(jurisdiction.authorityId, {
+            trade: mappedTrade,
+            scope: 'replacement', // Fallback for now, could be improved with AI classification
+            estimatedCost: estimate?.max || 8500,
+          });
+          permitTriage = {
+            required: req.decision === 'required',
+            authorityName: jurisdiction.authorityName,
+            estimatedFee: req.estimatedGovernmentFee?.estimatedTotal ?? null,
+          };
+        }
+      }
     } catch {
       // quiet fallback
     }
