@@ -165,7 +165,7 @@ function includedLimits(
     limits.crewUsers === null ? null : { label: 'Crew users', value: describeSeatLimit(limits.crewUsers, purchased.crewUsers) },
     limits.customDomainConnections === null ? null : { label: 'Custom domains', value: limits.customDomainConnections.toLocaleString('en-US') },
     limits.dedicatedBusinessNumbers === null ? null : { label: 'Dedicated business numbers', value: limits.dedicatedBusinessNumbers.toLocaleString('en-US') },
-    limits.storageGb === null ? null : { label: 'File & photo storage', value: `${limits.storageGb.toLocaleString('en-US')} GB` },
+    limits.storageGb === null ? null : { label: 'File & photo storage', value: `${describeSeatLimit(limits.storageGb, purchased.storageGb)} GB` },
     limits.quickBooksConnections === null ? null : { label: 'QuickBooks Online connections', value: limits.quickBooksConnections.toLocaleString('en-US') },
     limits.voiceConcurrentCalls === null ? null : { label: 'AI Voice Receptionist simultaneous calls', value: limits.voiceConcurrentCalls.toLocaleString('en-US') },
     limits.voiceHistoryDays === null ? null : { label: 'AI Voice Receptionist history', value: `${limits.voiceHistoryDays.toLocaleString('en-US')} days` },

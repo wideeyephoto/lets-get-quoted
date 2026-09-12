@@ -200,6 +200,7 @@ export type TopUpPurchaseCheckoutBuildInput = Readonly<{
   livemode: boolean;
   successUrl: string;
   cancelUrl: string;
+  customerId?: string | null;
 }>;
 
 export type TopUpPurchaseCheckoutCall = Readonly<{
@@ -250,6 +251,7 @@ export function buildTopUpPurchaseCheckoutCall(
     successUrl: requireReturnUrl(input.successUrl, 'successUrl'),
     cancelUrl: requireReturnUrl(input.cancelUrl, 'cancelUrl'),
     catalogVersion: PRICING_CATALOG_VERSION,
+    customerId: input.customerId,
   })) as Readonly<Stripe.Checkout.SessionCreateParams>;
 
   const contract = Object.freeze({
@@ -578,6 +580,7 @@ export type TopUpPurchaseCheckoutInput = Readonly<{
   livemode: boolean;
   successUrl: string;
   cancelUrl: string;
+  customerId?: string | null;
 }>;
 
 export type TopUpPurchaseCheckoutDependencies = Readonly<{
@@ -684,6 +687,7 @@ export async function orchestrateTopUpPurchaseCheckout(
     livemode: input.livemode,
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,
+    customerId: input.customerId,
   });
 
   const claim = await dependencies.store.claim({

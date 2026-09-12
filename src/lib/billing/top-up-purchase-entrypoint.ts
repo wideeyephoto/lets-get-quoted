@@ -386,6 +386,22 @@ export async function executeTopUpPurchaseCheckout(
     );
   }
 
+  let providerCustomerId: string | null = null;
+  try {
+    const { data } = await owner.supabase
+      .from('workspace_billing_subscriptions')
+      .select('provider_customer_id')
+      .eq('account_id', owner.accountId)
+      .eq('livemode', livemode)
+      .not('provider_customer_id', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    providerCustomerId = data?.provider_customer_id ?? null;
+  } catch {
+    // Ignore error, fallback to creating customer
+  }
+
   try {
     const result = await dependencies.orchestrate({
       workspaceId: owner.accountId,
@@ -394,6 +410,7 @@ export async function executeTopUpPurchaseCheckout(
       livemode,
       successUrl: redirects.successUrl,
       cancelUrl: redirects.cancelUrl,
+      customerId: providerCustomerId,
     });
     const checkoutUrl = requireStripeHostedCheckoutUrl(result.session.url);
     return Object.freeze({

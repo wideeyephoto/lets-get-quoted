@@ -29,7 +29,7 @@
        v
 +-------------------------------------------------------------------------------------------------+
 | STEP 2: Top-Up Projection Worker                                                                |
-| Cron:   /api/cron/billing-workers                                                               |
+| Cron:   /api/cron/top-up-projection                                                             |
 | Gate:   LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED=1                                           |
 | Action: Drains billing_events -> Re-reads Stripe Session -> Writes usage_credit_lots / capacity |
 +-------------------------------------------------------------------------------------------------+
@@ -95,7 +95,7 @@
 2. **Redeploy Production**.
 3. Verify worker runs in `cron_runs`:
    ```sql
-   SELECT job, status, result_summary, started_at FROM public.cron_runs WHERE job = 'billing-workers' ORDER BY started_at DESC LIMIT 5;
+   SELECT job, status, result_summary, started_at FROM public.cron_runs WHERE job = 'top-up-projection' ORDER BY started_at DESC LIMIT 5;
    ```
 
 ### Step 4 — Enable Purchase Entrypoint (`LGQ_TOP_UP_PURCHASE_ENABLED=1`)

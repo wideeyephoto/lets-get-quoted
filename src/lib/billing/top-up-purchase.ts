@@ -181,29 +181,30 @@ export const TOP_UP_SUBSCRIPTION_PURPOSE = 'top_up' as const;
 export function buildTopUpCheckoutParams(
   request: TopUpCheckoutRequest,
 ): Stripe.Checkout.SessionCreateParams {
-  const { accountId, sku, price, successUrl, cancelUrl } = request;
-  const catalogVersion = request.catalogVersion ?? PRICING_CATALOG_VERSION;
-
-  // Carried on the Session AND the resulting object, because fulfillment reads
-  // it back from whichever Stripe hands us and must never infer the workspace.
+  const version = request.catalogVersion ?? PRICING_CATALOG_VERSION;
   const metadata = {
     lgq_purpose: TOP_UP_SUBSCRIPTION_PURPOSE,
-    lgq_top_up_id: sku.id,
-    lgq_account_id: accountId,
-    lgq_resource_code: sku.resourceCode,
-    lgq_units: String(sku.units),
-    lgq_catalog_version: catalogVersion,
+    lgq_top_up_id: request.sku.id,
+    lgq_account_id: request.accountId,
+    lgq_resource_code: request.sku.resourceCode,
+    lgq_units: String(request.sku.units),
+    lgq_catalog_version: version,
   } as const;
 
   return {
-    mode: sku.recurring ? 'subscription' : 'payment',
-    line_items: [{ price: price.priceId, quantity: 1 }],
+    mode: request.price.recurring ? 'subscription' : 'payment',
+    line_items: [{ price: request.price.priceId, quantity: 1 }],
+    ...(request.customerId ? { customer: request.customerId } : {}),
+    automatic_tax: { enabled: true },
+    payment_method_types: ['card', 'us_bank_account'],
+    expires_at: Math.floor(Date.now() / 1000) + 1800,
+    success_url: request.successUrl,
+    cancel_url: request.cancelUrl,
     metadata,
-    ...(sku.recurring
+    client_reference_id: request.accountId,
+    ...(request.price.recurring
       ? { subscription_data: { metadata } }
       : { payment_intent_data: { metadata } }),
-    success_url: successUrl,
-    cancel_url: cancelUrl,
   };
 }
 

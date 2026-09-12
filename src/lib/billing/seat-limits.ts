@@ -11,12 +11,14 @@
 export type PurchasedSeats = Readonly<{
   crewUsers: number;
   officeUsers: number;
+  storageGb: number;
 }>;
 
 /** Nothing bought — and also what an unreadable ledger reports. */
 export const NO_PURCHASED_SEATS: PurchasedSeats = Object.freeze({
   crewUsers: 0,
   officeUsers: 0,
+  storageGb: 0,
 });
 
 /**

@@ -10,7 +10,7 @@ import { getStripeClient } from '@/lib/stripe';
 
 export const ADDON_REFUND_FLAG = 'LGQ_ADDON_REFUND_REVERSAL_ENABLED';
 export const ADDON_REFUND_EVENTS = ['charge.refunded', 'refund.created', 'refund.updated', 'refund.failed'] as const;
-const SKUS = new Set<TopUpId>(['voice_minutes_100', 'ai_voice_flex', 'ai_voice_solo', 'ai_voice_growth', 'storage_100gb', 'office_user']);
+const SKUS = new Set<TopUpId>(Object.keys(TOP_UPS) as TopUpId[]);
 const CHARGE = /^(ch|py)_[A-Za-z0-9]+$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

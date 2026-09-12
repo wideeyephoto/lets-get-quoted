@@ -40,7 +40,7 @@ export { NO_PURCHASED_SEATS, describeSeatLimit, type PurchasedSeats } from './se
 async function unitsFor(
   admin: SupabaseClient,
   accountId: string,
-  resourceCode: 'crew_users' | 'office_users',
+  resourceCode: 'crew_users' | 'office_users' | 'storage_gb',
 ): Promise<number> {
   const { data, error } = await admin.rpc('workspace_purchased_capacity_units', {
     p_account_id: accountId,
@@ -74,11 +74,12 @@ export async function loadPurchasedSeats(
   admin: SupabaseClient,
   accountId: string,
 ): Promise<PurchasedSeats> {
-  const [crewUsers, officeUsers] = await Promise.all([
+  const [crewUsers, officeUsers, storageGb] = await Promise.all([
     unitsFor(admin, accountId, 'crew_users'),
     unitsFor(admin, accountId, 'office_users'),
+    unitsFor(admin, accountId, 'storage_gb'),
   ]);
-  return Object.freeze({ crewUsers, officeUsers });
+  return Object.freeze({ crewUsers, officeUsers, storageGb });
 }
 
 export type ActivePurchasedCapacitySubscription = Readonly<{
