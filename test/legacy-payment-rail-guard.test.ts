@@ -202,6 +202,7 @@ function checkoutRaceAdmin(
     }
     const q = {
       eq: vi.fn(() => q),
+      is: vi.fn(() => q),
       in: vi.fn(() => q),
       select: vi.fn(() => q),
       maybeSingle: vi.fn(async () => ({ data: { id: 'pay_guard' }, error: null })),
@@ -309,6 +310,7 @@ function webhookAdmin(
         filters.push([column, value]);
         return query;
       }),
+      is: vi.fn(() => query),
       in: vi.fn(() => query),
       select: vi.fn(() => query),
       maybeSingle: vi.fn(async () => ({ data: transitionData, error: null })),
