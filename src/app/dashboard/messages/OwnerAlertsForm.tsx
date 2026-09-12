@@ -262,8 +262,8 @@ export default function OwnerAlertsForm({
             <span className="msg-setup-toggle-text">
               <b>
                 {fieldLineSetup
-                  ? 'Enable Text-to-Job field access and high-value lead alerts'
-                  : 'Text me when a high-value lead comes in'}
+                  ? 'Enable Text-to-Job field access and high-value lead alerts (Smart intake only)'
+                  : 'Text me when a high-value lead comes in (Smart intake only)'}
               </b>
               <small>
                 {fieldLineSetup

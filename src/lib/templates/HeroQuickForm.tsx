@@ -462,8 +462,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       setStep('qa');
       return;
     }
-    if (result?.continuationToken || result?.responseId) {
-      setChatResponseId((result.continuationToken as string) || (result.responseId as string));
+    if ((result as any)?.continuationToken || result?.responseId) {
+      setChatResponseId(((result as any).continuationToken as string) || (result.responseId as string));
     }
     const min = Number(result?.min);
     const max = Number(result?.max);
