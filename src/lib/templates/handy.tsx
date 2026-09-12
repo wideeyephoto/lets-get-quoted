@@ -21,6 +21,7 @@ import baseStyles from './themes.module.css';
 import themeStyles from './handy.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
+import TextLink from './TextLink';
 
 // The trust strip used to be a hardcoded ['Licensed & insured', 'Same-day
 // service', 'Free estimates', 'Satisfaction guaranteed'] shown on EVERY Care
@@ -175,7 +176,10 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.careEyebrow}>Get started</p>
           <h2>Tell us about your project</h2>
           <p>{site.hours ? `We’re available ${site.hours}.` : 'We reply within about an hour.'} Free, no-obligation estimates.</p>
-          {site.phone && <CallLink site={site} className={styles.careBtn}>Call {site.phone}</CallLink>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.careBtn}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.careBtn} />
+          </div>
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

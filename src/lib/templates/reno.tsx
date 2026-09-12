@@ -21,6 +21,7 @@ import baseStyles from './themes.module.css';
 import themeStyles from './reno.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
+import TextLink from './TextLink';
 
 // Reno — dark-navy + golden-yellow renovation look (Renovation/ThemeMove
 // reference): hexagon motifs, an angular slanted hero photo, bold white
@@ -127,7 +128,10 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <p className={styles.renoEyebrow}>Get a free estimate</p>
           <h2>Have a project in mind?</h2>
           <p>Tell us what needs doing and we&apos;ll follow up with a plan and a price — free, no obligation.</p>
-          {site.phone && <CallLink site={site} className={styles.renoBtn}>Call {site.phone}</CallLink>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.renoBtn}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.renoBtn} />
+          </div>
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

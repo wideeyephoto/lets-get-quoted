@@ -21,6 +21,7 @@ import baseStyles from './themes.module.css';
 import themeStyles from './fixit.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
+import TextLink from './TextLink';
 
 // Fixit — clean, professional handyman look (Handify reference): white ground,
 // orange accent, an angular orange shape behind a worker photo with a floating
@@ -133,7 +134,10 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           {/* Was "we'll match you with the right pro", which reads as a lead-matching
               marketplace — this is the contractor's own site. */}
           <p>Tell us what you need and we&apos;ll get back to you with a quote — free, no obligation.</p>
-          {site.phone && <CallLink site={site} className={styles.fixitBtn}>Call {site.phone}</CallLink>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.fixitBtn}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.fixitBtn} />
+          </div>
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

@@ -21,6 +21,7 @@ import baseStyles from './themes.module.css';
 import themeStyles from './vista.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
+import TextLink from './TextLink';
 
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
@@ -113,7 +114,10 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <section className={styles.vistaContact} id="contact">
         <div className={styles.vistaContactCopy}>
           <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
-          {site.phone && <CallLink site={site}>Call {site.phone} <span aria-hidden="true">↗</span></CallLink>}
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site}>Call {site.phone} <span aria-hidden="true">↗</span></CallLink>}
+            <TextLink site={site}>Text us <span aria-hidden="true">↗</span></TextLink>
+          </div>
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

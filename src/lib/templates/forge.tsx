@@ -21,6 +21,7 @@ import baseStyles from './themes.module.css';
 import themeStyles from './forge.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
+import TextLink from './TextLink';
 
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
@@ -129,7 +130,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <div className={styles.forgeContactCopy}>
           <p className={styles.kicker}>Have a project in mind?</p>
           <h2>Let&apos;s get it done right.</h2>
-          {site.phone && <p>Prefer to talk? Call <CallLink site={site}>{site.phone}</CallLink>.</p>}
+          {site.phone && <p>Prefer to talk? Call <CallLink site={site}>{site.phone}</CallLink> or <TextLink site={site}>text us</TextLink>.</p>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

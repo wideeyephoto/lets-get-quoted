@@ -21,6 +21,7 @@ import baseStyles from './themes.module.css';
 import themeStyles from './guild.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
+import TextLink from './TextLink';
 
 export default function GuildTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
@@ -160,7 +161,10 @@ export default function GuildTemplate({ site }: TemplateProps) {
         <div className={styles.guildContactCopy}>
           <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you need.</h2></div>
           <p className={styles.guildContactMeta}>{site.hours || 'Monday-Friday, 7am-5pm'}<br />{site.service_area || 'Local and regional projects'}</p>
-          {site.phone && <CallLink site={site} className={styles.primaryCta}>Call {site.phone}</CallLink>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.primaryCta}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.primaryCta} />
+          </div>
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />
