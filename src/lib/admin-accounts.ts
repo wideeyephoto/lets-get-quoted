@@ -15,6 +15,7 @@ import {
   type AdminSnapshotRead,
   type AdminSubscriptionSnapshot,
 } from '@/lib/admin-plan-authority';
+import { ilikeAcross } from './postgrest-filter';
 
 // Data layer for the admin console's account views. All reads use the passed-in
 // service-role client (RLS is owner-scoped, so a session client can't cross
@@ -199,12 +200,12 @@ export async function accountIdsByPhone(
       voiceInventory,
       smsSenders,
     ] = await Promise.all([
-      admin.from('accounts').select('id, call_tracking_number').or(`call_tracking_number.ilike.%${last10}%,call_tracking_number.ilike.%${last7}%`).limit(limit),
-      admin.from('accounts').select('id, sms_number').or(`sms_number.ilike.%${last10}%,sms_number.ilike.%${last7}%`).limit(limit),
-      admin.from('accounts').select('id, alert_phone').or(`alert_phone.ilike.%${last10}%,alert_phone.ilike.%${last7}%`).limit(limit),
-      admin.from('sites').select('account_id, phone').or(`phone.ilike.%${last10}%,phone.ilike.%${last7}%`).limit(limit),
-      admin.from('voice_number_inventory').select('account_id, e164_number').or(`e164_number.ilike.%${last10}%,e164_number.ilike.%${last7}%`).limit(limit),
-      admin.from('sms_sender_numbers').select('account_id, e164_number').or(`e164_number.ilike.%${last10}%,e164_number.ilike.%${last7}%`).limit(limit),
+      admin.from('accounts').select('id, call_tracking_number').or([ilikeAcross(['call_tracking_number'], last10), ilikeAcross(['call_tracking_number'], last7)].join(',')).limit(limit),
+      admin.from('accounts').select('id, sms_number').or([ilikeAcross(['sms_number'], last10), ilikeAcross(['sms_number'], last7)].join(',')).limit(limit),
+      admin.from('accounts').select('id, alert_phone').or([ilikeAcross(['alert_phone'], last10), ilikeAcross(['alert_phone'], last7)].join(',')).limit(limit),
+      admin.from('sites').select('account_id, phone').or([ilikeAcross(['phone'], last10), ilikeAcross(['phone'], last7)].join(',')).limit(limit),
+      admin.from('voice_number_inventory').select('account_id, e164_number').or([ilikeAcross(['e164_number'], last10), ilikeAcross(['e164_number'], last7)].join(',')).limit(limit),
+      admin.from('sms_sender_numbers').select('account_id, e164_number').or([ilikeAcross(['e164_number'], last10), ilikeAcross(['e164_number'], last7)].join(',')).limit(limit),
     ]);
 
     for (const r of (acctCallTracking.data ?? []) as { id: string; call_tracking_number: string }[]) {

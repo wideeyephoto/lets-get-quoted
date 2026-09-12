@@ -13,7 +13,20 @@ vi.mock('@/lib/public-api/webhook-vault-crypto', () => ({
 }));
 
 vi.mock('@/lib/public-api/ssrf-guard', () => ({
-  validateWebhookUrl: vi.fn(async () => ({ safe: true })),
+  // resolvedIp and parsedUrl are what the worker pins the connection to, so the
+  // stub has to carry them the way the real validator does.
+  validateWebhookUrl: vi.fn(async (raw: string) => ({
+    safe: true,
+    resolvedIp: '93.184.216.34',
+    parsedUrl: new URL(raw),
+  })),
+}));
+
+// Delivery no longer goes through global fetch: it goes to the address the SSRF
+// check already inspected, so there is no second DNS lookup to race.
+const postToPinnedAddress = vi.fn();
+vi.mock('@/lib/public-api/pinned-fetch', () => ({
+  postToPinnedAddress: (...args: unknown[]) => postToPinnedAddress(...args),
 }));
 
 const mockTask = (): ClaimedWebhookTask => ({
@@ -41,7 +54,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
         return Promise.resolve({ data: null, error: null });
       }),
     };
-    global.fetch = vi.fn();
+    postToPinnedAddress.mockReset();
   });
 
   it('fails with dead_letter if decryption throws', async () => {
@@ -54,7 +67,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   });
 
   it('completes delivery on 200 OK', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    postToPinnedAddress.mockResolvedValue({
       ok: true,
       status: 200,
       text: async () => 'Success',
@@ -67,7 +80,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   });
 
   it('disables subscription on 410 Gone', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    postToPinnedAddress.mockResolvedValue({
       ok: false,
       status: 410,
       text: async () => 'Gone forever',
@@ -80,7 +93,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   });
 
   it('retries on 429 Too Many Requests with Retry-After', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    postToPinnedAddress.mockResolvedValue({
       ok: false,
       status: 429,
       headers: new Headers({ 'retry-after': '120' }),
@@ -95,7 +108,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   });
 
   it('dead_letters on 400 Bad Request', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    postToPinnedAddress.mockResolvedValue({
       ok: false,
       status: 400,
       text: async () => 'Bad Request',
@@ -108,7 +121,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   });
 
   it('retries on 500 Server Error', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
+    postToPinnedAddress.mockResolvedValue({
       ok: false,
       status: 500,
       text: async () => 'Internal Server Error',
@@ -124,7 +137,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   it('retries on network timeout', async () => {
     const timeoutError = new Error('The operation was aborted due to timeout');
     timeoutError.name = 'TimeoutError';
-    global.fetch = vi.fn().mockRejectedValue(timeoutError);
+    postToPinnedAddress.mockRejectedValue(timeoutError);
     const outcome = await deliverSingleWebhookTask(mockAdmin, mockTask());
     expect(outcome).toBe('failed');
     expect(rpcCalls[0].method).toBe('fail_webhook_delivery');
@@ -133,7 +146,7 @@ describe('Webhook Delivery Worker - Coverage', () => {
   });
 
   it('retries on generic network error', async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error('fetch failed'));
+    postToPinnedAddress.mockRejectedValue(new Error('fetch failed'));
     const outcome = await deliverSingleWebhookTask(mockAdmin, mockTask());
     expect(outcome).toBe('failed');
     expect(rpcCalls[0].method).toBe('fail_webhook_delivery');
@@ -158,10 +171,10 @@ describe('Webhook Delivery Worker - Coverage', () => {
         return Promise.resolve({ data: null, error: null });
       });
 
-      global.fetch = vi.fn((url) => {
-        if (url === 'https://fail.com') return Promise.resolve({ ok: false, status: 500, text: async()=>'' });
-        if (url === 'https://dead.com') return Promise.resolve({ ok: false, status: 400, text: async()=>'' });
-        if (url === 'https://dis.com') return Promise.resolve({ ok: false, status: 410, text: async()=>'' });
+      postToPinnedAddress.mockImplementation((url: URL) => {
+        if (url.hostname === 'fail.com') return Promise.resolve({ ok: false, status: 500, text: async()=>'' });
+        if (url.hostname === 'dead.com') return Promise.resolve({ ok: false, status: 400, text: async()=>'' });
+        if (url.hostname === 'dis.com') return Promise.resolve({ ok: false, status: 410, text: async()=>'' });
         return Promise.resolve({ ok: true, status: 200, text: async()=>'' });
       }) as any;
 

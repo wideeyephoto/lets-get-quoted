@@ -388,6 +388,35 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'customer',
     consequence: 'A contractor whose domain finishes provisioning its certificate is never noticed or told, so their website stays on the free subdomain and the builder keeps saying pending until they think to click Check connection again.',
   },
+
+  {
+    job: 'db-guard',
+    label: 'Database pool guard',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'A long-running or abandoned query holds its connection until the pool is exhausted, and every request across the product starts failing to reach the database at once.',
+  },
+  {
+    job: 'webhook-heal',
+    label: 'Webhook auto-healer',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Unresolved provider webhook failures are never retried or cleared, so payments and messaging events stay stuck in the queue waiting for somebody to notice them by hand.',
+  },
+  {
+    job: 'smart-dunning',
+    label: 'Failed payment recovery',
+    schedule: '0 * * * *',
+    importance: 'money',
+    consequence: 'A soft card decline is never retried and the customer is never texted a link to update an expired card, so the payment is simply lost. The product page sells this as automatic.',
+  },
+  {
+    job: 'activation-autopilot',
+    label: 'Activation nudges',
+    schedule: '0 15 * * *',
+    importance: 'customer',
+    consequence: 'A contractor who signed up and stalled before their first quote is never nudged, so they churn without anybody knowing they were stuck.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

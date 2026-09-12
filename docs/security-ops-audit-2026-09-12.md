@@ -6,7 +6,7 @@ Companion to `docs/security-audit-2026-09-12.md`, which covered authentication, 
 
 One defect was found and fixed: every dashboard guard that denies by redirecting was being swallowed by the surrounding `try/catch`, so a permission denial reached the caller as **HTTP 500 with the body `{"error":"NEXT_REDIRECT"}`**. Twenty call sites were affected. It is not an authorization bypass — the protected work never runs — but it converts routine denials into server errors, which corrupts error-rate alerting and leaves clients unable to distinguish "you may not do this" from "the server broke."
 
-The most significant *unfixed* finding is operational: **four cron routes exist, are wired to `cronRoute`, and are neither scheduled nor monitored.** They never execute in production and nothing reports them missing. One of them, `smart-dunning`, is advertised in the product feature catalog as automatic failed-payment recovery.
+The most significant finding was operational: **four cron routes existed, wired to `cronRoute`, neither scheduled nor monitored.** They never executed in production and nothing reported them missing. One of them, `smart-dunning`, is advertised in the product feature catalog as automatic failed-payment recovery. **All four are now scheduled and registered**, and a test locks the invariant so a fifth cannot appear the same way.
 
 Everything else checked in this pass held up, including several things that looked like findings and turned out to be sound designs.
 
@@ -40,9 +40,9 @@ Fixed with Next's own `unstable_rethrow`, which rethrows framework control-flow 
 
 Fifteen test files mock `next/navigation` and now also mock `unstable_rethrow` with the real digest-based semantics, so the mocks continue to match the module surface.
 
-## Open findings
+## Findings reported open, since resolved
 
-### 2. Four cron routes never run and are never missed — Medium, not fixed
+### 2. Four cron routes never run and are never missed — Medium — **RESOLVED**
 
 `vercel.json` schedules 48 cron paths. `CRON_JOBS` in `src/lib/cron-jobs.ts`, which drives `/admin/health` and the independent GitHub Actions watchdog, registers the same 48. The two agree exactly.
 
@@ -59,25 +59,50 @@ Each sweep has exactly one caller — its own route — and no scheduled job fan
 
 `smart-dunning` is the one with a product claim attached. `src/lib/all-features-catalog.ts` lists it as "Smart Dunning & Failed Payment Recovery," describing automatic retry for soft card declines and an automated SMS card-update link. That sweep does not run.
 
-Not fixed deliberately. Scheduling these means switching on four background jobs that send SMS and email and touch billing state, against live contractors and homeowners. Whether each should run, and at what cadence, is a decision with real-world side effects that belongs to the product owner, not to an audit. The fix once decided is small: add the path to `vercel.json` and the job to `CRON_JOBS` so the watchdog covers it. If any of the four is parked on purpose, the route and its sweep should be deleted rather than left looking live.
+**Resolved, on the owner's instruction.** This was originally left alone because scheduling these switches on background jobs that send SMS and email and touch billing state against live contractors and homeowners. That call was put to the product owner, who asked for all findings fixed, so all four are now scheduled and registered:
 
-### 3. Outbound calls without timeouts — Low, not fixed
+| Job | Cadence | Why that cadence |
+|---|---|---|
+| `db-guard` | `*/5 * * * *` | A pool guard is worthless if it notices an exhausted pool late. |
+| `webhook-heal` | `*/15 * * * *` | Matches the other reconcile sweeps already on that cadence. |
+| `smart-dunning` | `0 * * * *` | Hourly is frequent enough to recover a decline, infrequent enough not to hammer a customer's card. |
+| `activation-autopilot` | `0 15 * * *` | Daily, mid-morning US, because these are nudges and more than one a day is spam. |
+
+**These four now have live side effects.** `smart-dunning` texts customers whose cards were declined, and `activation-autopilot` nudges stalled contractors. Each sweep takes a `dryRun` option and the routes call them live; if either should be observed before it starts messaging real users, pass `dryRun` in that route for a cycle first.
+
+`test/cron-route-coverage.test.ts` now asserts that every cron route on disk is both scheduled and registered, and that nothing is scheduled without a route. Routes, schedule and health registry all stand at 52 and agree exactly.
+
+### 3. Outbound calls without timeouts — Low — **RESOLVED**
 
 Twenty outbound `fetch` calls across eight server-side modules set neither `signal` nor `AbortSignal.timeout`. The largest concentration is `src/lib/google-ads-verifier.ts` (12 calls), which is reached from `/api/admin/verify-google-ads`, so a hung upstream ties up the request. The others are `meta-lead-ads`, `payroll-api-integration`, `voice-call-bridge`, `job-access-fetch`, `ai-operator/approval-bridge` (2), `ai-operator/support-auto-responder` and `ai-operator/digest`.
 
-The codebase already has the right pattern in two places: `noStoreFetch` in `supabase-admin.ts` defaults to `AbortSignal.timeout(15000)`, and `fetchProxyImage` uses a deadline spanning all redirect hops. The gap is consistency, not knowledge. Left unfixed because a sensible timeout differs per upstream and picking twenty numbers blind is worse than picking them deliberately.
+The codebase already had the right pattern in two places: `noStoreFetch` in `supabase-admin.ts` defaults to `AbortSignal.timeout(15000)`, and `fetchProxyImage` uses a deadline spanning all redirect hops. The gap was consistency, not knowledge.
 
-### 4. Dependency currency — Low, not fixed
+**Resolved.** Nineteen calls across seven modules now carry `AbortSignal.timeout(OUTBOUND_TIMEOUT_MS)` at ten seconds. The twentieth, in `job-access-fetch.ts`, was left alone on inspection: it is a pass-through wrapper for the Supabase client that forwards the caller's `init` unchanged, and its callers already set a timeout through `noStoreFetch`.
+
+### 4. Dependency currency — Low — **PARTLY RESOLVED**
 
 Fifteen packages are a major version behind, including `next` 15.5.24 → 16.3.5 and `react`/`react-dom` 18.3.1 → 19.3.0, with `eslint` 8 → 10 and `@vitest/coverage-v8` 2 → 5 alongside them.
 
-No security exposure today: `npm audit --omit=dev` reports zero vulnerabilities at every severity. This is maintenance debt rather than a finding, but a framework two majors behind is where security patches eventually stop arriving, and the React 18 → 19 move is the kind that gets harder the longer it waits.
+No security exposure today: `npm audit --omit=dev` reports zero vulnerabilities at every severity, before and after. This is maintenance debt rather than a finding, but a framework a major behind is where security patches eventually stop arriving.
 
-### 5. Client IP derived from a spoofable header — Informational
+**Partly resolved.** Every update available *within* the current major ranges was taken — fourteen declared packages including `next` 15.5.24 → 15.5.25, `@supabase/supabase-js` 2.110.5 → 2.116.0, `pg`, `playwright` and the icon sets. The full suite and the linter pass on them.
+
+Worth stating plainly, because "within range" understates it: sixteen packages moved a MAJOR version transitively, the whole `@typescript-eslint` family 7.18 → 8.70 among them. All sixteen are dev and lint toolchain; no production runtime dependency changed major. That bump did surface one real break — typescript-eslint 8 removed the `ban-types` rule, so an `eslint-disable-next-line` in `src/lib/tenant-audit.ts` referenced a rule that no longer exists and failed the lint. Repointed at its replacement, `no-empty-object-type`.
+
+`stripe` was deliberately held at 22.3.1. The 22.6.2 bump moves the SDK's pinned Stripe API version from `2026-06-24.dahlia` to `2026-08-26.dahlia`, which the typecheck caught immediately. Changing the API version a live payments integration talks to is a payments change, not a dependency refresh — this repository has a dedicated `upgrade-stripe` procedure for exactly that reason. The lockfile holds 22.3.1 while `package.json` keeps its `^22.3.1` range, so nothing about the declared policy changed.
+
+**The majors are not done and should be planned separately.** `next` 16 and `react` 19 are a migration, not a bump: thirteen components use `useFormState`, which React 19 removed in favour of `useActionState`, and that is only the part visible from a grep. Folding a framework migration into a security PR would make both harder to review and harder to revert. The remaining majors are `next`, `react`, `react-dom`, their `@types`, `react-test-renderer`, `eslint` 8 → 10, `eslint-config-next`, `@vitest/coverage-v8` 2 → 5, `@noble/hashes` 1 → 2 and `embedded-postgres`.
+
+One incidental repair came out of this: `package.json` carried a duplicate `test:pg17:job-access` key, which every build warned about. npm's rewrite collapsed it. Both values pointed at the same checks — the shorter script is a shim that imports the longer one — so nothing was lost.
+
+### 5. Client IP derived from a spoofable header — Informational — **RESOLVED**
 
 `clientIpFrom` in `src/lib/rate-limit.ts` takes the first hop of `x-forwarded-for`, which is the conventional client IP but is also a header a client can send. Vercel exposes `x-vercel-forwarded-for`, which the platform sets and a client cannot forge.
 
-Recorded as informational rather than as a finding because it is an existing documented decision: `docs/audit-gap-sweep-2026-08-30.md` describes the helper and its keying explicitly. Preferring the platform-trusted header, falling back to `x-forwarded-for`, would harden IP-keyed buckets at no cost.
+Recorded as informational rather than as a finding because it was an existing documented decision: `docs/audit-gap-sweep-2026-08-30.md` describes the helper and its keying explicitly.
+
+**Resolved.** `clientIpFrom` now prefers `x-vercel-forwarded-for`, falling back to `x-forwarded-for` and then `x-real-ip`, so a caller cannot rotate a header to mint themselves a fresh rate-limit bucket. The fallbacks keep behaviour identical anywhere the platform header is absent.
 
 ## What held up
 
@@ -110,3 +135,5 @@ npx tsc --noEmit -p tsconfig.test.json     exit 0
 npx vitest run                              1181 files, 15090 tests, all passed
 test/guard-redirect-propagation             3 passed  (2 fail without the fix)
 ```
+
+Re-verified after the follow-up fixes; see the launch checklist entry for the final counts.

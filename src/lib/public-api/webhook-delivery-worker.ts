@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/auth';
 import { decryptWebhookSecret, type EncryptedSecretPayload } from '@/lib/public-api/webhook-vault-crypto';
 import { computeWebhookSignature } from '@/lib/public-api/webhook-signatures';
 import { validateWebhookUrl } from '@/lib/public-api/ssrf-guard';
+import { postToPinnedAddress } from '@/lib/public-api/pinned-fetch';
 
 export type ClaimedWebhookTask = {
   delivery_id: string;
@@ -82,7 +83,12 @@ export async function deliverSingleWebhookTask(
   const sigHeader = computeWebhookSignature(secret, task.event_id, rawBody, timestamp);
 
   try {
-    const response = await fetch(task.target_url, {
+    // Sent to the address validateWebhookUrl inspected, not to a second lookup.
+    // fetch() would re-resolve the hostname here, and a short-TTL record can
+    // answer the check with a public address and this connection with a private
+    // one. Redirects are not followed at all: https.request does not follow
+    // them, which is the same posture the old `redirect: 'manual'` asked for.
+    const response = await postToPinnedAddress(ssrf.parsedUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -92,8 +98,8 @@ export async function deliverSingleWebhookTask(
         'LGQ-Signature': sigHeader.headerValue,
       },
       body: rawBody,
-      redirect: 'manual', // Prevent following unchecked redirects
-      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+      pinnedIp: ssrf.resolvedIp,
     });
 
     const durationMs = Math.max(1, Date.now() - startTime);

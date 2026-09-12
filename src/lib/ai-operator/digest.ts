@@ -1,6 +1,9 @@
 import type { ExecutiveBriefing } from './types';
 import { Resend } from 'resend';
 
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
+
 let resendClient: Resend | null = null;
 function getResend() {
   if (!resendClient && process.env.RESEND_API_KEY) {
@@ -137,6 +140,7 @@ export async function dispatchExecutiveBriefingDigest(
   if (webhookUrl) {
     try {
       const res = await fetch(webhookUrl, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

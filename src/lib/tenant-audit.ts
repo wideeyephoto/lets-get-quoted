@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import type { RecoverableEntityType } from '@/lib/recoverable-deletions';
+import { ilikeAcross } from './postgrest-filter';
 
 export type TenantAuditSource = 'web' | 'staff' | 'integration' | 'cron' | 'migration' | 'api';
 
@@ -14,7 +15,10 @@ export type TenantAuditEntityType =
   | 'inventory_vehicle'
   | 'inventory_stock_item'
   | 'account'
-  // eslint-disable-next-line @typescript-eslint/ban-types
+  // `string & {}` keeps the union's literal autocomplete while still accepting
+  // any string. typescript-eslint 8 removed `ban-types` and split it up; this
+  // pattern is now flagged by no-empty-object-type.
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   | (string & {});
 
 export interface ActorSnapshot {
@@ -263,7 +267,7 @@ export async function queryTenantAuditEvents(params: QueryAuditEventsParams): Pr
     query = query.lte('occurred_at', params.toDate);
   }
   if (params.searchQuery) {
-    query = query.or(`action.ilike.%${params.searchQuery}%,entity_type.ilike.%${params.searchQuery}%,reason.ilike.%${params.searchQuery}%`);
+    query = query.or(ilikeAcross(['action', 'entity_type', 'reason'], params.searchQuery));
   }
 
   query = query.range(offset, offset + limit - 1);

@@ -10,6 +10,60 @@
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
+## Security audit and remediation — 2026-09-12
+
+Two full audit passes across the application: 2,296 TypeScript/TSX files, 186 API
+routes, 117 server-action modules, 240 tables. Reports:
+[security-audit-2026-09-12.md](docs/security-audit-2026-09-12.md) and
+[security-ops-audit-2026-09-12.md](docs/security-ops-audit-2026-09-12.md).
+Verified at `tsc --noEmit` clean and the full suite green (1,185 files / 15,113
+tests) unless an item says otherwise.
+
+### Defects found and fixed
+
+- [x] **Reflected XSS in the AI Operator approval callback (High):** `/api/webhooks/operator-approval` answered `text/html` and interpolated the `actionId` query parameter unescaped; neither failure path needs a valid token, and the middleware matcher excludes `/api` so no CSP reaches the response. Confirmed by executing the route (`400`, `text/html`, raw `<script>` in the body), fixed by escaping every interpolated value. Regression: `test/operator-approval-callback-escaping.test.ts` (5 tests; 4 fail against the previous code).
+- [x] **SSRF guard bypass via IPv4-mapped IPv6 (Medium):** `isPrivateOrRestrictedIpv6` decoded only the dotted spelling, which nothing produces — `::ffff:a9fe:a9fe` (169.254.169.254), `::ffff:7f00:1` and `::ffff:c0a8:0101` all validated as public. Hex form now decoded, undecodable `::ffff:` prefixes and NAT64 treated as restricted, IPv6 brackets stripped so the check actually runs. Regression: `test/public-api/ssrf-guard.test.ts` (18 tests; 6 fail against the previous code).
+- [x] **DNS rebinding between the SSRF check and delivery (Medium):** delivery re-resolved the hostname independently of validation. Now sent through `src/lib/public-api/pinned-fetch.ts`, which connects to the address already inspected via a `node:https` `lookup`, keeping the hostname for TLS and `Host`. Regression: `test/public-api/pinned-fetch.test.ts`.
+- [x] **Guard redirects swallowed into HTTP 500 (Medium):** all five dashboard guards deny by throwing `redirect()`, and 20 handlers caught it as an application error — a permission denial reached the caller as `500 {"error":"NEXT_REDIRECT"}`, polluting error-rate alerting and losing the navigation on 8 server actions. Fixed with `unstable_rethrow`. Regression: `test/guard-redirect-propagation.test.ts`.
+- [x] **Four cron routes never ran and were never missed (Medium):** `smart-dunning`, `webhook-heal`, `db-guard` and `activation-autopilot` were in neither `vercel.json` nor `CRON_JOBS`, so nothing fired them and the health watchdog could not report their silence. `smart-dunning` is sold in the feature catalog as automatic failed-payment recovery. All four scheduled and registered; routes, schedule and registry now agree at 52. Regression: `test/cron-route-coverage.test.ts`.
+- [x] **Unauthenticated payroll webhook accepted any payload (Low):** `processPayrollWebhook` took a `headers` argument and never read it. Now HMAC-SHA256 over the raw body, one shared secret across providers so a caller cannot pick which secret checks their payload, fail-closed in production. Regression: `test/payroll-webhook-signature.test.ts` (8 tests).
+- [x] **Hardcoded fallback encryption key (Medium):** account-closure vendor handles fell back to a literal committed to this repository. Now throws when unconfigured.
+- [x] **QuickBooks OAuth state signed with an empty HMAC key (Low):** `?? ''` still signs. `buildState` now throws on a missing key; `verifyState` fails closed and compares with `timingSafeEqual`.
+- [x] **Unescaped user input in PostgREST `or()` filters (Low):** shared `src/lib/postgrest-filter.ts` applied at every `ilike` site. Escapes rather than strips, so `O'Brien, John` searches correctly instead of erroring. Regression: `test/postgrest-filter.test.ts`.
+- [x] **Outbound calls without timeouts (Low):** 19 calls across 7 server modules now carry a 10s `AbortSignal.timeout`.
+- [x] **Rate-limit buckets keyed on a spoofable header (Informational):** `clientIpFrom` now prefers `x-vercel-forwarded-for`, which a caller cannot set, falling back to `x-forwarded-for` then `x-real-ip`.
+- [x] **Guessable quick-pay session id (Informational):** rebuilt on `randomBytes(18)`. Was `Math.random` at roughly 20 bits, in a payment URL. Not live — nothing calls it — but it would not have been safe to wire up.
+
+### Production acceptance still required
+
+Configuration presence is not runtime proof, and three of the fixes above change
+what production does rather than only what the code says.
+
+- [ ] **Set `PAYROLL_WEBHOOK_SECRET` in Vercel before deploying:** the payroll webhook now fails closed. Unset in production it answers `500` to every provider callback, which is the intended posture but is an outage for that endpoint if the variable is missed. Documented in `.env.example`; the same value must be configured at each provider.
+- [ ] **Observe the four newly scheduled cron jobs firing:** `db-guard` (*/5), `webhook-heal` (*/15), `smart-dunning` (hourly), `activation-autopilot` (daily 15:00 UTC). Confirm each records a `cron_runs` row and appears healthy on `/admin/health`. Cadences were chosen by this audit, not by product: review them against intent.
+- [ ] **Accept the live side effects of `smart-dunning` and `activation-autopilot`:** these two now message real people — declined-card texts and stalled-contractor nudges respectively. Each sweep takes a `dryRun` option the routes do not currently pass. If either should be watched before it starts sending, pass `dryRun` for one cycle and read the report first.
+
+### Reported and deliberately not done
+
+- [ ] **Framework major upgrades (`next` 15 → 16, `react` 18 → 19):** a migration, not a bump — 13 components use `useFormState`, removed in React 19. `npm audit --omit=dev` reports zero vulnerabilities, so there is no security exposure driving it. Every within-major update was taken (14 declared packages; 16 more moved a major transitively, all dev/lint toolchain, which required repointing one `eslint-disable` at the rule that replaced `ban-types`). `stripe` was held at 22.3.1 because 22.6.2 moves the pinned Stripe API version from `2026-06-24.dahlia` to `2026-08-26.dahlia`, which is a payments change and belongs to the `upgrade-stripe` procedure.
+
+### Corrections to earlier audit claims
+
+- [x] **Withdrawn: "the content security policy ships report-only."** `CSP_REPORT_ONLY` is `false`, so the policy is **enforcing**. Both reports asserted otherwise; the claim came from reading the narrative comment block in `src/lib/csp.ts` rather than the constant beneath it. Both reports corrected. This does not affect the XSS finding, which stands on its own: the middleware matcher excludes `/api`, so an API route receives no CSP either way.
+
+### Checked and sound
+
+Tenant isolation held throughout: 237 of 240 tables enable RLS and the three
+without are each covered by an explicit `REVOKE` or deliberately public. Every
+API route reaches a guard, as does every server action outside the intentionally
+public homeowner and login flows. Also verified clean: no hardcoded credentials
+in any tracked file, no `eval`/`Function`/`child_process` in `src/`, storage
+paths not traversable, the lead photo proxy allowlisted to the project's own
+Supabase host with per-hop redirect revalidation, the rate-limit RPC atomic,
+all four inbound webhooks deduplicated, environment parity complete except
+platform-provided variables, no public caching of tenant data, and no CORS
+wildcards.
+
 ## Coverage gaps opened — 2026-09-11
 
 Ten requirements no prior item covered. Verified absent against this checklist at

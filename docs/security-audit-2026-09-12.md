@@ -6,7 +6,7 @@ Scope: full application — 2,296 TypeScript/TSX files, 186 API route handlers, 
 
 One confirmed exploitable vulnerability was found and fixed: a reflected cross-site scripting flaw in the AI Operator mobile approval callback, reachable without any valid token, on the same origin that holds the dashboard session cookie. A second real weakness — a bypass in the outbound-webhook SSRF guard that let every IPv4-mapped IPv6 address through, cloud metadata included — was also found and fixed. Three smaller hardening issues were fixed alongside them.
 
-Four issues are reported but **not** fixed, because each needs a product decision or a design change rather than a patch. They are listed under "Open findings" with the reasoning.
+Four further issues were originally reported without a fix. **All four have since been fixed** in a follow-up pass and are marked resolved below, with what changed. A fifth reported item, the claim that the content security policy ships report-only, was simply wrong and is withdrawn.
 
 The wider picture is good. Tenant isolation, the area where a product like this usually bleeds, held up under every check: 237 of 240 tables enable row-level security, and the three that do not are each covered by an explicit `REVOKE` or are deliberately public. Every one of the 186 API routes reaches a guard, and so does every server action outside the intentionally public homeowner and login flows. There are no hardcoded credentials in the repository and no known-vulnerable production dependencies.
 
@@ -24,7 +24,7 @@ The callback answered with `Content-Type: text/html` and interpolated the `actio
 
 Reaching it needed no valid token. Both failure paths render: a missing parameter returns 400 with the value already on the page, and an invalid signature returns 400 the same way. The error string handed back by the approval bridge was interpolated too.
 
-Nothing downstream would have caught it. The middleware matcher excludes `/api`, so no content security policy is set on this response, and the policy the rest of the app ships is report-only in any case. The endpoint lives on the application origin, which is where the contractor and staff session cookies live.
+Nothing downstream would have caught it. The middleware matcher excludes `/api`, so no content security policy is set on this response at all — the app's policy is enforcing, but it never reaches an API route. The endpoint lives on the application origin, which is where the contractor and staff session cookies live.
 
 Confirmed by executing the real route handler:
 
@@ -77,17 +77,17 @@ Fixed by throwing when the key is unset.
 
 Fixed with a length-checked `timingSafeEqual` wrapper. Six tests added to `test/quickbooks-oauth.test.ts`.
 
-## Open findings
+## Findings reported open, since resolved
 
-### 6. DNS rebinding in webhook delivery — Medium, not fixed
+### 6. DNS rebinding in webhook delivery — Medium — **RESOLVED**
 
 `src/lib/public-api/ssrf-guard.ts` and `src/lib/public-api/webhook-delivery-worker.ts`
 
 `validateWebhookUrl` resolves the hostname, checks the addresses, and returns. The worker then calls `fetch(task.target_url)`, which resolves the hostname again, independently. An attacker serving a short-TTL record can answer the check with a public address and the fetch with a private one.
 
-Not fixed here because the correct fix changes how requests are made, not what is validated: the resolved address has to be pinned and the connection made to it directly, through a custom `lookup` on an undici agent, with the original hostname preserved for TLS and the `Host` header. That is a change to the delivery path worth making deliberately rather than folding into an audit. The guard's existing constraints — HTTPS only, port 443 only — limit what a successful rebind reaches.
+**Resolved.** The fix had to change how the request is made rather than what is validated, so delivery no longer goes through `fetch`. `src/lib/public-api/pinned-fetch.ts` issues the POST through `node:https` with a `lookup` that returns the address `validateWebhookUrl` already inspected, so there is no second resolution to race. The hostname still drives TLS `servername` and the `Host` header, so certificate validation is unchanged. Redirects are not followed, the response body is capped, and the timeout error is named `TimeoutError` so the worker still classifies it as retryable rather than as a generic network failure. Three tests in `test/public-api/pinned-fetch.test.ts`, including one asserting the socket reaches a pinned loopback address rather than resolving the hostname.
 
-### 7. Unauthenticated payroll webhook with no signature verification — Low, not fixed
+### 7. Unauthenticated payroll webhook with no signature verification — Low — **RESOLVED**
 
 `src/app/api/payroll/webhook/route.ts` and `src/lib/payroll-api-integration.ts`
 
@@ -95,9 +95,11 @@ The endpoint accepts any well-formed JSON body from anyone. `processPayrollWebho
 
 Impact today is low, and this is the reason it is reported rather than patched: the handler persists nothing. It parses the body and echoes a summary. The docstring, however, says it "updates internal pay tracking when a submitted payroll batch is processed or paid," which is what the next person to work on it will read. The gap between the documented behaviour and the implemented behaviour is the risk.
 
-Choosing a verification scheme is a product decision — Gusto, QuickBooks, ADP and Paychex each sign differently, and the unused `headers` parameter suggests the shape was anticipated. Recommended: verify per provider before this endpoint is given the ability to write, and until then correct the docstring.
+**Resolved.** `verifyPayrollWebhookSignature` checks an HMAC-SHA256 over the **raw** request body — raw, because re-serializing a parsed object does not reproduce the bytes the provider signed — accepting hex or base64, with or without a `sha256=` prefix, in each provider's own header. The route now reads the body as text, verifies, and only then parses.
 
-### 8. Unescaped user input in PostgREST filter strings — Low, not fixed
+One shared `PAYROLL_WEBHOOK_SECRET` covers every provider on purpose: the endpoint takes the provider from a caller-supplied query parameter, so a per-provider secret would let the caller choose which secret their own payload is checked against. The provider now decides only how the body is read, never whether it is trusted. Unset in production the endpoint answers 500 rather than accepting unsigned callbacks, matching the Meta lead webhook. Eight tests in `test/payroll-webhook-signature.test.ts`, including one that presents a valid signature in another provider's header and is rejected.
+
+### 8. Unescaped user input in PostgREST filter strings — Low — **RESOLVED**
 
 Roughly 25 call sites build a PostgREST `or=` filter by interpolating user input into a template literal. Examples: `src/lib/tenant-audit.ts:266`, `src/lib/expense-ledger.ts:82`, `src/lib/ai-assistant/tools.ts:674` and `:724`, `src/app/dashboard/schedule/waitlist/actions.ts:148`.
 
@@ -105,17 +107,23 @@ This is **not** a tenant-isolation bypass. In every case examined the account sc
 
 `src/lib/marketplace-router/routing-engine.ts:34` is the one worth a second look: `.or(\`id.eq.${partnerId}\`)` against `accounts` is the sole selector, with `partnerId` arriving from an inbound marketplace lead payload. Injection there adds little beyond what the parameter already permits — it already accepts an arbitrary account id — so the real control is signature verification on the inbound adapter, which is present.
 
-Recommended: a small shared helper that strips `,`, `(`, `)`, `.` and `:` from any value interpolated into a filter string, applied at all sites. Left unfixed because it touches 25 call sites across unrelated features and each needs its own search-behaviour check.
+**Resolved.** `src/lib/postgrest-filter.ts` provides `filterValue` and `ilikeAcross`, applied at every `ilike` interpolation site: the waitlist search, tenant audit search, the AI assistant's client and job lookups, the expense ledger, and the six phone-number searches in admin account lookup.
 
-### 9. Content Security Policy is report-only — Informational
+It escapes rather than strips, which matters for the feature as much as for the filter: PostgREST treats a double-quoted value as one token however many commas or parentheses it contains, so `O'Brien, John` and `12 St. Mary's Rd.` now search correctly instead of being mangled or erroring. Six tests in `test/postgrest-filter.test.ts`.
 
-`src/lib/csp.ts` ships `content-security-policy-report-only`. The file documents this as deliberate and records a full enforcing dry run that found and fixed a missing `media-src`. The policy itself is well built: per-request nonce, `strict-dynamic`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
+### 9. ~~Content Security Policy is report-only~~ — withdrawn, the original claim was wrong
 
-Worth noting only for its interaction with finding 1: while the policy is report-only, nothing mitigates an XSS at runtime. The enforcing flip is a one-line change in `cspHeaderName()`.
+**This finding was incorrect and is withdrawn.** `CSP_REPORT_ONLY` is `false`, so `cspHeaderName()` returns `content-security-policy` and the policy is **enforcing**. The error came from reading the long comment block in `src/lib/csp.ts`, which narrates the report-only rollout and the dry run that preceded the flip, rather than the constant beneath it.
 
-### 10. Weak identifier in unreferenced code — Informational
+The policy is well built and live: per-request nonce, `strict-dynamic`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`.
 
-`src/lib/mobile-quick-pay.ts:24` builds a payment session id from `Math.random().toString(36).slice(2, 6)` — roughly 20 bits, in a value that appears in a payment URL. Nothing calls `createMobileQuickPaySession` and no `/pay/quick/[sessionId]` route exists, so this is not live. Worth deleting or rebuilding on `randomBytes` before anything wires it up.
+This does not change finding 1. The middleware matcher excludes `/api`, so an API route receives no CSP whether the policy is enforcing or not, and the reflected XSS was confirmed by executing the route.
+
+### 10. Weak identifier in unreferenced code — Informational — **RESOLVED**
+
+`src/lib/mobile-quick-pay.ts` built a payment session id from `Math.random().toString(36).slice(2, 6)` — roughly 20 bits, in a value that appears in a payment URL. Nothing calls `createMobileQuickPaySession` and no `/pay/quick/[sessionId]` route exists, so it was never live.
+
+**Resolved.** Rebuilt on `randomBytes(18).toString('base64url')`. Kept rather than deleted because the feature stub is referenced in the product catalog; the point was that whoever wires it up should not inherit a guessable identifier.
 
 ## What held up
 
@@ -136,6 +144,8 @@ Worth noting only for its interaction with finding 1: while the policy is report
 **Randomness.** Every security token uses `randomBytes` at 18 bytes or more. The `Math.random()` call sites are confirmation numbers, telemetry ids and simulated provider identifiers.
 
 **Rate limiting.** Present on all public endpoints checked, including lead submission, phone verification, permit preview and the CSP report collector.
+
+**Content Security Policy.** Enforcing, not report-only: nonce-based with `strict-dynamic`, `object-src 'none'`, `base-uri 'self'` and `form-action 'self'`. It does not reach `/api`, which the middleware matcher excludes.
 
 **Transport and headers.** HSTS with `includeSubDomains`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `frame-ancestors 'self'`, and `Referrer-Policy: strict-origin-when-cross-origin`, applied to every response including `/api`.
 

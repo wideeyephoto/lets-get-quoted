@@ -191,6 +191,22 @@
     {
       "path": "/api/cron/custom-domain-reconcile",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/db-guard",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/webhook-heal",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/smart-dunning",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/activation-autopilot",
+      "schedule": "0 15 * * *"
     }
   ]
 }

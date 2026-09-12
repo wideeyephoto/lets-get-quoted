@@ -20,8 +20,12 @@ import {
   PAYROLL_PROVIDER_LABEL,
   type PayrollProvider,
 } from './payroll-export';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { CrewPayRow } from './crew-pay';
 import type { PayType } from './pay-types';
+
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
 
 export type ProviderApiCapability = {
   provider: PayrollProvider;
@@ -632,6 +636,7 @@ export async function submitPayrollToProvider(
   if (config.webhookUrl) {
     try {
       const response = await fetch(config.webhookUrl, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -729,6 +734,76 @@ export type PayrollWebhookEvent = {
   totalPaid?: number;
   raw: Record<string, unknown>;
 };
+
+/**
+ * The header each provider signs its callback with.
+ *
+ * One shared secret (PAYROLL_WEBHOOK_SECRET) rather than one per provider: the
+ * endpoint accepts a `provider` query parameter chosen by the caller, so a
+ * per-provider secret would let anyone pick which secret their payload is
+ * checked against. With one secret the choice of provider decides only how the
+ * payload is read, never whether it is trusted.
+ */
+const PAYROLL_SIGNATURE_HEADERS: Readonly<Record<string, string>> = Object.freeze({
+  gusto: 'x-gusto-signature',
+  quickbooks: 'intuit-signature',
+  adp: 'x-adp-signature',
+  paychex: 'x-payroll-signature',
+});
+
+function payrollSignatureHeaderName(provider: PayrollProvider): string {
+  return PAYROLL_SIGNATURE_HEADERS[provider] ?? 'x-payroll-signature';
+}
+
+function headerValue(
+  headers: Record<string, string | string[] | undefined>,
+  name: string,
+): string | null {
+  const raw = headers[name] ?? headers[name.toLowerCase()];
+  if (Array.isArray(raw)) return raw[0] ?? null;
+  return typeof raw === 'string' ? raw : null;
+}
+
+/**
+ * Verifies an inbound payroll callback against the RAW request body.
+ *
+ * Raw, not the parsed object: re-serializing JSON does not reproduce the bytes
+ * the provider signed, so a signature checked against `JSON.stringify(body)`
+ * fails for anything but the most trivial payload and passes for nothing an
+ * attacker could not also produce.
+ *
+ * Accepts the signature as hex or base64, with or without a `sha256=` prefix,
+ * because the four providers here spell it three different ways.
+ */
+export function verifyPayrollWebhookSignature(params: {
+  provider: PayrollProvider;
+  headers: Record<string, string | string[] | undefined>;
+  rawBody: string;
+  secret?: string;
+}): boolean {
+  const secret = params.secret ?? process.env.PAYROLL_WEBHOOK_SECRET;
+  if (!secret) return false;
+
+  const presented = headerValue(params.headers, payrollSignatureHeaderName(params.provider));
+  if (!presented) return false;
+
+  const offered = presented.trim().replace(/^sha256=/i, '').trim();
+  if (!offered) return false;
+
+  const hmac = createHmac('sha256', secret).update(params.rawBody, 'utf8').digest();
+
+  for (const encoding of ['hex', 'base64'] as const) {
+    const expected = hmac.toString(encoding);
+    if (offered.length !== expected.length) continue;
+    try {
+      if (timingSafeEqual(Buffer.from(offered, 'utf8'), Buffer.from(expected, 'utf8'))) return true;
+    } catch {
+      // Length mismatch is already handled; anything else is a failed compare.
+    }
+  }
+
+  return false;
+}
 
 export function processPayrollWebhook(
   provider: PayrollProvider,

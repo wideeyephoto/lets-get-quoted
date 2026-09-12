@@ -1,3 +1,6 @@
+
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
 /**
  * Google Ads API v25 Live Verification Suite (Write-Path & Offline Conversions)
  *
@@ -126,6 +129,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
   try {
     // Step 1: Exchange OAuth refresh token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -163,6 +167,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
     // Step 2: Discover accessible accounts
     const listRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers:listAccessibleCustomers`, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -204,6 +209,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
     // Step 3: Query account info
     const searchRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/googleAds:search`, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: baseHeaders,
       body: JSON.stringify({
@@ -225,6 +231,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     // Query conversion actions in the account
     try {
       const convRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/googleAds:search`, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: baseHeaders,
         body: JSON.stringify({
@@ -247,6 +254,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     // Query billing setups in the account
     try {
       const billingRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/googleAds:search`, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: baseHeaders,
         body: JSON.stringify({
@@ -274,6 +282,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     if (!wonJobAction && options.createConversionAction !== false) {
       try {
         const createConvRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/conversionActions:mutate`, {
+          signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
           method: 'POST',
           headers: baseHeaders,
           body: JSON.stringify({
@@ -337,6 +346,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     // Step 4: Create Campaign Budget
     const budgetName = `Prelaunch Verification Budget - ${Date.now()}`;
     const budgetRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaignBudgets:mutate`, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: baseHeaders,
       body: JSON.stringify({
@@ -373,6 +383,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     // Step 5: Create Campaign with PAUSED status
     const campaignName = `Prelaunch Verification Campaign - ${Date.now()}`;
     const campRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: baseHeaders,
       body: JSON.stringify({
@@ -417,6 +428,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
     // Step 6: Status Toggle and Teardown
     const toggleRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: baseHeaders,
       body: JSON.stringify({
@@ -439,6 +451,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
     if (options.cleanup !== false) {
       await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: baseHeaders,
         body: JSON.stringify({
@@ -530,6 +543,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
 
   try {
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -590,6 +604,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
     const uploadRes = await fetch(
       `${GOOGLE_ADS_API_BASE_URL}/customers/${explicitCustomerId}:uploadClickConversions`,
       {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers,
         body: JSON.stringify(testPayload),
