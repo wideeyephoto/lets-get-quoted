@@ -5,7 +5,7 @@ const loadPublicSite = cache(async (kind: string, tenant: string) => { return ki
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-
+import { siteOrigin } from '@/lib/seo/site-pages';
 
 import { getPublishedBlog } from '@/lib/site-content';
 import { siteIconsMetadata } from '@/lib/brand-mark';
@@ -31,9 +31,11 @@ export async function generateMetadata({ params: paramsPromise }: Props): Promis
   const blog = getPublishedBlog(site.content);
   if (!blog) return { title: 'Not found' };
   const title = `${blog.title} | ${site.company_name}`;
+  const base = siteOrigin(site) || 'https://letsgetquoted.com';
   return {
     title: { absolute: title },
     description: blog.intro || `News and tips from ${site.company_name}.`,
+    alternates: { canonical: `${base}/blog` },
     icons: siteIconsMetadata(site),
   };
 }

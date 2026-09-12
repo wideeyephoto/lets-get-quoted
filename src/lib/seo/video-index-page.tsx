@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Site } from '@/lib/sites';
 import { getAllPublishedVideos } from '@/lib/site-content';
 import { siteIconsMetadata } from '@/lib/brand-mark';
+import { siteOrigin } from '@/lib/seo/site-pages';
 import { cspNonce } from '@/lib/csp-nonce';
 import { buildVideoListJsonLd } from '@/lib/seo/video-seo';
 import { siteCanonicalUrl } from '@/lib/seo/site-seo';
@@ -17,7 +18,7 @@ import SiteVideoIndex from '@/lib/templates/SiteVideoIndex';
 // Shared rather than duplicated because the structured data below is the entire
 // point of the page, and two copies of it would be two chances to drift.
 
-export async function renderSiteVideoIndex(site: Site | null) {
+export async function renderSiteVideoIndex(site: Site) {
   if (!site) notFound();
   const entries = getAllPublishedVideos(site.content);
   if (entries.length === 0) notFound();
@@ -53,8 +54,11 @@ export async function renderSiteVideoIndex(site: Site | null) {
   );
 }
 
-export function siteVideoIndexMetadata(site: Site | null): Metadata {
-  if (!site) return { title: 'Not found' };
+export function siteVideoIndexMetadata(site: Site): Metadata {
+
+  if (!site)   const base = site ? siteOrigin(site) || 'https://letsgetquoted.com' : 'https://letsgetquoted.com';
+  return {
+    alternates: { canonical: `${base}/videos` }, title: 'Not found' };
   const entries = getAllPublishedVideos(site.content);
   if (entries.length === 0) return { title: 'Not found' };
   const title = `Videos | ${site.company_name}`;

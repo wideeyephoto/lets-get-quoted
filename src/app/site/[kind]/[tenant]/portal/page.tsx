@@ -5,7 +5,7 @@ const loadPublicSite = cache(async (kind: string, tenant: string) => { return ki
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import SitePortalPage from '@/lib/templates/SitePortalPage';
