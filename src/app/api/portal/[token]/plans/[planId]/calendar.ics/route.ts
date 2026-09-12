@@ -15,6 +15,7 @@ export async function GET(
   if (!access) return new NextResponse('Not found', { status: 404 });
 
   const portal = await loadPortal(admin, access.accountId, access.clientId);
+  if (!portal) return new NextResponse('Not found', { status: 404 });
   const plan = portal.plans.find(p => p.id === params.planId);
   if (!plan || !plan.nextRunDate) return new NextResponse('Not found', { status: 404 });
 
