@@ -16,7 +16,7 @@
 
 import type { Site } from '@/lib/sites';
 import { getAllPublishedVideos, getSiteContent } from '@/lib/site-content';
-import { isSiteSeoReady } from './site-seo';
+import { isSiteSeoReady, siteCities } from './site-seo';
 import { slugifyBlogTitle } from '../site-content';
 
 export type SitePageEntry = {
@@ -100,6 +100,18 @@ export function siteIndexablePages(site: Site): SitePageEntry[] {
       lastModified: post.date || updated,
       changeFrequency: 'yearly',
       priority: 0.5,
+    });
+  }
+
+
+  const cities = siteCities(site).slice(0, 30);
+  for (const city of cities) {
+    if (!city.trim()) continue;
+    pages.push({
+      path: '/service-areas/' + encodeURIComponent(slugifyBlogTitle(city.trim())),
+      lastModified: updated,
+      changeFrequency: 'monthly',
+      priority: 0.6,
     });
   }
 

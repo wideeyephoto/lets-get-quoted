@@ -96,7 +96,7 @@ function usableCityName(city: string): boolean {
 // Every town this contractor claims, home city first. The free-text service area
 // names the main one while the cities list holds the outlying towns and usually
 // does NOT repeat it, so reading either alone loses a town.
-function siteCities(site: Site): string[] {
+export function siteCities(site: Site): string[] {
   const content = getSiteContent(site.content);
   const all = [homeLocation(site).city, ...content.serviceAreas.cities].map(trimmed).filter(Boolean);
   return all.filter((city, index) => all.findIndex((other) => other.toLowerCase() === city.toLowerCase()) === index);

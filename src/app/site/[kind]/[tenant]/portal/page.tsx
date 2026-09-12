@@ -5,7 +5,7 @@ const loadPublicSite = cache(async (kind: string, tenant: string) => { return ki
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-
+import { createAdminClient } from '@/lib/supabase/admin';
 
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import SitePortalPage from '@/lib/templates/SitePortalPage';
@@ -23,10 +23,10 @@ type Props = {
 
 export default async function PublicPortalPage({ params: paramsPromise }: Props) {
   const params = await paramsPromise;
-  const admin = createAdminClient();
-  const site = await getPublicSiteBySubdomain(admin, params.tenant);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) notFound();
 
+  const admin = createAdminClient();
   const { data: account } = await admin
     .from('accounts')
     .select('client_portal_enabled, business_name')
