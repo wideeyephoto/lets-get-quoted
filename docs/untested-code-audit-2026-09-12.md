@@ -307,7 +307,40 @@ the value in a hidden input, so the normal UI never hit it; a server action is
 reachable by anyone holding the link, which is the case the guard existed for.
 Both now reject an absent or blank field before coercion.
 
-Steps 2 through 8 below are open.
+**Step 2 is done.** `coverage.include` now takes `src/app/**/*.ts` rather than
+only `src/app/api/**`, so all 117 server-action modules are measured. The
+reported figure moved from 72.81% to 67.27% (132,438 of 196,855 statements): the denominator gained
+roughly 25,000 statements nobody was counting, and nothing stopped being
+tested. Pages and components are `.tsx` and still carry no number, since this
+suite runs in a node environment; covering them needs a second config with a
+DOM environment.
+
+**Step 3 is done.** 156 tests across two files. All nine route files under
+`api/v1` and eight of the nine under `api/export`, plus `src/lib/data-export.ts`
+which builds the CSVs. The `api/v1` wrapper was already tested, so these stand
+it down to a pass-through and hold what each handler alone decides: every read
+and write narrows to the token's workspace and no query string or request body
+can redirect it; the cursor contract is the documented one; the webhook signing
+secret is returned once at creation, stored only encrypted, and selected back
+by no projection; and a delivery retry answers a byte-identical 404 whether the
+delivery is missing, another workspace's, or simply not retryable. For the
+exports the rule is blunter: no owner context, no bytes, with `reports.read`
+required for the expenses ledger.
+
+Two of those assertions started out wrong and the code was right, so they now
+pin the rules as written. `PATCH /v1/leads` refuses a direct transition to
+`won`, because a lead becomes won by converting a quote or completing a job
+rather than by an integration setting a string. The OpenAPI document carries
+the `lgq_live_` prefix deliberately, as the token format an integrator needs.
+
+`api/export/insights` is the one export route still uncovered; it renders
+through pdfkit and needs its own fixture.
+
+The reachability pass across all of this work: files no test executes fall from
+1,151 to 1,121 of 2,300, server actions from 75 never-executed to 66, and route
+handlers from 74 executed to 91.
+
+Steps 4 through 8 below are open.
 
 ## Reproducing this
 

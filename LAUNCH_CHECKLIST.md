@@ -6,7 +6,7 @@
 - [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: The separate office Data API gate is closed with production evidence in docs/office-data-api-remediation-2026-09-11.md; Storage capacity/concurrency acceptance remains separate.
 - [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
 - [ ] **R04 (Domains):** Observation started September 11, 2026. **Day 1 of 7** — run `59b08397` passed (checked=1, errors=0). Completes September 17 at earliest.
-- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI.
+- [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI. **Scope and baseline superseded 2026-09-12:** that scope measured 44.6% of the source lines and excluded every server action, so the percentage above describes less than half the codebase. `coverage.include` now takes `src/app/**/*.ts`; see “Untested-code audit and coverage widening — 2026-09-12” below for the current figures. Thresholds remain unenforced.
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
@@ -66,6 +66,118 @@ Supabase host with per-hop redirect revalidation, the rate-limit RPC atomic,
 all four inbound webhooks deduplicated, environment parity complete except
 platform-provided variables, no public caching of tenant data, and no CORS
 wildcards.
+
+## Untested-code audit and coverage widening — 2026-09-12
+
+Every file under `src/` examined for one question: does anything in the test
+suite execute it? Two independent passes that agree — a full
+`npm run test:coverage` run, and an import-graph walk from every test file
+(`npm run audit:untested`, added with the audit and reporting only, never
+failing a build). Report:
+[untested-code-audit-2026-09-12.md](docs/untested-code-audit-2026-09-12.md).
+Commits `1dc7351`, `36e4ab5`, `29d1bf8`. Verified 2026-09-12 at
+`tsc --noEmit -p tsconfig.test.json` clean and the full suite green
+(**1,193 files / 15,408 tests**, `npx vitest run --coverage`, exit 0).
+Regenerate with `npm run test:coverage`; re-measure reachability with
+`npm run audit:untested`.
+
+### What the audit found
+
+- [x] **The reported coverage figure measured 44.6% of the source:**
+  `coverage.include` was `src/lib/**/*.ts`, `src/app/api/**/*.ts` and the
+  middleware — 240,213 of 538,386 source lines. Server actions, pages and
+  components sat outside it, so a module no test imported was indistinguishable
+  from one that did not exist. **1,151 of 2,300 source files were executed by no
+  test at all**, among them 75 of the 117 server-action modules and 114 of the
+  186 files under `src/app/api`.
+- [x] **A large share of the suite asserts on source text, not behaviour:** 487
+  of 1,186 test files call `readFileSync` on a source file, and for 248 of them
+  that is the whole test — they import no application module. 316 source files
+  are read as text by a test and never run. The technique catches real things (a
+  deleted cron route, a forbidden call site) and is not behavioural verification;
+  the passing-test count reads as though it were.
+- [ ] **70 of the 76 test and verification npm scripts never run in CI:** the
+  whole `test-staging/` suite (admin console, field-app RLS, marketing-flow
+  transactions), the `vitest.pg17.config.ts` suite, and roughly 40
+  `scripts/verify-*.mjs` database checks covering overage settlement, refund
+  reconciliation, capacity lifecycle, tenant isolation, SMS campaign boundaries
+  and voice provisioning. CI executes **9 of the 359 files in `migrations/`**
+  against a real PostgreSQL 17, and exactly one test in the main suite executes
+  SQL against a real engine; every other migration test asserts on the text of
+  the `.sql` file. Close by deciding per suite whether it joins CI or is deleted:
+  a verification script nobody runs reads as covered and is not.
+- [ ] **111 files under `src/` are imported by nothing** (17,463 lines); 38 are
+  also untested. The rest have tests and no callers, which is the more misleading
+  shape — the tests pass and the code is unreachable from the app. Four billing
+  modules totalling 3,125 lines are in that state, including
+  `src/lib/billing/direct-checkout-operation.ts` (1,144 lines, its own test file,
+  its single export referenced nowhere in `src/`). Close by establishing whether
+  these are the live implementation mis-wired, or superseded and removable.
+- [x] **No test is skipped or parked:** zero `.skip` and zero `.todo` across the
+  suite; three `it.skipIf` guards and nothing else.
+
+### Closed since the audit
+
+- [x] **Server actions are measured at all:** `coverage.include` now takes
+  `src/app/**/*.ts` rather than only `src/app/api/**`, putting all 117
+  server-action modules inside the measurement. The reported figure fell from
+  **72.81%** to **67.27%** (132,438/196,855 statements) because the denominator gained roughly 25,000
+  statements nobody was counting, not because anything stopped being tested.
+  Pages and components are `.tsx` and still carry no number: this suite runs in a
+  node environment, and covering them needs a second config with a DOM
+  environment. Commit `29d1bf8`.
+- [x] **The token-authenticated server actions have tests:** 129 across five
+  files covering `client/jobs/[token]` (the action module and its selection,
+  change-order and form siblings), `portal/view/[token]`, `sub/[token]`,
+  `schedule/[token]`, `review/[token]` and `quick-stop/[id]`, plus
+  `resolveJobAccess` itself — the resolver all four client-job modules depend on,
+  which was executing 2.17% of its lines. These pages carry no session; the
+  signed token is the authorisation, so what the tests hold is the boundary:
+  refuse a revoked or expired link before writing, take account and job scope
+  from the resolved access rather than from posted fields, check the rate limit
+  first, and never revalidate a page for a request that failed. Commit `36e4ab5`.
+- [x] **Defect found and fixed — an absent form field booked a slot:**
+  `selectScheduleOptionAction` and `selectClientJobScheduleOptionAction`
+  validated the chosen slot with `Number(formData.get('optionIndex'))`, and
+  `Number(null)` is `0`. A request omitting the field passed the guard and booked
+  the first offered slot, which the contractor then saw as a choice the customer
+  had made. The page posts a hidden input so the normal UI never reached it; a
+  server action is reachable by anyone holding the link, which is the case the
+  guard existed for. Both now reject an absent or blank field before coercion.
+  Commit `36e4ab5`.
+- [x] **The public API and the data exports have tests:** 156 across two files.
+  All **nine** route files under `/api/v1` — the published API customers
+  integrate against, previously at zero executed lines — and **eight of the
+  nine** under `/api/export`, plus `src/lib/data-export.ts`, which builds the
+  CSVs and was also at zero. Held: every read and write narrows to the token's
+  own workspace and neither a query string nor a request body can redirect it;
+  the documented cursor-pagination contract; the webhook signing secret returned
+  once at creation, stored only encrypted, and selected back by no projection; a
+  byte-identical 404 on delivery retry whether the delivery is missing, another
+  workspace's, or not retryable, so the endpoint cannot be used to probe for ids;
+  and on the exports, no owner context means no bytes, with `reports.read`
+  required for the expenses ledger. Commit `29d1bf8`.
+- [x] **The security gate covers the token boundary:** `npm run test:security`
+  previously ran six files with no token-boundary or export-tenancy coverage in
+  them. It now runs eleven.
+
+### Still open from this audit
+
+- [ ] **`/api/export/insights` remains at zero executed lines** — the one export
+  route not covered. It renders through pdfkit, which needs its own fixture.
+- [ ] **Coverage thresholds are still unenforced.** The commented block in
+  `vitest.config.ts` is the intended mechanism. A number without a floor records
+  the slide rather than preventing it; set floors once the scope stops moving.
+- [ ] **`src/app/dashboard/payments/actions.ts` is untested and too large to
+  test as a unit:** 973 lines, 29 exported actions, 23 database calls, 167
+  branches, zero executions, covering refunds, instant pay links, payment-plan
+  scheduling, dispute evidence, lien waivers and the Stripe Terminal flow. Close
+  by moving that logic into `src/lib` where the existing billing tests live.
+- [ ] **17 scheduled cron jobs are dark end to end** — neither route nor worker
+  meaningfully executed, among them `purge-expired` (deletes), `plan-installments`
+  and `smart-dunning` (charge), and `appointment-reminders`,
+  `service-reminders` and `weather-morning-alert` (message customers). Listed
+  with their workers' executed-line figures in the audit report.
 
 ## Coverage gaps opened — 2026-09-11
 
