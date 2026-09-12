@@ -37,12 +37,24 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is
   unset, so the entire paging chain may terminate at an untested address. Close with a dated receipt
   log for all 15 addresses including `dmarc@`, `ONCALL_PRIMARY_EMAIL` confirmed set and baked into
-  the current build (T26), and `docs/runbooks/inbound-mail-routing.md`.
+  the current build (T26), and `docs/runbooks/inbound-mail-routing.md`. **Runbook written
+  2026-09-12:** every address mapped to owner and SLA (reusing the two commitments already on
+  record for `support@`/`hello@` rather than inventing new ones), ranked by what silently breaks
+  if unread. `system@` is confirmed genuinely send-only by explicit code intent (`replyTo: null`)
+  and needs no probe. Found in the process: `docs/runbooks/chargeback-evidence-protocol.md`
+  commits to a `disputes@` address with a sub-1-hour SLA that does not exist anywhere in `src/` —
+  flagged, not yet resolved. The probe itself, the T26 confirmation, and fixing whatever the
+  probe finds all still need a real external mailbox and Production console access.
 - [ ] **Vendor account continuity:** no payment method, plan limit or auto-recharge is tracked for
   any of the 12 vendors. Supabase free-tier ceilings beyond PITR — database size, storage across 7
   buckets, egress, log retention, connections — have never been sized. Close with
   `docs/vendor-account-register.md` carrying dated console reads, SignalWire auto-recharge confirmed,
-  and a dated Supabase tier decision citing usage against each ceiling.
+  and a dated Supabase tier decision citing usage against each ceiling. **Register written
+  2026-09-12:** all 12 vendors, real env var names verified against `.env.example`, what each
+  depends on, and what's traceable about behavior at the limit. SignalWire flagged as the single
+  highest-priority row: nothing in `src/lib/voice/` or the SMS send path checks balance before
+  sending, so exhaustion is a silent stop with no application-level symptom. Every payment-method
+  and console-confirmed cell is deliberately blank pending operator console access.
 - [ ] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
   customer and no `/status` route exists. Close with a deployed anonymous `/status` on the frozen
   SHA, `platform_incidents` with anon-read-published-only RLS, operator open/update/resolve writing
@@ -89,6 +101,13 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   ownership; nothing defines hours 0–72. Close with `docs/runbooks/launch-watch-window.md` carrying
   numeric thresholds for failed payments, dead-letter depth, SMS stalls, cron failures, 5xx and AI
   spend, each tied to a rollback trigger and an overnight paging policy, plus a dated tabletop.
+  **Runbook written 2026-09-12:** thresholds grounded in the real, already-live
+  `scan_operational_failures` scanner's own per-item thresholds (`20260910121506_overage_recovery_guards.sql`)
+  and `/api/health`'s real `errorRatePct`, not invented numbers. AI spend rate and
+  signup-to-activation are recorded as **unmeasured anywhere in the codebase today** rather than
+  given a fabricated threshold. Overnight paging and the publication trigger are cross-linked to
+  G3 and the G5 publication policy so the three can't silently disagree on categories. The dated
+  tabletop walkthrough remains open — it needs the actual operator, not an agent.
 - [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31, never tracked.
   SMS pumping fraud bills to this account. Close with recorded console values.
 - [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention

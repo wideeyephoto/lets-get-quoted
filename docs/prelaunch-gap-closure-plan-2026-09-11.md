@@ -195,6 +195,23 @@ has never been tested.**
 Dated receipt log covering all 15 addresses · `ONCALL_PRIMARY_EMAIL` confirmed set and baked
 into the current build · routing runbook committed.
 
+**2026-09-12 — step 4 done; steps 1–3 still need the operator.**
+[docs/runbooks/inbound-mail-routing.md](runbooks/inbound-mail-routing.md) is
+committed: every address mapped to its owner (from the escalation-contact
+roles already assigned in `src/lib/admin-manual/index.ts`) and its SLA where
+one already exists on record (`support@`, `hello@`, reused from
+[the chargeback protocol](runbooks/chargeback-evidence-protocol.md) rather
+than invented), ranked by what silently breaks if unread. Two things found
+while building it: `system@` is genuinely send-only by explicit code intent
+(`replyTo: null`, three call sites in `founder-alerts.ts`) so it needs no
+probe at all, and the chargeback protocol names a `disputes@` address with a
+sub-1-hour SLA that **does not exist anywhere in `src/`** — a real
+documentation/implementation mismatch, now flagged for resolution rather than
+silently carried forward. The probe itself (step 1), the T26 console
+confirmation (step 2), and fixing whatever the probe finds (step 3) all still
+need a real external mailbox and Production console access this session does
+not have.
+
 ---
 
 ## G4 — No vendor account continuity register
@@ -229,6 +246,18 @@ a capacity question, not only a backup question.
 
 Register committed with dated console reads · auto-recharge confirmed on SignalWire · a
 stated, dated Supabase tier decision citing actual current usage against each ceiling.
+
+**2026-09-12 — step 1 done; steps 2–4 need console access.**
+[docs/vendor-account-register.md](vendor-account-register.md) is committed
+with all 12 vendors, their real env var names (verified against
+`.env.example`), what each depends on, and — where traceable from source —
+what actually happens at the limit. SignalWire's row is flagged as the single
+highest-priority cell in the whole document: nothing in `src/lib/voice/` or
+the SMS send path checks balance before sending, so exhaustion is a silent
+stop with no application-level symptom, exactly as this plan already
+suspected. Every payment-method, billing-owner and console-confirmed cell is
+explicitly left blank rather than guessed at, since guessing at a billing
+relationship this session cannot see would be worse than an honest blank.
 
 ---
 
@@ -424,6 +453,22 @@ Write `docs/runbooks/launch-watch-window.md`:
 
 Runbook committed · thresholds numeric and tied to real metric sources · dated tabletop
 record.
+
+**2026-09-12 — runbook committed; the tabletop cannot run here.**
+[docs/runbooks/launch-watch-window.md](runbooks/launch-watch-window.md) grounds
+every threshold in a real source rather than inventing numbers: the five-minute
+`scan_operational_failures` scanner's own existing per-item thresholds (read
+directly from `20260910121506_overage_recovery_guards.sql`) for webhook,
+billing, overage, SMS, dispute and cron failures; `/api/health`'s real
+`errorRatePct` for the 5xx threshold; `inspect-cron-health.mjs` for the cron
+fleet check. Two rows — AI spend rate and signup-to-activation — are recorded
+as **currently unmeasured anywhere in the codebase** rather than given an
+invented number, with a manual-check substitute until real tracking exists.
+Overnight policy and the publication trigger are cross-linked to G3 and
+[the G5 publication policy](runbooks/status-page-publication-policy.md) so
+the three documents can't silently drift apart on which categories page
+whom. The dated tabletop walkthrough is unchanged as the one item here that
+is inherently not agent-completable.
 
 ---
 
