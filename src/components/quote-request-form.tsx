@@ -18,7 +18,7 @@ const TOTAL_STEPS = STEP_LABELS.length;
 const LAST_STEP = TOTAL_STEPS - 1;
 
 type QuoteRequestFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
+  site: Pick<Site, 'template' | 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
 };
 
 export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
