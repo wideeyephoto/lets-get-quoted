@@ -117,11 +117,27 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
     Whoever adds it should run it once on a runner first.
 - [ ] **111 files under `src/` are imported by nothing** (17,463 lines); 38 are
   also untested. The rest have tests and no callers, which is the more misleading
-  shape — the tests pass and the code is unreachable from the app. Four billing
-  modules totalling 3,125 lines are in that state, including
-  `src/lib/billing/direct-checkout-operation.ts` (1,144 lines, its own test file,
-  its single export referenced nowhere in `src/`). Close by establishing whether
-  these are the live implementation mis-wired, or superseded and removable.
+  shape — the tests pass and the code is unreachable from the app.
+  - [x] **The four billing modules are answered: leave them.** They are the
+    `direct` charge rail (3,125 lines), built and tested and deliberately gated
+    off. `docs/go-live-2026-08-17.md` states it — "all three belong to the
+    `direct` rail, which is gated off. The legacy `destination` rail predates
+    them" — and the code agrees: `src/lib/payments.ts` pins every write to
+    `charge_model = 'destination'` and **nothing anywhere sets it to `'direct'`**,
+    so the rail cannot be entered. The settling half is already imported
+    (`direct-payment-settlement-worker`), the creating half
+    (`direct-payment-preparation`) is not. Half-wired on purpose, tests written
+    ahead of the switch. The earlier framing on this line — mis-wired or
+    removable — was a false choice and is withdrawn.
+  - [ ] **One plain superseded sibling found:**
+    `src/app/dashboard/inventory/InventoryWorkspace.tsx` (710 lines) sits beside
+    `InventoryClient.tsx` (4,162 lines, the one `page.tsx` imports). A rewrite
+    landed under a new name and the old file stayed.
+  - [ ] **The rest are unclassified**, and a same-directory heuristic is not good
+    enough to classify them: in a directory as large as `src/lib/billing` it
+    pairs files with nothing to do with each other. The two answers above show
+    the 111 are at least two different populations, so each needs its own
+    decision before anything is deleted.
 - [x] **No test is skipped or parked:** zero `.skip` and zero `.todo` across the
   suite; three `it.skipIf` guards and nothing else.
 
@@ -245,9 +261,15 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
 
 - [ ] **`/api/export/insights` remains at zero executed lines** — the one export
   route not covered. It renders through pdfkit, which needs its own fixture.
-- [ ] **Coverage thresholds are still unenforced.** The commented block in
-  `vitest.config.ts` is the intended mechanism. A number without a floor records
-  the slide rather than preventing it; set floors once the scope stops moving.
+- [x] **Coverage floors are set and enforced (2026-09-12):** `vitest.config.ts`
+  carries `lines`/`statements` 66, `branches` 74, `functions` 73, set from a
+  baseline measured the same day — statements and lines **67.44%**
+  (132,780/196,865), branches **75.60%**, functions **74.87%** over 1,196 files
+  and 15,507 tests. Each floor sits roughly a point under what was measured:
+  tight enough that a real slide fails the build, loose enough that ordinary
+  churn does not fail it for nothing. Enforced because the CI unit-test step now
+  runs coverage. Raise them when the measured figure moves up and holds; do not
+  lower them to turn a red build green.
 - [ ] **`src/app/dashboard/payments/actions.ts` is untested and too large to
   test as a unit:** 973 lines, 29 exported actions, 23 database calls, 167
   branches, zero executions, covering refunds, instant pay links, payment-plan

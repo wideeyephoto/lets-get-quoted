@@ -239,8 +239,27 @@ nowhere in `src/`. Three sibling billing modules are in the same state
 `src/lib/admin-manual/index.ts` still cites `src/lib/direct-checkout-operation.ts`
 at its pre-move path, which suggests the move left references behind.
 
-Either these are the live implementation and something is mis-wired, or they are
-superseded and should go. Both answers are worth knowing before launch.
+**Answered, 2026-09-12.** Neither, for the billing four: they are the `direct`
+charge rail, built and tested and deliberately gated off. `docs/go-live-2026-08-17.md`
+says so outright — "all three belong to the `direct` rail, which is gated off. The
+legacy `destination` rail predates them" — and the code agrees. `src/lib/payments.ts`
+pins every write to `charge_model = 'destination'`, and **no code path anywhere sets
+`charge_model` to `'direct'`**, so the rail cannot be entered. The settling half is
+already imported (`direct-payment-settlement-worker`); the creating half
+(`direct-payment-preparation`) is not. So the rail is half-wired on purpose, with
+tests written ahead of the switch. Leave them: they are the opposite of dead code.
+
+One case in the remainder is a plain superseded sibling rather than a staged one.
+`src/app/dashboard/inventory/` holds both `InventoryClient.tsx` (4,162 lines, the
+one `page.tsx` imports) and `InventoryWorkspace.tsx` (710 lines, imported by
+nothing) — a rewrite that landed under a new name with the old file left behind.
+
+The remaining orphans have not been classified one by one, and a same-directory
+heuristic is not good enough to do it: in a directory as large as
+`src/lib/billing` it pairs files that have nothing to do with each other. What the
+two cases above establish is that the 111 are at least two different populations,
+and that "unreferenced" alone does not tell you which. Each needs its own answer
+before anything is deleted.
 
 ## What is genuinely solid
 
@@ -409,7 +428,19 @@ remain out. Those need a decision rather than a commit: each one either joins CI
 or is deleted, because a verification script nobody runs reads as covered and is
 not.
 
-Steps 4 and 7 below are open.
+**Step 8 is done.** `vitest.config.ts` now carries floors, set from a baseline
+measured the same day: statements and lines 67.44%, branches 75.60%, functions
+74.87% over 1,196 files and 15,507 tests. Each floor sits roughly a point under
+what was measured — tight enough that a real slide fails the build, loose enough
+that ordinary churn does not fail it for nothing. They are enforced because CI
+now runs the suite with coverage rather than bare; a floor nothing evaluates
+would have been the same problem as a verification script nobody runs.
+
+**Step 7 is answered for its headline case,** in Finding 7 above: the four
+orphaned billing modules are the `direct` charge rail, gated off on purpose, and
+should stay. The rest of the 111 still need classifying one at a time.
+
+Step 4 below is open.
 
 ## Reproducing this
 
