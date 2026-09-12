@@ -17,6 +17,7 @@
 import type { Site } from '@/lib/sites';
 import { getAllPublishedVideos, getSiteContent } from '@/lib/site-content';
 import { isSiteSeoReady } from './site-seo';
+import { slugifyBlogTitle } from '../site-content';
 
 export type SitePageEntry = {
   /** Path under the site's own origin. '' is the homepage. */
@@ -68,6 +69,20 @@ export function siteIndexablePages(site: Site): SitePageEntry[] {
 
   if (getAllPublishedVideos(site.content).length > 0) {
     pages.push({ path: '/videos', lastModified: updated, changeFrequency: 'monthly', priority: 0.6 });
+  }
+
+
+  const services = getSiteContent(site.content).services;
+  if (services.enabled) {
+    for (const service of services.items) {
+      if (!service.title.trim()) continue;
+      pages.push({
+        path: '/services/' + encodeURIComponent(slugifyBlogTitle(service.title.trim())),
+        lastModified: updated,
+        changeFrequency: 'monthly',
+        priority: 0.7,
+      });
+    }
   }
 
   const posts = getSiteContent(site.content).blog.posts.filter(
