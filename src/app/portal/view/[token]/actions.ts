@@ -6,6 +6,7 @@ import { submitPortalMessage } from '@/lib/client-portal-data';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { setRecurringPlanActive } from '@/lib/recurring';
+import { checkRateLimit, checkRateLimitStrict } from '@/lib/rate-limit';
 import { revalidatePath } from 'next/cache';
 
 export async function sendPortalMessageAction(
@@ -23,6 +24,11 @@ export async function sendPortalMessageAction(
   const access = await resolvePortalAccess(admin, token);
   if (!access) {
     return { ok: false, message: 'Your link has expired. Please request a fresh one.' };
+  }
+
+  // 10 messages per hour per portal link
+  if (!(await checkRateLimit(admin, `portal-msg:${token}-hr`, 10, 3600))) {
+    return { ok: false, message: 'You have sent too many messages recently. Please try again later.' };
   }
 
   const result = await submitPortalMessage(admin, {
@@ -48,6 +54,11 @@ export async function customerTogglePlanAction(
   const access = await resolvePortalAccess(admin, token);
   if (!access) {
     throw new Error('Your link has expired. Please request a fresh one.');
+  }
+
+  // Cooldown: 5 toggles per hour
+  if (!(await checkRateLimitStrict(admin, `portal-plan-toggle:${token}`, 5, 3600))) {
+    throw new Error('You have toggled your plan too many times recently. Please try again later.');
   }
 
   const [{ data: plan, error: planError }, { data: client }, { data: site }, { data: account }] = await Promise.all([
@@ -112,32 +123,49 @@ export async function customerTogglePlanAction(
     } catch (feedErr) {
       console.error('Failed to log job feed event for customer plan toggle:', feedErr);
     }
+  } else {
+    // Audit row if no job found
+    try {
+      await admin.from('client_feed').insert({
+        account_id: access.accountId,
+        client_id: access.clientId,
+        kind: 'note',
+        title: active ? `Recurring plan resumed by ${clientName}` : `Recurring plan paused by ${clientName}`,
+        body: active
+          ? `${clientName} resumed their recurring maintenance plan "${plan.title}".`
+          : `${clientName} paused their recurring maintenance plan "${plan.title}".`,
+        author: clientName,
+      });
+    } catch (feedErr) {}
   }
 
   // Notify contractor via alert email
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, access.accountId);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId: access.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: active
-          ? `Recurring plan resumed by ${clientName}: ${plan.title}`
-          : `Recurring plan paused by ${clientName}: ${plan.title}`,
-        heading: active ? 'Recurring Plan Resumed' : 'Recurring Plan Paused',
-        bodyLines: [
-          `${clientName} has ${active ? 'resumed' : 'paused'} their recurring maintenance plan "${plan.title}".`,
-          ...(active
-            ? ['Future service visits have been restored to your schedule.']
-            : ['Future scheduled visits for this plan have been removed from your calendar.']),
-          ...(client?.phone ? [`Customer phone: ${client.phone}`] : []),
-          ...(client?.email ? [`Customer email: ${client.email}`] : []),
-        ],
-        ctaLabel: 'View Recurring Plans',
-        ctaUrl: 'https://app.letsgetquoted.com/dashboard/recurring',
-        tone: active ? 'info' : 'warning',
-      });
+    // Limit to 50 alert emails per day per account to avoid spam
+    if (await checkRateLimit(admin, `portal-alert-email:${access.accountId}-day`, 50, 86400)) {
+      const ownerEmail = await getAccountOwnerEmail(admin, access.accountId);
+      if (ownerEmail) {
+        await sendContractorAlertEmail({
+          accountId: access.accountId,
+          recipientEmail: ownerEmail,
+          businessName,
+          subject: active
+            ? `Recurring plan resumed by ${clientName}: ${plan.title}`
+            : `Recurring plan paused by ${clientName}: ${plan.title}`,
+          heading: active ? 'Recurring Plan Resumed' : 'Recurring Plan Paused',
+          bodyLines: [
+            `${clientName} has ${active ? 'resumed' : 'paused'} their recurring maintenance plan "${plan.title}".`,
+            ...(active
+              ? ['Future service visits have been restored to your schedule.']
+              : ['Future scheduled visits for this plan have been removed from your calendar.']),
+            ...(client?.phone ? [`Customer phone: ${client.phone}`] : []),
+            ...(client?.email ? [`Customer email: ${client.email}`] : []),
+          ],
+          ctaLabel: 'View Recurring Plans',
+          ctaUrl: 'https://app.letsgetquoted.com/dashboard/recurring',
+          tone: active ? 'info' : 'warning',
+        });
+      }
     }
   } catch (emailErr) {
     console.error('Failed to notify contractor of customer plan toggle:', emailErr);

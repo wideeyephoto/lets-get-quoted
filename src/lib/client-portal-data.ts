@@ -708,7 +708,7 @@ export async function submitPortalMessage(
   if (targetJobId) {
     try {
       await createJobFeedEvent(admin, input.accountId, targetJobId, {
-        kind: 'note',
+        kind: 'portal_note',
         title: `Portal note from ${clientName}`,
         body,
         visibility: 'client',
@@ -717,19 +717,19 @@ export async function submitPortalMessage(
     } catch (err) {
       console.error('Failed to write job feed event from portal message:', err);
     }
-  }
-
-  // If client phone exists, log inbound SMS message
-  if (normalizedClientPhone) {
+  } else {
+    // If no job found, fallback to client_feed
     try {
-      await admin.from('sms_messages').insert({
+      await admin.from('client_feed').insert({
         account_id: input.accountId,
-        phone_number: normalizedClientPhone,
-        direction: 'inbound',
+        client_id: input.clientId,
+        kind: 'portal_note',
+        title: `Portal note from ${clientName}`,
         body,
+        author: 'Client',
       });
     } catch (err) {
-      console.error('Failed to log inbound message from portal:', err);
+      console.error('Failed to write client feed event from portal message:', err);
     }
   }
 
@@ -741,15 +741,17 @@ export async function submitPortalMessage(
         accountId: input.accountId,
         recipientEmail: ownerEmail,
         businessName,
-        subject: `New portal message from ${clientName}`,
-        heading: `Message from ${clientName}`,
+        subject: `New portal note from ${clientName}`,
+        heading: `Note from ${clientName}`,
         bodyLines: [
           `"${body}"`,
           ...(client?.phone ? [`Phone: ${client.phone}`] : []),
           ...(client?.email ? [`Email: ${client.email}`] : []),
         ],
-        ctaLabel: 'Open Messages',
-        ctaUrl: `${APP_ORIGIN}/dashboard/messages`,
+        ctaLabel: targetJobId ? 'View Job' : 'View Client',
+        ctaUrl: targetJobId
+          ? `${APP_ORIGIN}/dashboard/jobs/${targetJobId}`
+          : `${APP_ORIGIN}/dashboard/clients/${input.clientId}`,
         tone: 'info',
       });
     }
@@ -760,9 +762,9 @@ export async function submitPortalMessage(
   // Notify contractor via alert SMS if configured
   if (account?.alert_phone && account?.high_value_sms_enabled !== false) {
     try {
-      const dashboardUrl = normalizedClientPhone
-        ? `${APP_ORIGIN}/dashboard/messages?thread=${encodeURIComponent(normalizedClientPhone)}`
-        : `${APP_ORIGIN}/dashboard/messages`;
+      const dashboardUrl = targetJobId
+        ? `${APP_ORIGIN}/dashboard/jobs/${targetJobId}`
+        : `${APP_ORIGIN}/dashboard/clients/${input.clientId}`;
 
       await sendOwnerPortalMessageAlertSms({
         accountId: input.accountId,
