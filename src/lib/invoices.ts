@@ -43,7 +43,13 @@ export function computeInvoiceTotals(
 ): InvoiceTotals {
   const safeDiscount = Number.isFinite(discountPercent) ? Math.min(100, Math.max(0, discountPercent)) : 0;
   const safeTax = Number.isFinite(taxRate) ? Math.max(0, taxRate) : 0;
-  const subtotal = round2(items.reduce((sum, item) => sum + Number(item.amount), 0));
+  
+  let subtotalCents = 0;
+  for (const item of items) {
+    subtotalCents += Math.round(Number(item.amount) * 100);
+  }
+  
+  const subtotal = round2(subtotalCents / 100);
   const discountAmount = round2(subtotal * (safeDiscount / 100));
   const taxable = round2(subtotal - discountAmount);
   const taxAmount = round2(taxable * (safeTax / 100));

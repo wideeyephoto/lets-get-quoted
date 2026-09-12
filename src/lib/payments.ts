@@ -234,20 +234,22 @@ async function sumPaged(
   }> },
   keep: (row: Record<string, unknown>) => boolean,
 ): Promise<{ total: number; error: unknown }> {
-  let total = 0;
+  let totalCents = 0;
   for (let page = 0; page < TRAILING_VOLUME_MAX_PAGES; page += 1) {
     const from = page * TRAILING_VOLUME_PAGE_SIZE;
     const { data, error } = await build().range(from, from + TRAILING_VOLUME_PAGE_SIZE - 1);
     if (error) return { total: 0, error };
     const rows = data ?? [];
-    for (const row of rows) if (keep(row)) total += Number(row.amount);
+    for (const row of rows) {
+      if (keep(row)) totalCents += Math.round(Number(row.amount) * 100);
+    }
     // A short page is the end. A full one might not be, so ask again.
-    if (rows.length < TRAILING_VOLUME_PAGE_SIZE) return { total, error: null };
+    if (rows.length < TRAILING_VOLUME_PAGE_SIZE) return { total: totalCents / 100, error: null };
   }
   // Never silently. Reaching here means the number below is too low, and too
   // low is the direction that overcharges.
   console.error('trailing volume hit the page ceiling; the fee bracket may be wrong');
-  return { total, error: null };
+  return { total: totalCents / 100, error: null };
 }
 
 export async function getTrailingVolume(accountId: string): Promise<number> {
@@ -717,6 +719,11 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     })
     .eq('id', paymentId);
   if (currentRail.chargeModelColumnPresent) persistSession = persistSession.eq('charge_model', 'destination');
+  if (payment.stripe_checkout_session) {
+    persistSession = persistSession.eq('stripe_checkout_session', payment.stripe_checkout_session);
+  } else {
+    persistSession = persistSession.is('stripe_checkout_session', null);
+  }
   const { data: persisted, error } = await persistSession
     .in('status', ['requested', 'processing', 'failed'])
     .select('id')

@@ -103,11 +103,15 @@ export async function resolveFeeBasisCents(
       return grossBasis(grossCents, 'gross_fallback', 'invoice total does not match its line items');
     }
 
-    // Net of refunds, and excluding this payment itself -- it has not landed yet.
-    const paidBefore = (siblings ?? [])
-      .filter((row) => row.status === 'paid' && row.id !== payment.id)
-      .reduce((sum, row) => sum + (Number(row.amount) || 0) - (Number(row.refunded_amount) || 0), 0);
-    const grossPaidBeforeCents = Math.max(0, toCents(paidBefore));
+    let paidBeforeCents = 0;
+    for (const row of siblings ?? []) {
+      if (row.status === 'paid' && row.id !== payment.id) {
+        const amountCents = toCents(Number(row.amount) || 0);
+        const refundedCents = Math.min(amountCents, toCents(Number(row.refunded_amount) || 0));
+        paidBeforeCents += (amountCents - refundedCents);
+      }
+    }
+    const grossPaidBeforeCents = Math.max(0, paidBeforeCents);
 
     // Deliberately guarded rather than caught: allocate throws on exactly these
     // two shapes, and both are legitimate here.

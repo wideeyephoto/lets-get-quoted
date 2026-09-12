@@ -652,6 +652,7 @@ async function activateAfterPayment(input: {
         // difference now, which is what makes the upgrade activate on payment
         // rather than at renewal.
         proration_behavior: 'always_invoice',
+        payment_behavior: 'pending_if_incomplete',
         metadata: planChangeMetadata({
           planCode, billingInterval, operationId,
           recurringConsentAcceptanceId: acceptanceId,

@@ -51,10 +51,15 @@ export function paymentsForInvoice<T extends InvoicePayment>(payments: T[], invo
 
 /** What has actually landed, net of anything refunded back out. */
 export function paidTowardInvoice(payments: InvoicePayment[]): number {
-  const total = payments
-    .filter((payment) => payment.status === 'paid')
-    .reduce((sum, payment) => sum + (Number(payment.amount) || 0) - (Number(payment.refunded_amount) || 0), 0);
-  return round2(Math.max(0, total));
+  let totalCents = 0;
+  for (const payment of payments) {
+    if (payment.status === 'paid') {
+      const amountCents = Math.round((Number(payment.amount) || 0) * 100);
+      const refundedCents = Math.round((Number(payment.refunded_amount) || 0) * 100);
+      totalCents += (amountCents - refundedCents);
+    }
+  }
+  return round2(Math.max(0, totalCents / 100));
 }
 
 export function invoicePayState(

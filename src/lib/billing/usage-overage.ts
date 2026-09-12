@@ -180,16 +180,11 @@ export async function tryUsageOverage(
     return Object.freeze({ outcome: 'unavailable' as const });
   }
 
-  const period = await resolvePeriod(admin, input.accountId);
-  if (!period) return Object.freeze({ outcome: 'unavailable' as const });
-
   const rpcArgs = {
       p_account_id: input.accountId,
       p_resource_code: input.resourceCode,
       p_units: input.units,
       p_rate_millicents: rate,
-      p_period_start: period.start,
-      p_period_end: period.end,
       p_idempotency_key: input.idempotencyKey,
   };
 
@@ -230,14 +225,13 @@ export async function tryUsageOverage(
             && existing.resource_code === input.resourceCode
             && Number(existing.units) === input.units
             && Number(existing.millicents) === input.units * rate
-            && existing.period_start === period.start
             && existing.released_at === null) {
           return Object.freeze({
             outcome: 'accrued' as const,
             chargedMillicents: Number(existing.millicents),
             accruedMillicents: Number(existing.accrued_millicents),
             capMillicents: Number(existing.cap_millicents),
-            periodStart: period.start,
+            periodStart: existing.period_start,
             idempotencyKey: input.idempotencyKey,
           });
         }
@@ -261,7 +255,7 @@ export async function tryUsageOverage(
         chargedMillicents: charged,
         accruedMillicents: accrued,
         capMillicents: cap,
-        periodStart: period.start,
+        periodStart: row?.period_start,
         idempotencyKey: input.idempotencyKey,
       });
     }
