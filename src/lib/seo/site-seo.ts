@@ -286,3 +286,25 @@ export function buildLocalBusinessJsonLd(site: Site): Record<string, unknown> | 
     ...(sameAs.length > 0 ? { sameAs } : {}),
   };
 }
+
+export function buildFaqJsonLd(items: import('../site-content').SiteFaqItem[]) {
+  if (!items || items.length === 0) return null;
+  const mainEntity = items
+    .filter((item) => item.question && item.question.trim() && item.answer && item.answer.trim())
+    .map((item) => ({
+      '@type': 'Question',
+      name: item.question.trim(),
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer.trim(),
+      },
+    }));
+  
+  if (mainEntity.length === 0) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity,
+  };
+}
