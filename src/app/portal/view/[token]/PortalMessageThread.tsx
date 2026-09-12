@@ -52,7 +52,7 @@ export function PortalMessageThread({ token, businessName, accountId, initialMes
               direction: row.direction,
               sender: row.direction === 'inbound' ? 'You' : businessName,
               mediaUrls: row.media_urls || [],
-              jobId: null,
+              jobId: null, channel: row.channel ?? 'sms',
             }, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           });
         }
