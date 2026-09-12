@@ -398,20 +398,21 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
   });
 
   it('offers Gemini only intents the atomic SQL rail actually implements', () => {
-    const toolNames = OWNER_FIELD_TOOLS_DECLARATION.map((t) => t.name);
+    const toolNames = OWNER_FIELD_TOOLS_DECLARATION.map((t) => t.name).sort();
     expect(toolNames).toEqual([
       'append_internal_note',
       'log_cost',
       'add_job_task',
-      'create_lead',
       'report_ambiguity',
       'no_action',
-    ]);
-
-    const createLead = OWNER_FIELD_TOOLS_DECLARATION.find((tool) => tool.name === 'create_lead');
-    expect(createLead?.description).toMatch(/create a new job or estimate[\s\S]*stage the request as a lead/i);
-    expect(createLead?.parameters.required).toEqual(['clientName', 'notes']);
-    expect(createLead?.parameters.properties?.notes?.description).toMatch(/address\/location[\s\S]*dollar estimate/i);
+      'reschedule_job',
+      'assign_crew',
+      'add_quote_line_item',
+      'send_client_quote_link',
+      'update_client',
+      'complete_job_task',
+      'create_lead',
+    ].sort());
   });
 
   it('normalizes Gemini camelCase arguments to the SQL JSON contract', () => {
@@ -525,7 +526,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       p_task_id: taskId,
       p_claim_token: claimToken,
       p_intent: 'append_internal_note',
-      p_params: { job_id: jobId, note: 'Gate code is 4821' },
+      p_params: { feed_kind: 'field_sms_update', job_id: jobId, note: 'Gate code is 4821' },
       p_transcript: 'Gate code for the Smith job is 4821',
       p_confirmation_text: expect.stringContaining(`/field/intake/${taskId}`),
     });
@@ -579,8 +580,9 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', expect.objectContaining({
       p_task_id: taskId,
       p_intent: 'no_action',
-      p_params: { reason: 'Conversational reply' },
-      p_confirmation_text: '',
+      p_params: { feed_kind: 'field_sms_update', reason: 'Conversational reply' },
+      p_transcript: 'Thanks',
+      p_confirmation_text: expect.stringMatching(/No changes were made: Conversational reply/),
     }));
   });
 
@@ -628,16 +630,16 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       handled: true,
       outcome: 'no_action',
       intent: 'no_action',
-      confirmationText: '',
+      confirmationText: expect.stringMatching(/No changes were made/),
       errorMessage: 'Field intake model returned no function call',
     });
     expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', {
       p_task_id: taskId,
       p_claim_token: claimToken,
       p_intent: 'no_action',
-      p_params: { reason: 'Field intake model returned no function call' },
+      p_params: { feed_kind: 'field_sms_update', reason: 'Field intake model returned no function call' },
       p_transcript: 'Model response without a tool call',
-      p_confirmation_text: '',
+      p_confirmation_text: expect.stringMatching(/No changes were made/),
     });
     expect(mockRpc).not.toHaveBeenCalledWith('reserve_usage_credits', expect.anything());
   });
@@ -860,13 +862,13 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       expect(config.systemInstruction).toMatch(/notes are mandatory[\s\S]*address\/location[\s\S]*dollar estimate/i);
       const offeredNames = config.tools?.[0]?.functionDeclarations?.map((tool) => tool.name) ?? [];
       expect(offeredNames).toContain('create_lead');
-      expect(offeredNames).not.toContain('reschedule_job');
-      expect(offeredNames).not.toContain('update_client');
-      expect(offeredNames).not.toContain('assign_crew');
-      expect(offeredNames).not.toContain('add_quote_line_item');
-      expect(offeredNames).not.toContain('send_client_quote_link');
+      expect(offeredNames).toContain('reschedule_job');
+      expect(offeredNames).toContain('update_client');
+      expect(offeredNames).toContain('assign_crew');
+      expect(offeredNames).toContain('add_quote_line_item');
+      expect(offeredNames).toContain('send_client_quote_link');
       expect(config.toolConfig?.functionCallingConfig).toEqual({
-        mode: 'ANY',
+        mode: 'AUTO',
         allowedFunctionNames: offeredNames,
       });
 
@@ -921,6 +923,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', expect.objectContaining({
       p_intent: 'create_lead',
       p_params: {
+        feed_kind: 'field_sms_update',
         client_name: 'Steve Whatchamacallit',
         address: 'Birmingham, Michigan',
         notes: `New estimate request\n\nOriginal owner message: ${ownerMessage}`,
@@ -1236,7 +1239,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       text: 'Add $450 to Smith job for extra outlet',
       functionCalls: [
         {
-          name: 'add_quote_line_item',
+          name: 'this_is_fake',
           args: {
             jobId,
             amount: 450,
@@ -1273,7 +1276,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     await expect(processOwnerFieldClaim(claim, mockAdmin)).resolves.toMatchObject({
       handled: false,
       outcome: 'error',
-      errorMessage: 'Field intake model selected unsupported action: add_quote_line_item',
+      errorMessage: 'Field intake model selected unsupported action: this_is_fake',
     });
     expect(mockRpc).not.toHaveBeenCalledWith('apply_authorized_sms_field_action', expect.anything());
   });

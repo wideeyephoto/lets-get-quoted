@@ -188,8 +188,8 @@ export function formatFieldAmbiguityClarification(candidates: Array<{ ref: strin
   const summary = candidates
     .map((c) => `${c.ref}${c.address ? ` (${c.address})` : ''}`)
     .join(' or ');
-  const cleanSummary = sanitizeGsm7Text(summary).slice(0, 70);
-  return sanitizeGsm7Text(`Let's Get Quoted: Multiple matching jobs found: ${cleanSummary}. Please reply with address or job ref.`);
+  const cleanSummary = sanitizeGsm7Text(summary).slice(0, 50);
+  return sanitizeGsm7Text(`Let's Get Quoted: Multiple matching jobs (${cleanSummary}). Note saved as an unlinked Lead.`);
 }
 
 export function formatFieldQuoteWithSendPrompt(

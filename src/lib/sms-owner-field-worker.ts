@@ -196,6 +196,73 @@ const COMMON_FIELD_TOOLS: AssistantFunctionDeclaration[] = [
       required: ['reason'],
     },
   },
+  {
+    name: 'reschedule_job',
+    description: 'Call when the sender wants to reschedule a job.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: { type: Type.STRING, description: 'The exact ID of the target job.' },
+      },
+      required: ['jobId'],
+    },
+  },
+  {
+    name: 'assign_crew',
+    description: 'Call when the sender wants to assign a crew member to a job.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: { type: Type.STRING, description: 'The exact ID of the target job.' },
+      },
+      required: ['jobId'],
+    },
+  },
+  {
+    name: 'add_quote_line_item',
+    description: 'Call when the sender wants to add an item to a quote.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: { type: Type.STRING, description: 'The exact ID of the target job.' },
+      },
+      required: ['jobId'],
+    },
+  },
+  {
+    name: 'send_client_quote_link',
+    description: 'Call when the sender wants to send a quote link to a client.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: { type: Type.STRING, description: 'The exact ID of the target job.' },
+      },
+      required: ['jobId'],
+    },
+  },
+  {
+    name: 'update_client',
+    description: 'Call when the sender wants to update client details.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        clientId: { type: Type.STRING, description: 'The exact ID of the target client.' },
+      },
+      required: ['clientId'],
+    },
+  },
+  {
+    name: 'complete_job_task',
+    description: 'Call when the sender wants to mark a task as completed.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: { type: Type.STRING, description: 'The exact ID of the target job.' },
+        title: { type: Type.STRING, description: 'The task title.' },
+      },
+      required: ['jobId', 'title'],
+    },
+  },
 ];
 
 // Owner-only administrative tools
@@ -804,7 +871,7 @@ INSTRUCTIONS:
         tools: [{ functionDeclarations: availableTools }],
         toolConfig: {
           functionCallingConfig: {
-            mode: FunctionCallingConfigMode.ANY,
+            mode: FunctionCallingConfigMode.AUTO,
             allowedFunctionNames,
           },
         },
@@ -819,7 +886,6 @@ INSTRUCTIONS:
       throw new Error('AI intake usage reservation could not be committed');
     }
 
-    const transcript = response.text || rawBody;
     const functionCalls = response.functionCalls;
     const missingFunctionCall = !functionCalls || functionCalls.length === 0;
     const call = functionCalls?.[0] ?? {
@@ -829,6 +895,9 @@ INSTRUCTIONS:
     const toolName = call.name;
     const args = (call.args ?? {}) as Record<string, unknown>;
     const actionParams = normalizeFieldActionParams(args);
+    actionParams.feed_kind = isVoiceMemo ? 'field_voice_note' : 'field_sms_update';
+
+    const transcript = response.text || rawBody || String(actionParams.note || actionParams.notes || actionParams.reason || actionParams.label || actionParams.title || 'Voice memo transcription');
 
     if (!toolName || !availableTools.some((tool) => tool.name === toolName)) {
       return {
@@ -900,6 +969,8 @@ INSTRUCTIONS:
         .filter((j) => candidateIds.includes(j.id))
         .map((j) => ({ ref: j.ref, address: j.address }));
       confirmationText = formatFieldAmbiguityClarification(candidates);
+    } else if (toolName === 'no_action') {
+      confirmationText = sanitizeGsm7Text(`No changes were made: ${String(actionParams.reason ?? "I didn't recognize any field commands in that message.")}`);
     }
 
     // Guarantee pure GSM-7 ASCII output
