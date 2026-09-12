@@ -388,7 +388,28 @@ reads.
 
 Fourteen dark jobs remain, listed above.
 
-Steps 4, 5, 7 and 8 below are open.
+**Step 5 is partly done.** Three verification checks that already existed and
+already passed are now in CI: `check:schema:order`, `check:schema:messaging` and
+`test:incident-rehearsal`. Measured at under two seconds between them, so there
+was no runtime trade to weigh — they were simply never wired up. CI also now runs
+the suite with coverage rather than bare, which is the same single pass and is
+what makes the floors below load-bearing.
+
+The `vitest.pg17.config.ts` suite is not among them, and the reason is worth
+recording rather than glossing. It cannot run in the audit session at all:
+`embedded-postgres` fails to create its data directory under the repository root
+(`initdb: could not create directory ... Permission denied`). That is an
+environment limit, not a code failure — the two pg17 scripts CI already runs use
+the same package and pass on GitHub's runner, so it very likely works there. But
+"very likely" is not evidence, and adding a step nobody has seen pass is how a
+green pipeline turns red. Whoever adds it should run it once on a runner first.
+
+The `test-staging/` suite and the ~40 `scripts/verify-*.mjs` database checks
+remain out. Those need a decision rather than a commit: each one either joins CI
+or is deleted, because a verification script nobody runs reads as covered and is
+not.
+
+Steps 4 and 7 below are open.
 
 ## Reproducing this
 

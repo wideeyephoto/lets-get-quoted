@@ -96,7 +96,7 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   are read as text by a test and never run. The technique catches real things (a
   deleted cron route, a forbidden call site) and is not behavioural verification;
   the passing-test count reads as though it were.
-- [ ] **70 of the 76 test and verification npm scripts never run in CI:** the
+- [ ] **67 of the 76 test and verification npm scripts never run in CI:** the
   whole `test-staging/` suite (admin console, field-app RLS, marketing-flow
   transactions), the `vitest.pg17.config.ts` suite, and roughly 40
   `scripts/verify-*.mjs` database checks covering overage settlement, refund
@@ -104,8 +104,17 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   and voice provisioning. CI executes **9 of the 359 files in `migrations/`**
   against a real PostgreSQL 17, and exactly one test in the main suite executes
   SQL against a real engine; every other migration test asserts on the text of
-  the `.sql` file. Close by deciding per suite whether it joins CI or is deleted:
-  a verification script nobody runs reads as covered and is not.
+  the `.sql` file. Three were added to CI on 2026-09-12 (see below). Close the
+  rest by deciding per suite whether it joins CI or is deleted: a verification
+  script nobody runs reads as covered and is not.
+  - **`vitest.pg17.config.ts` could not be verified from the audit session.**
+    `embedded-postgres` cannot create its data directory under the repository
+    root in that sandbox (`initdb: could not create directory ... Permission
+    denied`), so the suite fails there for an environment reason rather than a
+    code one. The two pg17 scripts CI already runs use the same package and pass
+    on GitHub's runner, so it very likely works there — but "very likely" is not
+    evidence, and adding an unverified step is how a green pipeline turns red.
+    Whoever adds it should run it once on a runner first.
 - [ ] **111 files under `src/` are imported by nothing** (17,463 lines); 38 are
   also untested. The rest have tests and no callers, which is the more misleading
   shape — the tests pass and the code is unreachable from the app. Four billing
@@ -217,6 +226,20 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
   zero and nothing said why. It now also returns `errors`, which the detector
   above reads. Regression: `test/plan-installment-sweep.test.ts`. Found by
   writing the tests, not by a report.
+
+### Closed: three verification checks that existed and never ran
+
+- [x] **`check:schema:order`, `check:schema:messaging` and
+  `test:incident-rehearsal` are in CI (2026-09-12):** all three already existed,
+  already passed, and nothing ran them. Measured at **under two seconds between
+  them**, so there was no runtime trade to weigh. `check:schema:order` proves
+  every foreign-key target is created before it is used; `check:schema:messaging`
+  proves `schema.sql` mirrors all 66 runtime migrations; the rehearsal exercises
+  the incident cycle. `.github/workflows/ci.yml`.
+- [x] **CI runs the suite with coverage rather than bare (2026-09-12):** the same
+  single pass over the same suite, which is what makes the floors below
+  load-bearing. A threshold nothing evaluates is the problem this audit found
+  everywhere else, not a fix for it.
 
 ### Still open from this audit
 

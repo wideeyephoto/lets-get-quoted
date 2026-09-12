@@ -34,8 +34,12 @@ jobs:
       - name: Security audit
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Unit tests
-        run: npm test
+      # Coverage rather than a bare `vitest run`: it is the same single pass over
+      # the same suite, and it is what lets the thresholds in vitest.config.ts
+      # bite. A floor nothing evaluates is the problem the audit found everywhere
+      # else, not a fix for it.
+      - name: Unit tests with coverage
+        run: npm run test:coverage
 
       - name: Office Data API boundary on PostgreSQL 17
         run: npm run test:pg17:job-access
@@ -51,6 +55,19 @@ jobs:
 
       - name: Stock image tests
         run: npm run test:stock
+
+      # Three checks that already existed, already passed, and nothing ran. The
+      # untested-code audit found 70 of 76 test and verification scripts absent
+      # from CI; these three cost under two seconds between them, so there was
+      # no trade to weigh. See docs/untested-code-audit-2026-09-12.md.
+      - name: Schema foreign-key ordering
+        run: npm run check:schema:order
+
+      - name: Messaging schema parity with runtime migrations
+        run: npm run check:schema:messaging
+
+      - name: Incident rehearsal cycle
+        run: npm run test:incident-rehearsal
 
       - name: Type check
         run: npm run typecheck
