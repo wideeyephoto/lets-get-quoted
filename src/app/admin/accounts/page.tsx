@@ -94,7 +94,7 @@ function stalledCell(row: AdminAccountRow, now: Date) {
 export default async function AdminAccountsPage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ q?: string; filter?: string; joined?: string; include_test?: string; done?: string; error?: string; deleted?: string }>;
+  searchParams: Promise<{ q?: string; filter?: string; joined?: string; include_test?: string; done?: string; error?: string; deleted?: string; page?: string }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
@@ -107,13 +107,15 @@ export default async function AdminAccountsPage({
   const now = new Date();
   const joinedSince = joined ? joinedSinceDate(joined, now) : undefined;
   const includeTestRecords = searchParams.include_test === '1';
+  const page = Math.max(1, parseInt(searchParams.page || '1', 10));
+  const offset = (page - 1) * PAGE_LIMIT;
   let rowsAvailable = true;
   let totalAvailable = true;
   let syntheticAvailable = true;
   let ownerEmailsAvailable = true;
 
   const [rows, total, syntheticCount] = await Promise.all([
-    listAccountsForAdmin(ctx.admin, { query, limit: PAGE_LIMIT, filter, joinedSince, includeTestRecords, onError: () => { rowsAvailable = false; } }),
+    listAccountsForAdmin(ctx.admin, { query, limit: PAGE_LIMIT, offset, filter, joinedSince, includeTestRecords, onError: () => { rowsAvailable = false; } }),
     // Only meaningful for an unsearched slice: a text search unions three
     // lookups, which no single count query reproduces. Asking for one anyway
     // would print a total that disagrees with the rows underneath it.
@@ -144,9 +146,18 @@ export default async function AdminAccountsPage({
     return s ? `/admin/accounts?${s}` : '/admin/accounts';
   }
 
-  const info = filter ? ACCOUNT_FILTER_INFO[filter] : null;
-  const truncated = typeof total === 'number' && total > rows.length;
+  function paramsFor(overrides: Record<string, string>): string {
+    const p = new URLSearchParams();
+    if (filter) p.set('filter', filter);
+    if (query) p.set('q', query);
+    if (joined) p.set('joined', joined);
+    if (includeTestRecords) p.set('include_test', '1');
+    for (const [k, v] of Object.entries(overrides)) p.set(k, v);
+    return `/admin/accounts?${p.toString()}`;
+  }
 
+  const info = filter ? ACCOUNT_FILTER_INFO[filter] : null;
+  
   return (
     <>
       <header className={styles.pageHead}>
@@ -227,8 +238,8 @@ export default async function AdminAccountsPage({
             quietly stops at fifty reads as "there are fifty", which is the
             same lie the dead-end counts told. */}
         <h2 className={styles.panelTitle}>
-          {!rowsAvailable ? 'Partial account results' : typeof total === 'number' && totalAvailable ? `${formatNumber(total)} ${total === 1 ? 'account' : 'accounts'}` : `${rows.length} matching`}
-          {truncated ? <span className={styles.muted} style={{ fontWeight: 400 }}> — showing the {rows.length} newest. Search to narrow it.</span> : null}
+          {!rowsAvailable ? 'Partial account results' : typeof total === 'number' && totalAvailable ? `${formatNumber(total)} ${total === 1 ? 'account' : 'accounts'} · page ${page} of ${Math.max(1, Math.ceil(total / PAGE_LIMIT))}` : `${rows.length} matching`}
+          {typeof total !== 'number' && rows.length === PAGE_LIMIT ? <span className={styles.muted} style={{ fontWeight: 400 }}> — showing the {rows.length} newest. Search to narrow it.</span> : null}
         </h2>
         {rowsAvailable && rows.length === 0 ? (
           <p className={styles.emptyState}>
@@ -313,6 +324,10 @@ export default async function AdminAccountsPage({
             </table>
           </div>
         )}
+        <div className={styles.pagination}>
+          {page > 1 ? <Link className="btn secondary" href={paramsFor({ page: String(page - 1) })}>← Previous</Link> : <span />}
+          {typeof total === 'number' ? (page < Math.max(1, Math.ceil(total / PAGE_LIMIT)) ? <Link className="btn secondary" href={paramsFor({ page: String(page + 1) })}>Next →</Link> : null) : (rows.length === PAGE_LIMIT ? <Link className="btn secondary" href={paramsFor({ page: String(page + 1) })}>Next →</Link> : null)}
+        </div>
       </section>
     </>
   );

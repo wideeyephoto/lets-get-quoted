@@ -239,9 +239,10 @@ export async function accountIdsByPhone(
 // messaging sender), or the owner's login email.
 export async function listAccountsForAdmin(
   admin: SupabaseClient,
-  opts: { query?: string; limit?: number; filter?: AccountFilter; joinedSince?: string; includeTestRecords?: boolean; onError?: (context: string, error: unknown) => void } = {},
+  opts: { query?: string; limit?: number; offset?: number; filter?: AccountFilter; joinedSince?: string; includeTestRecords?: boolean; onError?: (context: string, error: unknown) => void } = {},
 ): Promise<AdminAccountRow[]> {
   const limit = opts.limit ?? 50;
+  const offset = opts.offset ?? 0;
   const term = opts.query?.trim();
   const filter = opts.filter;
   // Every branch below narrows through this, so a search and a filter compose
@@ -258,15 +259,17 @@ export async function listAccountsForAdmin(
     const isPureDigits = /^\d+$/.test(digits);
     const isShortAccountNumber = isPureDigits && digits.length <= 6 && Number(digits) > 0;
     const isPhoneNumber = digits.length >= 7;
+    // Escape % and _ for LIKE queries to avoid wildcards
+    const escapedTerm = term.replace(/[%_\\]/g, '\\$&');
 
     if (isShortAccountNumber) {
-      const { data, error } = await base().eq('account_number', Number(digits)).limit(limit);
+      const { data, error } = await base().eq('account_number', Number(digits)).range(offset, offset + limit - 1);
       if (error) opts.onError?.('account number search', error);
       rows = (data ?? []) as AdminAccountBaseRow[];
     } else {
       const [byBiz, bySite, byEmail, byPhone] = await Promise.all([
-        base().ilike('business_name', `%${term}%`).limit(limit),
-        admin.from('sites').select('account_id').ilike('company_name', `%${term}%`).limit(limit),
+        base().ilike('business_name', `%${escapedTerm}%`).limit(limit),
+        admin.from('sites').select('account_id').ilike('company_name', `%${escapedTerm}%`).limit(limit),
         term.includes('@') || term.includes('.') ? accountIdsByOwnerEmail(admin, term, limit, opts.onError) : Promise.resolve([]),
         isPhoneNumber ? accountIdsByPhone(admin, digits, limit, opts.onError) : Promise.resolve({ accountIds: [], phoneMatchMap: new Map() }),
       ]);
@@ -289,7 +292,7 @@ export async function listAccountsForAdmin(
       }
     }
   } else {
-    const { data, error } = await base().order('created_at', { ascending: false }).limit(limit);
+    const { data, error } = await base().order('created_at', { ascending: false }).range(offset, offset + limit - 1);
     if (error) opts.onError?.('account list', error);
     rows = (data ?? []) as AdminAccountBaseRow[];
   }
