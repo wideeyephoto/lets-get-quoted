@@ -1,5 +1,10 @@
-import { createAdminClient } from '@/lib/auth';
-import { getPublicSiteBySubdomain } from '@/lib/sites';
+import { cache } from 'react';
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
+
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
+
+
+
 import { buildSitemapXml, siteIndexablePages, siteOrigin, SITEMAP_HEADERS } from '@/lib/seo/site-pages';
 
 // A contractor's own sitemap, served on their own host.
@@ -14,7 +19,6 @@ import { buildSitemapXml, siteIndexablePages, siteOrigin, SITEMAP_HEADERS } from
 // Written as a route handler rather than Next's sitemap.ts convention because
 // this segment is dynamic: the file has to resolve which contractor it is from
 // the params, and returning the bytes directly makes that explicit and testable.
-export const dynamic = 'force-dynamic';
 // force-dynamic alone is NOT enough here, and the difference is silent. In a
 // Route Handler it opts out of static generation but leaves Supabase's fetch on
 // the default data cache — measured: after clearing a site's custom domain, the
@@ -24,12 +28,12 @@ export const dynamic = 'force-dynamic';
 export const fetchCache = 'force-no-store';
 
 type Props = {
-  params: Promise<{ subdomain: string }>;
+  params: Promise<{ kind: string; tenant: string }>;
 };
 
 export async function GET(_request: Request, { params: paramsPromise }: Props) {
   const params = await paramsPromise;
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   const origin = site ? siteOrigin(site) : null;
   if (!site || !origin) {
     return new Response('Not found\n', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });

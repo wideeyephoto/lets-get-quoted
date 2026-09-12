@@ -1,12 +1,16 @@
+import { cache } from 'react';
+import { createAdminClient } from '@/lib/auth';
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
+
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
+
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createAdminClient } from '@/lib/auth';
-import { getPublicSiteBySubdomain } from '@/lib/sites';
+
+
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import SitePortalPage from '@/lib/templates/SitePortalPage';
 import PortalRequestForm from '@/app/portal/[subdomain]/PortalRequestForm';
-
-export const dynamic = 'force-dynamic';
 
 // The portal on the contractor's OWN host, so the "Client Login" link in their
 // header doesn't hop to another company's domain to ask for an email address.
@@ -15,13 +19,14 @@ export const dynamic = 'force-dynamic';
 // and not the other is a live 404 on custom domains only, which nothing catches.
 
 type Props = {
-  params: Promise<{ subdomain: string }>;
+  params: Promise<{ kind: string; tenant: string }>;
 };
 
 export default async function PublicPortalPage({ params: paramsPromise }: Props) {
   const params = await paramsPromise;
-  const admin = createAdminClient();
-  const site = await getPublicSiteBySubdomain(admin, params.subdomain);
+  
+  const admin = await createAdminClient();
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) notFound();
 
   const { data: account } = await admin
@@ -48,7 +53,7 @@ export default async function PublicPortalPage({ params: paramsPromise }: Props)
 
 export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
   const params = await paramsPromise;
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) return { title: 'Not found' };
   return {
     title: { absolute: `Your jobs | ${site.company_name}` },

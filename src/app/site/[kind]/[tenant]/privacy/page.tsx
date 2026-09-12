@@ -1,20 +1,23 @@
+import { cache } from 'react';
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
+
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
+
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createAdminClient } from '@/lib/auth';
-import { getPublicSiteBySubdomain } from '@/lib/sites';
+
+
 import { resolveSiteLegal } from '@/lib/legal/site-legal';
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import SiteLegalPage from '@/lib/templates/SiteLegalPage';
 
-export const dynamic = 'force-dynamic';
-
 type Props = {
-  params: Promise<{ subdomain: string }>;
+  params: Promise<{ kind: string; tenant: string }>;
 };
 
 export default async function PublicPrivacyPage({ params: paramsPromise }: Props) {
   const params = await paramsPromise;
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) notFound();
   const legal = resolveSiteLegal(site, 'privacy');
   if (!legal.enabled) notFound();
@@ -23,7 +26,7 @@ export default async function PublicPrivacyPage({ params: paramsPromise }: Props
 
 export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
   const params = await paramsPromise;
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) return { title: 'Not found' };
   const legal = resolveSiteLegal(site, 'privacy');
   return {

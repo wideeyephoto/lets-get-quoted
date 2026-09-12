@@ -1,20 +1,23 @@
+import { cache } from 'react';
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
+
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
+
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createAdminClient } from '@/lib/auth';
-import { getPublicSiteBySubdomain } from '@/lib/sites';
+
+
 import { getPublishedBlogPost } from '@/lib/site-content';
 import { siteIconsMetadata } from '@/lib/brand-mark';
 import SiteBlogArticle from '@/lib/templates/SiteBlogArticle';
 
-export const dynamic = 'force-dynamic';
-
 type Props = {
-  params: Promise<{ subdomain: string; slug: string }>;
+  params: Promise<{ kind: string; tenant: string; slug: string }>;
 };
 
 export default async function PublicBlogPostPage({ params: paramsPromise }: Props) {
   const params = await paramsPromise;
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) notFound();
   const post = getPublishedBlogPost(site.content, params.slug);
   if (!post) notFound();
@@ -23,7 +26,7 @@ export default async function PublicBlogPostPage({ params: paramsPromise }: Prop
 
 export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
   const params = await paramsPromise;
-  const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) return { title: 'Not found' };
   const post = getPublishedBlogPost(site.content, params.slug);
   if (!post) return { title: 'Not found' };

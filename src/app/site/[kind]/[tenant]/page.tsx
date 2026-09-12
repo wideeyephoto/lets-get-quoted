@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { createAdminClient } from '@/lib/auth';
+
 import { getSiteGallery } from '@/lib/site-images';
-import { getPublicSiteBySubdomain } from '@/lib/sites';
-import { getCachedPublicSiteBySubdomain } from '@/lib/cached-sites';
+
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 import { getSiteContent } from '@/lib/site-content';
@@ -12,19 +12,15 @@ import { parseVerificationToken } from '@/lib/seo/search-console';
 import { resolveSiteSeo, siteCanonicalUrl, isSiteSeoReady } from '@/lib/seo/site-seo';
 import { siteIconsMetadata } from '@/lib/brand-mark';
 
-export const dynamic = 'force-dynamic';
-
 type PublicSitePageProps = {
-  params: Promise<{ subdomain: string }>;
+  params: Promise<{ kind: string; tenant: string }>;
 };
 
-const loadPublicSite = cache(async (subdomain: string) => {
-  return getCachedPublicSiteBySubdomain(subdomain);
-});
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
 
 export default async function PublicSitePage({ params: paramsPromise }: PublicSitePageProps) {
   const params = await paramsPromise;
-  const site = await loadPublicSite(params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) notFound();
 
   const Template = getTemplate(site.template);
@@ -40,7 +36,7 @@ export default async function PublicSitePage({ params: paramsPromise }: PublicSi
 
 export async function generateMetadata({ params: paramsPromise }: PublicSitePageProps): Promise<Metadata> {
   const params = await paramsPromise;
-  const site = await loadPublicSite(params.subdomain);
+  const site = await loadPublicSite(params.kind, params.tenant);
   if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
