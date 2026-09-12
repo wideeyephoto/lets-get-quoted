@@ -85,10 +85,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   delete_failed: 'The account could not be deleted. Nothing was removed and no privacy request was scrubbed. Check the server log and try again.',
 };
 
-function formatUsd(dollars: unknown): string {
-  const n = Number(dollars) || 0;
-  return `${formatUsd(n)}`;
-}
+
 function usdCents(cents: unknown): string {
   return formatUsd((Number(cents) || 0) / 100);
 }

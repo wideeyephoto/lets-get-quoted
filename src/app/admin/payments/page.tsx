@@ -20,9 +20,7 @@ const RANGE_TABS: { key: DateRange; label: string }[] = [
   { key: '90d', label: '90 days' },
 ];
 
-function formatUsd(value: number | null | undefined): string {
-  return `${formatUsd(Number(value) || 0)}`;
-}
+
 
 function fmt(value: string | null): string {
   return value ? formatTimestamp(value, 'short') : '—';

@@ -38,9 +38,7 @@ const ERRORS: Record<string, string> = {
   refund: 'Stripe refused the refund.',
 };
 
-function formatUsd(v: number | null | undefined): string {
-  return `${formatUsd(Number(v) || 0)}`;
-}
+
 function usdCents(cents: number): string {
   return formatUsd(cents / 100);
 }

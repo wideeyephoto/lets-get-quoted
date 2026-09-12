@@ -14,9 +14,7 @@ import styles from '../admin.module.css';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Money' };
 
-function formatUsd(dollars: number): string {
-  return `${formatUsd(dollars)}`;
-}
+
 function fmtDate(v: string | null | undefined): string {
   return v ? new Date(v).toLocaleDateString('en-US', { dateStyle: 'medium' }) : '—';
 }

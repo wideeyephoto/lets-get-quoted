@@ -33,10 +33,7 @@ const RANGE_TABS: { key: DateRange; label: string }[] = [
   { key: '90d', label: '90 days' },
 ];
 
-function formatUsd(dollars: number): string {
-  const isWhole = dollars % 1 === 0;
-  return `${formatUsd(dollars)}`;
-}
+
 function fmtMetric(m: CommandCenterMetric): string {
   if (!m.available) return '—';
   return m.format === 'usd' ? formatUsd(m.value) : formatNumber(m.value);
@@ -51,11 +48,9 @@ function trendLabel(m: CommandCenterMetric): string {
   const sign = m.deltaPct > 0 ? '↑ +' : m.deltaPct < 0 ? '↓ ' : '';
   return `${sign}${Math.abs(m.deltaPct).toFixed(0)}% vs. prior period`;
 }
-function capFirst(s: string): string {
-  return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
+
 function roleLabel(role: string): string {
-  return role.split('_').map(cap).join(' ');
+  return role.split('_').map(capFirst).join(' ');
 }
 
 const METRIC_ACCENT: Record<string, 'amber' | 'emerald' | 'indigo' | 'rose'> = {

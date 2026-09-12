@@ -1,6 +1,7 @@
 ﻿export const ADMIN_TIMEZONE = 'UTC';
 
-export function formatUsd(dollars: number, forceCents = false): string {
+export function formatUsd(dollarsInput: number | string | null | undefined, forceCents = false): string {
+  const dollars = Number(dollarsInput) || 0;
   const isWhole = dollars % 1 === 0 && !forceCents;
   return `$${dollars.toLocaleString('en-US', {
     minimumFractionDigits: isWhole ? 0 : 2,
@@ -8,8 +9,8 @@ export function formatUsd(dollars: number, forceCents = false): string {
   })}`;
 }
 
-export function formatNumber(num: number): string {
-  return num.toLocaleString('en-US');
+export function formatNumber(num: number | string | null | undefined): string {
+  return (Number(num) || 0).toLocaleString('en-US');
 }
 
 export function formatTimestamp(dateValue: string | Date | null | undefined, format: 'short' | 'medium' = 'short'): string {
