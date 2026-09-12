@@ -29,7 +29,7 @@ export default function SitePortalPage({
 }) {
   const themeStyle = { '--theme-accent': accent || '#2563eb' } as CSSProperties;
   return (
-    <main className={styles.legalShell} style={themeStyle}>
+    <main id="main-content" className={styles.legalShell} style={themeStyle}>
       <div className={styles.portalDoc}>
         <nav className={styles.blogCrumb} aria-label="Breadcrumb">
           <a href="/">{businessName || 'Home'}</a>

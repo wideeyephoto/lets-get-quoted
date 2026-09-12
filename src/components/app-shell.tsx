@@ -916,7 +916,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   }, [isLoggedIn, pathname, newestQuoteRequestCreatedAt, newestJobCreatedAt, newestTextToJobCreatedAt]);
 
   if (isStandaloneSite) {
-    return <>{children}</>;
+    return (
+      <div className="standalone-site-root">
+        <a className="skip-link shell-skip-link" href="#main-content">Skip to content</a>
+        {children}
+      </div>
+    );
   }
 
   // The /demo experience renders its own sidebar chrome (see demo/layout.tsx),

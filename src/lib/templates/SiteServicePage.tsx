@@ -84,7 +84,7 @@ export default async function SiteServicePage({ site, service }: { site: Site; s
 
   // Reusing the blog article CSS for a clean reading experience
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
+    <main id="main-content" className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
       <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
       <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceJsonLd) }} />
       

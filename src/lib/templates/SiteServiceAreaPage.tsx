@@ -71,7 +71,7 @@ export default async function SiteServiceAreaPage({ site, city }: { site: Site; 
 
   // Cross-link city pages to the services offered there, and back to the homepage.
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
+    <main id="main-content" className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
       <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
       
       <header className={styles.blogChromeHeader}>
