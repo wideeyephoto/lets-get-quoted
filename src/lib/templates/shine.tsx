@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // Shine — modern, premium cleaning look (Purely reference): deep-navy ground,
 // bright-yellow accent, a rounded hero photo with floating "24/7" + "500+"
@@ -151,7 +152,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.shineEyebrow}>Book a service</p>
           <h2>Ready to get started?</h2>
           <p>Tell us what you need and we&apos;ll get you a free quote — fast, no obligation.</p>
-          {site.phone && <a className={styles.shineBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.shineBtn}>Call {site.phone}</CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

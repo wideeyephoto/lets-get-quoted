@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 export default function GuildTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
@@ -157,7 +158,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
         <div className={styles.guildContactCopy}>
           <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you need.</h2></div>
           <p className={styles.guildContactMeta}>{site.hours || 'Monday-Friday, 7am-5pm'}<br />{site.service_area || 'Local and regional projects'}</p>
-          {site.phone && <a className={styles.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.primaryCta}>Call {site.phone}</CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

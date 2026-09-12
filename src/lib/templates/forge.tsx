@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
@@ -74,7 +75,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.forgeHeaderActions}>
-          {site.phone && <a className={styles.headerPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.headerPhone} data-edit="bizPhone">{site.phone}</CallLink>}
           <a className={styles.forgeHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
       </header>
@@ -126,7 +127,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <div className={styles.forgeContactCopy}>
           <p className={styles.kicker}>Have a project in mind?</p>
           <h2>Let&apos;s get it done right.</h2>
-          {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
+          {site.phone && <p>Prefer to talk? Call <CallLink site={site}>{site.phone}</CallLink>.</p>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

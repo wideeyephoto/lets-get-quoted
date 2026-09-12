@@ -239,7 +239,7 @@ export function readConsent(raw: string | null): ConsentDecision | null {
   return raw === 'granted' || raw === 'denied' ? raw : null;
 }
 
-export type QuoteFunnelStep = 'form_impression' | 'form_started' | 'first_step_completed' | 'contact_submitted';
+export type QuoteFunnelStep = 'form_impression' | 'form_started' | 'first_step_completed' | 'contact_submitted' | 'call_intent';
 
 export type QuoteFunnelPayload = {
   step: QuoteFunnelStep;
@@ -289,6 +289,15 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
             event_label: payload.formStyle,
           });
         }
+      } else if (payload.step === 'call_intent') {
+        const sendTo = win.__lgq_google_ads_send_to;
+        if (sendTo) {
+          win.gtag('event', 'conversion', {
+            send_to: sendTo,
+            event_category: 'call_intent',
+            event_label: 'Tap to Call',
+          });
+        }
       }
     } catch {
       // ignore
@@ -302,6 +311,8 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
         win.fbq('trackCustom', 'QuoteFormStarted', { formStyle: payload.formStyle, template: payload.template });
       } else if (payload.step === 'contact_submitted') {
         win.fbq('track', 'Lead', { content_name: `Quote - ${payload.formStyle}`, value: 0, currency: 'USD' });
+      } else if (payload.step === 'call_intent') {
+        win.fbq('track', 'Contact', { content_name: `Call - ${payload.template}`, value: 0, currency: 'USD' });
       }
     } catch {
       // ignore
@@ -315,6 +326,8 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
         win.ttq.track('InitiateCheckout', { content_name: `Quote - ${payload.formStyle}` });
       } else if (payload.step === 'contact_submitted') {
         win.ttq.track('SubmitForm', { content_name: `Quote - ${payload.formStyle}` });
+      } else if (payload.step === 'call_intent') {
+        win.ttq.track('Contact', { content_name: `Call - ${payload.template}` });
       }
     } catch {
       // ignore

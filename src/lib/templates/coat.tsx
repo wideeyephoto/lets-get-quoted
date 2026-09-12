@@ -18,6 +18,7 @@ import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // Coat — bold painting / finishes aesthetic (Home Rakshak reference): a deep
 // maroon hero with red bokeh + a cut-out-style worker photo, a red accent,
@@ -138,7 +139,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <p className={styles.coatEyebrow}>Make an appointment</p>
           <h2>Looking for help with your dream paint job?</h2>
           <p>Tell us about the project and we&apos;ll get back to you — free, no obligation.</p>
-          {site.phone && <a className={styles.coatBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.coatBtn}>Call {site.phone}</CallLink>}
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

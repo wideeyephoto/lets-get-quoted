@@ -40,6 +40,7 @@ import { hasAnalytics } from '@/lib/analytics';
 import StatCounters from './StatCounters';
 import SiteServiceAreaMatcher from './SiteServiceAreaMatcher';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 type SiteContentSectionsProps = {
   site: Site;
@@ -434,10 +435,10 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
 
       {stickyCallBar && site.phone && (
         <div className={styles.stickyCallBar} role="region" aria-label="Quick contact">
-          <a className={styles.stickyCall} href={`tel:${site.phone}`}>
+          <CallLink site={site} className={styles.stickyCall}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 4.5 4.5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 4.5 5.5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>
             {stickyCallBar.callLabel || 'Call now'}
-          </a>
+          </CallLink>
           {stickyCallBar.showQuote && (
             <a className={styles.stickyQuote} href="#contact">{stickyCallBar.quoteLabel || 'Free quote'}</a>
           )}

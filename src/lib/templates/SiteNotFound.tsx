@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // The 404 a visitor sees on a CONTRACTOR's host.
 //
@@ -34,7 +35,7 @@ export default function SiteNotFound({ site }: { site: Site }) {
         </article>
         <footer className={styles.legalFoot}>
           <a href="/">← Back to {site.company_name || 'home'}</a>
-          {site.phone && <> &nbsp;·&nbsp; <a href={`tel:${site.phone}`}>Call {site.phone}</a></>}
+          {site.phone && <> &nbsp;·&nbsp; <CallLink site={site}>Call {site.phone}</CallLink></>}
         </footer>
       </div>
     </main>
