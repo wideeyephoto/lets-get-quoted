@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
@@ -13,8 +14,8 @@ import styles from '../admin.module.css';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Money' };
 
-function usd(dollars: number): string {
-  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+function formatUsd(dollars: number): string {
+  return `${formatUsd(dollars)}`;
 }
 function fmtDate(v: string | null | undefined): string {
   return v ? new Date(v).toLocaleDateString('en-US', { dateStyle: 'medium' }) : '—';
@@ -126,16 +127,16 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
           link to the list that holds those records. */}
       <section className={styles.cardGrid} style={{ marginBottom: '1.4rem' }}>
         <StatCard
-          value={fees.availability.fees && fees.availability.refunds ? usd(netFees) : '—'}
+          value={fees.availability.fees && fees.availability.refunds ? formatUsd(netFees) : '—'}
           label={`Reconciled LGQ fees (${rangeLabel})`}
           /* The arithmetic is shown rather than hidden. A net figure with no
              working is indistinguishable from the gross one that used to sit
              here, and the whole point of the fix is that they differ. */
-          note={fees.availability.fees && fees.availability.refunds && feesReversed > 0 ? <>{usd(grossFees)} recognized − {usd(feesReversed)} returned with refunds</> : null}
+          note={fees.availability.fees && fees.availability.refunds && feesReversed > 0 ? <>{formatUsd(grossFees)} recognized − {formatUsd(feesReversed)} returned with refunds</> : null}
           tone={!fees.availability.fees || !fees.availability.refunds ? 'warn' : undefined}
         />
         <StatCard
-          value={fees.availability.refunds ? usd(refunds) : '—'}
+          value={fees.availability.refunds ? formatUsd(refunds) : '—'}
           label={`Refunds issued (${rangeLabel})`}
           tone={!fees.availability.refunds || refunds > 0 ? 'warn' : undefined}
           href={refundCount > 0 ? '#refunds' : undefined}
@@ -190,13 +191,13 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
                         {acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}
                       </td>
                       <td><Link href={`/admin/payments/${row.id}`} className={styles.rowLink}>{row.label || 'Charge'}</Link></td>
-                      <td className="num" style={{ textAlign: 'right' }}>{usd(original)}</td>
-                      <td className="num" style={{ textAlign: 'right' }}>{usd(refunded)}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{formatUsd(original)}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{formatUsd(refunded)}</td>
                       <td className="num" style={{ textAlign: 'right' }} title="Returned to Stripe with the refund, in proportion">
                         {row.platform_fee_refunded === null ? (
                           <span className={styles.muted} title="Refunded before we recorded fee reversals">—</span>
                         ) : (
-                          usd(Number(row.platform_fee_refunded) || 0)
+                          formatUsd(Number(row.platform_fee_refunded) || 0)
                         )}
                       </td>
                       <td>{partial ? <span className={`${styles.pill} ${styles.neutral}`}>Partial</span> : null}</td>
@@ -240,7 +241,7 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
                       <td className={styles.muted}>{fmtDate(row.disputed_at)}</td>
                       <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct ? accountDisplayName(acct) : 'Account'}</Link>{acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}</td>
                       <td><Link href={`/admin/payments/${row.id}`} className={styles.rowLink}>{row.label || 'Charge'}</Link></td>
-                      <td className="num" style={{ textAlign: 'right' }}>{usd(Number(row.amount) || 0)}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{formatUsd(Number(row.amount) || 0)}</td>
                       <td className={styles.muted}>{row.dispute_reason || row.dispute_status || '—'}</td>
                       <td>{row.dispute_due_by ? <span className={`${styles.pill} ${overdue ? styles.bad : styles.warn}`}>{fmtDate(row.dispute_due_by)}</span> : <span className={styles.muted}>—</span>}</td>
                       <td>
@@ -302,21 +303,21 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
         <div className={styles.cardGrid} style={{ marginBottom: '1.25rem' }}>
           <StatCard
             label="Pending unbilled accruals"
-            value={usd(overageOverview.totalPendingAccrualDollars)}
+            value={formatUsd(overageOverview.totalPendingAccrualDollars)}
             tone={overageOverview.totalPendingAccrualDollars > 0 ? 'warn' : undefined}
             accent="amber"
             note={`${overageOverview.pendingAccrualAccountsCount} accounts currently accruing unbilled usage`}
           />
           <StatCard
             label="Exhausted spending caps"
-            value={overageOverview.exhaustedCapsCount.toLocaleString('en-US')}
+            value={formatNumber(overageOverview.exhaustedCapsCount)}
             tone={overageOverview.exhaustedCapsCount > 0 ? 'bad' : undefined}
             accent={overageOverview.exhaustedCapsCount > 0 ? 'rose' : 'emerald'}
             note={overageOverview.exhaustedCapsCount > 0 ? 'Workspaces blocked by hard cap' : 'All workspaces within spending caps'}
           />
           <StatCard
             label="Unsettled / failed settlements"
-            value={overageOverview.failedSettlementsCount.toLocaleString('en-US')}
+            value={formatNumber(overageOverview.failedSettlementsCount)}
             tone={overageOverview.failedSettlementsCount > 0 ? 'warn' : undefined}
             accent={overageOverview.failedSettlementsCount > 0 ? 'amber' : 'neutral'}
             note="Failed or indeterminate invoice item operations"
@@ -365,7 +366,7 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
                         <td><Link href={`/admin/accounts/${s.accountId}?tab=overage`} className={styles.rowLink}>{info ? accountDisplayName(info) : s.accountId.slice(0, 8)}</Link></td>
                         <td className={styles.muted}>{fmtDate(s.periodEnd)}</td>
                         <td className={styles.muted}>{fmtDate(s.closedAt)}</td>
-                        <td><strong>{usd(s.chargeableCents / 100)}</strong></td>
+                        <td><strong>{formatUsd(s.chargeableCents / 100)}</strong></td>
                         <td><span className={`${styles.pill} ${s.state === 'settled' ? styles.good : s.state === 'failed' ? styles.bad : styles.warn}`}>{s.state}</span></td>
                         <td><Link href={`/admin/accounts/${s.accountId}?tab=overage`} className={styles.rowLink}>Inspect →</Link></td>
                       </tr>
@@ -399,19 +400,19 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
               <div className={styles.cardGrid} style={{ marginBottom: '1.25rem' }}>
                 <StatCard
                   label="Total 30-day LSA spend"
-                  value={usd(lsaOverview.totalSpendDollars)}
+                  value={formatUsd(lsaOverview.totalSpendDollars)}
                   accent="emerald"
                   note="Direct Google Ads campaign spend"
                 />
                 <StatCard
                   label="Total leads generated"
-                  value={lsaOverview.totalLeadsCount.toLocaleString('en-US')}
+                  value={formatNumber(lsaOverview.totalLeadsCount)}
                   accent="indigo"
                   note="Verified contractor customer inquiries"
                 />
                 <StatCard
                   label="Depleted ad wallets"
-                  value={depletedWallets.length.toLocaleString('en-US')}
+                  value={formatNumber(depletedWallets.length)}
                   tone={depletedWallets.length > 0 ? 'bad' : undefined}
                   accent={depletedWallets.length > 0 ? 'rose' : 'emerald'}
                   note={depletedWallets.length > 0 ? 'Below auto-refill threshold' : `All ${lsaOverview.activeWalletsCount} contractor balances funded`}
@@ -430,9 +431,9 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
                         {depletedWallets.map((w) => (
                           <tr key={w.accountId}>
                             <td><Link href={`/admin/accounts/${w.accountId}?tab=ads`} className={styles.rowLink}>{w.businessName || w.accountId.slice(0, 8)}</Link></td>
-                            <td><strong style={{ color: '#fca5a5' }}>{usd(w.balanceDollars)}</strong></td>
-                            <td className={styles.muted}>{usd(w.thresholdDollars)}</td>
-                            <td>{usd(w.refillDollars)}</td>
+                            <td><strong style={{ color: '#fca5a5' }}>{formatUsd(w.balanceDollars)}</strong></td>
+                            <td className={styles.muted}>{formatUsd(w.thresholdDollars)}</td>
+                            <td>{formatUsd(w.refillDollars)}</td>
                             <td><span className={`${styles.pill} ${styles.bad}`}>{w.status}</span></td>
                             <td><Link href={`/admin/accounts/${w.accountId}?tab=ads`} className={styles.rowLink}>Manage wallet →</Link></td>
                           </tr>

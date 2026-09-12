@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
@@ -19,12 +20,12 @@ const RANGE_TABS: { key: DateRange; label: string }[] = [
   { key: '90d', label: '90 days' },
 ];
 
-function usd(value: number | null | undefined): string {
-  return `$${(Number(value) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatUsd(value: number | null | undefined): string {
+  return `${formatUsd(Number(value) || 0)}`;
 }
 
 function fmt(value: string | null): string {
-  return value ? new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  return value ? formatTimestamp(value, 'short') : '—';
 }
 
 export default async function AdminPaymentsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ range?: string; status?: string; account?: string; q?: string; page?: string }> }) {
@@ -96,7 +97,7 @@ export default async function AdminPaymentsPage({ searchParams: searchParamsProm
       {!namesAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Payment rows loaded, but account names are unavailable.</div> : null}
 
       <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>{ledger.total.toLocaleString('en-US')} processed {ledger.total === 1 ? 'payment' : 'payments'} · page {page} of {pageCount}</h2>
+        <h2 className={styles.panelTitle}>{formatNumber(ledger.total)} processed {ledger.total === 1 ? 'payment' : 'payments'} · page {page} of {pageCount}</h2>
         {ledger.available && ledger.rows.length === 0 ? <p className={styles.emptyState}>No processed payments match these filters.</p> : null}
         {ledger.rows.length ? (
           <div className={styles.tableWrap}>
@@ -115,11 +116,11 @@ export default async function AdminPaymentsPage({ searchParams: searchParamsProm
                   <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{account ? accountDisplayName(account) : 'Account'}</Link>{account?.account_number ? <div className={styles.muted}>#{account.account_number}</div> : null}</td>
                   <td><Link href={`/admin/payments/${row.id}`} className={styles.rowLink}>{row.label || `Payment ${row.id.slice(0, 8)}`}</Link></td>
                   <td><span className={`${styles.pill} ${row.status === 'disputed' || row.status === 'failed' ? styles.bad : row.status === 'refunded' ? styles.warn : styles.neutral}`}>{row.status}</span></td>
-                  <td className="num">{usd(row.amount)}</td>
-                  <td className="num">{row.refunded_amount ? usd(row.refunded_amount) : '—'}</td>
+                  <td className="num">{formatUsd(row.amount)}</td>
+                  <td className="num">{row.refunded_amount ? formatUsd(row.refunded_amount) : '—'}</td>
                   <td className="num">
-                    {fee.recognizedFee !== null ? usd(fee.recognizedFee) : <span className={styles.muted}>—</span>}
-                    {fee.expectedFee !== null ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>{usd(fee.expectedFee)} expected</div> : null}
+                    {fee.recognizedFee !== null ? formatUsd(fee.recognizedFee) : <span className={styles.muted}>—</span>}
+                    {fee.expectedFee !== null ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>{formatUsd(fee.expectedFee)} expected</div> : null}
                   </td>
                   <td><span className={`${styles.pill} ${feeTone}`}>{fee.label}</span></td>
                   <td className={styles.muted}><code>{row.stripe_dispute_id || row.stripe_payment_intent || row.stripe_charge_id || row.stripe_checkout_session || '—'}</code></td>

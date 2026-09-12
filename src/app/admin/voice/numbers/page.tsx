@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 
 import { requireAdmin } from '@/lib/auth';
@@ -110,7 +111,7 @@ function money(cents: number): string {
 function when(value: string | null): string {
   if (!value) return '—';
   const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date.toLocaleString('en-US') : 'Unknown';
+  return Number.isFinite(date.getTime()) ? formatTimestamp(date, 'medium') : 'Unknown';
 }
 
 function policyConfirmation(price: number, ceiling: number, enabled: boolean): string {

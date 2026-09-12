@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 
 import { requireAdmin } from '@/lib/auth';
@@ -39,7 +40,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 function when(value: string | null): string {
   if (!value) return '—';
   const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date.toLocaleString('en-US') : 'Unknown';
+  return Number.isFinite(date.getTime()) ? formatTimestamp(date, 'medium') : 'Unknown';
 }
 
 function readinessCopy(reason: SignalWireProvisioningReadinessReason): string {

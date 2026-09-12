@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { listQuickStopRequestsForAdmin } from '@/lib/admin-quick-stops';
@@ -40,7 +41,7 @@ function statusPill(status: string) {
 
 function money(cents: number | null | undefined): string {
   if (!cents) return '$0';
-  return `$${centsToDollars(cents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `${formatUsd(cents / 100)}`;
 }
 
 const PAGE_SIZE = 50;
@@ -114,7 +115,7 @@ export default async function AdminQuickStopsPage({ searchParams: searchParamsPr
       <section className={styles.panel}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
           <h2 className={styles.panelTitle} style={{ margin: 0 }}>
-            {total.toLocaleString('en-US')} Quick Stops{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
+            {formatNumber(total)} Quick Stops{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
           </h2>
         </div>
         {rows.length === 0 ? (

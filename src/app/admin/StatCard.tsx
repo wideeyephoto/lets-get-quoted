@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import styles from './admin.module.css';
@@ -40,7 +41,7 @@ export function StatCard({
         className={styles.statValue}
         style={tone === 'bad' ? { color: '#fca5a5' } : tone === 'warn' ? { color: '#ffd166' } : undefined}
       >
-        {typeof value === 'number' ? value.toLocaleString('en-US') : value}
+        {typeof value === 'number' ? formatNumber(value) : value}
       </span>
       <span className={styles.statLabel}>{label}</span>
       {note ? <span className={styles.muted} style={{ fontSize: '0.72rem' }}>{note}</span> : null}

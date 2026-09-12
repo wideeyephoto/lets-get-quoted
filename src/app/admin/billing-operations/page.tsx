@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import { requireAdmin } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
 import {
@@ -38,7 +39,7 @@ function Metrics({ ledger }: { ledger: BillingOperationsLedger }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem .8rem' }}>
       {ledger.metrics.map((metric) => (
         <span key={metric.code} style={{ whiteSpace: 'nowrap' }}>
-          <strong>{metric.count.toLocaleString('en-US')}</strong>{' '}
+          <strong>{formatNumber(metric.count)}</strong>{' '}
           <span className={styles.muted}>{metric.label.toLowerCase()}</span>
         </span>
       ))}
@@ -160,7 +161,7 @@ export default async function AdminBillingOperationsPage() {
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {ledger.availability === 'installed' ? (
-                        <span title={ledger.oldestOpenAt ? new Date(ledger.oldestOpenAt).toLocaleString('en-US') : undefined}>
+                        <span title={ledger.oldestOpenAt ? formatTimestamp(ledger.oldestOpenAt, 'medium') : undefined}>
                           {ageLabel(ledger.oldestOpenAt, now)}
                         </span>
                       ) : (

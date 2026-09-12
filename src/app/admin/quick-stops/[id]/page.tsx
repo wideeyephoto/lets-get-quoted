@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
@@ -11,11 +12,11 @@ export const dynamic = 'force-dynamic';
 
 function money(cents: number | null | undefined): string {
   if (!cents) return '$0';
-  return `$${centsToDollars(cents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `${formatUsd(cents / 100)}`;
 }
 function fmtDateTime(v: string | null | undefined): string {
   if (!v) return '—';
-  return new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  return formatTimestamp(v, 'medium');
 }
 function fmtTime(hhmm: string | null): string {
   if (!hhmm) return '';

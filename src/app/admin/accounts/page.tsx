@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { listAccountsForAdmin, countAccountsForAdmin, countSyntheticAccounts, ownerEmailsForAccounts, accountDisplayName, type AdminAccountRow } from '@/lib/admin-accounts';
@@ -226,7 +227,7 @@ export default async function AdminAccountsPage({
             quietly stops at fifty reads as "there are fifty", which is the
             same lie the dead-end counts told. */}
         <h2 className={styles.panelTitle}>
-          {!rowsAvailable ? 'Partial account results' : typeof total === 'number' && totalAvailable ? `${total.toLocaleString('en-US')} ${total === 1 ? 'account' : 'accounts'}` : `${rows.length} matching`}
+          {!rowsAvailable ? 'Partial account results' : typeof total === 'number' && totalAvailable ? `${formatNumber(total)} ${total === 1 ? 'account' : 'accounts'}` : `${rows.length} matching`}
           {truncated ? <span className={styles.muted} style={{ fontWeight: 400 }}> — showing the {rows.length} newest. Search to narrow it.</span> : null}
         </h2>
         {rowsAvailable && rows.length === 0 ? (

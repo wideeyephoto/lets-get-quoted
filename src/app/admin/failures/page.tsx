@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import {
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Delivery failures' };
 
 function fmt(value: string): string {
-  return new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+  return formatTimestamp(value, 'short');
 }
 
 export default async function AdminFailuresPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string; voice?: string }> }) {
@@ -66,7 +67,7 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
 
     <section className={styles.panel} id="webhooks">
       <h2 className={styles.panelTitle}>
-        Inbound webhook failures · {totalWebhooks.toLocaleString('en-US')} total {totalWebhooks > webhooks.length ? `(${webhooks.length} latest in ${webhookGroups.length} groups)` : `in ${webhookGroups.length} groups`}
+        Inbound webhook failures · {formatNumber(totalWebhooks)} total {totalWebhooks > webhooks.length ? `(${webhooks.length} latest in ${webhookGroups.length} groups)` : `in ${webhookGroups.length} groups`}
       </h2>
       {webhookGroups.length === 0 && !diagnostics.failed.includes('webhookFailures') ? <p className={styles.emptyState}>No unresolved inbound webhook failures.</p> : null}
       {webhookGroups.length ? <div className={styles.tableWrap}><table className={styles.table}>
@@ -97,7 +98,7 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
 
     <section className={styles.panel} id="texts">
       <h2 className={styles.panelTitle}>
-        Failed texts · {totalSms.toLocaleString('en-US')} total {totalSms > sms.length ? `(${sms.length} latest in ${smsGroups.length} groups)` : `in ${smsGroups.length} groups`}
+        Failed texts · {formatNumber(totalSms)} total {totalSms > sms.length ? `(${sms.length} latest in ${smsGroups.length} groups)` : `in ${smsGroups.length} groups`}
       </h2>
       {smsGroups.length === 0 && !diagnostics.failed.includes('failedSms') ? <p className={styles.emptyState}>No failed tracked texts.</p> : null}
       {smsGroups.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Type</th><th>Error</th><th className="num">Occurrences</th><th>Latest</th><th>Account</th></tr></thead><tbody>
@@ -107,7 +108,7 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
 
     <section className={styles.panel} id="emails">
       <h2 className={styles.panelTitle}>
-        Failed emails · {totalEmails.toLocaleString('en-US')} total {totalEmails > emails.length ? `(${emails.length} latest in ${emailGroups.length} groups)` : `in ${emailGroups.length} groups`}
+        Failed emails · {formatNumber(totalEmails)} total {totalEmails > emails.length ? `(${emails.length} latest in ${emailGroups.length} groups)` : `in ${emailGroups.length} groups`}
       </h2>
       {emailGroups.length === 0 && !diagnostics.failed.includes('failedEmails') ? <p className={styles.emptyState}>No bounced or complained emails.</p> : null}
       {emailGroups.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Kind</th><th>Status</th><th>Error</th><th className="num">Occurrences</th><th>Latest</th></tr></thead><tbody>

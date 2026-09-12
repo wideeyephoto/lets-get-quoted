@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
@@ -84,12 +85,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   delete_failed: 'The account could not be deleted. Nothing was removed and no privacy request was scrubbed. Check the server log and try again.',
 };
 
-function usd(dollars: unknown): string {
+function formatUsd(dollars: unknown): string {
   const n = Number(dollars) || 0;
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  return `${formatUsd(n)}`;
 }
 function usdCents(cents: unknown): string {
-  return usd((Number(cents) || 0) / 100);
+  return formatUsd((Number(cents) || 0) / 100);
 }
 function fmtDate(v: unknown): string {
   if (!v) return '—';
@@ -505,7 +506,7 @@ export default async function AdminAccountDetailPage({
           Tier {detail.tier.tier} · {(detail.tier.rate * 100).toFixed(2)}%
         </dd>
         <dt>Legacy trailing 12-mo volume</dt>
-        <dd>{usd(detail.trailingVolume)}</dd>
+        <dd>{formatUsd(detail.trailingVolume)}</dd>
         <dt>Paid (30 days)</dt>
         <dd>
           <strong>{usdCents(detail.activity.paidVolume30dCents)}</strong>
@@ -572,8 +573,8 @@ export default async function AdminAccountDetailPage({
                   </td>
                   <td className={styles.muted}>{p.kind || '—'}</td>
                   <td className={`num ${styles.muted}`} style={{ textAlign: 'right' }}>
-                    {usd(p.amount)}
-                    {p.refunded_amount ? <span className={styles.muted}> (−{usd(p.refunded_amount)})</span> : null}
+                    {formatUsd(p.amount)}
+                    {p.refunded_amount ? <span className={styles.muted}> (−{formatUsd(p.refunded_amount)})</span> : null}
                   </td>
                   <td>
                     <PaymentStatusPill status={p.status} />
@@ -848,7 +849,7 @@ export default async function AdminAccountDetailPage({
         </dd>
         <dt>Total LSA spend</dt>
         <dd>
-          <strong>{usd(googleLsa.totalSpendDollars)}</strong>
+          <strong>{formatUsd(googleLsa.totalSpendDollars)}</strong>
         </dd>
         <dt>Total leads</dt>
         <dd>
@@ -860,9 +861,9 @@ export default async function AdminAccountDetailPage({
         <dd>
           {googleLsa.wallet ? (
             <>
-              <strong>{usd(googleLsa.wallet.balanceDollars)}</strong>{' '}
+              <strong>{formatUsd(googleLsa.wallet.balanceDollars)}</strong>{' '}
               <span className={styles.muted}>
-                (Refills {usd(googleLsa.wallet.refillDollars)} when below {usd(googleLsa.wallet.thresholdDollars)})
+                (Refills {formatUsd(googleLsa.wallet.refillDollars)} when below {formatUsd(googleLsa.wallet.thresholdDollars)})
               </span>{' '}
               <span className={`${styles.pill} ${googleLsa.wallet.status === 'active' ? styles.good : styles.warn}`}>
                 {googleLsa.wallet.status}

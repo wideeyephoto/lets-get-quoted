@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import { requireAdmin } from '@/lib/auth';
 import styles from '../../admin.module.css';
 import { createCaseAction } from './actions';
@@ -74,7 +75,7 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
       ) : null}
       {totalAccounts > accounts.length ? (
         <div role="status" className={`${styles.banner} ${styles.warn}`}>
-          Showing {accounts.length} of {totalAccounts.toLocaleString('en-US')} accounts. If your account is not in the dropdown, open the case directly from that account&apos;s page.
+          Showing {accounts.length} of {formatNumber(totalAccounts)} accounts. If your account is not in the dropdown, open the case directly from that account&apos;s page.
         </div>
       ) : null}
       {!accountsAvailable || !staffAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Account or staff choices are incomplete. Refresh before assigning this case.</div> : null}

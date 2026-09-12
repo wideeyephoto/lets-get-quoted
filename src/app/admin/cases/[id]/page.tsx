@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
@@ -68,7 +69,7 @@ export default async function AdminCaseDetailPage({
         <p className={styles.eyebrow}>Case</p>
         <h1 className={styles.title}>{supportCase.subject}</h1>
         <p className={styles.lead}>
-          Opened by <strong>{supportCase.created_by}</strong> on {new Date(supportCase.created_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+          Opened by <strong>{supportCase.created_by}</strong> on {formatTimestamp(supportCase.created_at, 'medium')}
         </p>
         <div className={styles.actionRow} style={{ marginTop: '.6rem' }}>
           {statusPill(supportCase.status)}
@@ -96,7 +97,7 @@ export default async function AdminCaseDetailPage({
                 ) : null}
               </dd>
               <dt>Assigned to</dt><dd>{supportCase.assigned_to || <span className={styles.muted}>Unassigned</span>}</dd>
-              <dt>SLA due</dt><dd>{supportCase.sla_due_at ? new Date(supportCase.sla_due_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : <span className={styles.muted}>—</span>}</dd>
+              <dt>SLA due</dt><dd>{supportCase.sla_due_at ? formatTimestamp(supportCase.sla_due_at, 'medium') : <span className={styles.muted}>—</span>}</dd>
             </dl>
           </section>
 
@@ -113,7 +114,7 @@ export default async function AdminCaseDetailPage({
               <ul className={styles.timeline}>
                 {notes.map((n) => (
                   <li key={n.id}>
-                    <time>{new Date(n.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</time>
+                    <time>{formatTimestamp(n.created_at, 'short')}</time>
                     <span>
                       <span className={`${styles.pill} ${n.visibility === 'customer' ? styles.good : styles.neutral}`}>
                         {n.visibility === 'customer' ? 'Shared' : 'Internal'}

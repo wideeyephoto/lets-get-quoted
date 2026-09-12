@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Scheduled job history' };
 
 function fmt(value: string | null): string {
-  return value ? new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'medium' }) : '—';
+  return value ? formatTimestamp(value, 'short') : '—';
 }
 
 export default async function CronJobHistoryPage({ params: paramsPromise }: { params: Promise<{ job: string }> }) {

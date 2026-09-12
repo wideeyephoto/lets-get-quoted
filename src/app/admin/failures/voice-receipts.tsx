@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { loadPendingVoiceReceipts, safeVoiceReference, voiceReceiptFailureStage, voiceReceiptRetryState } from '@/lib/admin-voice-receipts';
 import { retryVoiceReceiptAction } from './actions';
@@ -5,7 +6,7 @@ import styles from '../admin.module.css';
 import voiceStyles from './voice-receipts.module.css';
 
 function time(value: string): string {
-  return new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
+  return formatTimestamp(value, 'short');
 }
 
 export default function VoiceReceiptFailures({ result, canRetry }: { result: Awaited<ReturnType<typeof loadPendingVoiceReceipts>>; canRetry: boolean }) {

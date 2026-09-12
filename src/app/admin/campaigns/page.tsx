@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import { requireAdmin } from '@/lib/auth';
 import {
   listPlatformCampaignHistory,
@@ -66,15 +67,15 @@ export default async function AdminCampaignsPage() {
           <span className={styles.statValue}>{campaigns.length}</span>
           <span className={styles.statLabel}>Campaigns broadcast</span>
           <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
-            {totalDelivered.toLocaleString('en-US')} total emails delivered
+            {formatNumber(totalDelivered)} total emails delivered
           </span>
         </div>
 
         <div className={`${styles.panel} ${styles.statCard} ${styles.accentEmerald}`}>
-          <span className={styles.statValue}>{totalContractors >= 0 ? totalContractors.toLocaleString('en-US') : '—'}</span>
+          <span className={styles.statValue}>{totalContractors >= 0 ? formatNumber(totalContractors) : '—'}</span>
           <span className={styles.statLabel}>Deliverable contractors</span>
           <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
-            {active30d >= 0 ? `${active30d.toLocaleString('en-US')} active in last 30 days` : 'Active contractors unavailable'}
+            {active30d >= 0 ? `${formatNumber(active30d)} active in last 30 days` : 'Active contractors unavailable'}
           </span>
         </div>
 

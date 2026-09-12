@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import { requirePermission } from '@/lib/auth';
 import { activeSuperAdminCount, listStaff, listStaffRoleChanges } from '@/lib/staff-directory';
 import { PERMISSIONS, ROLE_HELP, STAFF_ROLES, permissionsFor } from '@/lib/staff';
@@ -36,7 +37,7 @@ const ERRORS: Record<string, string> = {
 };
 
 function fmt(v: string | null): string {
-  return v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  return v ? formatTimestamp(v, 'medium') : '—';
 }
 
 export default async function AdminStaffPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string }> }) {

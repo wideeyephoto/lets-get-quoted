@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { queryAdminActions } from '@/lib/admin';
@@ -90,7 +91,7 @@ export default async function AdminAuditPage({ searchParams: searchParamsPromise
       {!result.available ? <div role="status" className={`${styles.banner} ${styles.err}`}>Audit data is unavailable. No empty history is being inferred.</div> : null}
 
       <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>{result.total.toLocaleString('en-US')} actions · page {page} of {pageCount}</h2>
+        <h2 className={styles.panelTitle}>{formatNumber(result.total)} actions · page {page} of {pageCount}</h2>
         {actions.length === 0 ? (
           result.available ? <p className={styles.emptyState}>No staff actions match these filters.</p> : null
         ) : (
@@ -100,7 +101,7 @@ export default async function AdminAuditPage({ searchParams: searchParamsPromise
               <tbody>
                 {actions.map((a) => (
                   <tr key={a.id}>
-                    <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                    <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{formatTimestamp(a.created_at, 'short')}</td>
                     <td>
                       {a.admin_email}
                       {/* The authority and the origin sit under the name rather

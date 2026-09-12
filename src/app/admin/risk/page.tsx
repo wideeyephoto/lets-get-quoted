@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { buildRiskQueue } from '@/lib/admin-risk';
@@ -119,7 +120,7 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
           <h2 className={styles.panelTitle} style={{ margin: 0 }}>
             {total} {total === 1 ? 'account' : 'accounts'} with review signals{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
             <span className={styles.muted} style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-              {' '}· {queue.accountsScanned.toLocaleString('en-US')} scanned over {queue.windowDays} days
+              {' '}· {formatNumber(queue.accountsScanned)} scanned over {queue.windowDays} days
             </span>
           </h2>
         </div>
@@ -132,7 +133,7 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
 
         {filteredRows.length === 0 ? (
           queue.available && latest.available ? <p className={styles.emptyState}>
-            No accounts match the {status} review filter in the last {queue.windowDays} days across {queue.accountsScanned.toLocaleString('en-US')} accounts.
+            No accounts match the {status} review filter in the last {queue.windowDays} days across {formatNumber(queue.accountsScanned)} accounts.
           </p> : null
         ) : (
           <div className={styles.tableWrap}>

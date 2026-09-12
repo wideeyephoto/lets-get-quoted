@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import { requireAdmin } from '@/lib/auth';
 import { loadMessagingOperationsHealth } from '@/lib/admin-messaging';
 import {
@@ -13,7 +14,7 @@ export const metadata = { title: 'Messaging operations' };
 function when(value: string | null): string {
   if (!value) return 'Never';
   const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? date.toLocaleString('en-US') : 'Unknown';
+  return Number.isFinite(date.getTime()) ? formatTimestamp(date, 'medium') : 'Unknown';
 }
 
 function maskPhone(value: string | null): string {

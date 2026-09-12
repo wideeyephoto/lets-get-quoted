@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
@@ -37,14 +38,14 @@ const ERRORS: Record<string, string> = {
   refund: 'Stripe refused the refund.',
 };
 
-function usd(v: number | null | undefined): string {
-  return `$${(Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatUsd(v: number | null | undefined): string {
+  return `${formatUsd(Number(v) || 0)}`;
 }
 function usdCents(cents: number): string {
-  return usd(cents / 100);
+  return formatUsd(cents / 100);
 }
 function fmt(v: string | null | undefined): string {
-  return v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  return v ? formatTimestamp(v, 'medium') : '—';
 }
 
 function statusPill(status: string | null) {
@@ -105,14 +106,14 @@ export default async function AdminPaymentPage({
         <p className={styles.eyebrow}>Payment</p>
         <h1 className={styles.title}>{payment.label || 'Payment'}</h1>
         <p className={styles.lead}>
-          {usd(payment.amount)} · {payment.kind ?? 'payment'} ·{' '}
+          {formatUsd(payment.amount)} · {payment.kind ?? 'payment'} ·{' '}
           <Link href={`/admin/accounts/${payment.account_id}`} className={styles.rowLink}>{accountDisplayName(account)}</Link>
           {account.account_number ? <span className={styles.muted}> · #{account.account_number}</span> : null}
         </p>
         <div className={styles.actionRow} style={{ marginTop: '.6rem' }}>
           {statusPill(payment.status)}
           {Number(payment.refunded_amount) > 0 ? (
-            <span className={`${styles.pill} ${styles.warn}`}>{usd(payment.refunded_amount)} refunded</span>
+            <span className={`${styles.pill} ${styles.warn}`}>{formatUsd(payment.refunded_amount)} refunded</span>
           ) : null}
           {payment.disputed_at ? <span className={`${styles.pill} ${styles.bad}`}>Disputed</span> : null}
           <span className={`${styles.pill} ${feeTone}`}>{fee.label}</span>
@@ -135,22 +136,22 @@ export default async function AdminPaymentPage({
           <section className={styles.panel}>
             <h2 className={styles.panelTitle}>The money</h2>
             <dl className={styles.kv}>
-              <dt>Charged</dt><dd>{usd(payment.amount)}</dd>
+              <dt>Charged</dt><dd>{formatUsd(payment.amount)}</dd>
               <dt>Refunded so far</dt>
-              <dd>{Number(payment.refunded_amount) > 0 ? <strong>{usd(payment.refunded_amount)}</strong> : '$0.00'}</dd>
+              <dd>{Number(payment.refunded_amount) > 0 ? <strong>{formatUsd(payment.refunded_amount)}</strong> : '$0.00'}</dd>
               <dt>Still refundable</dt>
               <dd>{remaining > 0 ? usdCents(remaining) : <span className={styles.muted}>nothing</span>}</dd>
               <dt>Reconciled LGQ fee</dt>
               <dd>
-                {fee.recognizedFee !== null ? usd(fee.recognizedFee) : <span className={styles.muted}>—</span>}
+                {fee.recognizedFee !== null ? formatUsd(fee.recognizedFee) : <span className={styles.muted}>—</span>}
                 {fee.recognizedFee !== null && Number(payment.platform_fee_refunded) > 0 ? (
                   <span className={styles.muted} style={{ fontSize: '.75rem' }}>
-                    {' '}({usd(payment.platform_fee)} recognized − {usd(payment.platform_fee_refunded)} returned)
+                    {' '}({formatUsd(payment.platform_fee)} recognized − {formatUsd(payment.platform_fee_refunded)} returned)
                   </span>
                 ) : null}
                 {payment.fee_rate ? <span className={styles.muted} style={{ fontSize: '.75rem' }}> · {(Number(payment.fee_rate) * 100).toFixed(2)}%</span> : null}
               </dd>
-              {fee.expectedFee !== null ? <><dt>Expected LGQ fee</dt><dd>{usd(fee.expectedFee)} <span className={styles.muted}>· not recognized</span></dd></> : null}
+              {fee.expectedFee !== null ? <><dt>Expected LGQ fee</dt><dd>{formatUsd(fee.expectedFee)} <span className={styles.muted}>· not recognized</span></dd></> : null}
               <dt>Fee state</dt><dd><span className={`${styles.pill} ${feeTone}`}>{fee.label}</span></dd>
               {fee.recognizedAt ? <><dt>Fee recognized</dt><dd className={styles.muted}>{fmt(fee.recognizedAt)}</dd></> : null}
               <dt>Requested</dt><dd className={styles.muted}>{fmt(payment.requested_at)}</dd>

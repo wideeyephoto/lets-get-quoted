@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
@@ -41,7 +42,7 @@ const ERRORS: Record<string, string> = {
 };
 
 function fmt(v: string | null): string {
-  return v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  return v ? formatTimestamp(v, 'medium') : '—';
 }
 
 const PAGE_SIZE = 25;
@@ -121,7 +122,7 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
           <section className={styles.panel}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
               <h2 className={styles.panelTitle} style={{ margin: 0 }}>
-                Recent ({total.toLocaleString('en-US')} total{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''})
+                Recent ({formatNumber(total)} total{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''})
               </h2>
             </div>
             {incidents.length === 0 ? (

@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requireAdmin } from '@/lib/auth';
@@ -32,13 +33,13 @@ const RANGE_TABS: { key: DateRange; label: string }[] = [
   { key: '90d', label: '90 days' },
 ];
 
-function usd(dollars: number): string {
+function formatUsd(dollars: number): string {
   const isWhole = dollars % 1 === 0;
-  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: isWhole ? 0 : 2, maximumFractionDigits: 2 })}`;
+  return `${formatUsd(dollars)}`;
 }
 function fmtMetric(m: CommandCenterMetric): string {
   if (!m.available) return '—';
-  return m.format === 'usd' ? usd(m.value) : m.value.toLocaleString('en-US');
+  return m.format === 'usd' ? formatUsd(m.value) : formatNumber(m.value);
 }
 function trendClass(m: CommandCenterMetric): 'good' | 'bad' | 'flat' {
   if (m.direction === 'flat') return 'flat';
@@ -50,7 +51,7 @@ function trendLabel(m: CommandCenterMetric): string {
   const sign = m.deltaPct > 0 ? '↑ +' : m.deltaPct < 0 ? '↓ ' : '';
   return `${sign}${Math.abs(m.deltaPct).toFixed(0)}% vs. prior period`;
 }
-function cap(s: string): string {
+function capFirst(s: string): string {
   return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 function roleLabel(role: string): string {
@@ -187,7 +188,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
       key: row.id,
       severity,
       status: severity === 'bad' ? 'Overdue' : 'Open',
-      title: `${cap(row.kind)} request`,
+      title: `${capFirst(row.kind)} request`,
       subtitle: row.details ?? undefined,
       owner: acctName(row.account_id),
       ownerHref: `/admin/accounts/${row.account_id}`,
@@ -200,7 +201,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
   const myCaseItems: AlertItem[] = data.myCases.map((row) => ({
     key: row.id,
     severity: severityForDeadline(row.sla_due_at, now),
-    status: cap(row.status),
+    status: capFirst(row.status),
     title: row.subject,
     owner: row.assigned_to ?? undefined,
     age: relativeAge(row.created_at, now),
@@ -211,7 +212,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
   const casesNearSlaItems: AlertItem[] = data.casesNearSla.map((row) => ({
     key: row.id,
     severity: severityForDeadline(row.sla_due_at, now),
-    status: cap(row.status),
+    status: capFirst(row.status),
     title: row.subject,
     owner: row.assigned_to ?? 'Unassigned',
     age: relativeAge(row.created_at, now),
@@ -226,7 +227,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
       key: row.id,
       severity,
       status: severity === 'bad' ? 'Overdue' : 'Open',
-      title: `${usd(Number(row.amount) || 0)} — ${row.dispute_reason || row.dispute_status || 'dispute'}`,
+      title: `${formatUsd(Number(row.amount) || 0)} — ${row.dispute_reason || row.dispute_status || 'dispute'}`,
       owner: acctName(row.account_id),
       ownerHref: `/admin/accounts/${row.account_id}`,
       age: relativeAge(row.disputed_at ?? row.dispute_due_by ?? now.toISOString(), now),
@@ -259,7 +260,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
       // Expired is settled, not urgent: nobody can save it now. The live ones
       // still can be, so they keep the deadline-driven severity.
       severity: expired ? 'warn' : severityForDeadline(row.payment_deadline_at ?? row.response_deadline_at, now, DAY_MS),
-      status: expired ? 'Expired unanswered' : cap(row.status.replace(/_/g, ' ')),
+      status: expired ? 'Expired unanswered' : capFirst(row.status.replace(/_/g, ' ')),
       title: row.client_name || 'Quick Stop',
       owner: acctName(row.account_id),
       ownerHref: `/admin/accounts/${row.account_id}`,
@@ -285,8 +286,8 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
   const dunningItems: AlertItem[] = data.dunningPayments.map((row) => ({
     key: row.id,
     severity: severityForDunningState(row.dunning_state),
-    status: row.dunning_state === 'exhausted' ? 'Exhausted' : row.dunning_state === 'needs_card' ? 'Needs card' : cap(row.dunning_state ?? 'Retrying'),
-    title: `${usd(Number(row.amount) || 0)}${row.label ? ` — ${row.label}` : ''}`,
+    status: row.dunning_state === 'exhausted' ? 'Exhausted' : row.dunning_state === 'needs_card' ? 'Needs card' : capFirst(row.dunning_state ?? 'Retrying'),
+    title: `${formatUsd(Number(row.amount) || 0)}${row.label ? ` — ${row.label}` : ''}`,
     subtitle: row.failure_message ?? undefined,
     owner: acctName(row.account_id),
     ownerHref: `/admin/accounts/${row.account_id}`,
@@ -308,7 +309,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
   const failedSmsItems: AlertItem[] = groupSmsFailures(data.failedSms).map((group) => ({
     key: group.key,
     severity: 'warn',
-    status: `${cap(group.sample.event_type.replace(/_/g, ' ')) || 'Failed'} × ${group.count}`,
+    status: `${capFirst(group.sample.event_type.replace(/_/g, ' ')) || 'Failed'} × ${group.count}`,
     title: group.sample.phone_number,
     subtitle: group.sample.error_reason ?? undefined,
     age: relativeAge(group.latestAt, now),
@@ -330,7 +331,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
   const webhookFailureItems: AlertItem[] = groupWebhookFailures(data.webhookFailures).map((group) => ({
     key: group.key,
     severity: 'bad',
-    status: `${cap(group.sample.source.replace(/_/g, ' '))} × ${group.count}`,
+    status: `${capFirst(group.sample.source.replace(/_/g, ' '))} × ${group.count}`,
     title: group.sample.event_type || group.sample.reference_id || 'Webhook failure',
     subtitle: group.sample.error_message,
     age: relativeAge(group.latestAt, now),

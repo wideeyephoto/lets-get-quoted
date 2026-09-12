@@ -1,3 +1,4 @@
+import { formatTimestamp, formatNumber, formatUsd, capFirst } from '@/app/admin/utils/formatters';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { listSupportCasesPaged, type CaseStatus } from '@/lib/support-cases';
@@ -86,7 +87,7 @@ export default async function AdminCasesPage({ searchParams: searchParamsPromise
       <section className={styles.panel}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
           <h2 className={styles.panelTitle} style={{ margin: 0 }}>
-            {total.toLocaleString('en-US')} cases{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
+            {formatNumber(total)} cases{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
           </h2>
         </div>
         {available && cases.length === 0 ? (
@@ -120,7 +121,7 @@ export default async function AdminCasesPage({ searchParams: searchParamsPromise
                     <td>{statusPill(c.status)}</td>
                     <td>{priorityPill(c.priority)}</td>
                     <td>{c.assigned_to || <span className={styles.muted}>Unassigned</span>}</td>
-                    <td className={styles.muted}>{c.sla_due_at ? new Date(c.sla_due_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
+                    <td className={styles.muted}>{c.sla_due_at ? formatTimestamp(c.sla_due_at, 'short') : '—'}</td>
                   </tr>
                 ))}
               </tbody>
