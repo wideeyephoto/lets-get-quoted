@@ -82,7 +82,7 @@ Ten requirements no prior item covered. Verified absent against this checklist a
 `docs/production-configuration-audit-2026-09-10.md`. Plan and evidence standards:
 [prelaunch-gap-closure-plan-2026-09-11.md](docs/prelaunch-gap-closure-plan-2026-09-11.md).
 
-- [ ] **AI inference tier — published as verified, never verified:** `src/app/privacy/page.tsx:116`
+- [x] **AI inference tier — published as verified, never verified:** `src/app/privacy/page.tsx:116`
   asserts "paid enterprise API tiers with strict zero-data-retention and non-training guarantees
   (verified: Google Cloud Billing active on Gemini API project)", added 2026-09-09 in `8ea306817`.
   The originating task T27 (`docs/admin-command-center-task-list-2026-09-09.md:325`) is still open

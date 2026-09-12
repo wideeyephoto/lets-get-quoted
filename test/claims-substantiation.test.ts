@@ -124,4 +124,18 @@ describe('Legal & Claims Substantiation Invariants', () => {
     expect(crewSeatsRow?.[3]).toBe(String(BILLING_PLANS.growth.allowances.crewUsers));
     expect(crewSeatsRow?.[4]).toBe(String(BILLING_PLANS.scale.allowances.crewUsers));
   });
+  
+  it('requires AI tier claim evidence artifact if the privacy page claims it is verified', () => {
+    const privacyPagePath = path.resolve(process.cwd(), 'src/app/privacy/page.tsx');
+    if (fs.existsSync(privacyPagePath)) {
+      const content = fs.readFileSync(privacyPagePath, 'utf8');
+      if (content.includes('verified: Google Cloud Billing active on Gemini API project')) {
+        const evidenceDir = path.resolve(process.cwd(), 'docs/evidence');
+        expect(fs.existsSync(evidenceDir)).toBe(true);
+        const evidenceFiles = fs.readdirSync(evidenceDir);
+        const hasAiTierEvidence = evidenceFiles.some(f => f.startsWith('ai-tier-inspection') && f.endsWith('.txt'));
+        expect(hasAiTierEvidence).toBe(true);
+      }
+    }
+  });
 });
