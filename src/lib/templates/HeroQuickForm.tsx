@@ -1055,7 +1055,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                 ? 'Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.'
                 : 'Tell us about the job and we’ll get back to you as soon as possible with a personalized quote.'}
           </p>
-          {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
             aria-label="Describe your project"
             placeholder={describePlaceholder}
@@ -1468,6 +1467,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               disabled — a dead button explains nothing and the real validation
               is on submit, with a message — but it should look like the next
               thing to do the moment it actually is. */}
+          {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <button type="submit" data-ready={contactReady || undefined} disabled={isSubmitting}>
             {isSubmitting
               ? 'Sending...'
