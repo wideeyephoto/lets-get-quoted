@@ -129,30 +129,7 @@ export type UsageOverageInput = Readonly<{
  * falls back to the calendar month — which is the same shape and, since Flex has
  * no subscription to overrun against, is only ever a bookkeeping boundary.
  */
-async function resolvePeriod(
-  admin: SupabaseClient,
-  accountId: string,
-): Promise<{ start: string; end: string } | null> {
-  try {
-    const { data, error } = await admin
-      .from('workspace_entitlements')
-      .select('period_start, period_end')
-      .eq('account_id', accountId)
-      .maybeSingle();
-    if (error) return null;
 
-    const start = data?.period_start as string | null | undefined;
-    const end = data?.period_end as string | null | undefined;
-    if (start && end) return { start, end };
-
-    const now = new Date();
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-    return { start: monthStart.toISOString(), end: monthEnd.toISOString() };
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Ask whether this overrun may be charged, and record it if so.
