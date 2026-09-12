@@ -3264,3 +3264,4 @@ export function getHeroVideo(
   const source = parseVideoSource(url);
   return source?.kind === 'file' ? { url: source.url, posterUrl: video.posterUrl.trim() } : null;
 }
+

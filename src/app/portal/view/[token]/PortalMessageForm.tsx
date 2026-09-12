@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { sendPortalMessageAction } from './actions';
+import { trackPortalEvent } from '@/lib/analytics';
 import MailIcon from '@/components/MailIcon';
 
 type Props = {

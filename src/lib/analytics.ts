@@ -378,3 +378,39 @@ export function trackFinancingPrequalClick(payload: FinancingPrequalClickPayload
   }
 }
 
+
+
+export type PortalEventStep = 'portal_opened' | 'portal_section_viewed' | 'referral_shared' | 'message_sent' | 'document_viewed';
+
+export type PortalEventPayload = {
+  step: PortalEventStep;
+  sectionName?: string;
+  documentId?: string;
+};
+
+export function trackPortalEvent(payload: PortalEventPayload): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const event = new CustomEvent('lgq:portal-event', { detail: payload });
+    window.dispatchEvent(event);
+  } catch {
+    // ignore
+  }
+
+  const win = window as unknown as {
+    gtag?: (...args: unknown[]) => void;
+  };
+
+  if (typeof win.gtag === 'function') {
+    try {
+      win.gtag('event', payload.step, {
+        event_category: 'customer_portal',
+        section_name: payload.sectionName || '',
+        document_id: payload.documentId || '',
+      });
+    } catch {
+      // ignore
+    }
+  }
+}

@@ -57,5 +57,4 @@
 .prefChip:hover:not([data-selected='true']) { border-color: color-mix(in srgb, var(--theme-accent, #f0b429) 60%, currentColor 20%); background: #fff; }
 .prefChip[data-selected='true'] { border-color: var(--theme-accent, #f0b429); background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--theme-accent, #f0b429) 60%, transparent); font-weight: 800; }
 @media (max-width: 600px) { .form { padding: 1.5rem; } .step { grid-template-columns: 1fr; } .photoActions { align-items: stretch; } .photoChooseButton { width: 100%; } }
-@media (prefers-reduced-motion: reduce) { .stepFill, .next, .photoChooseButton { transition: none; } .step:not([hidden]) { animation: none; } }. r e p l y B a d g e   {   f o n t - s i z e :   0 . 9 r e m ;   c o l o r :   v a r ( - - c - m u t e d ) ;   m a r g i n - r i g h t :   a u t o ;   f o n t - w e i g h t :   5 0 0 ;   d i s p l a y :   i n l i n e - f l e x ;   a l i g n - i t e m s :   c e n t e r ;   g a p :   0 . 3 5 r e m ;   }  
- 
+@media (prefers-reduced-motion: reduce) { .stepFill, .next, .photoChooseButton { transition: none; } .step:not([hidden]) { animation: none; } }.replyBadge { font-size: 0.9rem; color: var(--c-muted); margin-right: auto; font-weight: 500; display: inline-flex; align-items: center; gap: 0.35rem; }

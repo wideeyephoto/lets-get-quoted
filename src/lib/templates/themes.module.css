@@ -3931,5 +3931,4 @@
   .serviceMatcherInputGroup {
     flex-direction: column;
   }
-}. r e p l y B a d g e   {   f o n t - s i z e :   0 . 9 r e m ;   c o l o r :   c o l o r - m i x ( i n   s r g b ,   c u r r e n t C o l o r   7 0 % ,   t r a n s p a r e n t ) ;   d i s p l a y :   b l o c k ;   m a r g i n - t o p :   0 . 5 r e m ;   }  
- 
+}.replyBadge { font-size: 0.9rem; color: color-mix(in srgb, currentColor 70%, transparent); display: block; margin-top: 0.5rem; }

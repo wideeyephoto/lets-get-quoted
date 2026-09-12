@@ -15,6 +15,10 @@ import { PortalMessageThread } from './PortalMessageThread';
 import MailIcon from '@/components/MailIcon';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { customerTogglePlanAction } from './actions';
+import { PortalTracker } from './PortalTracker';
+import { ReferralButtons } from './ReferralButtons';
+import { DocumentLink } from './DocumentLink';
+import { InViewTracker } from './InViewTracker';
 
 export const dynamic = 'force-dynamic';
 // Never indexed. A live portal link in a search result is somebody's home
@@ -79,6 +83,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
 
   return (
     <>
+      <PortalTracker />
       <ContractorBrandBar brand={brand} context="Customer Portal" />
       <main className="wide-shell workspace-shell payment-shell portal-home">
         {/* Hero & Account Overview */}
@@ -410,7 +415,8 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         {portal.propertyPassports && portal.propertyPassports.length > 0 ? (
           <section className="panel workspace-section-card">
             <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">Durable Home Passport</p>
+              <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'passport' }} />
+                <p className="eyebrow">Durable Home Passport</p>
               <h2>Mechanical systems &amp; property records</h2>
             </div>
 
@@ -482,7 +488,8 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         {/* 4. Active & Past Work History */}
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Work history</p>
+            <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'work_history' }} />
+              <p className="eyebrow">Work history</p>
             <h2>Everything we&apos;ve done</h2>
           </div>
           {portal.jobs.length === 0 ? (
@@ -510,7 +517,8 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         {portal.documents.length > 0 ? (
           <section className="panel workspace-section-card">
             <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">Document & Media Vault</p>
+              <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'vault' }} />
+                <p className="eyebrow">Document & Media Vault</p>
               <h2>Project records, proof & certificates</h2>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem', marginTop: '0.8rem' }}>
@@ -572,7 +580,8 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         {/* 6. Conversation & Direct Message Center */}
         <section id="portal-message-section" className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Communication Center</p>
+            <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'messages' }} />
+              <p className="eyebrow">Communication Center</p>
             <h2>Messages with {portal.businessName}</h2>
           </div>
 
@@ -728,20 +737,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>Your Promo Code:</span>
             <code style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.05em' }}>{referralCode}</code>
           </div>
-          <div className="actions workspace-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <a
-              className="btn primary"
-              href={`sms:?&body=${encodeURIComponent(shareText)}`}
-            >
-              💬 Text to a neighbor
-            </a>
-            <a
-              className="btn secondary"
-              href={`mailto:?subject=${encodeURIComponent(`$50 off with ${portal.businessName}`)}&body=${encodeURIComponent(shareText)}`}
-            >
-              <MailIcon /> Email link
-            </a>
-          </div>
+          <ReferralButtons shareText={shareText} businessName={portal.businessName} />
         </section>
 
         <p className="portal-foot">
