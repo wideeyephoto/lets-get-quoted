@@ -156,12 +156,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                   Your active club status includes exclusive member rates, priority queue, and seasonal tune-ups.
                 </p>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--mute-t50, #64748b)', fontWeight: 600 }}>ESTIMATED ANNUAL VALUE</span>
-                <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>
-                  +${portal.membership.annualSavingsEstimate}/yr
-                </p>
-              </div>
+              
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.7rem', marginTop: '1rem' }}>

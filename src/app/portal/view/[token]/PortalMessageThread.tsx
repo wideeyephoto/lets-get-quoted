@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { sendPortalMessageAction, markPortalMessagesReadAction, loadMorePortalMessagesAction } from './actions';
 import MailIcon from '@/components/MailIcon';
 import { PortalMessageForm } from './PortalMessageForm';
-import type { PortalMessage } from '@/lib/client-portal-data';
+import type { PortalMessage } from '@/lib/client-portal';
 
 type Props = {
   token: string;

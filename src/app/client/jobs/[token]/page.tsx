@@ -105,66 +105,52 @@ export default async function ClientJobDashboardPage({
 }) {
   const params = await paramsPromise;
   const searchParams = (await searchParamsPromise) || {};
-  const dashboard = await getClientJobDashboard(params.token);
-
-  // Loaded from the token independently of the dashboard so an un-migrated
-  // database (no change_orders table) shows the job as it always did rather
-  // than blanking the whole page.
   const access = await resolveJobAccess(params.token);
   const admin = createAdminClient();
-  const clientChangeOrders = access
-    ? toClientChangeOrders(await loadClientChangeOrders(admin, access.accountId, access.jobId))
-    : [];
-  const rawWarranties = access
-    ? await listWarranties(admin, access.accountId, access.jobId)
-    : [];
-  const docUrlsMap: Record<string, Array<{ name: string; url: string }>> = {};
-  if (access && rawWarranties.length > 0) {
-    await Promise.all(
-      rawWarranties.map(async (w) => {
-        if (w.documentPaths && w.documentPaths.length > 0) {
-          docUrlsMap[w.id] = await signedWarrantyDocUrls(admin, access.accountId, w.documentPaths);
-        }
-      })
-    );
-  }
-  const clientWarranties = access
-    ? toClientWarranties(rawWarranties, undefined, docUrlsMap)
-    : [];
 
-  const { data: siteRow } = access
-    ? await admin.from('sites').select('content').eq('account_id', access.accountId).maybeSingle()
-    : { data: null };
+  const [
+    dashboard,
+    clientChangeOrders,
+    { rawWarranties, clientWarranties },
+    { data: siteRow },
+    clientSelections,
+    clientFormSubmissions,
+    clientInsurance,
+    wide,
+  ] = await Promise.all([
+    getClientJobDashboard(params.token),
+    access ? loadClientChangeOrders(admin, access.accountId, access.jobId).then(toClientChangeOrders) : Promise.resolve([]),
+    (async () => {
+      if (!access) return { rawWarranties: [], clientWarranties: [] };
+      const rawWarranties = await listWarranties(admin, access.accountId, access.jobId);
+      const docUrlsMap: Record<string, Array<{ name: string; url: string }>> = {};
+      if (rawWarranties.length > 0) {
+        await Promise.all(
+          rawWarranties.map(async (w) => {
+            if (w.documentPaths && w.documentPaths.length > 0) {
+              docUrlsMap[w.id] = await signedWarrantyDocUrls(admin, access.accountId, w.documentPaths);
+            }
+          })
+        );
+      }
+      return { rawWarranties, clientWarranties: toClientWarranties(rawWarranties, undefined, docUrlsMap) };
+    })(),
+    access ? admin.from('sites').select('content').eq('account_id', access.accountId).maybeSingle() : Promise.resolve({ data: null }),
+    access ? loadClientSelections(admin, access.accountId, access.jobId).then(r => toSignedClientSelections(admin, access.accountId, r)) : Promise.resolve([]),
+    access ? listJobFormSubmissions(admin, access.accountId, access.jobId) : Promise.resolve([]),
+    access ? clientInsuranceFor(admin, access.accountId) : Promise.resolve(null),
+    access ? admin.from('jobs').select('quote_signer_name, quote_signed_at, quoted_amount, quote_signature_path, quote_signature_method').eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+  ]);
+
   const siteContent = getSiteContent(siteRow?.content ?? null);
   const googleReviewDeepUrl = googleReviewUrl({
     placeId: siteContent.testimonials.googlePlaceId,
     listingUrl: siteContent.testimonials.googleUrl,
   });
-  const clientSelections = access
-    ? await toSignedClientSelections(admin, access.accountId, await loadClientSelections(admin, access.accountId, access.jobId))
-    : [];
-  const clientFormSubmissions = access
-    ? await listJobFormSubmissions(admin, access.accountId, access.jobId)
-    : [];
 
-  // Proof of insurance, for the quote. Everything about whether this appears at
-  // all is decided by showsToClient — in particular, an EXPIRED certificate is
-  // never shown. It isn't a stale asset, it's a false assurance somebody would
-  // be relying on when they approve.
-  const clientInsurance = access ? await clientInsuranceFor(admin, access.accountId) : null;
-
-  // The signature on the quote, for the receipt and for the executed document.
-  // Read on its own and behind a fallback because the mark columns ship behind
-  // their own migration: naming a column that isn't there fails the whole
-  // query, and a receipt with no name is a worse answer than a receipt with no
-  // mark. quoted_amount rides along because a legacy single-amount quote has no
-  // line items to total and the receipt still has to name a figure.
-  const readSignature = async (columns: string) =>
-    access
-      ? admin.from('jobs').select(columns).eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle()
-      : { data: null, error: null };
-  const wide = await readSignature('quote_signer_name, quote_signed_at, quoted_amount, quote_signature_path, quote_signature_method');
-  const signatureRow = (wide.error ? (await readSignature('quote_signer_name, quote_signed_at, quoted_amount')).data : wide.data) as
+  const signatureRow = (wide.error && access
+    ? (await admin.from('jobs').select('quote_signer_name, quote_signed_at, quoted_amount').eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle()).data
+    : wide.data) as
     | {
         quote_signer_name?: string | null;
         quote_signed_at?: string | null;

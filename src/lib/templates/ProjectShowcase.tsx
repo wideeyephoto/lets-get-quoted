@@ -1,5 +1,5 @@
-import SafeImage from './SafeImage';
 'use client';
+import SafeImage from './SafeImage';
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { SiteProjectShowcaseStyle } from '@/lib/site-content';
