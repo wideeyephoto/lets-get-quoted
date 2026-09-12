@@ -9,6 +9,7 @@ import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
 import styles from './themes.module.css';
 import { cspNonce } from '@/lib/csp-nonce';
+import { breadcrumbJsonLd, HOME_CRUMB } from '@/lib/seo/breadcrumbs';
 
 // Maps the stored template id to its themes.module.css skin class, so the blog
 // article can borrow the same palette tokens (--c-deep etc.) the header and
@@ -76,6 +77,13 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
   const base = site.custom_domain_verified_at && site.custom_domain
     ? `https://${site.custom_domain}`
     : `https://${site.subdomain}.${rootDomain}`;
+  
+  const crumbs = breadcrumbJsonLd([
+    HOME_CRUMB,
+    { name: 'Blog', path: '/blog' },
+    { name: post.title, path: `/blog/${encodeURIComponent(post.slug)}` },
+  ], base);
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -103,6 +111,7 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
   return (
     <main className={`${templateFontVars} ${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
       <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
       <BlogReadingProgress />
       <header className={styles.blogChromeHeader}>
         <a className={styles.blogChromeBrand} href="/" aria-label={`${site.company_name} home`}>

@@ -161,6 +161,7 @@ export default function SiteBlogIndex({
 
   return (
     <main className={styles.blogArticleShell} style={themeStyle}>
+      <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(crumbs) }} />
       <div className={styles.blogIndex}>
         <a className={styles.blogBack} href="/">{site.company_name || 'Home'}</a>
         <header className={styles.blogIndexHead}>
