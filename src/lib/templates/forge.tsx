@@ -22,6 +22,7 @@ import themeStyles from './forge.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;

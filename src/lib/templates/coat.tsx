@@ -22,6 +22,7 @@ import themeStyles from './coat.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Coat — bold painting / finishes aesthetic (Home Rakshak reference): a deep
 // maroon hero with red bokeh + a cut-out-style worker photo, a red accent,
@@ -146,6 +147,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
             {site.phone && <CallLink site={site} className={styles.coatBtn}>Call {site.phone}</CallLink>}
             <TextLink site={site} className={styles.coatBtn} />
           </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

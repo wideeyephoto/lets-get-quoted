@@ -22,6 +22,7 @@ import themeStyles from './shine.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Shine — modern, premium cleaning look (Purely reference): deep-navy ground,
 // bright-yellow accent, a rounded hero photo with floating "24/7" + "500+"
@@ -159,6 +160,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
             {site.phone && <CallLink site={site} className={styles.shineBtn}>Call {site.phone}</CallLink>}
             <TextLink site={site} className={styles.shineBtn} />
           </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

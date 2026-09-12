@@ -22,6 +22,7 @@ import themeStyles from './guild.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 export default function GuildTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
@@ -165,6 +166,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
             {site.phone && <CallLink site={site} className={styles.primaryCta}>Call {site.phone}</CallLink>}
             <TextLink site={site} className={styles.primaryCta} />
           </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

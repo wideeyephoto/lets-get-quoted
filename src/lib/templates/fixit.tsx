@@ -22,6 +22,7 @@ import themeStyles from './fixit.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Fixit — clean, professional handyman look (Handify reference): white ground,
 // orange accent, an angular orange shape behind a worker photo with a floating
@@ -138,6 +139,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
             {site.phone && <CallLink site={site} className={styles.fixitBtn}>Call {site.phone}</CallLink>}
             <TextLink site={site} className={styles.fixitBtn} />
           </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

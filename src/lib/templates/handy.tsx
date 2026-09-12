@@ -22,6 +22,7 @@ import themeStyles from './handy.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // The trust strip used to be a hardcoded ['Licensed & insured', 'Same-day
 // service', 'Free estimates', 'Satisfaction guaranteed'] shown on EVERY Care
@@ -180,6 +181,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
             {site.phone && <CallLink site={site} className={styles.careBtn}>Call {site.phone}</CallLink>}
             <TextLink site={site} className={styles.careBtn} />
           </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

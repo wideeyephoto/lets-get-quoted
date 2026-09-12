@@ -22,6 +22,7 @@ import themeStyles from './reno.module.css';
 const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Reno — dark-navy + golden-yellow renovation look (Renovation/ThemeMove
 // reference): hexagon motifs, an angular slanted hero photo, bold white
@@ -132,6 +133,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
             {site.phone && <CallLink site={site} className={styles.renoBtn}>Call {site.phone}</CallLink>}
             <TextLink site={site} className={styles.renoBtn} />
           </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />
