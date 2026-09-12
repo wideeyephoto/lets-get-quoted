@@ -168,12 +168,15 @@ export async function POST(request: Request) {
       // Only authenticated, scoped, admitted calls reach this projection. It
       // cannot affect settlement or immutable replay comparisons.
       try {
-        console.info('voice_provider_timing', {
+        const timingData = {
           providerCallId: receipt.providerCallId,
           ...signalWireTimingSummary(payload),
-        });
-      } catch {
+        };
+        console.info('voice_provider_timing', timingData);
+        await admin.from('voice_provider_timing').insert(timingData);
+      } catch (error) {
         // Optional diagnostics must never prevent usage settlement or recovery.
+        console.error('Failed to persist voice_provider_timing', error);
       }
     }
 

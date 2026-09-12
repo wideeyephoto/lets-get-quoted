@@ -103,6 +103,8 @@ export type VoiceAnswerPlan =
     systemPrompt?: string;
     /** Custom summary instructions for the end-of-call post-prompt. */
     postPrompt?: string;
+    /** ASR hints for the provider's speech recognition engine. */
+    hints?: string[];
     /** Minutes after which the agent must stop, whatever else is true. */
     capMinutes: number;
     /** Where to send the caller when the agent hands off. */
