@@ -542,7 +542,7 @@ export async function recordMessagingComplianceVerification(input: Readonly<{
 export type MessagingNumberOperationSummary = Readonly<{
   id: string;
   applicationId: string;
-  type: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+  type: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
   state: 'pending' | 'claimed' | 'request_started' | 'succeeded' | 'failed' | 'indeterminate' | 'cancelled';
   attemptCount: number;
   errorCode: string | null;
@@ -1044,7 +1044,7 @@ export type SignalWireAssignmentActivationEvidence = Readonly<{
 export interface MessagingNumberOperationStore {
   claim(input: Readonly<{
     applicationId: string;
-    operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+    operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
     idempotencyKey: string;
     fingerprint: string;
     payload: Record<string, unknown>;
@@ -1445,7 +1445,7 @@ function safeErrorDetail(error: unknown): string {
 
 async function executeProviderMutation<T extends { id: string }>(input: Readonly<{
   applicationId: string;
-  operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+  operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
   idempotencyKey: string;
   payload: Record<string, unknown>;
   request: (client: SignalWireNumberProvisioningClient) => Promise<T>;

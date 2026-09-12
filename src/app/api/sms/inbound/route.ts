@@ -369,6 +369,14 @@ export async function POST(request: Request) {
     }
 
     // Check if this inbound text is a reply to an active cancellation waitlist offer
+    if (ingress.accountId && inbound.fromNumber && inbound.keyword !== 'stop') {
+      try {
+        await reaffirmSmsConsent(ingress.accountId, inbound.fromNumber);
+      } catch (e) {
+        console.error('Failed to reaffirm SMS consent on inbound reply:', e);
+      }
+    }
+
     if (
       !inbound.providerHandledKeyword &&
       (!inbound.keyword || inbound.keyword === 'other') &&
