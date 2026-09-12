@@ -58,9 +58,21 @@ export default defineConfig({
       // a node environment; component tests that use react-test-renderer or
       // a jsdom/happy-dom environment (see https://v2.vitest.dev/guide/environment)
       // can be added to a separate config with its own coverage scope.
+      // `src/app/**/*.ts` rather than only `src/app/api/**` so that server
+      // actions are measured. They are the product's mutation surface — 117
+      // modules that authenticate the caller, write to the database and move
+      // money, invoked straight from browser forms — and while they sat outside
+      // this list a module no test imported was indistinguishable from a module
+      // that did not exist. Widening it moved the reported figure down, because
+      // it added a large denominator that was never being counted, not because
+      // anything stopped being tested. See docs/untested-code-audit-2026-09-12.md.
+      //
+      // The glob takes .ts only: pages and components are .tsx and still have
+      // no number here, since this suite runs in a node environment. Covering
+      // them needs a second config with a DOM environment.
       include: [
         'src/lib/**/*.ts',
-        'src/app/api/**/*.ts',
+        'src/app/**/*.ts',
         'src/middleware.ts',
       ],
       exclude: [
