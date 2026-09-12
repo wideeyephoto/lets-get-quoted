@@ -144,6 +144,23 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                           {i.affected_services.length ? <div className={styles.muted} style={{ fontSize: '.72rem' }}>{i.affected_services.join(', ')}</div> : null}
                           {i.resolution_summary ? <div style={{ fontSize: '.78rem' }}><strong>Resolution:</strong> {i.resolution_summary}</div> : null}
                           {i.external_url ? <div><a className={styles.rowLink} href={i.external_url} target="_blank" rel="noreferrer">Deploy / incident link →</a></div> : null}
+                          {mayManage ? (
+                            <form action={async (formData) => {
+                              'use server';
+                              const { togglePublishIncidentAction } = await import('./actions');
+                              await togglePublishIncidentAction(formData);
+                            }} style={{ marginTop: '0.5rem' }}>
+                              <input type="hidden" name="incident_id" value={i.id} />
+                              <input type="hidden" name="published" value={i.published ? 'false' : 'true'} />
+                              <button type="submit" className="btn secondary" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+                                {i.published ? 'Unpublish from /status' : 'Publish to /status'}
+                              </button>
+                            </form>
+                          ) : (
+                            <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '0.5rem' }}>
+                              {i.published ? 'Published to /status' : 'Internal only'}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <span className={`${styles.pill} ${i.severity === 'critical' ? styles.bad : i.severity === 'warning' ? styles.warn : styles.neutral}`}>
@@ -221,6 +238,11 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
 
               <label htmlFor="external_url">Deploy, status, or incident URL (optional)</label>
               <input id="external_url" name="external_url" className={styles.input} type="url" placeholder="https://…" />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', marginBottom: '1rem' }}>
+                <input type="checkbox" id="published" name="published" value="true" style={{ width: 'auto' }} />
+                <label htmlFor="published" style={{ margin: 0 }}>Publish to customer-facing /status page</label>
+              </div>
 
               <button type="submit" className="btn primary">Log it</button>
             </form>

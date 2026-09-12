@@ -107,7 +107,7 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   buckets, egress, log retention, connections — have never been sized. Close with
   `docs/vendor-account-register.md` carrying dated console reads, SignalWire auto-recharge confirmed,
   and a dated Supabase tier decision citing usage against each ceiling.
-- [ ] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
+- [x] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
   customer and no `/status` route exists. Close with a deployed anonymous `/status` on the frozen
   SHA, `platform_incidents` with anon-read-published-only RLS, operator open/update/resolve writing
   `admin_actions`, and a rehearsed incident cycle.

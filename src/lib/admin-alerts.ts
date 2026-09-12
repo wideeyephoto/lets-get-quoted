@@ -494,19 +494,19 @@ export async function countFailedEmailEvents(admin: SupabaseClient): Promise<num
 export type PlatformIncidentRow = {
   id: string;
   kind: string;
+  severity: string;
   title: string;
   description: string | null;
-  severity: string;
+  impact_summary: string | null;
+  affected_services: string[];
+  resolution_summary: string | null;
+  root_cause: string | null;
+  external_url: string | null;
   started_at: string;
   resolved_at: string | null;
-  /** Who wrote it down. These rows are hand-authored, so it always matters. */
-  created_by: string | null;
+  created_by: string;
   owner: string | null;
-  affected_services: string[];
-  impact_summary: string | null;
-  root_cause: string | null;
-  resolution_summary: string | null;
-  external_url: string | null;
+  published: boolean;
 };
 
 export type ListIncidentsResult = {
