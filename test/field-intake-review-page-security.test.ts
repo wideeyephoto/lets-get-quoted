@@ -3,6 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/navigation', () => ({
+  // Matches the real export: Next's own control-flow errors go back up, and
+  // anything else is left for the caller's catch to handle.
+  unstable_rethrow: (thrown: unknown) => {
+    const digest = (thrown as { digest?: unknown })?.digest;
+    if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw thrown;
+  },
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),

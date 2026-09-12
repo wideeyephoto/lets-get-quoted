@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { createAdBudgetCheckoutSession } from '@/lib/ad-billing';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
+import { unstable_rethrow } from 'next/navigation';
 
 export async function POST(request: Request) {
   try {
@@ -138,6 +139,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: result.url, sessionId: result.sessionId });
   } catch (err) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     console.error('Failed to create ad budget session:', err);
     const message = err instanceof Error ? err.message : 'Internal server error';
     return NextResponse.json({ error: message }, { status: 400 });

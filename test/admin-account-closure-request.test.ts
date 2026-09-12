@@ -7,7 +7,7 @@ const { authorize, request, processJob, log } = vi.hoisted(() => ({
 vi.mock('@/lib/auth', async original => ({ ...await original<typeof import('@/lib/auth')>(), requireMfaPermission: authorize }));
 vi.mock('@/lib/admin', async original => ({ ...await original<typeof import('@/lib/admin')>(), logAdminAction: log }));
 vi.mock('@/lib/account-closure-orchestrator', () => ({ requestAccountClosure: request, processClosureJob: processJob }));
-vi.mock('next/navigation', () => ({ redirect: (url: string) => { throw new Error(`redirect:${url}`); } }));
+vi.mock('next/navigation', () => ({ unstable_rethrow: (t: unknown) => { const d = (t as { digest?: unknown })?.digest; if (typeof d === 'string' && d.startsWith('NEXT_REDIRECT')) throw t; }, redirect: (url: string) => { throw new Error(`redirect:${url}`); } }));
 
 beforeEach(() => {
   vi.clearAllMocks();

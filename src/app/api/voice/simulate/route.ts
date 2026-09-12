@@ -6,6 +6,7 @@ import { getAvailableBookingDays } from '@/lib/booking';
 import { calculateCleanEnergyRebates } from '@/lib/rebates/clean-energy-rebate-engine';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
+import { unstable_rethrow } from 'next/navigation';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -229,6 +230,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       extractedIntake,
     });
   } catch (err: unknown) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     const message = err instanceof Error ? err.message : 'Simulation failed';
     return NextResponse.json({ error: message }, { status: 500 });
   }

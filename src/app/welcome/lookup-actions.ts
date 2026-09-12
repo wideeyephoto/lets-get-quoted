@@ -3,6 +3,7 @@
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { geocodeArea } from '@/lib/geocode';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { unstable_rethrow } from 'next/navigation';
 
 export type FirstRunPlaceResult =
   | { ok: true; place: string }
@@ -30,7 +31,10 @@ export async function resolveFirstRunPlaceAction(zip: string): Promise<FirstRunP
     }
 
     return { ok: true, place: result.place };
-  } catch {
+  } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     return { ok: false, reason: 'error' };
   }
 }
