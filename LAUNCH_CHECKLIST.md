@@ -68,6 +68,248 @@ all four inbound webhooks deduplicated, environment parity complete except
 platform-provided variables, no public caching of tenant data, and no CORS
 wildcards.
 
+## Top-up add-on rail — gap audit 2026-09-12
+
+Traced the whole top-up rail at `a0e6833`: sale surface (`catalog.ts`,
+`top-up-purchase.ts`, `top-up-purchase-entrypoint.ts`,
+`top-up-purchase-checkout.ts`), receipt (`stripe-top-up-webhook.ts`),
+fulfillment (`top-up-event-projector.ts`, `top-up-projection-worker.ts`),
+recurring lifecycle (`capacity-lifecycle.ts`, `capacity-lifecycle-worker.ts`,
+`subscription-cancellation.ts`), reversal (`addon-refunds.ts`,
+`addon-refund-worker.ts`), consumption (the six `reserve_usage_credits`
+callers), alerting (`scan_operational_failures`), and the operator documents.
+The rail's core is sound — durable claim before Stripe, catalog-not-metadata
+quantities, purpose-bound webhook scope, a sweep rather than a webhook for
+recurring state, a per-row cancel path, and capacity cancellation on account
+deletion all verified present. The gaps below are the edges around it. Nothing
+here was run locally: this tree has no `node_modules`, so see the last item.
+
+### Sale surface is wider than every gate that guards it
+
+- [ ] **Twelve SKUs are sellable; every gate and allowlist is written for six.**
+  `TOP_UPS_WITHHELD` is `Object.freeze({})` ([catalog.ts:415](src/lib/billing/catalog.ts#L415)),
+  so `SELLABLE_TOP_UP_IDS` is all twelve: `flex_text_250`, `text_1000`,
+  `marketing_email_5000`, `ai_intake_100`, `ai_writing_250`, `storage_100gb`,
+  `office_user`, `crew_user`, `ai_voice_flex`, `ai_voice_solo`,
+  `ai_voice_growth`, `voice_minutes_100`. §403's PASS is "for all six" and
+  "anything short of six for six", which can pass while six live Prices are
+  unverified. `npm run inspect:live-top-ups` is not the limitation — it parses
+  the catalog source ([inspect-live-top-up-prices.mjs:46](scripts/inspect-live-top-up-prices.mjs#L46))
+  and will print twelve. **PASS = twelve for twelve**, re-stated in §403.
+- [ ] **`crew_user` returned to sale as a side effect of emptying the withheld map.**
+  It was withheld on 2026-08-23 because "no code in the product can cancel a
+  top-up subscription" ([pre-launch-handoff-2026-08-23.md:100](docs/pre-launch-handoff-2026-08-23.md)).
+  That blocker is genuinely closed — `PurchasedCapacityList` plus
+  `cancelPurchasedCapacitySubscriptionAtPeriodEnd` ([subscription-cancellation.ts:684](src/lib/billing/subscription-cancellation.ts#L684))
+  give a per-row cancel, and `account-deletion-saga.ts:155` cancels capacity
+  subscriptions on deletion — but no item re-verified it for `crew_user`, and
+  [top-up-purchase.ts:176](src/lib/billing/top-up-purchase.ts#L176) still states
+  "As of 2026-08-23 NOTHING recurring is sellable", now false for six SKUs.
+  Fix the comment in the same commit as the verification.
+- [ ] **Nothing refuses a second purchase of the same recurring add-on.** The
+  Stripe idempotency identity is workspace + `operationId` + livemode, and
+  `operationId` is a fresh UUID per render, so two page loads are two real
+  subscriptions. For seats that is correct (buy three). For `ai_voice_*` it is
+  not: voice entitlement is a boolean — `included || purchased > 0`
+  ([entitlement.ts:100](src/lib/voice/entitlement.ts#L100)) — so a second
+  $69/mo subscription adds no entitlement, only a second invoice. Needs a
+  per-SKU "you already have this" refusal in
+  `executeTopUpPurchaseCheckout` for the three voice SKUs.
+
+### Refunds reverse six SKUs and silently ignore the other six
+
+- [ ] **A refunded credit pack keeps its credits.** `addon-refunds.ts:13`
+  hardcodes `SKUS` to exactly the 2026-09-08 six (`voice_minutes_100`,
+  `ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, `storage_100gb`,
+  `office_user`). Anything else returns `null` at
+  [addon-refunds.ts:100](src/lib/billing/addon-refunds.ts#L100), and
+  [addon-refund-worker.ts:87](src/lib/billing/addon-refund-worker.ts#L87) turns
+  a null contract into `state = 'ignored'`. So refunding `text_1000` ($42),
+  `flex_text_250`, `marketing_email_5000`, `ai_intake_100`, `ai_writing_250` or
+  `crew_user` returns the money and leaves the granted units spendable, with no
+  failure and no finding. Either extend `SKUS` to all twelve with the matching
+  reversal shape per `fulfillment` kind, or refuse the refund path for SKUs it
+  cannot reverse — not `ignored`.
+- [ ] **Decide the reversal rule for a partially-spent credit pack before
+  extending the allowlist.** The five credit SKUs grant into `usage_credit_lots`
+  with `source_type='purchase'` and no expiry. A refund after 400 of 1,000
+  credits are spent has no currently-written answer; the refund ledger's
+  future-credit-debt shape ([20260908175533](migrations/20260908175533_addon_refund_reversal_and_future_credit_debt.sql))
+  is the place to settle it, not the worker.
+
+### Money moved and nothing was granted — no alert fires
+
+- [ ] **Terminal `ignored` outcomes on the money rail are invisible to the
+  operational monitor.** `scan_operational_failures` signals only
+  `processing_status='failed'`, a `received` row older than 15 minutes, or a
+  `processing` lease expired past 5 minutes
+  ([20260909133220:61-63](migrations/20260909133220_operational_alert_delivery.sql#L61)).
+  The projector's non-grant terminals are none of those. `capacity_fulfillment_deferred`
+  is reachable today: a paid `recurring_capacity` Session whose `subscription`
+  is absent or fails `SUBSCRIPTION_ID_PATTERN` is marked ignored and granted
+  nothing ([top-up-event-projector.ts:390](src/lib/billing/top-up-event-projector.ts#L390)),
+  which is money taken for capacity nobody can cancel. `top_up_not_a_purchase`,
+  `top_up_fulfillment_withheld` and the refund worker's `ignored` are equally
+  silent. Add a finding category for "paid, projected, granted nothing" and for
+  refund jobs resolved `ignored`, both keyed so one row is one alert.
+
+### §7's environment table encodes the ordering its own §406 forbids
+
+- [ ] **§7 lists `LGQ_TOP_UP_PURCHASE_ENABLED=1` and none of the flags that must
+  precede it.** Absent from the table: `STRIPE_TOP_UP_WEBHOOK_SECRET`,
+  `LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED`,
+  `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED`,
+  `LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED`,
+  `LGQ_ADDON_REFUND_REVERSAL_ENABLED`, and every consumption meter below. §406
+  and [top-up-purchases-go-live-runbook.md:48](docs/top-up-purchases-go-live-runbook.md)
+  both require webhook → worker → purchase; the table as written is the
+  reversed ordering. Add the rows with expected values and the redeploy that
+  baked each one.
+- [ ] **A purchased credit is unspendable unless its resource's meter flag is
+  on.** Each consumer reads a meter flag (write the ledger) and a gate flag
+  (also refuse); meter off means the balance is never debited. Per SKU:
+  `LGQ_TEXT_CREDIT_METER_ENABLED` for `text_1000` and `flex_text_250`,
+  `LGQ_MARKETING_EMAIL_METER_ENABLED` for `marketing_email_5000`,
+  `LGQ_AI_WRITING_METER_ENABLED` for `ai_writing_250`,
+  `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` for `ai_intake_100` (single flag — no
+  separate meter), `LGQ_VOICE_MINUTE_METER_ENABLED` for `voice_minutes_100`.
+  Selling `text_1000` with its meter off takes $42 for a number that never
+  decreases. **PASS =** one row per sellable credit SKU naming its meter flag
+  and its deployed Production value.
+- [ ] **`LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED` is the only mechanism that
+  ever revokes recurring capacity.** The platform Billing webhook deliberately
+  refuses capacity subscriptions as a foreign rail
+  ([stripe-billing-subscription-events.ts:103](src/lib/billing/stripe-billing-subscription-events.ts#L103)),
+  so no event path exists by design — reconciliation is the hourly
+  `capacity-lifecycle` sweep alone (`vercel.json`, `37 * * * *`). With the flag
+  off, a canceled or unpaid $15/mo seat, $69/mo voice add-on or 100 GB of
+  storage keeps its capacity indefinitely and nothing fails. This flag is now a
+  prerequisite of selling any recurring SKU, not an optional worker.
+- [ ] **`LGQ_USAGE_RESERVATION_EXPIRY_ENABLED` off leaks purchased balance.**
+  Consumers reserve before the effect and commit after; the
+  `usage-reservation-expiry` cron is what releases a reservation whose
+  operation died. Off, a purchased balance drains into reservations that never
+  return, and the customer sees credits they cannot spend.
+
+### The top-up Checkout Session pins far less than the base plan's
+
+The base-plan call pins `customer`, `automatic_tax`, `payment_method_types` and
+`expires_at`, then re-asserts all four on the Session Stripe returns
+([stripe-billing-subscription-checkout.ts:377](src/lib/billing/stripe-billing-subscription-checkout.ts#L377),
+[:485](src/lib/billing/stripe-billing-subscription-checkout.ts#L485),
+[:531](src/lib/billing/stripe-billing-subscription-checkout.ts#L531)).
+`buildTopUpCheckoutParams` ([top-up-purchase.ts:181](src/lib/billing/top-up-purchase.ts#L181))
+sets only `mode`, `line_items`, `metadata`, `subscription_data`/`payment_intent_data`
+and the two URLs, and the top-up assertion checks only mode, price, amount and
+metadata equality. Each of the four is a decision that should be made here, not
+inherited from a Dashboard default.
+
+- [ ] **No Stripe Customer is bound, so each recurring add-on creates its own.**
+  Checkout in `mode: 'subscription'` requires a Customer and creates one when
+  none is passed, so a workspace accumulates one Stripe Customer per add-on,
+  none of them the base plan's. A card updated for the plan does not fix add-on
+  dunning, and `overage-settlement-worker.ts:126` — which resolves a
+  workspace's customer from `billing_subscriptions.provider_customer_id` —
+  cannot see add-on payment methods at all. In `mode: 'payment'` the default
+  `customer_creation: 'if_required'` usually creates no Customer, so a one-time
+  top-up is an unlinked charge. Bind the workspace's existing
+  `provider_customer_id` and assert it, as the base plan does.
+- [ ] **`payment_method_types` is unset, so the platform Dashboard decides what
+  a top-up may be paid with.** The base plan pins exactly `['card']`. The
+  projector does handle delayed rails correctly (`awaiting_async_payment`,
+  `async_payment_succeeded`/`failed`), but an offer nobody chose is still an
+  offer, and on a recurring SKU it changes what dunning looks like. Pin it.
+- [ ] **`automatic_tax` is unset while every top-up Price is required to be
+  `tax_behavior: 'exclusive'`** ([top-up-purchase.ts:128](src/lib/billing/top-up-purchase.ts#L128)).
+  Exclusive with automatic tax off collects no tax on any top-up. The base plan
+  sets `automatic_tax.enabled = false` explicitly and asserts it, so its stance
+  is a recorded decision; the top-up rail's is a default. Decide, set it, and
+  assert it.
+- [ ] **`expires_at` is unset**, so a top-up Session lives Stripe's default 24
+  hours while the durable operation claim is what holds the purchase open.
+  Pin it to the same contract the base plan uses so the two cannot disagree
+  about when an abandoned checkout is dead.
+- [ ] **Decide whether a one-time top-up gets an invoice or receipt.** No
+  `invoice_creation`, no `receipt_email`, and in payment mode usually no
+  Customer, so whether a contractor who spends $42 gets anything for their
+  books currently depends on a Stripe Dashboard email setting rather than on
+  code. For a B2B buyer this is a support request waiting to happen.
+
+### Operator documents that will mislead whoever follows them
+
+- [ ] **The runbook's worker-verification query names a cron job that does not
+  exist.** [top-up-purchases-go-live-runbook.md:98](docs/top-up-purchases-go-live-runbook.md)
+  reads `WHERE job = 'billing-workers'`; the registered name is
+  `top-up-projection` ([route.ts:11](src/app/api/cron/top-up-projection/route.ts#L11)).
+  The query returns zero rows forever, and zero rows is indistinguishable from a
+  worker that never ran — so Step 3's proof can never be obtained, in exactly
+  the step whose whole purpose is proving the worker drains before money can be
+  taken.
+- [ ] **The runbook's sellable list is six SKUs and two prices are wrong.**
+  Line 62 lists only the pre-2026-09-08 six and states `marketing_email_5000`
+  at $19 (catalog: $17, [catalog.ts:280](src/lib/billing/catalog.ts#L280)) and
+  `ai_writing_250` at $12 (catalog: $19, [catalog.ts:302](src/lib/billing/catalog.ts#L302))
+  — the two read as transposed. It also never names
+  `LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED` or
+  `LGQ_ADDON_REFUND_REVERSAL_ENABLED`, both now prerequisites because recurring
+  SKUs are sellable. Its three-flag sequence needs to become five.
+- [ ] **§2's Top-Up Add-Ons contract audit still reads as current** while
+  asserting that `storage_100gb`, `office_user`, `ai_voice_flex`,
+  `ai_voice_solo`, `ai_voice_growth` and `voice_minutes_100` "have no live Price
+  and remain excluded from sale" (lines 619-626). §403 supersedes it; say so on
+  the stale rows rather than leaving two sections of this file disagreeing about
+  what is on sale.
+- [ ] **§403's "credit ledger has no consumer" (line 425) is stale and hides the
+  real condition.** Six consumers call `reserve_usage_credits`:
+  [text-credit-usage.ts:163](src/lib/billing/text-credit-usage.ts#L163),
+  [voice-minute-usage.ts:265](src/lib/billing/voice-minute-usage.ts#L265),
+  [marketing-email-usage.ts:111](src/lib/billing/marketing-email-usage.ts#L111),
+  [ai-intake-usage.ts:286](src/lib/billing/ai-intake-usage.ts#L286),
+  [ai-writing-usage.ts:101](src/lib/billing/ai-writing-usage.ts#L101) and
+  [sms-field-intake-usage.ts:58](src/lib/sms-field-intake-usage.ts#L58). The
+  consumers exist; they are flag-dark. Restate the item as the meter-flag
+  requirement above, which is the thing that can actually be verified.
+
+### Surface truthfulness
+
+- [ ] **The Plan & usage limits table reports purchased storage as the plan's
+  allowance.** [PlanUsageSection.tsx:168](src/app/dashboard/settings/PlanUsageSection.tsx#L168)
+  renders `limits.storageGb` from `workspace_entitlements.feature_limits` alone,
+  while the storage card directly above it renders `workspace_storage_state_v1`,
+  which is plan **plus** purchased capacity
+  ([20260819000000:194-212](migrations/20260819000000_workspace_storage_usage.sql#L194)).
+  Buy `storage_100gb` on Flex and the card says 105 GB while the row beneath it
+  says 5 GB. The seat rows were fixed for precisely this reason — see the
+  comment at [PlanUsageSection.tsx:161](src/app/dashboard/settings/PlanUsageSection.tsx#L161),
+  "this row read the plan alone, so a purchased seat worked and was invisible" —
+  and storage was left behind. `storage_100gb` went on sale 2026-09-08, so the
+  row is wrong for every buyer. The upload guard itself is correct; only the
+  stated entitlement is wrong.
+
+### Verification not yet performed
+
+- [ ] **No top-up suite was executed for this audit.** This tree has no
+  `node_modules`, so every finding above is from reading source, SQL and
+  `vercel.json`, not from a run. Twenty relevant suites exist —
+  `top-up-purchase-checkout`, `top-up-event-projector`,
+  `top-up-projection-worker`, `top-up-capacity-projection`,
+  `stripe-top-up-webhook-route`, `addon-refunds`,
+  `purchased-capacity-lifecycle`, `capacity-lifecycle-worker-period`,
+  `paid-addon-lifecycle`, `credit-lots`, `plan-usage-capacity`,
+  `seed-stripe-top-up-prices-script` and the migration suites. Run them, plus
+  `npm run test:pg17:capacity-grant`, and record the counts here.
+- [ ] **`npm run inspect:live-top-ups` has still never been run against live.**
+  §403 carries it as operator-required with no `.env.live.local` in this
+  checkout; it remains the only check that a Buy button maps to a real Price.
+  Per the first item, its PASS is twelve for twelve.
+- [ ] **`.env.example` defines eighteen billing flags twice**, among them every
+  meter and gate on the consumption rail (`LGQ_TEXT_CREDIT_METER_ENABLED` at
+  502 and 703, `LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED` at 486 and 687,
+  `LGQ_USAGE_RESERVATION_EXPIRY_ENABLED` at 495 and 696, and fifteen more).
+  Values agree today so no behavior changes, but §406's "reconcile all 67
+  production feature flags" reads a file where half this rail appears twice.
+  Low severity, worth one deduplicating commit before that reconciliation.
+
 ## Coverage gaps opened — 2026-09-11
 
 Ten requirements no prior item covered. Verified absent against this checklist at
