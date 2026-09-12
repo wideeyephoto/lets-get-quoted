@@ -89,7 +89,7 @@ export default async function AdminQuickStopsPage({ searchParams: searchParamsPr
       </header>
 
       {accountId ? (
-        <div className={`${styles.banner} ${styles.ok}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+        <div role="status" className={`${styles.banner} ${styles.ok}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
           <span>Showing {scopedName ? <strong>{scopedName}</strong> : 'one account'} only.</span>
           <span>
             <Link href={`/admin/accounts/${accountId}`} className={styles.rowLink}>Back to the account →</Link>

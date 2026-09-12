@@ -181,15 +181,15 @@ export default async function AdminAccountsPage({
         </div>
       ) : null}
 
-      {searchParams.deleted ? <div className={`${styles.banner} ${styles.ok}`}>Account deleted.</div> : null}
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {searchParams.deleted ? <div role="status" className={`${styles.banner} ${styles.ok}`}>Account deleted.</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
       {!rowsAvailable || !totalAvailable || !syntheticAvailable || !ownerEmailsAvailable ? (
-        <div className={`${styles.banner} ${styles.err}`}>Account data is incomplete. Missing rows, totals, owner emails, or entitlement snapshots are not being treated as valid values.</div>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>Account data is incomplete. Missing rows, totals, owner emails, or entitlement snapshots are not being treated as valid values.</div>
       ) : null}
 
       {syntheticAvailable && syntheticCount > 0 ? (
-        <div className={`${styles.banner} ${styles.ok}`}>
+        <div role="status" className={`${styles.banner} ${styles.ok}`}>
           {includeTestRecords
             ? `Showing production and ${syntheticCount} synthetic ${syntheticCount === 1 ? 'account' : 'accounts'}.`
             : `${syntheticCount} synthetic ${syntheticCount === 1 ? 'account is' : 'accounts are'} excluded from production counts.`}{' '}

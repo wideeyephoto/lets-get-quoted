@@ -76,9 +76,9 @@ export default async function AdminCaseDetailPage({
         </div>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE_MESSAGES[searchParams.done] ?? 'Done.'}</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
-      {!staffAvailable ? <div className={`${styles.banner} ${styles.err}`}>The staff directory is unavailable, so assignment choices are incomplete.</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{DONE_MESSAGES[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {!staffAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>The staff directory is unavailable, so assignment choices are incomplete.</div> : null}
 
       <div className={styles.detailGrid}>
         <div>

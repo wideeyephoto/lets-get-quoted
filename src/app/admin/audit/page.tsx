@@ -87,7 +87,7 @@ export default async function AdminAuditPage({ searchParams: searchParamsPromise
         {actor || action || searchParams.from || searchParams.to ? <Link className="btn secondary" href="/admin/audit">Clear</Link> : null}
       </form>
 
-      {!result.available ? <div className={`${styles.banner} ${styles.err}`}>Audit data is unavailable. No empty history is being inferred.</div> : null}
+      {!result.available ? <div role="status" className={`${styles.banner} ${styles.err}`}>Audit data is unavailable. No empty history is being inferred.</div> : null}
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>{result.total.toLocaleString('en-US')} actions · page {page} of {pageCount}</h2>

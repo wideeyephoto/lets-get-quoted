@@ -88,22 +88,22 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
       </header>
 
       {!queue.available || !latest.available ? (
-        <div className={`${styles.banner} ${styles.err}`}>Review data is incomplete. {queue.unavailableSources.length ? `Could not read ${queue.unavailableSources.join(', ')}.` : 'Could not read review dispositions.'} No empty state should be treated as clear.</div>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>Review data is incomplete. {queue.unavailableSources.length ? `Could not read ${queue.unavailableSources.join(', ')}.` : 'Could not read review dispositions.'} No empty state should be treated as clear.</div>
       ) : null}
       {queue.truncated ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           <strong>Signal cap reached:</strong> Over 5,000 records were found in the {queue.windowDays}-day window across accounts, payments, or no-shows. The risk queue was capped at the most recent 5,000 rows per data source; older activity may be missing from the scores below.
         </div>
       ) : null}
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>Review disposition recorded.</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Choose a disposition and enter a reason of at least four characters.</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>Review disposition recorded.</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>Choose a disposition and enter a reason of at least four characters.</div> : null}
 
       {/* The stated principle, made structural rather than decorative: a
           dispute is a customer's assertion, not a finding against the
           contractor, and a high refund rate is often a business that makes
           things right. Saying so here is what stops a queue position becoming
           an accusation. */}
-      <div className={`${styles.banner} ${styles.ok}`}>
+      <div role="status" className={`${styles.banner} ${styles.ok}`}>
         <strong>A signal is not a violation.</strong> Disputes are customer assertions, not findings — many resolve in
         the contractor&rsquo;s favour. Confirmed outcomes are listed separately from signals for that reason. Read both
         columns before doing anything.

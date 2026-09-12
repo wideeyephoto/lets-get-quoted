@@ -32,7 +32,7 @@ export default async function CronJobHistoryPage({ params: paramsPromise }: { pa
       </div>
       <p className={styles.lead}>{spec.consequence}</p>
     </header>
-    {!history.available ? <div className={`${styles.banner} ${styles.err}`}>Run history is unavailable. A blank table is not being treated as no runs.</div> : null}
+    {!history.available ? <div role="status" className={`${styles.banner} ${styles.err}`}>Run history is unavailable. A blank table is not being treated as no runs.</div> : null}
     <section className={styles.panel}>
       <h2 className={styles.panelTitle}>Recent runs · {runs.length}</h2>
       {history.available && runs.length === 0 ? <p className={styles.emptyState}>No run history recorded.</p> : null}

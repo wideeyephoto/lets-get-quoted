@@ -66,18 +66,18 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
         <p className={styles.lead}>Open a case for anything that needs staff follow-up — a general platform issue or something tied to one account.</p>
       </header>
 
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
       {invalidAccountRequested ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           The specified account ID ({targetAccountId}) was not found. Please select an account from the list or leave it unassigned for a general platform case.
         </div>
       ) : null}
       {totalAccounts > accounts.length ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           Showing {accounts.length} of {totalAccounts.toLocaleString('en-US')} accounts. If your account is not in the dropdown, open the case directly from that account&apos;s page.
         </div>
       ) : null}
-      {!accountsAvailable || !staffAvailable ? <div className={`${styles.banner} ${styles.err}`}>Account or staff choices are incomplete. Refresh before assigning this case.</div> : null}
+      {!accountsAvailable || !staffAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Account or staff choices are incomplete. Refresh before assigning this case.</div> : null}
 
       <section className={styles.panel}>
         <form action={createCaseAction} className={styles.formStack}>

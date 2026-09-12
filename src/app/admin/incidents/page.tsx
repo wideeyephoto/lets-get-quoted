@@ -89,9 +89,9 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
         </p>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
-      {diagnostics.failed.includes('incidents') ? <div className={`${styles.banner} ${styles.err}`}>Incident history is unavailable. A blank list is not an all-clear.</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {diagnostics.failed.includes('incidents') ? <div role="status" className={`${styles.banner} ${styles.err}`}>Incident history is unavailable. A blank list is not an all-clear.</div> : null}
 
       {open.length > 0 ? (
         <section className={styles.panel} style={{ borderColor: 'rgba(252,165,165,0.4)' }}>

@@ -1442,7 +1442,7 @@ export default async function AdminAccountDetailPage({
 
       {/* Alert Banners */}
       {irreversibleWork.activeClosure && (
-        <div className={`${styles.banner} ${styles.err}`} style={{ borderLeft: '4px solid #f87171' }}>
+        <div role="status" className={`${styles.banner} ${styles.err}`} style={{ borderLeft: '4px solid #f87171' }}>
           <strong>⚠️ Account Closure Job Active:</strong> Closure subject <code>{irreversibleWork.activeClosure.closureSubjectId}</code>.
           Local disposal: <strong>{irreversibleWork.activeClosure.localDisposalState}</strong> ·
           Stripe: <strong>{irreversibleWork.activeClosure.stripeState}</strong> ·
@@ -1463,13 +1463,13 @@ export default async function AdminAccountDetailPage({
         </div>
       )}
       {legalHold && (
-        <div className={`${styles.banner} ${styles.err}`} style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #ef4444' }}>
+        <div role="status" className={`${styles.banner} ${styles.err}`} style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #ef4444' }}>
           <span>⚖️ LEGAL HOLD ACTIVE — Automated data purges, closures, and dispositions are blocked for this account.</span>
           <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>Governed by statutory compliance & audit standards</span>
         </div>
       )}
       {irreversibleWork.recoverableDeletions.length > 0 && (
-        <div className={`${styles.banner} ${styles.warn}`} style={{ borderLeft: '4px solid #fbbf24' }}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`} style={{ borderLeft: '4px solid #fbbf24' }}>
           <strong>🗑️ {irreversibleWork.recoverableDeletions.length} item(s) in trash bin:</strong>{' '}
           {irreversibleWork.recoverableDeletions.slice(0, 3).map((d) => `${d.title} (${d.daysRemaining}d ${d.hoursRemaining}h left)`).join(', ')}
           {irreversibleWork.recoverableDeletions.length > 3 ? '...' : ''}{' '}
@@ -1478,9 +1478,9 @@ export default async function AdminAccountDetailPage({
           </Link>
         </div>
       )}
-      {doneMessage ? <div className={`${styles.banner} ${styles.ok}`}>{doneMessage}</div> : null}
+      {doneMessage ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{doneMessage}</div> : null}
       {searchParams?.error ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           {ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}
         </div>
       ) : null}

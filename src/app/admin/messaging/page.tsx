@@ -41,7 +41,7 @@ export default async function AdminMessagingPage() {
       </header>
 
       {health.unavailable.length ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Messaging health is incomplete: {health.unavailable.join(', ')} could not be read. Missing data is not an all-clear.
         </div>
       ) : null}

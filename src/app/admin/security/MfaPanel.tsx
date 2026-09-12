@@ -200,7 +200,7 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
   return <section className={styles.panel} aria-busy={busy}>
     <h2 className={styles.panelTitle}>Two-factor authentication</h2>
     <p className={styles.muted}>Use a passkey from Apple Passwords, Dashlane, or your device. Authenticator codes remain available as backup.</p>
-    {stepUp && !verified ? <div className={`${styles.banner} ${styles.err}`}>This action needs an authenticator check before it can continue.</div> : null}
+    {stepUp && !verified ? <div role="status" className={`${styles.banner} ${styles.err}`}>This action needs an authenticator check before it can continue.</div> : null}
     <dl className={styles.kv}>
       <dt>Current session</dt><dd><span className={`${styles.pill} ${verified ? styles.good : styles.warn}`}>{verified ? 'MFA verified' : busy ? 'Checking…' : 'Verification required'}</span></dd>
       <dt>Passkeys</dt><dd>{security?.passkeysUnavailable ? 'Temporarily unavailable' : security?.passkeys.length ? `${security.passkeys.length} enrolled` : 'Not enrolled'}</dd>

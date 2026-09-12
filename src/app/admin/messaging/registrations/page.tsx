@@ -208,27 +208,27 @@ export default async function MessagingRegistrationsPage({
       </header>
 
       {searchParams.done === '1' ? (
-        <div className={`${styles.banner} ${styles.ok}`}>Operation completed. Review the durable state below.</div>
+        <div role="status" className={`${styles.banner} ${styles.ok}`}>Operation completed. Review the durable state below.</div>
       ) : null}
       {searchParams.error === '1' ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Operation did not complete. Review the current durable state and server logs before retrying. Error reference:{' '}
           <code>{errorCorrelation ?? 'unavailable'}</code>.
         </div>
       ) : null}
       {!gateEnabled ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           Spend gate is dark. Search and review are available, but purchase, webhook update, and campaign assignment fail closed until
           <code> LGQ_SIGNALWIRE_PROVISIONING_ENABLED=1</code> is deliberately configured.
         </div>
       ) : null}
       {!credentialsPresent ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           SignalWire provisioning credentials are incomplete. Values remain server-only and are never displayed here.
         </div>
       ) : null}
       {providerProvisioningReadiness && providerProvisioningReadiness.kind !== 'ready' ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Dedicated-number carrier mutations are blocked: {readinessCopy(providerProvisioningReadiness.reason)}{' '}
           No provider client is constructed while this check fails.
         </div>
@@ -236,13 +236,13 @@ export default async function MessagingRegistrationsPage({
       {providerProvisioningReadiness?.kind === 'ready'
           && deliveryLaneReadiness
           && deliveryLaneReadiness.kind !== 'ready' ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           Carrier provisioning may continue, but customer texting remains dark: {readinessCopy(deliveryLaneReadiness.reason)}{' '}
           An approved provider assignment cannot send traffic until every delivery-lane gate is released.
         </div>
       ) : null}
       {!purchasePolicy ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           Carrier purchase is refused because LGQ has no authoritative database price and aggregate monthly spend ceiling.
           Environment values are only a proposal; no purchase button can authorize an unknown or unpersisted price.
         </div>
@@ -389,7 +389,7 @@ export default async function MessagingRegistrationsPage({
               <section className={styles.panel}>
                 <h2 className={styles.panelTitle}>Durable provider operations</h2>
                 {indeterminate.length ? (
-                  <div className={`${styles.banner} ${styles.err}`}>
+                  <div role="status" className={`${styles.banner} ${styles.err}`}>
                     {indeterminate.length} operation(s) have an indeterminate post-request outcome. Do not retry or advance automatically;
                     reconcile in SignalWire and the database first.
                   </div>
@@ -623,7 +623,7 @@ export default async function MessagingRegistrationsPage({
               {selected.providerAssignmentState === 'assigned' ? (
                 <section className={styles.panel}>
                   <h2 className={styles.panelTitle}>Stage 5: Live Messaging & Voice Status</h2>
-                  <div className={`${styles.banner} ${styles.ok}`}>
+                  <div role="status" className={`${styles.banner} ${styles.ok}`}>
                     <strong>2-Way Business Texting is Activated</strong> for this contractor.
                   </div>
                   <dl className={styles.kv}>

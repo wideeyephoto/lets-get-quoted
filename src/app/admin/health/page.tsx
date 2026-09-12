@@ -150,25 +150,25 @@ export default async function AdminHealthPage({
         </p>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{searchParams.done}</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{searchParams.error}</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{searchParams.done}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{searchParams.error}</div> : null}
 
       {failedJobs.length > 0 ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           <strong>Health data is incomplete.</strong> Could not read {failedJobs.length} {failedJobs.length === 1 ? 'job' : 'jobs'} from the run log. Unknown rows are not an all-clear.
         </div>
       ) : unwell.length > 0 ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           <strong>{unwell.length} {unwell.length === 1 ? 'job needs' : 'jobs need'} attention.</strong>{' '}
           {unwell.map((r) => r.spec.label).join(', ')}.
         </div>
       ) : neverSeen.length === rows.length ? (
-        <div className={`${styles.banner} ${styles.ok}`}>
+        <div role="status" className={`${styles.banner} ${styles.ok}`}>
           No runs recorded yet. Each job appears here the first time it fires after this was deployed — the slowest is
           weekly, so give it a few days before reading anything into a quiet table.
         </div>
       ) : (
-        <div className={`${styles.banner} ${styles.ok}`}>
+        <div role="status" className={`${styles.banner} ${styles.ok}`}>
           Every background cron job, quoting engine rail, and communication provider is reporting healthy on schedule.
         </div>
       )}
@@ -466,7 +466,7 @@ export default async function AdminHealthPage({
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>AI Voice webhook security</h2>
         {voiceOperations.failures.length > 0 ? (
-          <div className={`${styles.banner} ${styles.err}`}>
+          <div role="status" className={`${styles.banner} ${styles.err}`}>
             AI Voice operations data is incomplete: {voiceOperations.failures.join(', ')}. An em dash is unknown, not zero.
           </div>
         ) : null}
@@ -539,7 +539,7 @@ export default async function AdminHealthPage({
       {/* 7. Grouped Delivery Failures */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>Delivery &amp; integration failures</h2>
-        {diagnostics.failed.length ? <div className={`${styles.banner} ${styles.err}`}>Some delivery checks are unavailable. Their totals are shown as an em dash, not zero.</div> : null}
+        {diagnostics.failed.length ? <div role="status" className={`${styles.banner} ${styles.err}`}>Some delivery checks are unavailable. Their totals are shown as an em dash, not zero.</div> : null}
         <div className={styles.cardGrid}>
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={webhookFailures.length ? { color: '#fca5a5' } : undefined}>

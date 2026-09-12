@@ -90,7 +90,7 @@ export default async function AdminBillingOperationsPage() {
       </header>
 
       {unavailable > 0 ? (
-        <div className={`${styles.banner} ${styles.err}`} role="status">
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           <strong>{unavailable} {unavailable === 1 ? 'ledger read is' : 'ledger reads are'} unavailable.</strong>{' '}
           Its figures are hidden, not treated as zero. Refresh to retry.
         </div>
@@ -108,7 +108,7 @@ export default async function AdminBillingOperationsPage() {
       ) : null}
 
       {nonLiveReviews > 0 ? (
-        <div className={styles.banner} role="status">
+        <div role="status" className={styles.banner}>
           <strong>{nonLiveReviews} non-live subscription events need configuration review.</strong>{' '}
           They are excluded from actionable billing failures. Their original evidence is retained;
           operations must verify the source and webhook routing before closing the configuration case.

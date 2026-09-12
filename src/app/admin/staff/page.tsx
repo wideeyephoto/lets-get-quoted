@@ -62,9 +62,9 @@ export default async function AdminStaffPage({ searchParams: searchParamsPromise
         </p>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
-      {!directoryAvailable || !historyAvailable || !countAvailable ? <div className={`${styles.banner} ${styles.err}`}>Staff access data is incomplete. Blank sections are not being treated as empty.</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{ERRORS[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {!directoryAvailable || !historyAvailable || !countAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Staff access data is incomplete. Blank sections are not being treated as empty.</div> : null}
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>Invite staff</h2>

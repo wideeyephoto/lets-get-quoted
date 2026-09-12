@@ -69,7 +69,7 @@ export default async function AdminPaymentsPage({ searchParams: searchParamsProm
         <p className={styles.lead}>The individual processed payments behind the Command Center count, including later refunds and disputes. Synthetic payments are excluded.</p>
       </header>
 
-      {accountId ? <div className={`${styles.banner} ${styles.ok}`}>Showing one account only. <Link className={styles.rowLink} href={`/admin/accounts/${accountId}`}>Back to account</Link> · <Link className={styles.rowLink} href={`/admin/payments?range=${range}`}>Show all accounts</Link></div> : null}
+      {accountId ? <div role="status" className={`${styles.banner} ${styles.ok}`}>Showing one account only. <Link className={styles.rowLink} href={`/admin/accounts/${accountId}`}>Back to account</Link> · <Link className={styles.rowLink} href={`/admin/payments?range=${range}`}>Show all accounts</Link></div> : null}
 
       <div className={styles.filterGroup}>
         <span className={styles.filterLabel}>Processed period</span>
@@ -92,8 +92,8 @@ export default async function AdminPaymentsPage({ searchParams: searchParamsProm
         {q || status ? <Link className="btn secondary" href={`/admin/payments?range=${range}`}>Clear</Link> : null}
       </form>
 
-      {!ledger.available ? <div className={`${styles.banner} ${styles.err}`}>Payment data is unavailable. No zero or empty state is being inferred.</div> : null}
-      {!namesAvailable ? <div className={`${styles.banner} ${styles.err}`}>Payment rows loaded, but account names are unavailable.</div> : null}
+      {!ledger.available ? <div role="status" className={`${styles.banner} ${styles.err}`}>Payment data is unavailable. No zero or empty state is being inferred.</div> : null}
+      {!namesAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Payment rows loaded, but account names are unavailable.</div> : null}
 
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>{ledger.total.toLocaleString('en-US')} processed {ledger.total === 1 ? 'payment' : 'payments'} · page {page} of {pageCount}</h2>

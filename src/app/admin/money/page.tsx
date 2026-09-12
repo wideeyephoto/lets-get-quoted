@@ -108,11 +108,11 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
       </header>
 
       {unavailableCount > 0 ? (
-        <div className={`${styles.banner} ${styles.err}`} role="status">
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           <strong>Some money data is unavailable.</strong> Missing sources show an em dash and are not treated as zero or all-clear. Refresh to retry.
         </div>
       ) : null}
-      {!namesAvailable ? <div className={`${styles.banner} ${styles.err}`}>Money rows loaded, but some account names are unavailable.</div> : null}
+      {!namesAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Money rows loaded, but some account names are unavailable.</div> : null}
 
       <div className={styles.filterTabs}>
         {RANGE_TABS.map((r) => (

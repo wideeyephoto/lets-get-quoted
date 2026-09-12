@@ -119,9 +119,9 @@ export default async function AdminPaymentPage({
         </div>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           {ERRORS[searchParams.error] ?? 'Something went wrong.'}
           {/* Stripe's own wording, passed through. "You can refund at most
               $412.00" tells the operator what to type next; a generic failure

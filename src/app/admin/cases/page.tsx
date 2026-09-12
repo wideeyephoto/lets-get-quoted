@@ -81,7 +81,7 @@ export default async function AdminCasesPage({ searchParams: searchParamsPromise
           </Link>
         ))}
       </div>
-      {!available || !namesAvailable ? <div className={`${styles.banner} ${styles.err}`}>Case data is incomplete. A blank list or missing account names are not being treated as clear.</div> : null}
+      {!available || !namesAvailable ? <div role="status" className={`${styles.banner} ${styles.err}`}>Case data is incomplete. A blank list or missing account names are not being treated as clear.</div> : null}
 
       <section className={styles.panel}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>

@@ -75,8 +75,8 @@ export default async function AdminQuickStopDetailPage({
         </div>
       </header>
 
-      {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
-      {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERR[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
+      {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>{ERR[searchParams.error] ?? 'Something went wrong.'}</div> : null}
 
       <div className={styles.detailGrid}>
         <div>

@@ -33,7 +33,7 @@ export default function AdminError({
       </header>
 
       <section className={styles.panel}>
-        <div className={`${styles.banner} ${styles.err}`} style={{ marginBottom: '1.25rem' }}>
+        <div role="status" className={`${styles.banner} ${styles.err}`} style={{ marginBottom: '1.25rem' }}>
           <strong>Error:</strong> {error.message || 'An unexpected internal error occurred.'}
           {error.digest ? (
             <div style={{ marginTop: '.35rem', fontSize: '.75rem', opacity: 0.85 }}>

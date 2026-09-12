@@ -49,9 +49,9 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
       <h1 className={styles.title}>Delivery &amp; integration failures</h1>
       <p className={styles.lead}>Repeated failures are grouped by source, event, account, and normalized error so one outage reads as one incident instead of dozens of identical rows.</p>
     </header>
-    {diagnostics.failed.length ? <div className={`${styles.banner} ${styles.err}`}>Some failure sources are unavailable: {diagnostics.failed.join(', ')}.</div> : null}
-    {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>Failure group resolved.</div> : null}
-    {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Enter a reason and try again.</div> : null}
+    {diagnostics.failed.length ? <div role="status" className={`${styles.banner} ${styles.err}`}>Some failure sources are unavailable: {diagnostics.failed.join(', ')}.</div> : null}
+    {searchParams.done ? <div role="status" className={`${styles.banner} ${styles.ok}`}>Failure group resolved.</div> : null}
+    {searchParams.error ? <div role="status" className={`${styles.banner} ${styles.err}`}>Enter a reason and try again.</div> : null}
     {searchParams.voice ? <div role="status" className={styles.banner}>{
       searchParams.voice === 'processed' ? 'Voice receipt processed.'
         : searchParams.voice === 'complete' ? 'The receipt is already finalized; no retry was needed.'

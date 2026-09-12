@@ -63,7 +63,7 @@ export default async function AdminSearchPage({ searchParams: searchParamsPromis
       </form>
 
       {results?.unavailable.length ? (
-        <div className={`${styles.banner} ${styles.err}`} role="status">
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Search is incomplete. {results.unavailable.map((key) => SECTIONS.find((section) => section.key === key)?.label ?? key).join(', ')} could not be searched.
         </div>
       ) : null}

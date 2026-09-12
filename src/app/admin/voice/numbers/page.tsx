@@ -289,38 +289,38 @@ export default async function AdminVoiceNumberProvisioningPage({
       </header>
 
       {searchParams.done ? (
-        <div className={`${styles.banner} ${styles.ok}`}>Operation completed. Review the durable state below before continuing.</div>
+        <div role="status" className={`${styles.banner} ${styles.ok}`}>Operation completed. Review the durable state below before continuing.</div>
       ) : null}
       {searchParams.error ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Operation did not complete. No automatic retry was issued. Error reference:{' '}
           <code>{UUID.test(searchParams.correlation ?? '') ? searchParams.correlation : 'unavailable'}</code>.
         </div>
       ) : null}
       {!mutationEnabled ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           The AI Voice acquisition/configuration gate is dark. Search and inspection remain available; policy changes,
           dashboard-price recording, purchase authorization, purchase, and configuration are blocked.
         </div>
       ) : null}
       {!recoveryEnabled ? (
-        <div className={`${styles.banner} ${styles.warn}`}>
+        <div role="status" className={`${styles.banner} ${styles.warn}`}>
           The separate AI Voice recovery gate is dark. Exact-number release, indeterminate reconciliation, and explicit
           operator retry generations are blocked without enabling <code>LGQ_SIGNALWIRE_VOICE_RECOVERY_ENABLED</code>.
         </div>
       ) : null}
       {!callbackOrigin ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           A trusted production HTTPS callback origin is unavailable. Provider configuration is blocked.
         </div>
       ) : null}
       {unavailable.length ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Provisioning data is incomplete: {unavailable.join(', ')}. Missing evidence is not treated as ready.
         </div>
       ) : null}
       {indeterminate ? (
-        <div className={`${styles.banner} ${styles.err}`}>
+        <div role="status" className={`${styles.banner} ${styles.err}`}>
           Provider outcome is indeterminate for operation <code>{indeterminate.id}</code>. New purchase or configuration is
           quarantined until an operator performs explicit reconciliation and any required orphan cleanup.
         </div>
