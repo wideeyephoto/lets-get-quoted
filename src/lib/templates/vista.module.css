@@ -1,0 +1,72 @@
+
+.vista .navLinks a { background-image: none; }
+.vista {
+  --c-bg: #f4f5f3; --c-surface: #ffffff; --c-ink: #101211; --c-muted: #5f6b62; --c-line: color-mix(in srgb, currentColor 12%, transparent); --c-deep: #101211; --c-on-deep: #fff;
+  --vista-ambient: radial-gradient(circle at 75% 0%, rgba(47, 191, 113, 0.08), transparent 40%), radial-gradient(circle at 15% 20%, rgba(37, 99, 235, 0.06), transparent 45%), linear-gradient(180deg, #fbfcfb 0%, #f4f5f3 40%, #e8ebe7 100%);
+  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-vista-body), 'Helvetica Neue', sans-serif; --theme-radius: 6px;
+}
+.vista[data-mode='dark'] {
+  --c-bg: #111312; --c-surface: #1a1e1c; --c-ink: #f2f3f1; --c-muted: #9aa39c; --c-deep: #1c211f; --c-on-deep: #f2f3f1;
+  --vista-ambient: radial-gradient(ellipse at 60% 0%, rgba(47, 191, 113, 0.18), transparent 50%), radial-gradient(circle at 10% 30%, rgba(59, 130, 246, 0.12), transparent 40%), linear-gradient(180deg, #090e15 0%, #0e1722 50%, #06090f 100%);
+}
+.vista .navLinks { font-size: .76rem; font-weight: 600; letter-spacing: .06em; gap: clamp(1.25rem, 3vw, 2.75rem); }
+.vista .navLinks a { position: relative; padding: .35rem 0; }
+.vista .navLinks a::after { content: ''; position: absolute; left: 0; right: 100%; bottom: 0; height: 1.5px; background: var(--theme-accent); transition: right .28s cubic-bezier(.2,.7,.2,1); }
+.vista .navLinks a:hover::after { right: 0; }
+.vista .extraSection { padding: clamp(4rem, 8vw, 7rem) 3vw; }
+.vista .extraSectionHeader h2 { font-weight: 500; line-height: .99; letter-spacing: -.015em; text-transform: uppercase; }
+.vista .serviceCard { border-radius: 10px; }
+.vista .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 50%, transparent); }
+.vista .serviceCard h3 { font-family: var(--theme-display); font-size: 1.2rem; letter-spacing: -.01em; }
+.vista .serviceIcon { border-radius: 8px; }
+.vista .processNum { border-radius: 999px; background: transparent; border: 1.5px solid var(--theme-accent); color: currentColor; font-size: 1.05rem; }
+.vista .processStep h3 { font-family: var(--theme-display); font-size: 1.2rem; letter-spacing: -.01em; }
+.vista .statItem { padding: 1.5rem 1.4rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 10px; }
+.vista .statLabel { font-weight: 800; letter-spacing: .05em; }
+.vista .faqItem, .vista .testimonialCard, .vista .showcaseGrid figure { border-radius: 10px; }
+.vista .heroQuickForm {
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c-deep) 94%, #fff 6%);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--c-on-deep) 15%, transparent);
+  box-shadow: 0 26px 54px -22px rgba(0,0,0,.6);
+}
+.vista .heroQuickForm .heroFormTitle { color: var(--c-on-deep); text-transform: uppercase; letter-spacing: .02em; }
+.vista .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
+.vista .heroQuickForm input, .vista .heroQuickForm select, .vista .heroQuickForm textarea {
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 8px;
+}
+.vista .heroQuickForm input::placeholder, .vista .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.vista .heroQuickForm input:focus, .vista .heroQuickForm select:focus, .vista .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
+}
+.vista .heroQuickForm .heroFormChip {
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  border-radius: 6px;
+}
+.vista .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
+.vista .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.vista .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
+  color: #f8fafc;
+}
+.vista .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
+  border-color: var(--theme-accent);
+}
+.vista .heroQuickForm .heroFormPhotoChip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.vista .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }

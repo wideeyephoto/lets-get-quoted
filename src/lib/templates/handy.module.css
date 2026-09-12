@@ -1,0 +1,77 @@
+
+.handy {
+  --c-bg: #fff; --c-surface: #f4f8f8; --c-ink: #17272e; --c-muted: #5b6b73; --c-line: #e4eaec; --c-deep: #14253a; --c-on-deep: #fff;
+  --care-grad: linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
+  --care-ambient: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--theme-accent) 14%, transparent), transparent 55%), radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--theme-accent) 10%, transparent), transparent 40%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
+  /* Accent-derived text (eyebrows, accent headline word, ghost buttons, check
+     marks, service icons) sits on white / light surfaces, so it must clear AA —
+     a light cyan accent at 74% failed. Weight the blend toward the deep teal so
+     it reads clearly while staying on-brand. */
+  --care-text-teal: color-mix(in srgb, var(--theme-accent) 34%, #04333b);
+  --care-band: linear-gradient(rgba(3,28,31,.52), rgba(3,28,31,.52)), linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
+  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-care), "Segoe UI", system-ui, sans-serif;
+}
+.handy[data-mode='dark'] {
+  --care-text-teal: color-mix(in srgb, var(--theme-accent) 66%, #cffaf0);
+  --care-ambient: radial-gradient(ellipse at 50% 0%, rgba(16, 176, 184, 0.2), transparent 55%), radial-gradient(circle at 90% 40%, rgba(45, 212, 191, 0.12), transparent 40%), linear-gradient(180deg, #091417 0%, #0f2025 50%, #060c0e 100%);
+}
+.handy .extraSections { background: transparent; }
+.handy .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.handy .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
+.handy .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.1; color: var(--c-ink); }
+.handy .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(51,61,71,.35); }
+.handy .heroQuickForm {
+  border-radius: 18px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  border: 1px solid var(--c-line);
+  box-shadow: 0 26px 54px -24px rgba(51,61,71,.35);
+}
+.handy .heroQuickForm input, .handy .heroQuickForm select, .handy .heroQuickForm textarea {
+  border-radius: 12px;
+  border-color: var(--c-line);
+  background: color-mix(in srgb, var(--c-surface) 92%, #000 8%);
+  color: var(--c-ink);
+}
+.handy .heroQuickForm .heroFormChip {
+  border-radius: 10px;
+  border-color: var(--c-line);
+}
+.handy .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); box-shadow: 0 26px 52px -26px color-mix(in srgb, var(--theme-accent) 42%, transparent); }
+.handy .serviceCard h3 { color: var(--c-surface-ink, var(--c-ink)); }
+.handy .serviceCard p { color: var(--c-surface-muted, var(--c-muted)); }
+.handy .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 13%, transparent); color: var(--care-text-teal); }
+.handy .statItem { background: var(--c-surface); border-radius: 14px; padding: 1.4rem 1rem; }
+.handy .statValue { color: var(--c-surface-ink, var(--c-ink)); }
+.handy[data-mode='dark'] { background: #0d161a; color: #d5e0e6; }
+.handy[data-mode='dark'] .careHeader { background: rgba(13,22,26,.9); border-bottom-color: rgba(255,255,255,.08); }
+.handy[data-mode='dark'] .careBrand strong, .handy[data-mode='dark'] .careHeaderPhone { color: #eef4f7; }
+.handy[data-mode='dark'] .careHero { background: linear-gradient(180deg, #11212b, #0d161a); }
+.handy[data-mode='dark'] .careHeroCopy h1,
+.handy[data-mode='dark'] .careWhyCard h2,
+.handy[data-mode='dark'] .careEstimateCopy h2,
+.handy[data-mode='dark'] .careContactCopy h2,
+.handy[data-mode='dark'] .extraSectionHeader h2,
+.handy[data-mode='dark'] .statValue,
+.handy[data-mode='dark'] .serviceCard h3,
+.handy[data-mode='dark'] .careMiniCard strong { color: #eef4f7; }
+.handy[data-mode='dark'] .careHeroText,
+.handy[data-mode='dark'] .careEstimateCopy > p,
+.handy[data-mode='dark'] .careContactCopy > p,
+.handy[data-mode='dark'] .serviceCard p,
+.handy[data-mode='dark'] .careCheckList li,
+.handy[data-mode='dark'] .careMiniCard small { color: #9db0bb; }
+.handy[data-mode='dark'] .careEyebrow,
+.handy[data-mode='dark'] .kicker,
+.handy[data-mode='dark'] .careAccentText,
+.handy[data-mode='dark'] .careBtnGhost,
+.handy[data-mode='dark'] .serviceIcon { color: #4fdcc7; }
+.handy[data-mode='dark'] .careBtnGhost { border-color: color-mix(in srgb, #4fdcc7 45%, transparent); }
+.handy[data-mode='dark'] .careMiniCard,
+.handy[data-mode='dark'] .serviceCard { background: #14222b; border-color: rgba(255,255,255,.08); }
+.handy[data-mode='dark'] .careWhyCard,
+.handy[data-mode='dark'] .careEstimate,
+.handy[data-mode='dark'] .extraSection:nth-of-type(even),
+.handy[data-mode='dark'] .statItem { background: #11202a; }
+.handy[data-mode='dark'] .serviceIcon,
+.handy[data-mode='dark'] .careCheck { background: color-mix(in srgb, var(--theme-accent) 22%, transparent); color: #4fdcc7; }

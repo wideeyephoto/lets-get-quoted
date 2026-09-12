@@ -17,7 +17,9 @@ import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
-import styles from './themes.module.css';
+import baseStyles from './themes.module.css';
+import themeStyles from './forge.module.css';
+const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 
 export default function ForgeTemplate({ site }: TemplateProps) {

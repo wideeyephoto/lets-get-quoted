@@ -17,7 +17,9 @@ import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
-import styles from './themes.module.css';
+import baseStyles from './themes.module.css';
+import themeStyles from './shine.module.css';
+const styles = { ...baseStyles, ...themeStyles };
 import CallLink from './CallLink';
 
 // Shine — modern, premium cleaning look (Purely reference): deep-navy ground,

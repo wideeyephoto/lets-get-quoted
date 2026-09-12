@@ -37,7 +37,6 @@
    ::after underline, which is excluded below. */
 .navLinks a { background-image: linear-gradient(var(--theme-accent), var(--theme-accent)); background-repeat: no-repeat; background-position: left bottom; background-size: 0% 2px; padding-bottom: 3px; transition: background-size .25s ease, color .2s ease; }
 .navLinks a:hover { background-size: 100% 2px; }
-.vista .navLinks a { background-image: none; }
 @media (prefers-reduced-motion: reduce) { .navLinks a { transition: color .2s ease; } }
 .kicker { margin-bottom: 1rem; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
 .primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; border-radius: var(--theme-radius, 4px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
@@ -937,7 +936,6 @@
 .proofRatingMeta { color: color-mix(in srgb, currentColor 75%, transparent); font-size: .82rem; }
 .proofChip { display: inline-flex; align-items: center; gap: .35rem; padding: .32rem .7rem; border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: 999px; font-size: .8rem; font-weight: 600; background: color-mix(in srgb, currentColor 6%, transparent); }
 .proofChip > span { color: var(--theme-accent); font-weight: 900; font-size: .85em; }
-.guild[data-mode='dark'] .proofStars, .guild[data-mode='dark'] .proofChip > span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 
 /* Proof strip legibility over dark photo heroes and deep maroon backgrounds */
 .forgeHeroCopy .proofStrip,
@@ -1646,7 +1644,6 @@
 .desktopCta .desktopCtaCall { background: #17140f; color: #fff; }
 .desktopCta .desktopCtaQuote { background: var(--theme-accent); color: var(--theme-on-accent, #14110b); }
 .desktopCta svg { width: 16px; height: 16px; flex-shrink: 0; }
-.guild .desktopCtaQuote { color: #fff; }
 /* Reserve bottom space so the fixed CTA never covers the footer at page end. */
 @media (min-width: 768px) { .site:has(.desktopCta) { padding-bottom: 96px; } }
 
@@ -1655,19 +1652,8 @@
    is the dark ground (--c-bg) and the work slab is the LIGHT contrast ground
    (--c-deep = bone). The photo hero keeps its own dark scrim + light text
    regardless of scheme (photo legibility) via --c-on-photo. */
-.forge {
-  --c-bg: #10100f; --c-surface: #1a1a17; --c-ink: #f3f0e7; --c-muted: var(--c-muted); --c-line: var(--c-line); --c-control-line: #5b6676; --c-deep: #ebe7dc; --c-on-deep: #151514; --c-on-photo: #f3f0e7;
-  --forge-ambient: radial-gradient(ellipse at 50% -10%, rgba(240, 180, 41, 0.22), transparent 50%), radial-gradient(circle at 80% 90%, rgba(234, 88, 12, 0.12), transparent 40%), linear-gradient(180deg, #0d0f14 0%, #151922 55%, #0a0c10 100%);
-  --forge-sheen: linear-gradient(180deg, rgba(240, 180, 41, 0.15) 0%, transparent 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-forge-body), Arial, sans-serif; --theme-radius: 2px;
-}
 /* Light mode flips body and slab; header + hero keep light text over the photo. */
-.forge[data-mode='light'] {
-  --c-bg: #ebe7dc; --c-ink: #151514; --c-muted: #68645b; --c-line: #c9c3b5; --c-control-line: #88847d; --c-deep: #17140f; --c-on-deep: #f3f0e7;
-  --forge-ambient: radial-gradient(circle at 75% 0%, rgba(240, 180, 41, 0.08), transparent 40%), radial-gradient(circle at 15% 30%, rgba(234, 88, 12, 0.05), transparent 35%), linear-gradient(180deg, #fdfbf7 0%, #ebe7dc 50%, #dfd9cb 100%);
-}
 .forgeHeader, .forgeHero { color: var(--c-on-photo, #f3f0e7); }
-.forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
 .forgeHeader { position: sticky; top: 0; z-index: 30; width: 100%; box-sizing: border-box; margin-bottom: -84px; background: linear-gradient(180deg, rgba(10,10,9,.78), rgba(10,10,9,.32) 70%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
 .forgeHeaderActions { display: inline-flex; align-items: center; gap: 1rem; justify-self: end; }
 .forgeHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1.1rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap; box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--theme-accent) 60%, transparent); transition: transform .18s ease, filter .18s ease, box-shadow .18s ease; }
@@ -1737,99 +1723,15 @@
    builder landed on the page as a section that did not match the template.
    Forge is squares, hairlines and mono labels — no alternating bands, since its
    own layout is one continuous dark page broken by a single bone slab. */
-.forge .extraSection { padding: clamp(5rem, 10vw, 9rem) 5vw; border-top: 1px solid var(--c-line); }
-.forge .extraSectionHeader h2 { text-transform: uppercase; letter-spacing: -.01em; line-height: .95; }
-.forge .serviceCard { border-radius: 2px; border-color: var(--c-line); background: color-mix(in srgb, currentColor 5%, transparent); }
-.forge .serviceCard:hover { border-color: var(--theme-accent); }
-.forge .serviceCard h3 { font-family: var(--theme-display); font-size: 1.35rem; text-transform: uppercase; letter-spacing: -.005em; }
-.forge .serviceIcon { border-radius: 0; background: var(--theme-accent); color: var(--theme-on-accent, #111); }
-.forge .processNum { border-radius: 0; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-family: var(--font-mono); font-size: 1rem; }
-.forge .processStep h3 { font-family: var(--theme-display); font-size: 1.3rem; text-transform: uppercase; }
-.forge .statItem { padding: 1.6rem 1.5rem; border: 1px solid var(--c-line); }
-.forge .statValue { color: var(--theme-accent); }
-.forge .statLabel { font-family: var(--font-mono); font-weight: 500; letter-spacing: .12em; }
-.forge .faqItem { border-radius: 0; border-color: var(--c-line); }
-.forge .testimonialCard { border-radius: 0; border-color: var(--c-line); }
-.forge .showcaseGrid figure { border-radius: 0; }
-.forge .serviceAreaChip { border-radius: 0; }
-.forge .heroQuickForm {
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--c-deep) 96%, #ffffff 4%);
-  color: var(--c-on-deep);
-  border: 1px solid color-mix(in srgb, var(--c-on-deep) 16%, transparent);
-  box-shadow: 0 24px 50px -20px rgba(0,0,0,.7);
-}
-.forge .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); text-transform: uppercase; letter-spacing: .02em; }
-.forge .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); font-family: var(--font-mono); font-size: .7rem; }
-.forge .heroQuickForm input, .forge .heroQuickForm select, .forge .heroQuickForm textarea {
-  background: rgba(0, 0, 0, 0.55);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.38);
-  border-radius: 4px;
-}
-.forge .heroQuickForm input::placeholder, .forge .heroQuickForm textarea::placeholder {
-  color: rgba(255, 255, 255, 0.65);
-  opacity: 1;
-}
-.forge .heroQuickForm input:focus, .forge .heroQuickForm select:focus, .forge .heroQuickForm textarea:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
-}
-.forge .heroQuickForm .heroFormChip {
-  background: rgba(0, 0, 0, 0.45);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  border-radius: 4px;
-}
-.forge .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-family: var(--font-mono); font-weight: 800; }
-.forge .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
-.forge .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
-  color: #f8fafc;
-}
-.forge .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
-  border-color: var(--theme-accent);
-}
-.forge .heroQuickForm .heroFormPhotoChip {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-.forge .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 
 /* Guild */
 /* Guild on the --c-* scheme tokens. Cream body (--c-bg), warm hairlines
    (--c-line), and the dark work slab as --c-deep. Existing dark-mode per-element
    overrides stay (they resolve to the same token values) — harmless. */
-.guild {
-  --c-bg: #fff; --c-surface: #fbf9f4; --c-ink: #2a251e; --c-muted: #6b6357; --c-line: #e8e2d5; --c-deep: #1b1713; --c-on-deep: #fff;
-  --guild-ambient: radial-gradient(circle at 80% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 10% 40%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 40%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-guild-body), system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; --theme-radius: 12px;
-}
-.guild[data-mode='dark'] {
-  --c-bg: #1c221d; --c-surface: #232a24; --c-ink: #f1ede2; --c-muted: #bdc4b9; --c-line: #454e46; --c-deep: #222922; --c-on-deep: #f1ede2;
-  --guild-ambient: radial-gradient(circle at 30% 0%, rgba(176, 71, 47, 0.18), transparent 45%), radial-gradient(circle at 80% 30%, rgba(217, 119, 6, 0.1), transparent 35%), linear-gradient(180deg, #0e1219 0%, #151a24 50%, #0a0d13 100%);
-}
-.guild[data-mode='dark'] .guildHeader, .guild[data-mode='dark'] .guildIntro, .guild[data-mode='dark'] .guildServices article, .guild[data-mode='dark'] .guildFooter { border-color: #454e46; }
-.guild[data-mode='dark'] .guildBrand small, .guild[data-mode='dark'] .guildIntro > p, .guild[data-mode='dark'] .guildServices p { color: #bdc4b9; }
-.guild .kicker { font-family: var(--theme-display); font-style: italic; font-weight: 400; font-size: 1rem; letter-spacing: 0; text-transform: none; color: var(--theme-accent); }
 /* Lighten the accent where it sits as text on a dark surface (the work section, or dark mode) so it keeps contrast. */
 .guildWork .kicker, .guild[data-mode='dark'] .kicker, .guild[data-mode='dark'] .guildServices span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
-.guild[data-mode='dark'] .guildQuote:hover, .guild[data-mode='dark'] .textLink:hover { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 .heroFormOrCall { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 44px; margin-top: .1rem; font-size: .8rem; font-weight: 700; color: #17140f; text-decoration: none; }
 .heroFormOrCall strong { text-decoration: underline; text-decoration-color: var(--theme-accent); text-underline-offset: 2px; }
-.guild .heroQuickForm {
-  border-radius: 12px;
-  background: var(--c-surface);
-  color: var(--c-ink);
-  border: 1px solid var(--c-line);
-  box-shadow: 0 24px 50px -22px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.6);
-}
-.guild[data-mode='dark'] .heroQuickForm {
-  box-shadow: 0 24px 50px -22px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.08);
-}
 .guildHeader { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: clamp(1rem, 3vw, 2rem); min-height: 100px; padding: 0 5vw; border-bottom: 1px solid var(--c-line); background: color-mix(in srgb, var(--c-bg) 94%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .guildBrand { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 /* Only the name/license wrapper stacks — NOT the per-word spans WordmarkName
@@ -1899,38 +1801,12 @@
 /* Guild — shared content sections in Guild's editorial idiom: warm hairline
    rules, serif headings at the weight its own h2s use, and the italic serif
    numeral from .guildServices carried onto the process steps. */
-.guild .extraSection { padding: clamp(5rem, 9vw, 8rem) 6vw; border-top: 1px solid var(--c-line); }
-.guild[data-mode='dark'] .extraSection { border-top-color: #454e46; }
-.guild .extraSectionHeader h2 { font-weight: 500; line-height: 1.02; letter-spacing: -.015em; }
-.guild .serviceCard { border-radius: 12px; border-color: var(--c-line); background: color-mix(in srgb, currentColor 4%, transparent); }
-.guild[data-mode='dark'] .serviceCard { border-color: #454e46; }
-.guild .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 45%, transparent); }
-.guild .serviceCard h3 { font-family: var(--theme-display); font-size: 1.45rem; font-weight: 500; }
-.guild .serviceIcon { border-radius: 999px; }
-.guild .processNum { border-radius: 999px; background: transparent; border: 1px solid var(--theme-accent); font-family: var(--theme-display); font-style: italic; font-weight: 400; font-size: 1.3rem; }
-.guild .processStep h3 { font-family: var(--theme-display); font-size: 1.35rem; font-weight: 500; }
-.guild .statItem { padding: 1.5rem 1.4rem; border: 1px solid var(--c-line); border-radius: 12px; }
-.guild[data-mode='dark'] .statItem { border-color: #454e46; }
-.guild .statValue { font-weight: 500; }
-.guild .statLabel { font-weight: 600; letter-spacing: .08em; }
-.guild .faqItem, .guild .testimonialCard, .guild .showcaseGrid figure { border-radius: 12px; }
-.guild .faqItem, .guild .testimonialCard { border-color: var(--c-line); }
-.guild[data-mode='dark'] .faqItem, .guild[data-mode='dark'] .testimonialCard { border-color: #454e46; }
 
 /* Vista */
 /* Vista on the --c-* scheme tokens. Its shared sections already use
    color-mix(currentColor …) and follow the root ink, so only the bespoke
    near-black hero + contact grounds (--c-deep) and the white badge (surface)
    need tokens. */
-.vista {
-  --c-bg: #f4f5f3; --c-surface: #ffffff; --c-ink: #101211; --c-muted: #5f6b62; --c-line: color-mix(in srgb, currentColor 12%, transparent); --c-deep: #101211; --c-on-deep: #fff;
-  --vista-ambient: radial-gradient(circle at 75% 0%, rgba(47, 191, 113, 0.08), transparent 40%), radial-gradient(circle at 15% 20%, rgba(37, 99, 235, 0.06), transparent 45%), linear-gradient(180deg, #fbfcfb 0%, #f4f5f3 40%, #e8ebe7 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-vista-body), 'Helvetica Neue', sans-serif; --theme-radius: 6px;
-}
-.vista[data-mode='dark'] {
-  --c-bg: #111312; --c-surface: #1a1e1c; --c-ink: #f2f3f1; --c-muted: #9aa39c; --c-deep: #1c211f; --c-on-deep: #f2f3f1;
-  --vista-ambient: radial-gradient(ellipse at 60% 0%, rgba(47, 191, 113, 0.18), transparent 50%), radial-gradient(circle at 10% 30%, rgba(59, 130, 246, 0.12), transparent 40%), linear-gradient(180deg, #090e15 0%, #0e1722 50%, #06090f 100%);
-}
 /* The contact block is a hardcoded near-black card, which on the dark ground
    (#111312) sat within a couple of values of the page and disappeared. Lift it
    so it still reads as a distinct block. The shared sections need no overrides:
@@ -1938,10 +1814,6 @@
 
 .vistaHeader { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 74px; padding: 0 3vw; background: inherit; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
 .vistaBrand { display: inline-flex; align-items: center; gap: .55rem; font-family: var(--brand-font, var(--theme-display)); font-size: 1.1rem; font-weight: 700; letter-spacing: .05em; }
-.vista .navLinks { font-size: .76rem; font-weight: 600; letter-spacing: .06em; gap: clamp(1.25rem, 3vw, 2.75rem); }
-.vista .navLinks a { position: relative; padding: .35rem 0; }
-.vista .navLinks a::after { content: ''; position: absolute; left: 0; right: 100%; bottom: 0; height: 1.5px; background: var(--theme-accent); transition: right .28s cubic-bezier(.2,.7,.2,1); }
-.vista .navLinks a:hover::after { right: 0; }
 .vistaMenu { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; min-height: 42px; padding: .55rem 1.15rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0d0f0d); font-family: var(--theme-display); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; transition: transform .2s ease, box-shadow .25s ease; }
 .vistaMenu:hover { transform: translateY(-1px); box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--theme-accent) 70%, transparent); }
 .vistaMenu span { transition: transform .2s ease; }
@@ -1995,63 +1867,6 @@
    its outlined-marker language. Vista's own surfaces are already
    color-mix(currentColor ...), so these stay mode-agnostic and need no
    [data-mode='dark'] twin. */
-.vista .extraSection { padding: clamp(4rem, 8vw, 7rem) 3vw; }
-.vista .extraSectionHeader h2 { font-weight: 500; line-height: .99; letter-spacing: -.015em; text-transform: uppercase; }
-.vista .serviceCard { border-radius: 10px; }
-.vista .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 50%, transparent); }
-.vista .serviceCard h3 { font-family: var(--theme-display); font-size: 1.2rem; letter-spacing: -.01em; }
-.vista .serviceIcon { border-radius: 8px; }
-.vista .processNum { border-radius: 999px; background: transparent; border: 1.5px solid var(--theme-accent); color: currentColor; font-size: 1.05rem; }
-.vista .processStep h3 { font-family: var(--theme-display); font-size: 1.2rem; letter-spacing: -.01em; }
-.vista .statItem { padding: 1.5rem 1.4rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: 10px; }
-.vista .statLabel { font-weight: 800; letter-spacing: .05em; }
-.vista .faqItem, .vista .testimonialCard, .vista .showcaseGrid figure { border-radius: 10px; }
-.vista .heroQuickForm {
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--c-deep) 94%, #fff 6%);
-  color: var(--c-on-deep);
-  border: 1px solid color-mix(in srgb, var(--c-on-deep) 15%, transparent);
-  box-shadow: 0 26px 54px -22px rgba(0,0,0,.6);
-}
-.vista .heroQuickForm .heroFormTitle { color: var(--c-on-deep); text-transform: uppercase; letter-spacing: .02em; }
-.vista .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
-.vista .heroQuickForm input, .vista .heroQuickForm select, .vista .heroQuickForm textarea {
-  background: rgba(0, 0, 0, 0.55);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.38);
-  border-radius: 8px;
-}
-.vista .heroQuickForm input::placeholder, .vista .heroQuickForm textarea::placeholder {
-  color: rgba(255, 255, 255, 0.65);
-  opacity: 1;
-}
-.vista .heroQuickForm input:focus, .vista .heroQuickForm select:focus, .vista .heroQuickForm textarea:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
-}
-.vista .heroQuickForm .heroFormChip {
-  background: rgba(0, 0, 0, 0.45);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  border-radius: 6px;
-}
-.vista .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
-.vista .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
-.vista .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
-  color: #f8fafc;
-}
-.vista .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
-  border-color: var(--theme-accent);
-}
-.vista .heroQuickForm .heroFormPhotoChip {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-.vista .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 
 @media (max-width: 900px) {
   .navLinks { display: none; }
@@ -2121,27 +1936,11 @@
    are now accent-driven, so they follow the accent (which a scheme also sets).
    Haven's hand-built dark mode is left as-is for the light/dark toggle — a
    scheme drops data-mode, so the tokenized base rules + scheme vars apply. */
-.handy {
-  --c-bg: #fff; --c-surface: #f4f8f8; --c-ink: #17272e; --c-muted: #5b6b73; --c-line: #e4eaec; --c-deep: #14253a; --c-on-deep: #fff;
-  --care-grad: linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
-  --care-ambient: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--theme-accent) 14%, transparent), transparent 55%), radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--theme-accent) 10%, transparent), transparent 40%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
-  /* Accent-derived text (eyebrows, accent headline word, ghost buttons, check
-     marks, service icons) sits on white / light surfaces, so it must clear AA —
-     a light cyan accent at 74% failed. Weight the blend toward the deep teal so
-     it reads clearly while staying on-brand. */
-  --care-text-teal: color-mix(in srgb, var(--theme-accent) 34%, #04333b);
-  --care-band: linear-gradient(rgba(3,28,31,.52), rgba(3,28,31,.52)), linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
-  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-care), "Segoe UI", system-ui, sans-serif;
-}
 .careEyebrow, .handy .kicker { margin: 0 0 .6rem; font-size: .8rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--care-text-teal); }
 .careEyebrowLight { margin: 0 0 .5rem; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-on-deep); opacity: .92; }
 .careAccentText { color: var(--care-text-teal); }
 /* Dark mode needs a BRIGHT teal on the dark ground — keep the light-mode
    darkening (above) from washing out accent text when Haven is in dark mode. */
-.handy[data-mode='dark'] {
-  --care-text-teal: color-mix(in srgb, var(--theme-accent) 66%, #cffaf0);
-  --care-ambient: radial-gradient(ellipse at 50% 0%, rgba(16, 176, 184, 0.2), transparent 55%), radial-gradient(circle at 90% 40%, rgba(45, 212, 191, 0.12), transparent 40%), linear-gradient(180deg, #091417 0%, #0f2025 50%, #060c0e 100%);
-}
 .careBtn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: .7rem 1.5rem; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #062b2e); font-weight: 700; font-size: .95rem; box-shadow: 0 14px 28px -16px color-mix(in srgb, var(--theme-accent) 65%, transparent); transition: transform .2s ease, filter .2s ease; }
 .careBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .careBtnGhost { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: .7rem 1.3rem; border-radius: 9px; border: 2px solid color-mix(in srgb, var(--care-text-teal) 45%, transparent); color: var(--care-text-teal); font-weight: 700; font-size: .95rem; }
@@ -2281,34 +2080,6 @@
 .careFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1.1rem clamp(1.25rem, 5vw, 4rem); border-top: 1px solid rgba(255,255,255,.1); font-size: .78rem; opacity: .66; }
 
 /* scoped restyle of shared sections to the Care look */
-.handy .extraSections { background: transparent; }
-.handy .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.handy .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
-.handy .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.1; color: var(--c-ink); }
-.handy .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(51,61,71,.35); }
-.handy .heroQuickForm {
-  border-radius: 18px;
-  background: var(--c-surface);
-  color: var(--c-ink);
-  border: 1px solid var(--c-line);
-  box-shadow: 0 26px 54px -24px rgba(51,61,71,.35);
-}
-.handy .heroQuickForm input, .handy .heroQuickForm select, .handy .heroQuickForm textarea {
-  border-radius: 12px;
-  border-color: var(--c-line);
-  background: color-mix(in srgb, var(--c-surface) 92%, #000 8%);
-  color: var(--c-ink);
-}
-.handy .heroQuickForm .heroFormChip {
-  border-radius: 10px;
-  border-color: var(--c-line);
-}
-.handy .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); box-shadow: 0 26px 52px -26px color-mix(in srgb, var(--theme-accent) 42%, transparent); }
-.handy .serviceCard h3 { color: var(--c-surface-ink, var(--c-ink)); }
-.handy .serviceCard p { color: var(--c-surface-muted, var(--c-muted)); }
-.handy .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 13%, transparent); color: var(--care-text-teal); }
-.handy .statItem { background: var(--c-surface); border-radius: 14px; padding: 1.4rem 1rem; }
-.handy .statValue { color: var(--c-surface-ink, var(--c-ink)); }
 
 @media (max-width: 900px) {
   .careHero, .careWhy, .careEstimate, .careContact { grid-template-columns: 1fr; }
@@ -2329,51 +2100,10 @@
 /* Care — dark mode (data-mode='dark'). Additive: only overrides the light
    surfaces; the teal bands (trust strip / works / CTA) and footer are already
    dark and stay as vivid accents on the deep-teal ground. */
-.handy[data-mode='dark'] { background: #0d161a; color: #d5e0e6; }
-.handy[data-mode='dark'] .careHeader { background: rgba(13,22,26,.9); border-bottom-color: rgba(255,255,255,.08); }
-.handy[data-mode='dark'] .careBrand strong, .handy[data-mode='dark'] .careHeaderPhone { color: #eef4f7; }
-.handy[data-mode='dark'] .careHero { background: linear-gradient(180deg, #11212b, #0d161a); }
-.handy[data-mode='dark'] .careHeroCopy h1,
-.handy[data-mode='dark'] .careWhyCard h2,
-.handy[data-mode='dark'] .careEstimateCopy h2,
-.handy[data-mode='dark'] .careContactCopy h2,
-.handy[data-mode='dark'] .extraSectionHeader h2,
-.handy[data-mode='dark'] .statValue,
-.handy[data-mode='dark'] .serviceCard h3,
-.handy[data-mode='dark'] .careMiniCard strong { color: #eef4f7; }
-.handy[data-mode='dark'] .careHeroText,
-.handy[data-mode='dark'] .careEstimateCopy > p,
-.handy[data-mode='dark'] .careContactCopy > p,
-.handy[data-mode='dark'] .serviceCard p,
-.handy[data-mode='dark'] .careCheckList li,
-.handy[data-mode='dark'] .careMiniCard small { color: #9db0bb; }
-.handy[data-mode='dark'] .careEyebrow,
-.handy[data-mode='dark'] .kicker,
-.handy[data-mode='dark'] .careAccentText,
-.handy[data-mode='dark'] .careBtnGhost,
-.handy[data-mode='dark'] .serviceIcon { color: #4fdcc7; }
-.handy[data-mode='dark'] .careBtnGhost { border-color: color-mix(in srgb, #4fdcc7 45%, transparent); }
-.handy[data-mode='dark'] .careMiniCard,
-.handy[data-mode='dark'] .serviceCard { background: #14222b; border-color: rgba(255,255,255,.08); }
-.handy[data-mode='dark'] .careWhyCard,
-.handy[data-mode='dark'] .careEstimate,
-.handy[data-mode='dark'] .extraSection:nth-of-type(even),
-.handy[data-mode='dark'] .statItem { background: #11202a; }
-.handy[data-mode='dark'] .serviceIcon,
-.handy[data-mode='dark'] .careCheck { background: color-mix(in srgb, var(--theme-accent) 22%, transparent); color: #4fdcc7; }
 
 /* ===== Coat — bold painting / finishes look (Home Rakshak reference) ===== */
 /* Foundry (coat) on the --c-* scheme tokens; --coat-* aliased. Hero + footer
    share --c-deep (Foundry's maroon), so a scheme repalettes both together. */
-.coat {
-  --c-bg: #fff; --c-surface: #f4f3f6; --c-ink: #1b1a1f; --c-muted: #6a6870; --c-line: #ececf1; --c-deep: #3a080b; --c-on-deep: #fff;
-  --coat-ink: var(--c-ink); --coat-muted: var(--c-muted); --coat-surface: var(--c-surface); --coat-maroon: var(--c-deep);
-  --coat-ambient: radial-gradient(circle at 75% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-}
-.coat[data-mode='dark'] {
-  --coat-ambient: radial-gradient(circle at 50% -15%, rgba(224, 50, 42, 0.25), transparent 50%), radial-gradient(circle at 85% 60%, rgba(244, 63, 94, 0.14), transparent 40%), linear-gradient(180deg, #14080a 0%, #1e0d11 50%, #0a0405 100%);
-}
 .coatHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 94%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
 .coatBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.1rem; color: var(--coat-ink); }
 .coatBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.01em; }
@@ -2414,48 +2144,6 @@
 .coatFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: var(--c-on-deep); }
 .coatFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
 .coatFooter small { opacity: .6; font-size: .78rem; }
-.coat .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.coat .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
-.coat .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--coat-ink); }
-.coat .kicker { color: var(--theme-accent); }
-.coat .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 18px; box-shadow: 0 22px 46px -30px rgba(27,26,31,.3); }
-.coat .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); color: var(--theme-accent); border-radius: 14px; }
-.coat .serviceCard h3 { color: var(--coat-ink); }
-.coat .serviceCard p { color: var(--coat-muted); }
-.coat .statValue { color: var(--coat-ink); }
-.coat .statItem { background: var(--coat-surface); border-radius: 16px; padding: 1.4rem 1rem; }
-.coat .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
-.coat .heroQuickForm {
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 92%, #000 8%);
-  color: var(--c-on-deep);
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
-  box-shadow: 0 28px 56px -22px rgba(0,0,0,.7);
-}
-.coat .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); font-weight: 800; }
-.coat .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
-.coat .heroQuickForm input, .coat .heroQuickForm select, .coat .heroQuickForm textarea {
-  background: rgba(0, 0, 0, 0.55);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.38);
-  border-radius: 10px;
-}
-.coat .heroQuickForm input::placeholder, .coat .heroQuickForm textarea::placeholder {
-  color: rgba(255, 255, 255, 0.65);
-  opacity: 1;
-}
-.coat .heroQuickForm input:focus, .coat .heroQuickForm select:focus, .coat .heroQuickForm textarea:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
-}
-.coat .heroQuickForm .heroFormChip {
-  background: rgba(0, 0, 0, 0.45);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  border-radius: 8px;
-}
-.coat .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
-.coat .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
 @media (max-width: 900px) {
   .coatHero, .coatContact { grid-template-columns: 1fr; }
   .coatHeroMedia { order: -1; max-width: 440px; margin-inline: auto; }
@@ -2502,15 +2190,6 @@
 /* ===== Fixit — clean handyman look (Handify reference) ===== */
 /* Tinker (fixit) on the --c-* scheme tokens; --fx-* aliased. Light hero, so the
    footer bar is the only deep ground (--c-deep). */
-.fixit {
-  --c-bg: #fff; --c-surface: #f5f5f7; --c-ink: #2b2b30; --c-muted: #6a6a72; --c-line: #ececef; --c-deep: #201f24; --c-on-deep: #fff;
-  --fx-ink: var(--c-ink); --fx-muted: var(--c-muted); --fx-surface: var(--c-surface);
-  --fixit-ambient: radial-gradient(circle at 60% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-}
-.fixit[data-mode='dark'] {
-  --fixit-ambient: radial-gradient(ellipse at 40% -10%, rgba(245, 130, 42, 0.22), transparent 48%), radial-gradient(circle at 90% 20%, rgba(251, 191, 36, 0.14), transparent 35%), linear-gradient(180deg, #120e0a 0%, #1c1510 50%, #0a0806 100%);
-}
 .fixitHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 95%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
 .fixitBrand { display: inline-flex; align-items: center; gap: .5rem; font-size: 1.15rem; color: var(--fx-ink); }
 .fixitHeaderActions { display: inline-flex; align-items: center; gap: 1rem; }
@@ -2561,36 +2240,6 @@
 .fixitFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: var(--c-on-deep); }
 .fixitFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
 .fixitFooter small { opacity: .6; font-size: .78rem; }
-.fixit .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.fixit .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
-.fixit .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--fx-ink); }
-.fixit .kicker { color: var(--theme-accent); }
-.fixit .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(43,43,48,.28); }
-.fixit .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); color: var(--theme-accent); border-radius: 12px; }
-.fixit .serviceCard h3 { color: var(--fx-ink); }
-.fixit .serviceCard p { color: var(--fx-muted); }
-.fixit .statValue { color: var(--fx-ink); }
-.fixit .statItem { background: var(--fx-surface); border-radius: 14px; padding: 1.4rem 1rem; }
-.fixit .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
-.fixit .heroQuickForm {
-  border-radius: 14px;
-  background: var(--c-surface);
-  color: var(--fx-ink);
-  border: 1px solid var(--c-line);
-  box-shadow: 0 24px 50px -22px rgba(43,43,48,.28);
-}
-.fixit .heroQuickForm .heroFormTitle { color: var(--fx-ink); font-family: var(--theme-display); font-weight: 800; }
-.fixit .heroQuickForm .heroFormNote { color: var(--fx-muted); }
-.fixit .heroQuickForm input, .fixit .heroQuickForm select, .fixit .heroQuickForm textarea {
-  border-radius: 8px;
-  border-color: var(--c-line);
-  background: color-mix(in srgb, var(--c-surface) 92%, #000 8%);
-  color: var(--fx-ink);
-}
-.fixit .heroQuickForm .heroFormChip {
-  border-radius: 8px;
-  border-color: var(--c-line);
-}
 .fixitHeroCopy > * { animation: fixitRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .fixitHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .fixitHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -2618,15 +2267,6 @@
 /* ===== Reno — dark-navy + yellow renovation look (Renovation reference) ===== */
 /* Blueprint (reno) on the shared --c-* scheme tokens; --rn-* aliased so existing
    usages follow a scheme. Header/body use --c-bg; hero + footer are --c-deep. */
-.reno {
-  --c-bg: #fff; --c-surface: #f4f5f7; --c-ink: #26303c; --c-muted: #667180; --c-line: #e6e8ec; --c-deep: #1b2431; --c-on-deep: #fff;
-  --rn-navy: var(--c-deep); --rn-ink: var(--c-ink); --rn-muted: var(--c-muted); --rn-surface: var(--c-surface);
-  --reno-ambient: radial-gradient(circle at 70% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-}
-.reno[data-mode='dark'] {
-  --reno-ambient: radial-gradient(ellipse at 50% -10%, rgba(47, 109, 246, 0.22), transparent 50%), radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.15), transparent 45%), linear-gradient(180deg, #070d1a 0%, #0c162c 50%, #050811 100%);
-}
 .renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 96%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
 .renoBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.2rem; color: var(--rn-ink); }
 .renoHeaderActions { display: inline-flex; align-items: center; gap: 1rem; }
@@ -2662,64 +2302,6 @@
 .renoFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.2rem; color: var(--c-on-deep); }
 .renoFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .95rem; }
 .renoFooter small { opacity: .6; font-size: .78rem; }
-.reno .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.reno .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
-.reno .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--rn-ink); }
-.reno .kicker { color: color-mix(in srgb, var(--theme-accent) 78%, #7a6412); }
-.reno .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 4px; box-shadow: 0 22px 46px -30px rgba(27,36,49,.32); }
-.reno .serviceIcon { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); border-radius: 0; background: var(--rn-navy); color: var(--theme-accent); }
-.reno .serviceCard h3 { color: var(--rn-ink); }
-.reno .serviceCard p { color: var(--rn-muted); }
-.reno .statItem { background: var(--rn-navy); border-radius: 4px; padding: 1.4rem 1rem; }
-.reno .statValue { color: var(--c-on-deep); }
-.reno .statLabel { color: color-mix(in srgb, var(--c-on-deep) 70%, transparent); }
-.reno .processNum { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); border-radius: 0; background: var(--theme-accent); color: var(--rn-navy); }
-.reno .heroQuickForm {
-  border-radius: 6px;
-  background: repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 24px), repeating-linear-gradient(90deg, rgba(255,255,255,.015) 0 1px, transparent 1px 24px), var(--c-deep);
-  color: var(--c-on-deep);
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
-  box-shadow: 0 24px 50px -22px rgba(0,0,0,.65);
-}
-.reno .heroQuickForm .heroFormTitle { color: var(--c-on-deep); }
-.reno .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
-.reno .heroQuickForm input, .reno .heroQuickForm select, .reno .heroQuickForm textarea {
-  background: rgba(0, 0, 0, 0.55);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.38);
-  border-radius: 4px;
-}
-.reno .heroQuickForm input::placeholder, .reno .heroQuickForm textarea::placeholder {
-  color: rgba(255, 255, 255, 0.65);
-  opacity: 1;
-}
-.reno .heroQuickForm input:focus, .reno .heroQuickForm select:focus, .reno .heroQuickForm textarea:focus {
-  border-color: #818cf8;
-  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
-}
-.reno .heroQuickForm .heroFormChip {
-  background: rgba(0, 0, 0, 0.45);
-  color: #f8fafc;
-  border: 1.5px solid rgba(255, 255, 255, 0.32);
-  border-radius: 4px;
-}
-.reno .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
-.reno .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
-.reno .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
-  color: #f8fafc;
-}
-.reno .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
-  border-color: var(--theme-accent);
-}
-.reno .heroQuickForm .heroFormPhotoChip {
-  background: rgba(255, 255, 255, 0.12);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-.reno .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }
 .renoHeroCopy > * { animation: renoRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .renoHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .renoHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -2744,15 +2326,6 @@
    vars are aliased to those tokens, so every existing var(--sh-navy/ink/muted/
    surface) usage follows a chosen scheme (or dark mode) with no further edits.
    Defaults below reproduce Shine's native navy-and-white palette. */
-.shine {
-  --c-bg: #fff; --c-surface: #f2f3f5; --c-ink: #14202e; --c-muted: #5c6675; --c-line: #e7e9ed; --c-deep: #0f1b2d; --c-on-deep: #fff;
-  --sh-navy: var(--c-deep); --sh-ink: var(--c-ink); --sh-muted: var(--c-muted); --sh-surface: var(--c-surface);
-  --shine-ambient: radial-gradient(circle at 75% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 15% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
-  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
-}
-.shine[data-mode='dark'] {
-  --shine-ambient: radial-gradient(circle at 50% -10%, rgba(123, 92, 255, 0.24), transparent 50%), radial-gradient(circle at 85% 25%, rgba(236, 72, 153, 0.15), transparent 35%), radial-gradient(circle at 15% 75%, rgba(56, 189, 248, 0.12), transparent 40%), linear-gradient(180deg, #0c0817 0%, #150e26 50%, #07040d 100%);
-}
 /* CTA edge block header: no right padding — the booking CTA is a full-height
    accent block fused to the right edge; lowercase wordmark for contrast. */
 .shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 1.5rem; padding: 0 0 0 clamp(1.25rem, 4vw, 3.5rem); background: linear-gradient(180deg, color-mix(in srgb, var(--c-deep) 97%, transparent), color-mix(in srgb, var(--c-deep) 88%, transparent)); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 8%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-accent) 24%, transparent), 0 14px 34px -24px rgba(0,0,0,.7); color: var(--c-on-deep); }
@@ -3316,18 +2889,6 @@
 .shineFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: var(--c-on-deep); }
 .shineFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 800; font-size: .95rem; }
 .shineFooter small { opacity: .6; font-size: .78rem; }
-.shine .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.shine .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
-.shine .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--sh-ink); }
-.shine .kicker { color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
-.shine .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(15,27,45,.28); }
-.shine .serviceIcon { background: var(--sh-navy); color: var(--theme-accent); border-radius: 12px; }
-.shine .serviceCard h3 { color: var(--sh-ink); }
-.shine .serviceCard p { color: var(--sh-muted); }
-.shine .statItem { background: var(--sh-navy); border-radius: 16px; padding: 1.4rem 1rem; }
-.shine .statValue { color: var(--theme-accent); }
-.shine .statLabel { color: color-mix(in srgb, var(--c-on-deep) 72%, transparent); }
-.shine .processNum { background: color-mix(in srgb, var(--theme-accent) 18%, transparent); color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
 .shineHeroCopy > * { animation: shineRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .shineHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .shineHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -3358,17 +2919,10 @@
    surfaces (header, service cards, even-section gradient endpoints) is
    enough. Heroes and footers are already dark and keep their identity;
    floating white badges/cards stay white for contrast over photos. */
-.coat[data-mode='dark'] { --c-bg: #17151a; --c-surface: #201d26; --c-ink: #e9e6ee; --c-muted: #a5a0af; --c-line: #2a2732; --c-deep: #2a0c11; --c-on-deep: #f3e9ec; }
-
-.fixit[data-mode='dark'] { --c-bg: #17181d; --c-surface: #1f2129; --c-ink: #e9eaef; --c-muted: #9ba1ae; --c-line: #262933; --c-deep: #101115; --c-on-deep: #e9eaef; }
-.fixit[data-mode='dark'] .fixitPhoneIcon { border-color: #363b47; }
-
-.reno[data-mode='dark'] { --c-bg: #141a23; --c-surface: #1b2431; --c-ink: #e9edf3; --c-muted: #98a2b0; --c-line: #2a3442; --c-deep: #10151d; --c-on-deep: #e9edf3; }
 
 /* Dark mode is now just another token override; the token-driven base rules
    (surface/line/deep/ink) do the rest. Only applies when no scheme is set —
    the template drops data-mode when a scheme is active. */
-.shine[data-mode='dark'] { --c-bg: #0f1626; --c-surface: #172032; --c-ink: #e9edf5; --c-muted: #98a2b3; --c-line: #263149; --c-deep: #0b1220; --c-on-deep: #e9edf5; }
 
 /* ===== Mobile nav — floating menu button + full-screen overlay =====
    Portaled to <body> (see SiteNavLinks.tsx), shown only where templates hide
@@ -4378,4 +3932,3 @@
     flex-direction: column;
   }
 }
-
