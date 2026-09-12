@@ -1586,6 +1586,26 @@ export async function purchaseMessagingNumber(input: Readonly<{
   });
 }
 
+export async function releaseMessagingNumber(input: Readonly<{
+  applicationId: string;
+  accountId: string;
+  providerNumberId: string;
+  actorReference: string;
+  runtime?: MessagingNumberOperationRuntime;
+}>) {
+  assertMutationGate(input.runtime);
+  const runtime = input.runtime ?? defaultRuntime();
+  return executeProviderMutation({
+    applicationId: input.applicationId,
+    operationType: 'release_number',
+    idempotencyKey: `messaging:${input.applicationId}:release:${input.providerNumberId}`,
+    payload: { provider_number_id: input.providerNumberId },
+    request: (client) => client.releasePhoneNumber({ id: input.providerNumberId }),
+    result: () => ({ released: true }),
+    runtime,
+  });
+}
+
 export async function configureMessagingNumberInbound(input: Readonly<{
   applicationId: string;
   accountId: string;

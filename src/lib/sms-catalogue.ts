@@ -19,6 +19,7 @@ import {
   crewWelcomeText,
   inboxReplyText,
   intakeConfirmationText,
+  formatPrivateSmsText,
   jobUpdateText,
   leadDeclineText,
   leadQuoteVisitOptionsText,
@@ -705,6 +706,15 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     control: manual('You type it'),
     ownerAuthored: true,
     body: inboxReplyText({ businessName: SAMPLE.business, body: 'Yes — Thursday morning works, see you at 9.' }),
+  },
+  {
+    id: 'private-text',
+    title: 'Private text',
+    trigger: 'You send a direct message from a lead or job page',
+    audience: 'customer',
+    control: manual('You type it'),
+    ownerAuthored: true,
+    body: formatPrivateSmsText({ businessName: SAMPLE.business, body: 'Are you available for a site visit this afternoon?' }),
   },
   {
     id: 'owner-voice-emergency-alert',
