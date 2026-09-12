@@ -68,247 +68,48 @@ all four inbound webhooks deduplicated, environment parity complete except
 platform-provided variables, no public caching of tenant data, and no CORS
 wildcards.
 
-## Top-up add-on rail — gap audit 2026-09-12
+## SMS setup gaps — 2026-09-12
 
-Traced the whole top-up rail at `a0e6833`: sale surface (`catalog.ts`,
-`top-up-purchase.ts`, `top-up-purchase-entrypoint.ts`,
-`top-up-purchase-checkout.ts`), receipt (`stripe-top-up-webhook.ts`),
-fulfillment (`top-up-event-projector.ts`, `top-up-projection-worker.ts`),
-recurring lifecycle (`capacity-lifecycle.ts`, `capacity-lifecycle-worker.ts`,
-`subscription-cancellation.ts`), reversal (`addon-refunds.ts`,
-`addon-refund-worker.ts`), consumption (the six `reserve_usage_credits`
-callers), alerting (`scan_operational_failures`), and the operator documents.
-The rail's core is sound — durable claim before Stripe, catalog-not-metadata
-quantities, purpose-bound webhook scope, a sweep rather than a webhook for
-recurring state, a per-row cancel path, and capacity cancellation on account
-deletion all verified present. The gaps below are the edges around it. Nothing
-here was run locally: this tree has no `node_modules`, so see the last item.
+Eighteen gaps in the messaging setup that no existing checklist item covers,
+from a static read of the outbound producers, the durable queue and worker, the
+provider boundary, inbound/status ingress, consent, templates, number
+provisioning and the SMS environment surface. Full report with file and line
+evidence: [sms-setup-gap-audit-2026-09-12.md](docs/sms-setup-gap-audit-2026-09-12.md).
 
-### Sale surface is wider than every gate that guards it
+**Scope note.** This does not re-open the carrier registration gates already
+tracked in *§3. Telephony, SMS & Carrier 10DLC Approval* and in *SignalWire
+completion and remaining launch gates — 2026-09-06*; contractor brand/campaign
+registration, number assignment and carrier acceptance remain open there.
+Evidence is source-level only: nothing was run against production, no provider
+API was called, and no configuration was changed. Three items sharpen an
+existing checklist line and say so.
 
-- [ ] **Twelve SKUs are sellable; every gate and allowlist is written for six.**
-  `TOP_UPS_WITHHELD` is `Object.freeze({})` ([catalog.ts:415](src/lib/billing/catalog.ts#L415)),
-  so `SELLABLE_TOP_UP_IDS` is all twelve: `flex_text_250`, `text_1000`,
-  `marketing_email_5000`, `ai_intake_100`, `ai_writing_250`, `storage_100gb`,
-  `office_user`, `crew_user`, `ai_voice_flex`, `ai_voice_solo`,
-  `ai_voice_growth`, `voice_minutes_100`. §403's PASS is "for all six" and
-  "anything short of six for six", which can pass while six live Prices are
-  unverified. `npm run inspect:live-top-ups` is not the limitation — it parses
-  the catalog source ([inspect-live-top-up-prices.mjs:46](scripts/inspect-live-top-up-prices.mjs#L46))
-  and will print twelve. **PASS = twelve for twelve**, re-stated in §403.
-- [ ] **`crew_user` returned to sale as a side effect of emptying the withheld map.**
-  It was withheld on 2026-08-23 because "no code in the product can cancel a
-  top-up subscription" ([pre-launch-handoff-2026-08-23.md:100](docs/pre-launch-handoff-2026-08-23.md)).
-  That blocker is genuinely closed — `PurchasedCapacityList` plus
-  `cancelPurchasedCapacitySubscriptionAtPeriodEnd` ([subscription-cancellation.ts:684](src/lib/billing/subscription-cancellation.ts#L684))
-  give a per-row cancel, and `account-deletion-saga.ts:155` cancels capacity
-  subscriptions on deletion — but no item re-verified it for `crew_user`, and
-  [top-up-purchase.ts:176](src/lib/billing/top-up-purchase.ts#L176) still states
-  "As of 2026-08-23 NOTHING recurring is sellable", now false for six SKUs.
-  Fix the comment in the same commit as the verification.
-- [ ] **Nothing refuses a second purchase of the same recurring add-on.** The
-  Stripe idempotency identity is workspace + `operationId` + livemode, and
-  `operationId` is a fresh UUID per render, so two page loads are two real
-  subscriptions. For seats that is correct (buy three). For `ai_voice_*` it is
-  not: voice entitlement is a boolean — `included || purchased > 0`
-  ([entitlement.ts:100](src/lib/voice/entitlement.ts#L100)) — so a second
-  $69/mo subscription adds no entitlement, only a second invoice. Needs a
-  per-SKU "you already have this" refusal in
-  `executeTopUpPurchaseCheckout` for the three voice SKUs.
+### Consent and TCPA
 
-### Refunds reverse six SKUs and silently ignore the other six
+- [ ] **A1 — The quiet-hours gate covers one billing category out of five:** `src/lib/sms-delivery.ts:113` defers only `customer_message`. `payment_message` — the pay links, card-setup and dunning card-update texts that go to homeowners (`src/lib/sms.ts:1030-1056`) — is not deferred, nor are `verification` or `crew_message`. The two producer-level checks that exist (`src/lib/sms.ts:626`, `:2319`) cover speed-to-lead and intake confirmation, not payments. **This narrows the completed *Quiet-Hours Delivery Contract (2026-09-01)* claim below, which reads broader than it is.** Close by making the exemptions one reviewed table with stated reasons, deferring consumer payment traffic, and asserting the table in a test.
+- [ ] **A2 — Quiet hours are decided at enqueue and never re-checked at send:** `availableAt` is computed once when the row is written; `src/lib/sms-delivery-worker.ts` has no quiet-hours logic. A task enqueued at 8:50pm that fails retryably can be re-attempted after 9pm (retries run to `attempt_number` 8, `migrations/20260821180506_sms_delivery_foundation.sql:275`), and a stalled or disabled worker flushes its whole backlog across the boundary when it resumes. Close by re-evaluating recipient-local time at the final egress gate, with a test proving a retry crossing 9pm is held.
+- [ ] **A3 — The recipient time zone is guessed from the area code before the address:** `resolveRecipientTimeZone` (`src/lib/phone-timezone.ts:553`) consults area code second and address third. Number portability makes area-code inference wrong for mobile numbers — a `+1 313` handset in Seattle gets Eastern quiet hours, three hours early. Close by ranking address above area code where an address exists, persisting the resolution source next to the message, and testing the chain.
+- [ ] **A4 — No marketing consent scope; campaigns ride transactional consent:** `sms_consent_scopes.consent_scope` admits only `customer`, `crew`, `owner`. `sendCampaignSms` (`src/lib/sms.ts:2122`) enqueues seasonal-offer blasts as `customer_message` on the `customer` scope, so a homeowner who ticked the intake box for quote and appointment texts is eligible for promotional traffic. Two exposures: TCPA requires prior express *written* consent for marketing and one scope cannot hold two standards; and the registered use case is `LOW_VOLUME_MIXED / CUSTOMER_CARE + ACCOUNT_NOTIFICATION` with a TCR description stating no MARKETING is carried (recorded in `src/app/api/sms/inbound/route.ts`), which campaign traffic contradicts on a carrier-audited field. Close by giving marketing its own scope and capture, requiring it in the campaign sender, and either extending the registration or fencing the composer off from registered-transactional senders.
+- [ ] **A5 — Consent evidence is captured for crew only:** `sms_consent_evidence` — the table holding `disclosure_text`, `disclosure_hash`, `disclosure_version`, `source_page` — has exactly one writer in the application, `src/lib/sms.ts:1232`, at `consent_scope: 'crew'`. Customer and lead consent (intake checkbox, portal link request, missed-call text-back via `ensureSmsConsentBaseline`, `src/lib/sms.ts:921`) writes `sms_consent` and `sms_consent_scopes` rows and no evidence row: no stored record of the wording shown, its version, or the page. Homeowner traffic is the traffic that draws complaints and consent audits, and it is the traffic with no evidence. Close by writing a versioned, hashed evidence row on every consent-establishing path and letting the contractor surface produce it for one number on demand.
+- [ ] **A6 — Free-form message bodies bypass the opt-out guard:** `test/sms-catalogue.test.ts:126` requires an opt-out line on every catalogue entry addressed to a customer or lead, with two argued exemptions. It guards the catalogue only. `formatPrivateSmsText` (`src/lib/sms-templates.ts:644`), which prefixes a business name onto arbitrary operator text for the Private text action, is **absent from the catalogue entirely** — so it is in neither the guard nor the outgoing-text catalogue the messages page renders — and carries no opt-out line. No free-form composer shows a segment count before sending or checks the typed text against what the registered campaign excludes. Close by cataloguing `formatPrivateSmsText` under the guard and adding segment count plus opt-out handling to the free-form composers.
 
-- [ ] **A refunded credit pack keeps its credits.** `addon-refunds.ts:13`
-  hardcodes `SKUS` to exactly the 2026-09-08 six (`voice_minutes_100`,
-  `ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, `storage_100gb`,
-  `office_user`). Anything else returns `null` at
-  [addon-refunds.ts:100](src/lib/billing/addon-refunds.ts#L100), and
-  [addon-refund-worker.ts:87](src/lib/billing/addon-refund-worker.ts#L87) turns
-  a null contract into `state = 'ignored'`. So refunding `text_1000` ($42),
-  `flex_text_250`, `marketing_email_5000`, `ai_intake_100`, `ai_writing_250` or
-  `crew_user` returns the money and leaves the granted units spendable, with no
-  failure and no finding. Either extend `SKUS` to all twelve with the matching
-  reversal shape per `fulfillment` kind, or refuse the refund path for SKUs it
-  cannot reverse — not `ignored`.
-- [ ] **Decide the reversal rule for a partially-spent credit pack before
-  extending the allowlist.** The five credit SKUs grant into `usage_credit_lots`
-  with `source_type='purchase'` and no expiry. A refund after 400 of 1,000
-  credits are spent has no currently-written answer; the refund ledger's
-  future-credit-debt shape ([20260908175533](migrations/20260908175533_addon_refund_reversal_and_future_credit_debt.sql))
-  is the place to settle it, not the worker.
+### Carrier and 10DLC operations
 
-### Money moved and nothing was granted — no alert fires
+- [ ] **B1 — Provider error codes are stored and never read:** `extractStatusWebhook` parses `ErrorCode` (`src/lib/sms-webhook-ingress.ts:277`) and `applyStatusWebhook` persists it, but nothing in `src/` branches on the value — a grep for `21610`, `30007`, `30003` and `30006` finds only a marketing paragraph in `resources.ts`. `21610` is the serious one: the carrier is reporting an opt-out that our inbound webhook never saw, and the consent ledger does not learn it, so the next send is still attempted. `30007` (carrier spam filtering) raises no alert; `30003` and `30006` are retried rather than suppressed. Close by mapping terminal codes to suppression, filtering codes to an operator alert, and testing against recorded payloads from both providers.
+- [ ] **B2 — No brand or campaign lifecycle tracking:** campaign approval is treated as a one-time event. Nothing tracks brand re-vetting or campaign renewal dates, the assigned-number count against the approved per-campaign ceiling of 49, or volume against the approved caps (75 AT&T SMS/minute, 50 AT&T MMS/minute, 2,000 T-Mobile/day at brand level). Those figures exist on this checklist as prose; they are not in code, not measured, and nothing warns as a ceiling is approached. Close by recording the approved limits as data, measuring usage against them, and alerting before a ceiling rather than after filtering starts.
+- [ ] **B3 — No throughput governor, and a low hard ceiling:** `/api/cron/sms-delivery` runs once a minute (`vercel.json:132`) with `BATCH_SIZE = 20` (`src/lib/sms-delivery-cron.ts:10`), claiming one task at a time (`sms-delivery-worker.ts:448`). Platform-wide outbound is therefore capped near **20 messages per minute** across every workspace, shared with the payment producer, with no per-account fairness — one workspace's campaign starves everyone else's appointment reminders — and no per-carrier rate limiting. Close by stating the intended sustained rate, setting batch size and cadence from it, measuring queue depth and oldest-task age, and adding a per-account share.
+- [ ] **B4 — No outbound MMS:** `buildSendRequest` (`src/lib/sms-provider.ts:404`) sets `To`, `Body`, a sender and `StatusCallback`; there is no `MediaUrl` parameter and no producer takes an attachment. Inbound MMS is fully handled (parse, fetch, serve). The direction a contractor needs — texting a customer a photo of the work, a marked-up diagram, a signed form — cannot be done, while the provisioned numbers report `["voice","fax","sms","mms"]` and the campaign carries an approved AT&T MMS rate limit. Close by implementing outbound media (parameter, per-segment billing, size and type limits, a test) or deferring it explicitly and checking customer-facing claims for anything that implies it.
+- [ ] **B5 — No number release path, and recycled numbers inherit consent:** `messaging-number-provisioning.ts` purchases and assigns numbers across 1,965 lines and has no release, deprovision or unassign function, so a cancelled workspace's number keeps billing. More seriously, consent and opt-out rows are keyed on `(account_id, phone_number)` and `(provider, campaign_id, phone_number)`: a **recipient** number released by its owner and reassigned by the carrier arrives carrying the previous holder's `opted_in` row, and the new holder receives texts they never agreed to. Nothing checks the Reassigned Numbers Database. Close by adding a release path for numbers we own and a last-affirmed date on consent rows with a policy for long-silent numbers.
 
-- [ ] **Terminal `ignored` outcomes on the money rail are invisible to the
-  operational monitor.** `scan_operational_failures` signals only
-  `processing_status='failed'`, a `received` row older than 15 minutes, or a
-  `processing` lease expired past 5 minutes
-  ([20260909133220:61-63](migrations/20260909133220_operational_alert_delivery.sql#L61)).
-  The projector's non-grant terminals are none of those. `capacity_fulfillment_deferred`
-  is reachable today: a paid `recurring_capacity` Session whose `subscription`
-  is absent or fails `SUBSCRIPTION_ID_PATTERN` is marked ignored and granted
-  nothing ([top-up-event-projector.ts:390](src/lib/billing/top-up-event-projector.ts#L390)),
-  which is money taken for capacity nobody can cancel. `top_up_not_a_purchase`,
-  `top_up_fulfillment_withheld` and the refund worker's `ignored` are equally
-  silent. Add a finding category for "paid, projected, granted nothing" and for
-  refund jobs resolved `ignored`, both keyed so one row is one alert.
+### Configuration and operations
 
-### §7's environment table encodes the ordering its own §406 forbids
-
-- [ ] **§7 lists `LGQ_TOP_UP_PURCHASE_ENABLED=1` and none of the flags that must
-  precede it.** Absent from the table: `STRIPE_TOP_UP_WEBHOOK_SECRET`,
-  `LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED`,
-  `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED`,
-  `LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED`,
-  `LGQ_ADDON_REFUND_REVERSAL_ENABLED`, and every consumption meter below. §406
-  and [top-up-purchases-go-live-runbook.md:48](docs/top-up-purchases-go-live-runbook.md)
-  both require webhook → worker → purchase; the table as written is the
-  reversed ordering. Add the rows with expected values and the redeploy that
-  baked each one.
-- [ ] **A purchased credit is unspendable unless its resource's meter flag is
-  on.** Each consumer reads a meter flag (write the ledger) and a gate flag
-  (also refuse); meter off means the balance is never debited. Per SKU:
-  `LGQ_TEXT_CREDIT_METER_ENABLED` for `text_1000` and `flex_text_250`,
-  `LGQ_MARKETING_EMAIL_METER_ENABLED` for `marketing_email_5000`,
-  `LGQ_AI_WRITING_METER_ENABLED` for `ai_writing_250`,
-  `LGQ_AI_INTAKE_USAGE_GATE_ENABLED` for `ai_intake_100` (single flag — no
-  separate meter), `LGQ_VOICE_MINUTE_METER_ENABLED` for `voice_minutes_100`.
-  Selling `text_1000` with its meter off takes $42 for a number that never
-  decreases. **PASS =** one row per sellable credit SKU naming its meter flag
-  and its deployed Production value.
-- [ ] **`LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED` is the only mechanism that
-  ever revokes recurring capacity.** The platform Billing webhook deliberately
-  refuses capacity subscriptions as a foreign rail
-  ([stripe-billing-subscription-events.ts:103](src/lib/billing/stripe-billing-subscription-events.ts#L103)),
-  so no event path exists by design — reconciliation is the hourly
-  `capacity-lifecycle` sweep alone (`vercel.json`, `37 * * * *`). With the flag
-  off, a canceled or unpaid $15/mo seat, $69/mo voice add-on or 100 GB of
-  storage keeps its capacity indefinitely and nothing fails. This flag is now a
-  prerequisite of selling any recurring SKU, not an optional worker.
-- [ ] **`LGQ_USAGE_RESERVATION_EXPIRY_ENABLED` off leaks purchased balance.**
-  Consumers reserve before the effect and commit after; the
-  `usage-reservation-expiry` cron is what releases a reservation whose
-  operation died. Off, a purchased balance drains into reservations that never
-  return, and the customer sees credits they cannot spend.
-
-### The top-up Checkout Session pins far less than the base plan's
-
-The base-plan call pins `customer`, `automatic_tax`, `payment_method_types` and
-`expires_at`, then re-asserts all four on the Session Stripe returns
-([stripe-billing-subscription-checkout.ts:377](src/lib/billing/stripe-billing-subscription-checkout.ts#L377),
-[:485](src/lib/billing/stripe-billing-subscription-checkout.ts#L485),
-[:531](src/lib/billing/stripe-billing-subscription-checkout.ts#L531)).
-`buildTopUpCheckoutParams` ([top-up-purchase.ts:181](src/lib/billing/top-up-purchase.ts#L181))
-sets only `mode`, `line_items`, `metadata`, `subscription_data`/`payment_intent_data`
-and the two URLs, and the top-up assertion checks only mode, price, amount and
-metadata equality. Each of the four is a decision that should be made here, not
-inherited from a Dashboard default.
-
-- [ ] **No Stripe Customer is bound, so each recurring add-on creates its own.**
-  Checkout in `mode: 'subscription'` requires a Customer and creates one when
-  none is passed, so a workspace accumulates one Stripe Customer per add-on,
-  none of them the base plan's. A card updated for the plan does not fix add-on
-  dunning, and `overage-settlement-worker.ts:126` — which resolves a
-  workspace's customer from `billing_subscriptions.provider_customer_id` —
-  cannot see add-on payment methods at all. In `mode: 'payment'` the default
-  `customer_creation: 'if_required'` usually creates no Customer, so a one-time
-  top-up is an unlinked charge. Bind the workspace's existing
-  `provider_customer_id` and assert it, as the base plan does.
-- [ ] **`payment_method_types` is unset, so the platform Dashboard decides what
-  a top-up may be paid with.** The base plan pins exactly `['card']`. The
-  projector does handle delayed rails correctly (`awaiting_async_payment`,
-  `async_payment_succeeded`/`failed`), but an offer nobody chose is still an
-  offer, and on a recurring SKU it changes what dunning looks like. Pin it.
-- [ ] **`automatic_tax` is unset while every top-up Price is required to be
-  `tax_behavior: 'exclusive'`** ([top-up-purchase.ts:128](src/lib/billing/top-up-purchase.ts#L128)).
-  Exclusive with automatic tax off collects no tax on any top-up. The base plan
-  sets `automatic_tax.enabled = false` explicitly and asserts it, so its stance
-  is a recorded decision; the top-up rail's is a default. Decide, set it, and
-  assert it.
-- [ ] **`expires_at` is unset**, so a top-up Session lives Stripe's default 24
-  hours while the durable operation claim is what holds the purchase open.
-  Pin it to the same contract the base plan uses so the two cannot disagree
-  about when an abandoned checkout is dead.
-- [ ] **Decide whether a one-time top-up gets an invoice or receipt.** No
-  `invoice_creation`, no `receipt_email`, and in payment mode usually no
-  Customer, so whether a contractor who spends $42 gets anything for their
-  books currently depends on a Stripe Dashboard email setting rather than on
-  code. For a B2B buyer this is a support request waiting to happen.
-
-### Operator documents that will mislead whoever follows them
-
-- [ ] **The runbook's worker-verification query names a cron job that does not
-  exist.** [top-up-purchases-go-live-runbook.md:98](docs/top-up-purchases-go-live-runbook.md)
-  reads `WHERE job = 'billing-workers'`; the registered name is
-  `top-up-projection` ([route.ts:11](src/app/api/cron/top-up-projection/route.ts#L11)).
-  The query returns zero rows forever, and zero rows is indistinguishable from a
-  worker that never ran — so Step 3's proof can never be obtained, in exactly
-  the step whose whole purpose is proving the worker drains before money can be
-  taken.
-- [ ] **The runbook's sellable list is six SKUs and two prices are wrong.**
-  Line 62 lists only the pre-2026-09-08 six and states `marketing_email_5000`
-  at $19 (catalog: $17, [catalog.ts:280](src/lib/billing/catalog.ts#L280)) and
-  `ai_writing_250` at $12 (catalog: $19, [catalog.ts:302](src/lib/billing/catalog.ts#L302))
-  — the two read as transposed. It also never names
-  `LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED` or
-  `LGQ_ADDON_REFUND_REVERSAL_ENABLED`, both now prerequisites because recurring
-  SKUs are sellable. Its three-flag sequence needs to become five.
-- [ ] **§2's Top-Up Add-Ons contract audit still reads as current** while
-  asserting that `storage_100gb`, `office_user`, `ai_voice_flex`,
-  `ai_voice_solo`, `ai_voice_growth` and `voice_minutes_100` "have no live Price
-  and remain excluded from sale" (lines 619-626). §403 supersedes it; say so on
-  the stale rows rather than leaving two sections of this file disagreeing about
-  what is on sale.
-- [ ] **§403's "credit ledger has no consumer" (line 425) is stale and hides the
-  real condition.** Six consumers call `reserve_usage_credits`:
-  [text-credit-usage.ts:163](src/lib/billing/text-credit-usage.ts#L163),
-  [voice-minute-usage.ts:265](src/lib/billing/voice-minute-usage.ts#L265),
-  [marketing-email-usage.ts:111](src/lib/billing/marketing-email-usage.ts#L111),
-  [ai-intake-usage.ts:286](src/lib/billing/ai-intake-usage.ts#L286),
-  [ai-writing-usage.ts:101](src/lib/billing/ai-writing-usage.ts#L101) and
-  [sms-field-intake-usage.ts:58](src/lib/sms-field-intake-usage.ts#L58). The
-  consumers exist; they are flag-dark. Restate the item as the meter-flag
-  requirement above, which is the thing that can actually be verified.
-
-### Surface truthfulness
-
-- [ ] **The Plan & usage limits table reports purchased storage as the plan's
-  allowance.** [PlanUsageSection.tsx:168](src/app/dashboard/settings/PlanUsageSection.tsx#L168)
-  renders `limits.storageGb` from `workspace_entitlements.feature_limits` alone,
-  while the storage card directly above it renders `workspace_storage_state_v1`,
-  which is plan **plus** purchased capacity
-  ([20260819000000:194-212](migrations/20260819000000_workspace_storage_usage.sql#L194)).
-  Buy `storage_100gb` on Flex and the card says 105 GB while the row beneath it
-  says 5 GB. The seat rows were fixed for precisely this reason — see the
-  comment at [PlanUsageSection.tsx:161](src/app/dashboard/settings/PlanUsageSection.tsx#L161),
-  "this row read the plan alone, so a purchased seat worked and was invisible" —
-  and storage was left behind. `storage_100gb` went on sale 2026-09-08, so the
-  row is wrong for every buyer. The upload guard itself is correct; only the
-  stated entitlement is wrong.
-
-### Verification not yet performed
-
-- [ ] **No top-up suite was executed for this audit.** This tree has no
-  `node_modules`, so every finding above is from reading source, SQL and
-  `vercel.json`, not from a run. Twenty relevant suites exist —
-  `top-up-purchase-checkout`, `top-up-event-projector`,
-  `top-up-projection-worker`, `top-up-capacity-projection`,
-  `stripe-top-up-webhook-route`, `addon-refunds`,
-  `purchased-capacity-lifecycle`, `capacity-lifecycle-worker-period`,
-  `paid-addon-lifecycle`, `credit-lots`, `plan-usage-capacity`,
-  `seed-stripe-top-up-prices-script` and the migration suites. Run them, plus
-  `npm run test:pg17:capacity-grant`, and record the counts here.
-- [ ] **`npm run inspect:live-top-ups` has still never been run against live.**
-  §403 carries it as operator-required with no `.env.live.local` in this
-  checkout; it remains the only check that a Buy button maps to a real Price.
-  Per the first item, its PASS is twelve for twelve.
-- [ ] **`.env.example` defines eighteen billing flags twice**, among them every
-  meter and gate on the consumption rail (`LGQ_TEXT_CREDIT_METER_ENABLED` at
-  502 and 703, `LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED` at 486 and 687,
-  `LGQ_USAGE_RESERVATION_EXPIRY_ENABLED` at 495 and 696, and fifteen more).
-  Values agree today so no behavior changes, but §406's "reconcile all 67
-  production feature flags" reads a file where half this rail appears twice.
-  Low severity, worth one deduplicating commit before that reconciliation.
+- [ ] **C1 — `StatusCallback` is attached conditionally and fails open:** `src/lib/sms-provider.ts:415` sets the callback only when `trustedProviderCallbackOrigin()` returns non-null, and that function (`src/lib/app-origin.ts:49`) returns `null` for anything that is not a bare HTTPS origin inside `NEXT_PUBLIC_ROOT_DOMAIN` — a preview URL, a port, a trailing path, a changed root domain. The send then proceeds **without a status callback**, with no throw, no log and no alert, and every message in that state is delivered or not with no durable evidence either way. This silently defeats the standard asserted under *Operational failure alerts and recovery* that durable delivery evidence distinguishes provider acceptance from delivery. Close by failing the send or alerting when the origin does not resolve, and asserting it in a production health check.
+- [ ] **C2 — No destination-country allowlist:** `normalizeUsPhone` (`src/lib/phone.ts:1`) returns `+<digits>` for any input starting with `+` between 10 and 15 digits, and `enqueueSmsDelivery` validates shape only (`/^\+[1-9][0-9]{7,14}$/`). Nothing restricts destinations to NANP, so a `+44`, `+234` or `+880` number entered into a lead form, a crew roster or the private-text box is handed to the provider. High-cost international destinations are the standard SMS-pumping target, and the campaign is registered US-only so these sends fail at the carrier after we have paid for the attempt. Volume defences on the public verification endpoint are sound (5/min per IP, 5/min and 10/day per number, fail-closed); the destination itself is unconstrained. Close by enforcing an explicit country allowlist at the enqueue boundary.
+- [ ] **C3 — No per-workspace outbound volume or spend ceiling:** text credits meter what a workspace is billed for, and `sms-billing-policy.ts` exempts `payment_message` and `verification` from metering entirely. Exempt traffic still costs real money at the carrier and has no ceiling. Ad spend has a hard monthly cap (`ad-billing-shared.ts:263`) and Neighborhood Halo has one (`neighborhood-halo-service.ts:347`); messaging has none. Close with a per-workspace daily message ceiling covering exempt categories, and an alert before it is reached.
+- [ ] **C4 — The legacy Twilio signing key is a second live credential with no sunset:** the permanent aliases at `/api/twilio/inbound` and `/api/twilio/status` are well-reasoned, but `validateWebhookSignature` (`src/lib/sms-provider.ts:789`) selects its verification key from the request header, so an `x-twilio-signature` is verified against `TWILIO_AUTH_TOKEN` on every SMS webhook route for as long as that variable is set — and it is still required by phone verification and the voice bridge (`voice-call-bridge.ts:95`), so it will not lapse on its own. Two independent signing keys authenticate the same endpoints indefinitely with no dated review. Close with a dated decision separating the verification-token and voice-bridge dependencies from the webhook signing key, and a review date.
+- [ ] **C5 — `.env.example` carries three divergent Twilio blocks:** `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` are each declared three times (lines 326-327, 883-884, 894-895), and the sending number appears as `TWILIO_FROM_NUMBER` in one block and `TWILIO_PHONE_NUMBER` in the others — both names are real and read by different subsystems (`sms-provider.ts:294` and `voice-call-bridge.ts:63`, the latter falling back to a literal `+18005550199`). `SIGNALWIRE_SPACE_ID` is declared twice (522, 723). Nothing is broken today; this is how a variable gets set to the wrong value by somebody reading the wrong block, and §7's master environment checklist inherits the ambiguity. Close by declaring each variable once, documenting the two number variables as the distinct things they are, and removing or justifying the voice-bridge literal fallback.
+- [ ] **C6 — The SMS health signal reports configuration, not reachability:** `uptime-monitoring.ts:119-131` reports `configured` on credential presence and `degraded` on absence. That is honest by construction — it is the `SubsystemStatus = 'configured'` decision recorded under **T7** so the badge could not claim a probe it had not run. The gap is what has not been built since: with no synthetic send-and-receive canary, nothing detects a provider outage, an expired credential, a revoked campaign or a broken callback until a human notices missing texts. **This is the probe underneath the open alert-thresholds item** (*numeric thresholds for … SMS stalls …*). Close with a scheduled canary that sends to a controlled number, confirms the status callback, and drives both the badge and an alert.
+- [ ] **C7 — Registry-callback signature enforcement is tracked only in the runbook:** `LGQ_SIGNALWIRE_REGISTRY_REQUIRE_SIGNATURE` ships unset, so `/api/sms/registry-status/[token]` records a signature verdict and rejects nothing (`route.ts:205`), leaving the path-segment token as that endpoint's only authentication. The measure-first posture is deliberate and the flag is tracked at `docs/signalwire-messaging-cutover-runbook.md:217`, but it has never appeared on this checklist, so it is invisible at the gate where it would be read. Close by carrying the item here with the observation count that would justify flipping it.
 
 ## Coverage gaps opened — 2026-09-11
 
