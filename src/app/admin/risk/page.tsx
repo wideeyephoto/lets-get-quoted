@@ -52,16 +52,15 @@ const PAGE_SIZE = 50;
 export default async function AdminRiskPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ status?: string; done?: string; error?: string; page?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
-  const queue = await buildRiskQueue(ctx.admin);
-  const latest = await latestRiskReviews(ctx.admin, queue.rows.map((row) => row.accountId));
   const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1);
+  const queue = await buildRiskQueue(ctx.admin, new Date(), page, PAGE_SIZE);
+  const latest = await latestRiskReviews(ctx.admin, queue.rows.map((row) => row.accountId));
   const status: RiskDisposition | 'all' = searchParams.status === 'all' ? 'all' : isRiskDisposition(searchParams.status) ? searchParams.status : 'open';
   const dispositionFor = (accountId: string): RiskDisposition => latest.reviews.get(accountId)?.disposition ?? 'open';
   const filteredRows = status === 'all' ? queue.rows : queue.rows.filter((row) => dispositionFor(row.accountId) === status);
-  const total = filteredRows.length;
+  const total = queue.totalAccounts;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const from = (page - 1) * PAGE_SIZE;
-  const pagedRows = filteredRows.slice(from, from + PAGE_SIZE);
+  const pagedRows = filteredRows;
   const canReview = staffCan(ctx.staff, 'account.enforce');
 
   function paramsFor(next: Record<string, string | undefined>): string {
@@ -215,7 +214,7 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
         ) : null}
       </section>
 
-      <section className={styles.panel}>
+      <section className={styles.panel} style={{ marginTop: '2rem' }}>
         <h2 className={styles.panelTitle}>How this is worked out</h2>
         {/* Two staff members should read a queue position the same way, which
             needs the thresholds written down somewhere they will actually be

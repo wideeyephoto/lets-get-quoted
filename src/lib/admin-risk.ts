@@ -69,6 +69,7 @@ function blankSignals(accountId: string, ageDays: number, suspended: boolean): R
 }
 
 export type RiskQueue = {
+  totalAccounts: number;
   rows: RiskRow[];
   /** Accounts examined, so an empty queue reads as "checked" not "broken". */
   accountsScanned: number;
@@ -79,29 +80,42 @@ export type RiskQueue = {
   unavailableSources: string[];
 };
 
-export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): Promise<RiskQueue> {
+export async function buildRiskQueue(admin: SupabaseClient, now = new Date(), page = 1, pageSize = 50): Promise<RiskQueue> {
   const since = new Date(now.getTime() - RISK_WINDOW_DAYS * DAY_MS).toISOString();
 
-  const [acctRes, payRes, qsRes] = await Promise.all([
-    admin.from('accounts').select('id, business_name, account_number, created_at, suspended_at', { count: 'exact' }).is('test_marker', null).limit(ROW_CAP),
-    // Dated on paid_at OR disputed_at: a charge collected before the window can
-    // still be disputed inside it, and that dispute is exactly what this queue
-    // exists to surface. Filtering on paid_at alone would hide it.
-    admin
-      .from('payments')
-      .select('account_id, status, amount, refunded_amount, disputed_at, dispute_status, paid_at', { count: 'exact' })
-      .is('test_marker', null)
-      .or(`paid_at.gte.${since},disputed_at.gte.${since}`)
-      .limit(ROW_CAP),
-    admin
-      .from('extra_stop_requests')
-      .select('account_id, status', { count: 'exact' })
-      .is('test_marker', null)
-      .eq('status', 'no_show_confirmed')
-      .gte('created_at', since)
-      .limit(ROW_CAP),
-  ]);
+  const offset = (page - 1) * pageSize;
+  
+  // 1. First, fetch the exact page of accounts
+  const acctRes = await admin.from('accounts')
+    .select('id, business_name, account_number, created_at, suspended_at', { count: 'exact' })
+    .is('test_marker', null)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + pageSize - 1);
+    
   if (acctRes.error) console.error('buildRiskQueue (accounts) failed:', acctRes.error);
+  
+  const accountIds = (acctRes.data ?? []).map((a: any) => a.id);
+  
+  // 2. Then, fetch payments and quick stops ONLY for those accounts
+  const [payRes, qsRes] = await Promise.all([
+    accountIds.length > 0 
+      ? admin
+          .from('payments')
+          .select('account_id, status, amount, refunded_amount, disputed_at, dispute_status, paid_at', { count: 'exact' })
+          .is('test_marker', null)
+          .in('account_id', accountIds)
+          .or(`paid_at.gte.${since},disputed_at.gte.${since}`)
+      : Promise.resolve({ data: [], error: null, count: 0 }),
+    accountIds.length > 0
+      ? admin
+          .from('extra_stop_requests')
+          .select('account_id, status', { count: 'exact' })
+          .is('test_marker', null)
+          .in('account_id', accountIds)
+          .eq('status', 'no_show_confirmed')
+          .gte('created_at', since)
+      : Promise.resolve({ data: [], error: null, count: 0 }),
+  ]);
   if (payRes.error) console.error('buildRiskQueue (payments) failed:', payRes.error);
   if (qsRes.error) console.error('buildRiskQueue (quick stops) failed:', qsRes.error);
   const unavailableSources = [acctRes.error ? 'accounts' : null, payRes.error ? 'payments' : null, qsRes.error ? 'Quick Stops' : null].filter((value): value is string => Boolean(value));
@@ -174,16 +188,11 @@ export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): P
       a.name.localeCompare(b.name),
   );
 
-  const isTruncated =
-    (acctRes.count ?? 0) > ROW_CAP ||
-    (payRes.count ?? 0) > ROW_CAP ||
-    (qsRes.count ?? 0) > ROW_CAP ||
-    accounts.length >= ROW_CAP ||
-    payments.length >= ROW_CAP ||
-    noShows.length >= ROW_CAP;
+  const isTruncated = false;
 
   return {
     rows,
+    totalAccounts: acctRes.count ?? 0,
     accountsScanned: accounts.length,
     windowDays: RISK_WINDOW_DAYS,
     truncated: isTruncated,

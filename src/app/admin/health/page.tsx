@@ -22,6 +22,7 @@ import { smsProviderSummary, type SmsProviderId } from '@/lib/sms-provider';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
 import { voiceWebhookSecuritySummary } from '@/lib/voice/auth';
 import { loadVoiceOperatorHealth } from '@/lib/voice/operator-health';
+import { unstable_cache } from 'next/cache';
 import { runSyntheticUptimeProbe, type SubsystemStatus } from '@/lib/uptime-monitoring';
 import { getOnCallRoster, getRecentPagingEvents } from '@/lib/on-call-paging';
 import { RunCronButton } from './RunCronButton';
@@ -34,6 +35,12 @@ const PROVIDER_LABEL: Record<SmsProviderId, string> = {
 };
 
 export const dynamic = 'force-dynamic';
+const getCachedProbe = unstable_cache(
+  async () => runSyntheticUptimeProbe(),
+  ['admin-synthetic-uptime-probe'],
+  { revalidate: 60 }
+);
+
 export const metadata = { title: 'Service health & Operations Center' };
 
 const IMPORTANCE_LABEL: Record<CronImportance, string> = {
@@ -111,7 +118,7 @@ export default async function AdminHealthPage({
     getFailedEmailEvents(admin, { diagnostics }),
     getFailedSmsEvents(admin, { diagnostics }),
     loadVoiceOperatorHealth(admin),
-    runSyntheticUptimeProbe(admin),
+    getCachedProbe(),
   ]);
 
   // On-Call data

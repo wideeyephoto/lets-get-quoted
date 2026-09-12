@@ -80,22 +80,29 @@ export function calculateTimeRemaining(purgeEligibleAt: string, now = new Date()
 export async function loadPendingIrreversibleWork(
   admin: SupabaseClient,
   limit = 100,
+  offset = 0,
 ): Promise<AdminPendingIrreversibleWork> {
-  const [closuresResult, deletionsResult, accountsResult] = await Promise.all([
+  const [closuresResult, deletionsResult] = await Promise.all([
     admin
       .from('account_closure_jobs')
       .select('id, closure_subject_id, account_id, requested_by_user_id, requested_by_role, access_revoked_at, local_disposal_state, stripe_state, quickbooks_state, storage_state, auth_cleanup_state, domain_cleanup_state, attempts, max_attempts, next_retry_at, last_error, completed_at, created_at, updated_at')
       .order('created_at', { ascending: false })
-      .limit(limit),
+      .range(offset, offset + limit - 1),
     admin
       .from('recoverable_deletions')
       .select('id, account_id, entity_type, entity_id, display_snapshot, status, deleted_at, purge_eligible_at, deleted_by_user_id, deletion_reason')
       .order('deleted_at', { ascending: false })
-      .limit(limit),
-    admin
-      .from('accounts')
-      .select('id, business_name, account_number'),
+      .range(offset, offset + limit - 1),
   ]);
+
+  const accountIds = Array.from(new Set([
+    ...(closuresResult.data ?? []).map((r: any) => r.account_id),
+    ...(deletionsResult.data ?? []).map((r: any) => r.account_id),
+  ].filter(Boolean)));
+
+  const accountsResult = accountIds.length > 0 
+    ? await admin.from('accounts').select('id, business_name, account_number').in('id', accountIds)
+    : { data: [], error: null };
 
   const accountMap = new Map<string, { businessName: string | null; accountNumber: string | null }>();
   for (const acc of accountsResult.data ?? []) {
