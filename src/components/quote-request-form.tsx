@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
+import { ALLOWED_TYPES } from '@/lib/lead-photo-storage';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';
@@ -18,7 +19,7 @@ const TOTAL_STEPS = STEP_LABELS.length;
 const LAST_STEP = TOTAL_STEPS - 1;
 
 type QuoteRequestFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
+  site: Pick<Site, 'template' | 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
 };
 
 export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
@@ -175,7 +176,21 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       }
       data.delete('photos');
       const photos = selectedPhotos.slice(0, MAX_PHOTOS);
-      for (const photo of photos) data.append('photos', await compressImage(photo, 1600, 0.8));
+      for (const photo of photos) {
+        if (photo.type.startsWith('video/')) {
+          data.append('photos', photo);
+          continue;
+        }
+        try {
+          data.append('photos', await compressImage(photo, 1600, 0.8));
+        } catch (err) {
+          if (ALLOWED_TYPES.has(photo.type)) {
+            data.append('photos', photo);
+          } else {
+            console.warn(`Could not attach ${photo.name}`, err);
+          }
+        }
+      }
 
       const attribution = getOrCaptureAttribution();
       if (attribution) {
