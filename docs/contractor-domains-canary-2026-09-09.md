@@ -1,10 +1,51 @@
 # Contractor domains: Outlook, lifecycle, and canary record
 
-Updated September 11, 2026 at 18:44 UTC (2:44 PM in America/New_York). **Seven-day observation started at 2026-09-11 16:23:14.731206 UTC; launch acceptance remains open.** Following Brett's request to start now, observation of the already-live single-workspace domain runs alongside the remaining lifecycle drills. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed. Earlier dated statements that the clock had not started describe their historical checkpoints.
+Updated September 12, 2026 at 08:55 UTC (4:55 AM in America/New_York). **Seven-day observation started at 2026-09-11 16:23:14.731206 UTC; 1/7 qualifying scheduled checks have passed, with zero complete elapsed days so far. Launch acceptance remains open.** Observation of the already-live single-workspace domain runs alongside the remaining lifecycle drills. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed. Earlier dated statements that the clock had not started describe their historical checkpoints.
 
 Current binding after the provider-loss drill: database **`ac8aff96-573a-4ec1-8cfa-25d48c551e05`**, Resend **`e36d84f4-13e1-4c52-a1ef-3b53514945ec`**, verified through LGQ at **September 10 12:50:48.309 UTC**. Both September 10 normal deliberate test allowances were used: Outlook quote and Gmail owner alert. The routine 12:00 UTC daily digest was separate ordinary scheduled mail. Brett explicitly approved saving the certificate-fixture CNAME and one extra website-connected Gmail alert; that exception was used at 13:30 UTC. **Both September 11 inbox allowances are now used: Gmail at 05:14 UTC and the in-window Outlook quote at 16:43 UTC.** Fully paginated provider inventories at 04:42 and immediately before sending at 05:14:29.501 UTC were empty through the 04:00 UTC local-midnight boundary. At 05:16:53.410 UTC the inventory contained exactly this one Gmail quote; do not send or trigger another Gmail test today.
 
 Release continuation: Brett explicitly approved publishing/deploying the candidate and hourly follow-ups with at most one test per approved inbox daily. The task heartbeat `contractor-domain-seven-day-canary` remains ACTIVE, hourly at minute 40. It now tracks elapsed observation and finishes the outstanding launch checks in parallel under the sequencing adjustment below. This supersedes the historical approval blocks and preparation-only scheduling instructions recorded below.
+
+## September 12 scheduled check, Gmail receipt and fixture closure
+
+**Current daily allowance:** September 12 Gmail is used by the 08:45 UTC quote below; Outlook remains unused. No deliberate reply or extra owner alert was sent. The complete provider inventory at 08:54:38.129 UTC, through the September 12 04:00 UTC New York midnight boundary, contains exactly that one approved-inbox message. The September 11 allowance statements below are historical.
+
+| Qualifying scheduled check | Result |
+| --- | --- |
+| 1 of 7 — September 12 | Run **`27eccf15-459d-4852-ae9a-e1dc5aa34661`**, **06:23:20.522–06:23:22.395 UTC**, checked one active domain, with zero errors, downgrades, provider orphans, notices, backlog or operator reviews. It refreshed `last_checked_at` to **06:23:21.190 UTC**. |
+
+The original start is retained. This is one successful scheduled check, not a completed 24-hour day. Earliest elapsed-time review remains September 18 at 16:23:14.731206 UTC. Provider GET at 08:41:40.405 UTC confirmed the same verified binding and all three required DNS records. SQL at 08:54:39.563 UTC retained that verified state, zero open domain notices and zero unresolved Resend callbacks after the separate review below.
+
+The serving production release remains **`dpl_6Z5vRfRbTNRqybasVuQxEADzZqLb`**, SHA **`fa0429f1087c1fdf3f41c3dbdc64c0fcccb82b04`**, previously confirmed on both public aliases September 11 at 20:42 UTC. Its status-page, incident, package-script and Terminal-payment changes did not change contractor sending-domain code. The connected deployment lookup still reports that READY release; the local CLI identity helper now returns 403, so no fresh direct-alias claim is made from that failed helper.
+
+### In-window Gmail product receipt
+
+The freshly loaded BrokePipes J-1004 owner page retained the authorized synthetic marker, $0 quote, no phone and no invoice/payment. The supported quick-contact action temporarily changed only the job recipient to the approved Gmail inbox. A complete inventory immediately before sending at 08:45:19.495 UTC was empty. Clicking the real **Save & text the client** action once returned **Saved and emailed**. The same contact action restored the original Outlook address without another send; SQL confirmed both the job and untouched client record use the original recipient, with $0 and `new_lead` unchanged.
+
+| Gmail observation | Evidence |
+| --- | --- |
+| Product acceptance | Provider **`c2922df1-f1dc-4b4b-8419-f3fb74e1d29a`**, accepted **08:45:40.333 UTC**, From `BrokePipes <hello@blackholeart.com>`, approved Gmail recipient and Gmail Reply-To. |
+| Canonical delivery | **`746108b3-7d06-4826-9ec5-e9d67bb51f16`**, correct BrokePipes workspace, `client_quote`, delivered **08:45:41.244 UTC**, no error. Provider inventory independently reports delivered. |
+| Receiver evidence | Gmail Inbox at **04:45 America/New_York**, conversation **`FMfcgzQhWTkJDxdrShDGvpgzlgWvVsfq`**. Original Message-ID **`<010001a094cb350c-ace5f600-43aa-4fe6-8840-343dd0921627-000000@email.amazonses.com>`**. SPF PASS for `send.blackholeart.com`, DKIM PASS exactly aligned to `blackholeart.com` with selector `resend`, DMARC PASS (`p=NONE`), TLS 1.3 and correct Reply-To. |
+| Actual received link | The received button opened the matching BrokePipes **J-1004**, original test-only scope, **$0.00**, unsigned and awaiting approval. No approval, signature or payment action was performed. The private quote token and raw body remain outside this public repository. |
+
+Both Gmail and Outlook now have actual product receipt/authentication/link evidence within the observation window. In-window replies, the remaining sender paths and failure/recovery matrix remain open.
+
+### Isolated platform callback review
+
+One new callback incident, **`e6ed42af-631b-4e9f-a979-da6637e9bc89`**, recorded `email.sent` / `Gateway Timeout` at **05:30:23.853 UTC** for provider **`86da04ff-ac48-4a96-b00f-66810e1d7040`**. Provider GET independently reported delivered from the platform domain, outside either approved test inbox. Canonical **`bf624148-a626-4eee-8dc8-21bda56b001e`** was already delivered at **05:30:20.098 UTC**, untagged with no tenant account. This was a failed lower-state projection, with no lost canary delivery or missing suppression side effect.
+
+The supported MFA-protected staff **Resolve group** action recorded the evidence and resolved only this incident at **08:47:39.515 UTC**, audit **`d8eb6770-d127-4aa8-896b-646eb95ee1b0`**. No message was resent. The 24 earlier reviewed callback incidents remain retained and separate. This unrelated recovered platform event does not reset the healthy domain window.
+
+### Supported fixture closure and actor-definition repair
+
+The current staff session has a verified authenticator and successfully passed the supported permission checks; the earlier security handoff is no longer the blocker for this session. The first closure attempt at **08:49:31 UTC** instead failed with digest **`2687187480`**: `CASE types text and uuid cannot be matched`. Production's stored function had reverted to the uncast actor assignment even though its September 10 actor-fix migration remained in history. Staging retained the correct cast. No closure job, suspension or closure-request audit was committed by that failed attempt; the cause of the definition drift is not established.
+
+Additive migration **`20260912085100_account_closure_actor_drift_repair.sql`** restores only the known UUID-to-text assignment, accepts the already-correct definition unchanged, and rejects unfamiliar definitions or browser execution grants. The PostgreSQL harness reproduces the exact failure and atomic rollback, verifies repair/idempotence and actor preservation, and passes all **10/10** closure-domain checks. The migration applied to staging as **`20260912085216`** and production as **`20260912085232`**. Production inspection confirms the cast and continued denial of direct browser-role execution. This restores the previously approved database behavior; it changes no application deployment or active email binding.
+
+After repair, the actual **Close account → Schedule closure** UI succeeded for empty synthetic account **100074**, **`dc0c3913-ef17-4868-b00a-789362c5cbf2`**. Job **`169e2cbf-b53b-46a6-84ca-ef72b702c5ba`** was created at **08:53:13.809 UTC**, audit **`cb6c40d7-87a0-41c1-9280-25e64641cbd2`**. Its state is `pending_grace_period`, version 1, attempts 0, no legal hold, with both recovery/purge deadlines at **October 12, 08:53:13.822315 UTC**. It captures exactly one website target: site **`cdb17a5c-cf57-489e-86cb-26ecfe61155b`**, **`certificate-canary-20260909.blackholeart.com`**. The fixture has zero memberships, jobs, payments, email domains, Stripe customers or QuickBooks connections.
+
+Only this fixture is suspended. Its unpublished website, provider binding and DNS record remain during recovery. The active contractor domain is unchanged. Actual worker disposal, provider release and DNS removal remain open. Brett has been asked separately whether to shorten this exact empty fixture's recovery deadline for the cleanup rehearsal; do not accelerate it without that approval. PR #80 remains at its reviewed September 11 head awaiting separate merge approval.
 
 ## September 11 observation start
 

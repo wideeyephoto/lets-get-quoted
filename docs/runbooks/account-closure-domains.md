@@ -19,6 +19,9 @@ Apply these migrations in order before deploying the new application:
 1. `20260910133921_account_closure_domain_cleanup.sql`
 2. `20260910140253_account_closure_request_contract.sql`
 3. `20260910140758_account_closure_actor_type.sql`
+4. `20260912085100_account_closure_actor_drift_repair.sql`
+
+On September 12, production retained the actor-fix migration record but its stored request function again contained the incompatible UUID/text assignment. Migration history alone is not proof of the live function definition. The additive repair accepts the known correct cast unchanged or restores the known old assignment, preserving all other function logic and refusing unexpected definitions or browser execution grants. The PostgreSQL harness reproduces this drift before repairing it. A supported production fixture request then succeeded; its normal recovery period remains in force unless separately authorized for that exact empty fixture.
 
 The latter two align the pre-existing request/recovery functions with the hosted account schema: `suspended_at`, `suspended_reason`, and text `suspended_by`. There are no `accounts.status` or `accounts.updated_at` columns. Staging discovered this mismatch during a transaction that rolled back completely. The final local harness uses the actual column names and types. Preserve each applied migration rather than rewriting staging history.
 

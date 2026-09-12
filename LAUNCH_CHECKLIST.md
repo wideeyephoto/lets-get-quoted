@@ -80,7 +80,11 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
 
-## Contractor domains verification — 2026-09-09 to 2026-09-11
+## Contractor domains verification — 2026-09-09 to 2026-09-12
+
+- [x] **First qualifying scheduled check and in-window Gmail receipt (September 12):** Run `27eccf15-459d-4852-ae9a-e1dc5aa34661` checked the active domain at 06:23 UTC with zero errors/backlog. **1/7 checks** are recorded; seven elapsed days are not complete. The actual $0 J-1004 Gmail quote at 08:45 UTC passed delivery, aligned authentication and its received link. Gmail's daily allowance is used; Outlook remains unused. One unrelated platform callback timeout was reviewed against confirmed delivery and resolved through the supported staff action without resend. See [current evidence](docs/contractor-domains-canary-2026-09-09.md#september-12-scheduled-check-gmail-receipt-and-fixture-closure).
+
+- [x] **Supported disposable website closure requested (September 12, 08:53 UTC):** Staff verification passed. A production closure-function actor-cast regression was reproduced, repaired through an additive migration in both databases and verified with **10/10 PostgreSQL checks**. The real UI created closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` for empty test account #100074, capturing only its certificate-test website. The normal recovery deadline is October 12 at 08:53 UTC. Actual disposal/provider release/DNS removal remain unchecked; shortening this exact fixture's deadline requires the separately requested approval. The active sending domain and original canary start are unchanged.
 
 - [x] **First in-window Outlook delivery (September 11, 16:43–16:46 UTC):** After the office-data PR #78 release, the refreshed production owner UI sent the $0 J-1004 quote once to the approved Outlook inbox. Provider and canonical delivery matched; Outlook received it in Focused Inbox with SPF, aligned DKIM, DMARC and Microsoft authentication PASS, the intended Reply-To, and a button opening the exact unsigned test quote. The domain remains healthy, with no open notices/callback failures. Preserve the original 16:23 UTC start; 0/7 qualifying daily reconciliations have occurred yet. Both September 11 inbox allowances are used, so the in-window reply remains pending. See [dated evidence](docs/contractor-domains-canary-2026-09-09.md#september-11-first-in-window-outlook-receipt).
 
