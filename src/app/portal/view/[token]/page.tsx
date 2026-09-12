@@ -101,6 +101,15 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                     Balance due{openInvoices.length > 1 ? ` · ${openInvoices.length} invoices` : ''}
                   </span>
                   <strong className="payment-amount" style={{ fontSize: '1.25rem' }}>{formatMoney(portal.outstanding)}</strong>
+                  {openInvoices.length > 1 && (
+                    <form action={async () => {
+                      'use server';
+                      const { payPortalOutstandingAction } = await import('./actions');
+                      await payPortalOutstandingAction(params.token);
+                    }}>
+                      <button type="submit" style={{ marginTop: '0.5rem', background: 'var(--ink-link, #2563eb)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Pay All Open Invoices</button>
+                    </form>
+                  )}
                 </div>
               ) : null}
 

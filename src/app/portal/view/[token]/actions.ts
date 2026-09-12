@@ -256,3 +256,10 @@ export async function loadMorePortalMessagesAction(token: string, cursorDate: st
   messages.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return messages.slice(0, 15);
 }
+
+export async function setupPortalPlanAutopayAction(token: string, planId: string) {
+  console.log('Setup autopay for plan', planId);
+}
+export async function payPortalOutstandingAction(token: string) {
+  console.log('Pay all open invoices for token', token);
+}
