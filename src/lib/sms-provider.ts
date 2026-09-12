@@ -413,7 +413,10 @@ export function buildSendRequest(
   else if (config.from) data.set('From', config.from);
 
   const origin = trustedProviderCallbackOrigin();
-  if (origin) data.set('StatusCallback', `${origin}/api/sms/status`);
+  if (!origin) {
+    throw new Error('Cannot send SMS: trusted provider callback origin is missing.');
+  }
+  data.set('StatusCallback', `${origin}/api/sms/status`);
 
   return {
     url: config.messagesUrl,

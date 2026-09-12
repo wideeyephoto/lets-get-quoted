@@ -31,7 +31,7 @@ export async function resolveTargetAccount(
       const { data } = await admin
         .from('accounts')
         .select('id')
-        .or(`id.eq.${partnerId}`)
+        .eq('id', partnerId)
         .maybeSingle();
       if (data?.id) return String(data.id);
     } catch {
@@ -39,36 +39,9 @@ export async function resolveTargetAccount(
     }
   }
 
-  // 3. Page ID or Form ID matching (e.g. Meta Page ID)
-  const pageId = inbound.targetAccountHint?.pageId;
-  if (pageId) {
-    try {
-      // Check if any site content references this Meta page / social handle
-      const { data: site } = await admin
-        .from('sites')
-        .select('account_id')
-        .eq('published', true)
-        .limit(1)
-        .maybeSingle();
-      if (site?.account_id) return String(site.account_id);
-    } catch {
-      // quiet fallback
-    }
-  }
-
-  // 4. Fallback to the single primary account in standard single-tenant or default platform deployment
-  try {
-    const { data: accounts } = await admin
-      .from('accounts')
-      .select('id')
-      .order('created_at', { ascending: true })
-      .limit(1);
-
-    if (accounts && accounts.length > 0) {
-      return String(accounts[0].id);
-    }
-  } catch (error) {
-    console.error('Account lookup query failed:', error);
+  // 3. Fallback to explicitly configured default tenant (if any)
+  if (process.env.DEFAULT_TENANT_ACCOUNT_ID) {
+    return process.env.DEFAULT_TENANT_ACCOUNT_ID.trim();
   }
 
   return null;

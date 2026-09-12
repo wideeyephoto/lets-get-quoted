@@ -111,7 +111,7 @@ export async function enqueueSmsDelivery(
   }
 
   let availableAt = input.availableAt;
-  if (!availableAt && !input.bypassQuietHours && input.billingCategory === 'customer_message') {
+  if (!availableAt && !input.bypassQuietHours && ['customer_message', 'payment_message'].includes(input.billingCategory)) {
     const tz = resolveRecipientTimeZone({ phone: input.phoneNumber });
     const check = getTcpaCompliantSendTime(new Date(), tz);
     if (check.isDelayed) {
