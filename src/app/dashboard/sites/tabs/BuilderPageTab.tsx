@@ -943,6 +943,22 @@ export function BuilderPageTab() {
                                       ))}
                                     </div>
                                   )}
+
+                                  <div className={styles.formField}>
+                                    <label htmlFor="elfsightWidgetId">
+                                      Elfsight Google Reviews Widget ID <span style={{ fontWeight: 'normal', color: 'var(--text-secondary)' }}>(for SEO markup)</span>
+                                    </label>
+                                    <input
+                                      id="elfsightWidgetId"
+                                      type="text"
+                                      placeholder="e.g. 12345abc-1234-1234-1234-123456abcdef"
+                                      value={siteContent.testimonials.elfsightWidgetId || ''}
+                                      onChange={(e) => updateTestimonials({ ...siteContent.testimonials, elfsightWidgetId: e.target.value })}
+                                    />
+                                    <p className={styles.fieldHint} style={{ marginTop: '0.25rem', fontSize: '0.875rem' }}>
+                                      Optional. Create a free Google Reviews widget at elfsight.com. Elfsight automatically publishes the required review markup that Google expects for a LocalBusiness.
+                                    </p>
+                                  </div>
                                 </div>
                                 <div className={styles.jobPhotoImport}>
                                   <div>

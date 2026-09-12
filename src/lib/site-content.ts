@@ -107,6 +107,7 @@ export type SiteTestimonialsContent = {
   googleReviewCount: number;
   googleReviews: SiteGoogleReview[];
   googleImportedAt: string;
+  elfsightWidgetId?: string;
 };
 
 export type SiteStickyCallBarContent = {
@@ -2216,6 +2217,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       googleReviewCount: typeof testimonials.googleReviewCount === 'number' ? testimonials.googleReviewCount : 0,
       googleReviews: parseGoogleReviews(testimonials.googleReviews),
       googleImportedAt: toString(testimonials.googleImportedAt),
+      elfsightWidgetId: testimonials.elfsightWidgetId ? toString(testimonials.elfsightWidgetId) : undefined,
     },
     quoteForm: {
       enabled: quoteForm.enabled === true,

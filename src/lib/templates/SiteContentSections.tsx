@@ -232,13 +232,18 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           {testimonials.displayStyle === 'grid'
             ? <div className={styles.testimonialGrid} data-stagger>{cards}</div>
             : <TestimonialSlider mode={testimonials.displayStyle}>{cards}</TestimonialSlider>}
-        {testimonials.googleReviews.length > 0 && (
-          <p className={styles.googleAttribution} data-reveal>
-            {testimonials.googleRating > 0 && <strong>{testimonials.googleRating.toFixed(1)} ★ on Google{testimonials.googleReviewCount > 0 ? ` · ${testimonials.googleReviewCount.toLocaleString('en-US')} reviews` : ''}</strong>}
-            {testimonials.googleUrl && <a href={testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow">See all reviews on Google →</a>}
-            <span className={styles.googlePoweredBy}>Powered by Google</span>
-          </p>
-        )}
+          {testimonials.elfsightWidgetId ? (
+            <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
+              <script src="https://static.elfsight.com/platform/platform.js" async></script>
+              <div className={`elfsight-app-${testimonials.elfsightWidgetId}`}></div>
+            </div>
+          ) : testimonials.googleReviews.length > 0 && (
+            <p className={styles.googleAttribution} data-reveal>
+              {testimonials.googleRating > 0 && <strong>{testimonials.googleRating.toFixed(1)} ★ on Google{testimonials.googleReviewCount > 0 ? ` · ${testimonials.googleReviewCount.toLocaleString('en-US')} reviews` : ''}</strong>}
+              {testimonials.googleUrl && <a href={testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow">See all reviews on Google →</a>}
+              <span className={styles.googlePoweredBy}>Powered by Google</span>
+            </p>
+          )}
         </section>
       );
     })(),
