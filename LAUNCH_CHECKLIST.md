@@ -113,6 +113,7 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   ownership; nothing defines hours 0–72. Close with `docs/runbooks/launch-watch-window.md` carrying
   numeric thresholds for failed payments, dead-letter depth, SMS stalls, cron failures, 5xx and AI
   spend, each tied to a rollback trigger and an overnight paging policy, plus a dated tabletop.
+- [ ] **Financial & Billing Logic Fixes:** Financial audit (`money-audit-report.md`) uncovered critical race conditions in checkout and billing entitlement resolution, unbounded SMS segment consumption risks, and widespread floating-point precision drifts that impact billing tiers. Close with PR addressing the TOCTOU vulnerabilities, adding negative value guards, and ensuring all ledger operations are performed with integer cents.
 - [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31, never tracked.
   SMS pumping fraud bills to this account. Close with recorded console values.
 - [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
