@@ -47,6 +47,7 @@ const IDEMPOTENCY = m('20260819290000_overage_accrual_idempotency.sql');
 const SETTLED_GUARD = m('20260819300000_release_respects_settled_period.sql');
 const OVERLAP = m('20260819310000_cap_counts_overlapping_periods.sql');
 const SETTLE = m('20260820120000_settle_a_voice_overage_for_what_was_used.sql');
+const TOCTOU = m('20260912000000_authorize_usage_overage_toctou.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });
@@ -115,6 +116,11 @@ try {
       reserved_minutes integer not null default 0,
       admitted_at timestamptz not null default now()
     );
+    create table public.workspace_entitlements (
+      account_id uuid primary key references public.accounts(id) on delete cascade,
+      period_start timestamptz,
+      period_end timestamptz
+    );
     insert into public.accounts (id) values ('${ACCOUNT}');
     -- $50 cap. Every figure below is measured against it.
     insert into public.workspace_overage_settings (account_id, enabled, cap_cents)
@@ -128,13 +134,16 @@ try {
   await q(SETTLED_GUARD);
   await q(OVERLAP);
   await q(SETTLE);
+  await q(TOCTOU);
   ck('all five migrations apply, post-conditions and all', true);
 
-  const authorize = (key, units = 10, resource = 'voice_minutes', start = P_START) => q(
+  await q(`insert into public.workspace_entitlements (account_id, period_start, period_end)
+           values ('${ACCOUNT}', '${P_START}', '${P_END}')`);
+
+  const authorize = (key, units = 10, resource = 'voice_minutes') => q(
     `select * from public.authorize_usage_overage(
-       '${ACCOUNT}'::uuid, $1::text, $2::bigint, ${RATE}::bigint,
-       $3::timestamptz, '${P_END}'::timestamptz, $4::text)`,
-    [resource, units, start, key],
+       '${ACCOUNT}'::uuid, $1::text, $2::bigint, ${RATE}::bigint, $3::text)`,
+    [resource, units, key],
   ).then((r) => r.rows[0]);
 
   const accrued = async () => (await q(
@@ -200,14 +209,14 @@ try {
   const reusedUnits = await fails(
     `select * from public.authorize_usage_overage(
        '${ACCOUNT}'::uuid, 'voice_minutes'::text, 99::bigint, ${RATE}::bigint,
-       '${P_START}'::timestamptz, '${P_END}'::timestamptz, 'ai-voice:v1:call_aaaa1111'::text)`);
+       'ai-voice:v1:call_aaaa1111'::text)`);
   ck('the same key for different units raises',
     /reused for different work/.test(reusedUnits ?? ''), reusedUnits);
 
   const reusedResource = await fails(
     `select * from public.authorize_usage_overage(
        '${ACCOUNT}'::uuid, 'text_segments'::text, 10::bigint, ${RATE}::bigint,
-       '${P_START}'::timestamptz, '${P_END}'::timestamptz, 'ai-voice:v1:call_aaaa1111'::text)`);
+       'ai-voice:v1:call_aaaa1111'::text)`);
   ck('the same key for a different resource raises',
     /reused for different work/.test(reusedResource ?? ''), reusedResource);
 
@@ -218,7 +227,7 @@ try {
     const message = await fails(
       `select * from public.authorize_usage_overage(
          '${ACCOUNT}'::uuid, 'voice_minutes'::text, 1::bigint, ${RATE}::bigint,
-         '${P_START}'::timestamptz, '${P_END}'::timestamptz, $1::text)`, [key]);
+         $1::text)`, [key]);
     ck(`a ${label} idempotency key is refused`,
       /idempotency key is missing or malformed/.test(message ?? ''), message);
   }
@@ -228,6 +237,11 @@ try {
       join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'authorize_usage_overage'
         and p.pronargs = 6`)).rows[0].n) === 0);
+  ck('the superseded seven-argument signature is gone',
+    Number((await q(`select count(*)::int as n from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'authorize_usage_overage'
+        and p.pronargs = 7`)).rows[0].n) === 0);
 
   // -------------------------------------------------------------------
   // 6. The release, which takes its amount from the event.
@@ -255,7 +269,7 @@ try {
   const resurrect = await fails(
     `select * from public.authorize_usage_overage(
        '${ACCOUNT}'::uuid, 'voice_minutes'::text, 4::bigint, ${RATE}::bigint,
-       '${P_START}'::timestamptz, '${P_END}'::timestamptz, 'ai-voice:v1:call_bbbb2222'::text)`);
+       'ai-voice:v1:call_bbbb2222'::text)`);
   ck('a released key cannot be re-authorized into a live charge',
     /already released/.test(resurrect ?? ''), resurrect);
 
@@ -283,36 +297,43 @@ try {
   await q(`insert into public.workspace_overage_settings (account_id, enabled, cap_cents)
            values ('${MOVER}', true, 5000)`);
 
-  const authorizeFor = (account, key, units, start, end) => q(
+  // Start with the calendar month period.
+  await q(`insert into public.workspace_entitlements (account_id, period_start, period_end)
+           values ('${MOVER}', '2026-08-01T00:00:00Z', '2026-09-01T00:00:00Z')`);
+
+  const authorizeFor = (account, key, units) => q(
     `select * from public.authorize_usage_overage(
        $1::uuid, 'voice_minutes'::text, $2::bigint, ${RATE}::bigint,
-       $3::timestamptz, $4::timestamptz, $5::text)`,
-    [account, units, start, end, key],
+       $3::text)`,
+    [account, units, key],
   ).then((r) => r.rows[0]);
-
-  const CAL = ['2026-08-01T00:00:00Z', '2026-09-01T00:00:00Z'];
-  const SUB = ['2026-08-15T00:00:00Z', '2026-09-15T00:00:00Z'];
-  const NEXT = ['2026-09-15T00:00:00Z', '2026-10-15T00:00:00Z'];
 
   // Nearly all of the $50 cap, under the calendar month. 141 x 35,000 =
   // 4,935,000, leaving 65,000 of the 5,000,000 -- room for exactly one more.
-  const spent = await authorizeFor(MOVER, 'text-credit:v1:aug_first0001', 141, ...CAL);
+  const spent = await authorizeFor(MOVER, 'text-credit:v1:aug_first0001', 141);
   ck('a workspace spends nearly all of its cap in the calendar month',
     spent.decision === 'accrued' && Number(spent.accrued_millicents) === 4_935_000, spent);
 
-  const afterMove = await authorizeFor(MOVER, 'ai-voice:v1:sub_second002', 10, ...SUB);
+  // Simulate a subscription event moving the period boundary mid-month.
+  await q(`update public.workspace_entitlements
+           set period_start = '2026-08-15T00:00:00Z', period_end = '2026-09-15T00:00:00Z'
+           where account_id = '${MOVER}'`);
+  const afterMove = await authorizeFor(MOVER, 'ai-voice:v1:sub_second002', 10);
   ck('THE CAP DOES NOT RE-ARM WHEN THE PERIOD BOUNDARY MOVES MID-MONTH',
     afterMove.decision === 'cap_reached', afterMove);
   ck('...and it can still see what was already spent',
     Number(afterMove.accrued_millicents) === 4_935_000, afterMove);
 
   // A charge that fits in what is genuinely left still goes through.
-  const fits = await authorizeFor(MOVER, 'ai-voice:v1:sub_small00003', 1, ...SUB);
+  const fits = await authorizeFor(MOVER, 'ai-voice:v1:sub_small00003', 1);
   ck('...while a charge that fits the remaining cap is still allowed',
     fits.decision === 'accrued' && Number(fits.accrued_millicents) === 4_970_000, fits);
 
-  // And a genuine roll DOES reset it, with no dependence on anything settling.
-  const nextMonth = await authorizeFor(MOVER, 'ai-voice:v1:sep_fresh00004', 100, ...NEXT);
+  // Genuine monthly roll.
+  await q(`update public.workspace_entitlements
+           set period_start = '2026-09-15T00:00:00Z', period_end = '2026-10-15T00:00:00Z'
+           where account_id = '${MOVER}'`);
+  const nextMonth = await authorizeFor(MOVER, 'ai-voice:v1:sep_fresh00004', 100);
   ck('A GENUINE MONTHLY ROLL STILL RESETS THE CAP',
     nextMonth.decision === 'accrued', nextMonth);
   ck('...starting from what that period alone has spent',
@@ -368,7 +389,7 @@ try {
   await q(`insert into public.workspace_overage_settings (account_id, enabled, cap_cents)
            values ('${CALLER}', true, 5000)`);
 
-  const holdCall = await authorizeFor(CALLER, 'ai-voice:v1:call_short0001', 60, ...CAL);
+  const holdCall = await authorizeFor(CALLER, 'ai-voice:v1:call_short0001', 60);
   ck('a call is admitted on the full 60-minute cap',
     holdCall.decision === 'accrued' && Number(holdCall.charged_millicents) === 60 * RATE, holdCall);
   ck('...which is $21.00', Number(holdCall.charged_millicents) === 2_100_000);
@@ -393,7 +414,7 @@ try {
 
   // A call that ran the whole cap owes the whole hold. Zero refunded is a real
   // answer, not a failure.
-  const fullCall = await authorizeFor(CALLER, 'ai-voice:v1:call_long00002', 60, ...CAL);
+  const fullCall = await authorizeFor(CALLER, 'ai-voice:v1:call_long00002', 60);
   ck('a second call is admitted on the cap', fullCall.decision === 'accrued');
   ck('settling it for the full sixty gives back nothing',
     Number((await q(`select public.settle_usage_overage($1::uuid, $2::text, 60::bigint) as r`,
@@ -403,7 +424,7 @@ try {
   // Settling for MORE than was held would bill units the cap never approved.
   // On a FRESH hold: an already-settled key returns 0 for a different and
   // correct reason, which would make this pass without testing anything.
-  await authorizeFor(CALLER, 'ai-voice:v1:call_third00003', 10, ...CAL);
+  await authorizeFor(CALLER, 'ai-voice:v1:call_third00003', 10);
   const aboveHold = await fails(
     `select public.settle_usage_overage($1::uuid, $2::text, 90::bigint)`,
     [CALLER, 'ai-voice:v1:call_third00003']);
@@ -450,7 +471,7 @@ try {
         .rows[0].ok === false);
     ck(`${role} cannot authorize an overage`,
       (await q(`select has_function_privilege($1,
-        'public.authorize_usage_overage(uuid,text,bigint,bigint,timestamptz,timestamptz,text)',
+        'public.authorize_usage_overage(uuid,text,bigint,bigint,text)',
         'EXECUTE') as ok`, [role])).rows[0].ok === false);
     ck(`${role} cannot release an overage`,
       (await q(`select has_function_privilege($1,

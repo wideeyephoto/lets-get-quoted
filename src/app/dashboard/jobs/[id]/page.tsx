@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { portalViewUrlFull } from '@/lib/portal-urls';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import ArrivalPanel from '@/components/arrival-panel';
 import { arrivalSettingsFromAccount, describeArrivalOutcome, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
@@ -1820,7 +1821,7 @@ export default async function JobDetailPage({
                   ? `https://${arrivalSite.custom_domain}/portal`
                   : arrivalSite?.subdomain
                   ? `https://${arrivalSite.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}/portal`
-                  : `${quoteLinkOrigin}/portal/view/${job.id}`
+                  : portalViewUrlFull(job.id)
               }
             />
           </details>

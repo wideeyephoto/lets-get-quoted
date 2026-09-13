@@ -9,7 +9,13 @@ const read = (...parts: string[]) =>
 
 const FIELD_CODE = read('src', 'app', 'dashboard', 'sites', 'ServiceAreasField.tsx');
 const ACTIONS_CODE = read('src', 'app', 'dashboard', 'sites', 'actions.ts');
-const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx');
+const TABS_CODE = [
+  'BuilderBusinessTab.tsx',
+  'BuilderDesignTab.tsx',
+  'BuilderPageTab.tsx',
+  'BuilderPublishTab.tsx',
+].map(f => read('src', 'app', 'dashboard', 'sites', 'tabs', f)).join('\n');
+const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx') + '\n' + TABS_CODE;
 const CSS_CODE = read('src', 'app', 'dashboard', 'sites', 'SiteEditor.module.css');
 
 describe('Service Areas Modernization', () => {

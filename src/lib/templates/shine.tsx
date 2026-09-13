@@ -17,7 +17,12 @@ import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
-import styles from './themes.module.css';
+import baseStyles from './themes.module.css';
+import themeStyles from './shine.module.css';
+const styles = { ...baseStyles, ...themeStyles };
+import CallLink from './CallLink';
+import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Shine — modern, premium cleaning look (Purely reference): deep-navy ground,
 // bright-yellow accent, a rounded hero photo with floating "24/7" + "500+"
@@ -75,7 +80,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   } as CSSProperties;
 
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles.shine}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
+    <main id="main-content" className={`${templateFontVars} ${styles.site} ${styles.shine}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
@@ -151,7 +156,11 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.shineEyebrow}>Book a service</p>
           <h2>Ready to get started?</h2>
           <p>Tell us what you need and we&apos;ll get you a free quote — fast, no obligation.</p>
-          {site.phone && <a className={styles.shineBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.shineBtn}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.shineBtn} />
+          </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

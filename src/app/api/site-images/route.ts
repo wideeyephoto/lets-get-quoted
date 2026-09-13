@@ -16,12 +16,14 @@ export async function POST(request: Request) {
 
   const data = await request.formData();
   const file = data.get('image');
+  const width = parseInt((data.get('width') as string) || '0', 10);
+  const height = parseInt((data.get('height') as string) || '0', 10);
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: 'Choose an image to upload.' }, { status: 400 });
   }
 
   try {
-    return NextResponse.json(await uploadSiteImage(membership.accountId, file), { status: 201 });
+    return NextResponse.json(await uploadSiteImage(membership.accountId, file, width, height), { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Image upload failed.' }, { status: 400 });
   }

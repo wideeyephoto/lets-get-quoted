@@ -15,8 +15,9 @@
 // Pure: no fetching, no Supabase. Takes a Site and returns strings.
 
 import type { Site } from '@/lib/sites';
-import { getAllPublishedVideos, getSiteContent } from '@/lib/site-content';
-import { isSiteSeoReady } from './site-seo';
+import { getAllPublishedVideos, getSiteContent, getPublishedShowcase, getPublishedBeforeAfter } from '@/lib/site-content';
+import { isSiteSeoReady, siteCities } from './site-seo';
+import { slugifyBlogTitle } from '../site-content';
 
 export type SitePageEntry = {
   /** Path under the site's own origin. '' is the homepage. */
@@ -24,6 +25,7 @@ export type SitePageEntry = {
   lastModified: string;
   changeFrequency: 'weekly' | 'monthly' | 'yearly';
   priority: number;
+  images?: { url: string; title?: string }[];
 };
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
@@ -62,12 +64,42 @@ export function siteIndexablePages(site: Site): SitePageEntry[] {
   if (!isSiteSeoReady(site)) return [];
 
   const updated = site.updated_at || '';
+  
+  const images: { url: string; title?: string }[] = [];
+  const showcase = getPublishedShowcase(site.content);
+  if (showcase) {
+    for (const item of showcase.items) {
+      if (item.url) images.push({ url: item.url, title: item.alt || undefined });
+    }
+  }
+  const beforeAfter = getPublishedBeforeAfter(site.content);
+  if (beforeAfter) {
+    for (const item of beforeAfter.items) {
+      if (item.beforeUrl) images.push({ url: item.beforeUrl });
+      if (item.afterUrl) images.push({ url: item.afterUrl });
+    }
+  }
+
   const pages: SitePageEntry[] = [
-    { path: '', lastModified: updated, changeFrequency: 'weekly', priority: 0.8 },
+    { path: '', lastModified: updated, changeFrequency: 'weekly', priority: 0.8, images: images.length > 0 ? images : undefined },
   ];
 
   if (getAllPublishedVideos(site.content).length > 0) {
     pages.push({ path: '/videos', lastModified: updated, changeFrequency: 'monthly', priority: 0.6 });
+  }
+
+
+  const services = getSiteContent(site.content).services;
+  if (services.enabled) {
+    for (const service of services.items) {
+      if (!service.title.trim()) continue;
+      pages.push({
+        path: '/services/' + encodeURIComponent(slugifyBlogTitle(service.title.trim())),
+        lastModified: updated,
+        changeFrequency: 'monthly',
+        priority: 0.7,
+      });
+    }
   }
 
   const posts = getSiteContent(site.content).blog.posts.filter(
@@ -85,6 +117,18 @@ export function siteIndexablePages(site: Site): SitePageEntry[] {
       lastModified: post.date || updated,
       changeFrequency: 'yearly',
       priority: 0.5,
+    });
+  }
+
+
+  const cities = siteCities(site).slice(0, 30);
+  for (const city of cities) {
+    if (!city.trim()) continue;
+    pages.push({
+      path: '/service-areas/' + encodeURIComponent(slugifyBlogTitle(city.trim())),
+      lastModified: updated,
+      changeFrequency: 'monthly',
+      priority: 0.6,
     });
   }
 
@@ -118,18 +162,25 @@ function lastmod(value: string): string | null {
 export function buildSitemapXml(origin: string, pages: SitePageEntry[]): string {
   const entries = pages.map((page) => {
     const modified = lastmod(page.lastModified);
+    const imageTags = (page.images || []).map((img) => {
+      const parts = [`      <image:loc>${escapeXml(img.url)}</image:loc>`];
+      if (img.title) parts.push(`      <image:title>${escapeXml(img.title)}</image:title>`);
+      return `    <image:image>\n${parts.join('\n')}\n    </image:image>`;
+    });
+    
     return [
       '  <url>',
       `    <loc>${escapeXml(`${origin}${page.path}`)}</loc>`,
       ...(modified ? [`    <lastmod>${modified}</lastmod>`] : []),
       `    <changefreq>${page.changeFrequency}</changefreq>`,
       `    <priority>${page.priority.toFixed(1)}</priority>`,
+      ...imageTags,
       '  </url>',
     ].join('\n');
   });
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">',
     ...entries,
     '</urlset>',
     '',

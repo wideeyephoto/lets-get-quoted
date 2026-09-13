@@ -12,6 +12,7 @@ import {
 import type { WarrantyClaim } from '@/lib/warranties-data';
 import { buildEquipmentStickerHtml } from '@/lib/equipment-qr';
 import { addWarrantyDocumentAction, createWarrantyAction, deleteWarrantyAction, recordServiceAction } from './warranty-actions';
+import { portalViewUrlFull } from '@/lib/portal-urls';
 
 /**
  * Warranties on a job, and anything the customer has reported against them.
@@ -53,7 +54,7 @@ export default function WarrantyPanel({
             const own = claims.filter((claim) => claim.warrantyId === warranty.id);
             const stickerPortalUrl = portalUrl
               ? `${portalUrl}#warranty-${warranty.id}`
-              : `${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/portal/view/${jobId}#warranty-${warranty.id}`;
+              : `${portalViewUrlFull(jobId)}#warranty-${warranty.id}`;
             return (
               <article key={warranty.id} className={`warranty-card status-${status}`}>
                 <header className="warranty-card-head">

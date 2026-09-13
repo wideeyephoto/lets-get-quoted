@@ -30,6 +30,8 @@ export const metadata = { title: 'Incidents' };
 const DONE: Record<string, string> = {
   logged: 'Logged. It is on the Command Center now.',
   resolved: 'Marked resolved.',
+  published: 'Incident published to /status.',
+  unpublished: 'Incident unpublished from /status.',
 };
 const ERRORS: Record<string, string> = {
   title: 'Give it a title — that is what everyone reads first.',

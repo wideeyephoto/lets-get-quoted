@@ -63,7 +63,9 @@ describe('Contractor site templates header company name visibility', () => {
 
 describe('WebsiteBuilder UI controls for header company name visibility', () => {
   const root = process.cwd();
-  const builderCode = readFileSync(join(root, 'src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx'), 'utf8');
+  const tabFiles = ['BuilderBusinessTab.tsx', 'BuilderDesignTab.tsx', 'BuilderPageTab.tsx', 'BuilderPublishTab.tsx'];
+  const tabsCode = tabFiles.map((f) => readFileSync(join(root, 'src', 'app', 'dashboard', 'sites', 'tabs', f), 'utf8')).join('\n');
+  const builderCode = readFileSync(join(root, 'src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx'), 'utf8') + '\n' + tabsCode;
 
   it('provides the toggle in Typography & buttons section', () => {
     expect(builderCode).toContain('checked={!siteContent.hideHeaderCompanyName}');

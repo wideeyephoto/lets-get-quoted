@@ -17,7 +17,12 @@ import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
-import styles from './themes.module.css';
+import baseStyles from './themes.module.css';
+import themeStyles from './fixit.module.css';
+const styles = { ...baseStyles, ...themeStyles };
+import CallLink from './CallLink';
+import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Fixit — clean, professional handyman look (Handify reference): white ground,
 // orange accent, an angular orange shape behind a worker photo with a floating
@@ -70,7 +75,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   } as CSSProperties;
 
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
+    <main id="main-content" className={`${templateFontVars} ${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
@@ -88,7 +93,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.fixitHeaderActions}>
-          {site.phone && <a className={styles.fixitHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.fixitHeaderPhone} data-edit="bizPhone"><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</CallLink>}
           <a className={styles.fixitHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
       </header>
@@ -130,7 +135,11 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           {/* Was "we'll match you with the right pro", which reads as a lead-matching
               marketplace — this is the contractor's own site. */}
           <p>Tell us what you need and we&apos;ll get back to you with a quote — free, no obligation.</p>
-          {site.phone && <a className={styles.fixitBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.fixitBtn}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.fixitBtn} />
+          </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

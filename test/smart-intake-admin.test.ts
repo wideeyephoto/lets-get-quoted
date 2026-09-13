@@ -11,7 +11,11 @@ const stripComments = (source: string) => source
 const AUTOMATIONS = stripComments(read('src', 'app', 'dashboard', 'automations', 'page.tsx'));
 const SETUP = stripComments(read('src', 'app', 'dashboard', 'settings', 'IntakeContentSection.tsx'));
 const PREVIEW = stripComments(read('src', 'app', 'dashboard', 'sites', 'IntakePreviewModal.tsx'));
-const BUILDER = stripComments(read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx'));
+const BUILDER = stripComments(
+  read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx') + '\n' +
+  ['BuilderBusinessTab.tsx', 'BuilderDesignTab.tsx', 'BuilderPageTab.tsx', 'BuilderPublishTab.tsx']
+    .map((f) => read('src', 'app', 'dashboard', 'sites', 'tabs', f)).join('\n')
+);
 const LEADS = stripComments(read('src', 'app', 'dashboard', 'leads', 'LeadsWorkspace.tsx'));
 const ACTIONS = stripComments(read('src', 'app', 'dashboard', 'settings', 'actions.ts'));
 const INTAKE_ACTION = ACTIONS.slice(

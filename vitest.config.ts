@@ -15,9 +15,9 @@ export default defineConfig({
       'server-only': fileURLToPath(new URL('./test/stubs/server-only.ts', import.meta.url)),
     },
   },
-  test: {
+  esbuild: { jsx: 'automatic' }, test: {
     environment: 'node',
-    include: ['test/**/*.test.ts'],
+    include: ['test/**/*.test.{ts,tsx}'],
     // Blocks the socket to every SMS provider host. See the file for why the
     // existing in-code gate is not enough on its own.
     setupFiles: ['./test/setup/no-provider-egress.ts'],
@@ -61,24 +61,28 @@ export default defineConfig({
       include: [
         'src/lib/**/*.ts',
         'src/app/api/**/*.ts',
+        'src/app/**/actions.ts',
+        'src/app/**/*actions*.ts',
         'src/middleware.ts',
       ],
       exclude: [
         'src/lib/**/index.ts',         // barrel re-exports
+        'src/lib/**/types.ts',         // pure type declarations
+        'src/app/**/types.ts',         // pure type declarations
         'src/lib/site-content.ts',     // 146KB generated content catalog
         'src/lib/trades.ts',           // 222KB generated trade definitions
         '**/*.d.ts',                   // type declarations
         '**/*.test.*',                 // tests themselves
       ],
-      // No thresholds initially — establish a baseline first, then set floors
-      // to prevent regressions. Uncomment and tune after reviewing the
-      // corrected report:
-      // thresholds: {
-      //   lines: 50,
-      //   functions: 50,
-      //   branches: 50,
-      //   statements: 50,
-      // },
+      // Coverage floors — prevent regressions. Set conservatively at the
+      // post-phase-1-5 baseline; raise incrementally as coverage continues
+      // to grow toward the 85% target.
+      thresholds: {
+        lines: 60,
+        functions: 65,
+        branches: 55,
+        statements: 60,
+      },
     },
   },
 });

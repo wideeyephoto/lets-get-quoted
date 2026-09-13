@@ -40,6 +40,7 @@ import { hasAnalytics } from '@/lib/analytics';
 import StatCounters from './StatCounters';
 import SiteServiceAreaMatcher from './SiteServiceAreaMatcher';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 type SiteContentSectionsProps = {
   site: Site;
@@ -197,7 +198,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       const cards = [
         ...testimonials.items.map((item) => (
           <article key={item.id} className={styles.testimonialCard}>
-            {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
+            {item.imageUrl && <SafeImage className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'}    />}
             <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
             <p>“{item.text}”</p>
             <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
@@ -231,13 +232,18 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           {testimonials.displayStyle === 'grid'
             ? <div className={styles.testimonialGrid} data-stagger>{cards}</div>
             : <TestimonialSlider mode={testimonials.displayStyle}>{cards}</TestimonialSlider>}
-        {testimonials.googleReviews.length > 0 && (
-          <p className={styles.googleAttribution} data-reveal>
-            {testimonials.googleRating > 0 && <strong>{testimonials.googleRating.toFixed(1)} ★ on Google{testimonials.googleReviewCount > 0 ? ` · ${testimonials.googleReviewCount.toLocaleString('en-US')} reviews` : ''}</strong>}
-            {testimonials.googleUrl && <a href={testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow">See all reviews on Google →</a>}
-            <span className={styles.googlePoweredBy}>Powered by Google</span>
-          </p>
-        )}
+          {testimonials.elfsightWidgetId ? (
+            <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center' }}>
+              <script src="https://static.elfsight.com/platform/platform.js" async></script>
+              <div className={`elfsight-app-${testimonials.elfsightWidgetId}`}></div>
+            </div>
+          ) : testimonials.googleReviews.length > 0 && (
+            <p className={styles.googleAttribution} data-reveal>
+              {testimonials.googleRating > 0 && <strong>{testimonials.googleRating.toFixed(1)} ★ on Google{testimonials.googleReviewCount > 0 ? ` · ${testimonials.googleReviewCount.toLocaleString('en-US')} reviews` : ''}</strong>}
+              {testimonials.googleUrl && <a href={testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow">See all reviews on Google →</a>}
+              <span className={styles.googlePoweredBy}>Powered by Google</span>
+            </p>
+          )}
         </section>
       );
     })(),
@@ -280,7 +286,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
         <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
           {post.coverImage ? (
             <div className={styles.blogCardImgWrap}>
-              <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />
+              <SafeImage className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async"  />
             </div>
           ) : (
             <div className={styles.blogCardFallbackImg}>
@@ -329,7 +335,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
               <a key={post.id} className={styles.blogRow} href={`/blog/${post.slug}`}>
                 {post.coverImage ? (
                   <div className={styles.blogRowImgWrap}>
-                    <img className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />
+                    <SafeImage className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async"  />
                   </div>
                 ) : (
                   <div className={styles.blogRowImgWrap}>
@@ -357,7 +363,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
             <a className={styles.blogMagazineLead} href={`/blog/${posts[0].slug}`}>
               {posts[0].coverImage ? (
                 <div className={styles.blogMagazineLeadImgWrap}>
-                  <img className={styles.blogMagazineLeadImg} src={posts[0].coverImage} alt="" loading="lazy" decoding="async" />
+                  <SafeImage className={styles.blogMagazineLeadImg} src={posts[0].coverImage} alt="" loading="lazy" decoding="async"  />
                 </div>
               ) : (
                 <div className={styles.blogMagazineLeadImgWrap}>
@@ -418,13 +424,13 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
               shown += 1;
               // Drop a parallax band in after every 3rd visible section.
               if (shown % 3 === 0 && bandIndex < bands.length) {
-                nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><img data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async" /></div>);
+                nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><SafeImage data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async"  /></div>);
                 bandIndex += 1;
               }
             }
             // Any leftover bands trail the sections.
             while (bandIndex < bands.length) {
-              nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><img data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async" /></div>);
+              nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><SafeImage data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async"  /></div>);
               bandIndex += 1;
             }
             return nodes;
@@ -434,10 +440,10 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
 
       {stickyCallBar && site.phone && (
         <div className={styles.stickyCallBar} role="region" aria-label="Quick contact">
-          <a className={styles.stickyCall} href={`tel:${site.phone}`}>
+          <CallLink site={site} className={styles.stickyCall}>
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 4.5 4.5l1.5-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 4.5 5.5a2 2 0 0 1 2-2Z" fill="currentColor"/></svg>
             {stickyCallBar.callLabel || 'Call now'}
-          </a>
+          </CallLink>
           {stickyCallBar.showQuote && (
             <a className={styles.stickyQuote} href="#contact">{stickyCallBar.quoteLabel || 'Free quote'}</a>
           )}

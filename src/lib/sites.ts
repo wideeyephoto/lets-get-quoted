@@ -48,6 +48,7 @@ export type Site = {
   chrome: Record<string, unknown>;
   reviews_cache: Record<string, unknown> | null;
   portal_mode: PortalMode;
+  language?: 'en' | 'es';
 
   updated_at: string;
 };

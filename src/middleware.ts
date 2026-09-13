@@ -49,9 +49,9 @@ export async function middleware(request: NextRequest) {
     const subdomain = tenant.subdomain;
     const publicSiteUrl = request.nextUrl.clone();
     // Preserve sub-paths (e.g. /blog/[slug]) so a tenant host serves more than
-    // just the homepage; '/' maps to the /site/[subdomain] index route.
+    // just the homepage; '/' maps to the /site/s/[subdomain] index route.
     const suffix = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname;
-    publicSiteUrl.pathname = `/site/${subdomain}${suffix}`;
+    publicSiteUrl.pathname = `/site/s/${subdomain}${suffix}`;
     // Strip any client-supplied value first — these headers gate internal
     // rendering behavior and must only ever reflect this middleware's own
     // trusted checks, never something an external request could spoof.
@@ -66,9 +66,9 @@ export async function middleware(request: NextRequest) {
 
   if (tenant.kind === 'customDomain') {
     const customSiteUrl = request.nextUrl.clone();
-    // Preserve sub-paths (e.g. /blog/[slug]); '/' maps to the site-domain index.
+    // Preserve sub-paths (e.g. /blog/[slug]); '/' maps to the site/d index.
     const suffix = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname;
-    customSiteUrl.pathname = `/site-domain/${encodeURIComponent(tenant.domain)}${suffix}`;
+    customSiteUrl.pathname = `/site/d/${encodeURIComponent(tenant.domain)}${suffix}`;
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
@@ -325,6 +325,15 @@ export async function middleware(request: NextRequest) {
       'Cache-Control',
       'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
     );
+  }
+
+  if (
+    request.nextUrl.pathname.startsWith('/client/') ||
+    request.nextUrl.pathname.startsWith('/portal/') ||
+    request.nextUrl.pathname.startsWith('/invoice/') ||
+    request.nextUrl.pathname.startsWith('/pay/')
+  ) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow');
   }
 
   return applyCsp(response);

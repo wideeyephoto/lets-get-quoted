@@ -96,7 +96,7 @@ function usableCityName(city: string): boolean {
 // Every town this contractor claims, home city first. The free-text service area
 // names the main one while the cities list holds the outlying towns and usually
 // does NOT repeat it, so reading either alone loses a town.
-function siteCities(site: Site): string[] {
+export function siteCities(site: Site): string[] {
   const content = getSiteContent(site.content);
   const all = [homeLocation(site).city, ...content.serviceAreas.cities].map(trimmed).filter(Boolean);
   return all.filter((city, index) => all.findIndex((other) => other.toLowerCase() === city.toLowerCase()) === index);
@@ -284,5 +284,27 @@ export function buildLocalBusinessJsonLd(site: Site): Record<string, unknown> | 
     ...(hasOfferCatalog ? { hasOfferCatalog } : {}),
     ...(description ? { description } : {}),
     ...(sameAs.length > 0 ? { sameAs } : {}),
+  };
+}
+
+export function buildFaqJsonLd(items: import('../site-content').SiteFaqItem[]) {
+  if (!items || items.length === 0) return null;
+  const mainEntity = items
+    .filter((item) => item.question && item.question.trim() && item.answer && item.answer.trim())
+    .map((item) => ({
+      '@type': 'Question',
+      name: item.question.trim(),
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer.trim(),
+      },
+    }));
+  
+  if (mainEntity.length === 0) return null;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity,
   };
 }

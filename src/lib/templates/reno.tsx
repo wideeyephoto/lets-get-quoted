@@ -17,7 +17,12 @@ import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
-import styles from './themes.module.css';
+import baseStyles from './themes.module.css';
+import themeStyles from './reno.module.css';
+const styles = { ...baseStyles, ...themeStyles };
+import CallLink from './CallLink';
+import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 // Reno — dark-navy + golden-yellow renovation look (Renovation/ThemeMove
 // reference): hexagon motifs, an angular slanted hero photo, bold white
@@ -38,8 +43,8 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
     '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#1b2431'),
     '--theme-accent-text': site.accent_override
-      ? readableAccentText(site.accent_override, [scheme?.bg || '#111722', scheme?.surface || '#1b2431'])
-      : (scheme?.accentText || defaultAccent),
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#ffffff', scheme?.surface || '#f4f5f7'])
+      : (scheme?.accentText || readableAccentText(defaultAccent, ['#ffffff', '#f4f5f7'])),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
     '--c-on-deep': scheme?.onDeep || '#ffffff',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
@@ -61,7 +66,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   } as CSSProperties;
 
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
+    <main id="main-content" className={`${templateFontVars} ${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
@@ -80,9 +85,9 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.renoHeaderActions}>
           {site.phone && (
-            <a className={styles.renoHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>
+            <CallLink site={site} className={styles.renoHeaderPhone} data-edit="bizPhone">
               <span className={styles.renoHex} aria-hidden="true">✆</span>{site.phone}
-            </a>
+            </CallLink>
           )}
           <a className={styles.renoHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
@@ -124,7 +129,11 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <p className={styles.renoEyebrow}>Get a free estimate</p>
           <h2>Have a project in mind?</h2>
           <p>Tell us what needs doing and we&apos;ll follow up with a plan and a price — free, no obligation.</p>
-          {site.phone && <a className={styles.renoBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site} className={styles.renoBtn}>Call {site.phone}</CallLink>}
+            <TextLink site={site} className={styles.renoBtn} />
+          </div>
+          <ResponseTimeBadge site={site} className={styles.replyBadge} />
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

@@ -44,7 +44,8 @@ describe('computeInvoiceTotals', () => {
   });
 
   it('rounds to cents', () => {
-    // 3 * 33.33 = 99.99 -> subtotal rounds to 99.99 because it rounds per item
+    // Each item rounds to cents first: Math.round(33.333 * 100) = 3333 cents = $33.33
+    // 3 * $33.33 = $99.99 (round-each-line semantics)
     const t = computeInvoiceTotals([{ amount: 33.333 }, { amount: 33.333 }, { amount: 33.333 }], 0, 0);
     expect(t.subtotal).toBe(99.99);
   });

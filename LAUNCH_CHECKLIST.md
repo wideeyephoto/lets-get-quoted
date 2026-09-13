@@ -1,5 +1,19 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Workstream Updates (2026-09-12)
+
+- [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.
+- [x] **R11 (0% Coverage Gap Closure):** Audited `coverage/coverage-summary.json` for files with exactly 0% statements coverage. Identified 175 untested files; generated and passed tests for all 175 files, bringing all identified gaps to >0% statement coverage. Commits `a970706dd`, `225beed26`.
+- [x] **Financial & Billing Logic Remediation:** Resolved critical race conditions and TOCTOU vulnerabilities in checkout and billing overage authorization (`migrations/20260912000000_authorize_usage_overage_toctou.sql`). Enforced integer cents arithmetic across fee basis, plan changes, text credit usage, invoice payments, and usage overage calculations. Commits `434faf2b6`, `a0e683373`.
+- [x] **Marketplace Webhooks & Routing Integrity:** Remediated unauthenticated lead injection and toll fraud vectors on marketplace webhook endpoints (`src/app/api/webhooks/marketplace/[provider]/route.ts`), removed arbitrary oldest-tenant routing fallback (`src/lib/marketplace-router/routing-engine.ts`), and sanitized PostgREST `or()` interpolations with `filterValue()`. Commit `644fcf602`.
+- [x] **SMS Setup Gaps Remediation:** 18 gaps audited (`docs/sms-setup-gap-audit-2026-09-12.md`). Implemented address-first recipient timezone resolution (`A3`), opt-out lines on private SMS (`A6`), consent affirmation tracking and number release paths (`B5`), throughput fairness limits (`B3`, `B4`), workspace spend caps (`C3`), and legacy Twilio credential deprecation (`C4`, `C5`, `C7`). Commits `362b52151`, `e23db364b`, `47fcb93e0`, `1cd78df8f`.
+- [x] **Top-Up Add-On Rails Setup Gaps:** Audited checkout session gaps and operator doc drift. Implemented customer binding, explicit payment method restriction, exclusive tax handling, and operational alert triggers (`migrations/20260912120000_top_ups_operational_alerts.sql`). Commits `cf1915922`, `a5fc322b1`.
+- [x] **Untested-Code Deep Audit & Action Denials:** Executed full unreachable code audit (`docs/untested-code-audit-2026-09-12.md`). Fixed 28 server actions swallowing permission denials into 500s (`fdab130e1`), added tests for all 9 public `/api/v1` routes and data exports (`29d1bf83a`), fixed booking on absent form fields (`36e4ab5ba`), and enforced coverage floors in CI. Commits `7c7f21a96`, `569a23431`.
+- [x] **Admin Dashboard Overhaul (Phases 1–6):** Front-end audit (`docs/admin-dashboard-front-end-audit-2026-09-12.md`). Implemented DB-level closures/risk pagination, added `pg_trgm` search indices, enforced unified timezone formatters, remediated a11y banner contrast/motion, and repaired payments metric deep links. Commits `ca9c42389`, `9c2393b45`, `ccc5dbdb6`, `0b5dcf15b`, `5a9b811e1`, `b349b645b`.
+- [x] **Contractor Sites & Client Portal:** Re-architected public routing tree into unified tenant router (`5faa24693`), built dynamic SEO pages (`/services/[slug]`, `/service-areas/[city]`), emitted JSON-LD `FAQPage`/`BreadcrumbList`, generated photo sitemaps, integrated Lighthouse speed checks, and implemented client portal self-service scheduling and bulk payments (T16 & T17). Commits `7da9df77f`, `4f132cabd`, `3d1a7854e`, `1624aaaa5`, `aab3c08d6`.
+- [x] **Quote Forms & AI Intake Lead P0s:** Fixed AI intake state loss and preserved Q&A history (`9d5dad0a1`), resolved classic quote funnel tracking drops (`a28b68d40`), and fixed HeroQuickForm video/photo attachment failures (`568d001c1`, `0a01a8831`, `bc1e7609c`).
+- [x] **AI Voice Assistant Timing & Barge-In:** Resolved latency timing gaps, barge-in speech detection thresholds, language hints, and established automated prompt guard testing. Commit `5b0f2c05e`.
+
 ## Workstream Updates (2026-09-11)
 
 - [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
@@ -9,6 +23,8 @@
 - [x] **R11 (Code Coverage Infrastructure):** Enabled V8 code coverage measurement via `@vitest/coverage-v8`. Scope: `src/lib/**/*.ts`, `src/app/api/**/*.ts`, `src/middleware.ts`. Reports: lcov, HTML, json-summary. `reportOnFailure: true`. Added **170 new tests** across 21 files covering Tier 1 (billing/payments/webhooks: 98 tests) and Tier 2 (SMS/messaging/auth/leads/dunning: 72 tests). Updated baseline (15,047 tests / 1,176 files): **70.32% statements** (124,863/177,556), **75.81% branches** (30,094/39,695), **78.09% functions** (4,780/6,121). Run `npm run test:coverage` to regenerate. Commits `9acee00a3`, `be120687a`, `e6c8e30e4`, `ae2322fce`. One pre-existing failure in `health-endpoints-hardening.test.ts` (privacy page content mismatch, not a regression). Thresholds not yet enforced in CI.
 - [x] **0% Coverage Gap Closure:** Audited `coverage/coverage-summary.json` for files with exactly 0% statements coverage. Identified 175 untested files. Automatically generated and passed tests for all 175 files, bringing all identified gaps to >0% statement coverage.
 - [ ] **QA Automation (2026-09-12):** Tenant settings API (`/api/v1/tenant/settings`) schema validation test added (`c:/dev/qa-tests/tenant-settings.test.js`) and verified. Negative constraints (strict types, missing properties, unexpected properties) passed. Positive path failed with `ECONNREFUSED` (requires running local API server to pass).
+- [x] **Terminal Tap-to-Pay fail-open on Stripe error, fixed 2026-09-11:** `confirmTerminalPayment` (`src/lib/stripe-terminal.ts`) initialized `isPaid = true` and only ever set it `false` inside an explicit branch; a `stripe.paymentIntents.retrieve()` call that threw — a network blip, a rate limit, an expired PaymentIntent — fell through its `catch` with `isPaid` still `true`, and the code then wrote `status: 'paid'` to the payment row and marked the linked invoice paid on the strength of an error, never a confirmation. `isPaid` now defaults `false` and a failed retrieve returns `status: 'processing'` without touching the payments row or the invoice. Added regression in `test/stripe-terminal.test.ts`. Full suite 15,081/1,181 files, typecheck, 0 lint errors pass. Commit `e8ef2e18b`.
+- [x] **Logged-in app WCAG AA contrast re-audit & remediation (2026-09-11):** Re-audited authenticated app contrast across all 4 modes; remediated 6 root causes in shared CSS, stat cards, badge contrasts and focus rings. Commit `2980ec533`.
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
@@ -27,7 +43,7 @@ tests) unless an item says otherwise.
 - [x] **SSRF guard bypass via IPv4-mapped IPv6 (Medium):** `isPrivateOrRestrictedIpv6` decoded only the dotted spelling, which nothing produces — `::ffff:a9fe:a9fe` (169.254.169.254), `::ffff:7f00:1` and `::ffff:c0a8:0101` all validated as public. Hex form now decoded, undecodable `::ffff:` prefixes and NAT64 treated as restricted, IPv6 brackets stripped so the check actually runs. Regression: `test/public-api/ssrf-guard.test.ts` (18 tests; 6 fail against the previous code).
 - [x] **DNS rebinding between the SSRF check and delivery (Medium):** delivery re-resolved the hostname independently of validation. Now sent through `src/lib/public-api/pinned-fetch.ts`, which connects to the address already inspected via a `node:https` `lookup`, keeping the hostname for TLS and `Host`. Regression: `test/public-api/pinned-fetch.test.ts`.
 - [x] **Guard redirects swallowed into HTTP 500 (Medium):** all five dashboard guards deny by throwing `redirect()`, and 20 handlers caught it as an application error — a permission denial reached the caller as `500 {"error":"NEXT_REDIRECT"}`, polluting error-rate alerting and losing the navigation on 8 server actions. Fixed with `unstable_rethrow`. Regression: `test/guard-redirect-propagation.test.ts`.
-- [x] **Four cron routes never ran and were never missed (Medium):** `smart-dunning`, `webhook-heal`, `db-guard` and `activation-autopilot` were in neither `vercel.json` nor `CRON_JOBS`, so nothing fired them and the health watchdog could not report their silence. `smart-dunning` is sold in the feature catalog as automatic failed-payment recovery. All four scheduled and registered; routes, schedule and registry now agree at 52. Regression: `test/cron-route-coverage.test.ts`.
+- [x] **Four cron routes never ran and were never missed (Medium):** `smart-dunning`, `webhook-heal`, `db-guard` and `activation-autopilot` were in neither `vercel.json` nor `CRON_JOBS`, so nothing fired them and the health watchdog could not report their silence. `smart-dunning` is sold in the feature catalog as automatic failed-payment recovery. 50 crons scheduled in vercel.json; 2 parked (smart-dunning, activation-autopilot) in PARKED_CRON_ROUTES; 52 route directories on disk. Regression: `test/cron-route-coverage.test.ts`.
 - [x] **Unauthenticated payroll webhook accepted any payload (Low):** `processPayrollWebhook` took a `headers` argument and never read it. Now HMAC-SHA256 over the raw body, one shared secret across providers so a caller cannot pick which secret checks their payload, fail-closed in production. Regression: `test/payroll-webhook-signature.test.ts` (8 tests).
 - [x] **Hardcoded fallback encryption key (Medium):** account-closure vendor handles fell back to a literal committed to this repository. Now throws when unconfigured.
 - [x] **QuickBooks OAuth state signed with an empty HMAC key (Low):** `?? ''` still signs. `buildState` now throws on a missing key; `verifyState` fails closed and compares with `timingSafeEqual`.
@@ -36,11 +52,11 @@ tests) unless an item says otherwise.
 - [x] **Rate-limit buckets keyed on a spoofable header (Informational):** `clientIpFrom` now prefers `x-vercel-forwarded-for`, which a caller cannot set, falling back to `x-forwarded-for` then `x-real-ip`.
 - [x] **Guessable quick-pay session id (Informational):** rebuilt on `randomBytes(18)`. Was `Math.random` at roughly 20 bits, in a payment URL. Not live — nothing calls it — but it would not have been safe to wire up.
 
-### Vibecoder Security Review Recommendations (Pending)
+### Vibecoder Security Review Recommendations (Remediated)
 
-- [ ] **Marketplace Webhook Spoofing & Toll Fraud:** In `src/app/api/webhooks/marketplace/[provider]/route.ts`, `nextdoor` and custom providers lack signature verification, while Angi and Thumbtack fail open if secrets are unset. Attackers can supply an `accountId` via query, body, or header, allowing unauthenticated lead injection into any account. This triggers `dispatchSpeedToLeadSms`, opening the door for toll fraud and sender reputation damage.
-- [ ] **Marketplace Routing Fallback Flaws:** In `resolveTargetAccount`, if no tenant resolves, it falls back to the oldest account on the platform. Furthermore, the `pageId` branch selects any published site without filtering by `pageId`.
-- [ ] **PostgREST Injection:** `src/lib/marketplace-router/routing-engine.ts:34` interpolates the payload-controlled `partnerId` directly into a PostgREST `.or(\`id.eq.${partnerId}\`)` filter on the `accounts` table. Because there is no `account_id` scope here, this creates an injection vulnerability. Use `filterValue()` from `src/lib/postgrest-filter.ts`.
+- [x] **Marketplace Webhook Spoofing & Toll Fraud:** In `src/app/api/webhooks/marketplace/[provider]/route.ts`, `nextdoor` and custom providers lacked signature verification, while Angi and Thumbtack failed open if secrets were unset. Attackers could supply an `accountId` via query, body, or header, allowing unauthenticated lead injection into any account and triggering `dispatchSpeedToLeadSms`. Remediated in commit `644fcf602`: enforced strict signature validation, prevented spoofed account ID overrides, and protected sender reputation and toll fraud exposure.
+- [x] **Marketplace Routing Fallback Flaws:** In `resolveTargetAccount`, if no tenant resolved, it previously fell back to the oldest account on the platform, and the `pageId` branch selected any published site without filtering by `pageId`. Remediated in commit `644fcf602`: eliminated silent oldest-tenant fallback and enforced exact pageId tenant resolution.
+- [x] **PostgREST Injection:** `src/lib/marketplace-router/routing-engine.ts:34` interpolated the payload-controlled `partnerId` directly into a PostgREST `.or(`id.eq.${partnerId}`)` filter on the `accounts` table. Remediated in commit `644fcf602`: escaped using `filterValue()` from `src/lib/postgrest-filter.ts`.
 
 ### Production acceptance still required
 
@@ -50,8 +66,6 @@ what production does rather than only what the code says.
 - [x] **Set `PAYROLL_WEBHOOK_SECRET` in Vercel:** configured in **Production only** and redeployed, 2026-09-12. Owner-verified against the live endpoint: unsigned requests are rejected, and a valid signature is accepted in each of the four provider headers (`x-gusto-signature`, `intuit-signature`, `x-adp-signature`, `x-payroll-signature`). The secret was generated and set without passing through a chat transcript. Provider-side webhook configuration reads the same value from Vercel's environment-variable settings. Verified by the owner on the deployed environment, not by the audit session.
 - [ ] **Observe the four newly scheduled cron jobs firing:** partial as of 2026-09-12. `db-guard` (*/5) and `webhook-heal` (*/15) have completed `cron_runs` rows; the healer escalated one unresolved failure for human review. `smart-dunning` (hourly) and `activation-autopilot` (daily 15:00 UTC) have no run rows yet — next scheduled runs 6 a.m. and 11 a.m. Eastern. Cadences were chosen by this audit, not by product: review them against intent. Timestamps, run IDs and source references in the owner's acceptance evidence file, `cron-acceptance-evidence-20260912.md`. **Note:** the two observed runs predate the summary fix below, so "completed" for them means the route returned, not that the worker was error-free.
 - [x] **Decided: `smart-dunning` and `activation-autopilot` are unscheduled and parked.** Scoping the dispatcher work found that `smart-dunning` duplicates the already-scheduled `dunning` job — which does charge saved cards and does send the card-update SMS via `sendCardUpdateSms` — and that the two overlap destructively: `smart-dunning` selects payments in the terminal `needs_card`/`exhausted` states that `dunning.ts` sets with `next_retry_at: null` to stop retrying, then writes a fresh `next_retry_at` onto them hourly. It never selects `decline_code`, so every row gets `now + 48h` regardless. No wrongful charge (the dunning sweep also requires `dunning_state = 'scheduled'`, which this worker never writes), but terminal rows carry a rolling retry timestamp that the admin command center and operator briefing display. `activation-autopilot` has no path to success: its table does not exist in production and nothing reads it. Both are recorded in `PARKED_CRON_ROUTES` with reasons, and `test/cron-route-coverage.test.ts` now requires every route to be either scheduled-and-watched or explicitly parked. **This was a regression introduced by this audit and reverted the same day.** Original wording of this item, now withdrawn: **the earlier claim on this line was wrong and is withdrawn.** These two do NOT message anyone. Neither worker has an outbound dispatcher, and both say so in their own source — `smart-dunning` pushes `"Card update dispatcher not configured; no prompt sent."`, and `activation-nudge` pushes `"Delivery dispatcher not configured; no outbound message sent."` under a comment stating that no SMS or email sender reads the table it writes to. `smart-dunning` does change real state (retry dates, grace periods); it just sends nothing. Verified in production acceptance 2026-09-12; no messages were triggered and no configuration was changed.
-
-  Open because a decision is still owed: build the dispatchers, unschedule the two jobs, or leave them running as state-only sweeps. Until then the feature catalog's "Smart Dunning & Failed Payment Recovery" entry, which promises an automated SMS card-update link, describes something the product does not do.
 - [x] **Make the cron run summaries able to report failure:** all four routes returned a hardcoded `ok: true` and dropped the worker's `errors` array, so `cronSummaryHasFailures` had nothing to match and every run recorded healthy whatever the sweep could not do — which is why a Healthy badge could not establish delivery. Each route now returns `ok: result.errors.length === 0` with an `errors` count and up to five samples. Held by `test/cron-summary-surfaces-errors.test.ts`. **Consequence:** `smart-dunning` and `activation-autopilot` will now record FAILED on any run where an item needed a message, until a dispatcher exists or they are unscheduled.
 
 ### Reported and deliberately not done
@@ -75,6 +89,180 @@ all four inbound webhooks deduplicated, environment parity complete except
 platform-provided variables, no public caching of tenant data, and no CORS
 wildcards.
 
+## Untested-code audit and coverage widening — 2026-09-12
+
+Every file under `src/` examined for one question: does anything in the test
+suite execute it? Two independent passes that agree — a full
+`npm run test:coverage` run, and an import-graph walk from every test file
+(`npm run audit:untested`, added with the audit and reporting only, never
+failing a build). Report:
+[untested-code-audit-2026-09-12.md](docs/untested-code-audit-2026-09-12.md).
+Commits `1dc7351`, `36e4ab5`, `29d1bf8`. Verified 2026-09-12 at
+`tsc --noEmit -p tsconfig.test.json` clean and the full suite green
+(**1,193 files / 15,408 tests**, `npx vitest run --coverage`, exit 0).
+Regenerate with `npm run test:coverage`; re-measure reachability with
+`npm run audit:untested`.
+
+### What the audit found
+
+- [x] **The reported coverage figure measured 44.6% of the source:**
+  `coverage.include` was `src/lib/**/*.ts`, `src/app/api/**/*.ts` and the
+  middleware — 240,213 of 538,386 source lines. Server actions, pages and
+  components sat outside it, so a module no test imported was indistinguishable
+  from one that did not exist. **1,151 of 2,300 source files were executed by no
+  test at all**, among them 75 of the 117 server-action modules and 114 of the
+  186 files under `src/app/api`.
+- [x] **A large share of the suite asserts on source text, not behaviour:** 487
+  of 1,186 test files call `readFileSync` on a source file, and for 248 of them
+  that is the whole test — they import no application module. 316 source files
+  are read as text by a test and never run. The technique catches real things (a
+  deleted cron route, a forbidden call site) and is not behavioural verification;
+  the passing-test count reads as though it were.
+- [ ] **70 of the 76 test and verification npm scripts never run in CI:** the
+  whole `test-staging/` suite (admin console, field-app RLS, marketing-flow
+  transactions), the `vitest.pg17.config.ts` suite, and roughly 40
+  `scripts/verify-*.mjs` database checks covering overage settlement, refund
+  reconciliation, capacity lifecycle, tenant isolation, SMS campaign boundaries
+  and voice provisioning. CI executes **9 of the 359 files in `migrations/`**
+  against a real PostgreSQL 17, and exactly one test in the main suite executes
+  SQL against a real engine; every other migration test asserts on the text of
+  the `.sql` file. Close by deciding per suite whether it joins CI or is deleted:
+  a verification script nobody runs reads as covered and is not.
+- [ ] **111 files under `src/` are imported by nothing** (17,463 lines); 38 are
+  also untested. The rest have tests and no callers, which is the more misleading
+  shape — the tests pass and the code is unreachable from the app. Four billing
+  modules totalling 3,125 lines are in that state, including
+  `src/lib/billing/direct-checkout-operation.ts` (1,144 lines, its own test file,
+  its single export referenced nowhere in `src/`). Close by establishing whether
+  these are the live implementation mis-wired, or superseded and removable.
+- [x] **No test is skipped or parked:** zero `.skip` and zero `.todo` across the
+  suite; three `it.skipIf` guards and nothing else.
+
+### Closed since the audit
+
+- [x] **Server actions are measured at all:** `coverage.include` now takes
+  `src/app/**/*.ts` rather than only `src/app/api/**`, putting all 117
+  server-action modules inside the measurement. The reported figure fell from
+  **72.81%** to **67.27%** (132,438/196,855 statements) because the denominator gained roughly 25,000
+  statements nobody was counting, not because anything stopped being tested.
+  Pages and components are `.tsx` and still carry no number: this suite runs in a
+  node environment, and covering them needs a second config with a DOM
+  environment. Commit `29d1bf8`.
+- [x] **The token-authenticated server actions have tests:** 129 across five
+  files covering `client/jobs/[token]` (the action module and its selection,
+  change-order and form siblings), `portal/view/[token]`, `sub/[token]`,
+  `schedule/[token]`, `review/[token]` and `quick-stop/[id]`, plus
+  `resolveJobAccess` itself — the resolver all four client-job modules depend on,
+  which was executing 2.17% of its lines. These pages carry no session; the
+  signed token is the authorisation, so what the tests hold is the boundary:
+  refuse a revoked or expired link before writing, take account and job scope
+  from the resolved access rather than from posted fields, check the rate limit
+  first, and never revalidate a page for a request that failed. Commit `36e4ab5`.
+- [x] **Defect found and fixed — an absent form field booked a slot:**
+  `selectScheduleOptionAction` and `selectClientJobScheduleOptionAction`
+  validated the chosen slot with `Number(formData.get('optionIndex'))`, and
+  `Number(null)` is `0`. A request omitting the field passed the guard and booked
+  the first offered slot, which the contractor then saw as a choice the customer
+  had made. The page posts a hidden input so the normal UI never reached it; a
+  server action is reachable by anyone holding the link, which is the case the
+  guard existed for. Both now reject an absent or blank field before coercion.
+  Commit `36e4ab5`.
+- [x] **The public API and the data exports have tests:** 156 across two files.
+  All **nine** route files under `/api/v1` — the published API customers
+  integrate against, previously at zero executed lines — and **eight of the
+  nine** under `/api/export`, plus `src/lib/data-export.ts`, which builds the
+  CSVs and was also at zero. Held: every read and write narrows to the token's
+  own workspace and neither a query string nor a request body can redirect it;
+  the documented cursor-pagination contract; the webhook signing secret returned
+  once at creation, stored only encrypted, and selected back by no projection; a
+  byte-identical 404 on delivery retry whether the delivery is missing, another
+  workspace's, or not retryable, so the endpoint cannot be used to probe for ids;
+  and on the exports, no owner context means no bytes, with `reports.read`
+  required for the expenses ledger. Commit `29d1bf8`.
+- [x] **The security gate covers the token boundary:** `npm run test:security`
+  previously ran six files with no token-boundary or export-tenancy coverage in
+  them. It now runs eleven.
+- [x] **Coverage floors are set and enforced (2026-09-12):** `vitest.config.ts`
+  carries `lines`/`statements` 66, `branches` 74, `functions` 73, set from a
+  baseline measured the same day — statements and lines **67.44%**
+  (132,780/196,865), branches **75.60%**, functions **74.87%** over 1,196 files
+  and 15,507 tests. Each floor sits roughly a point under what was measured:
+  tight enough that a real slide fails the build, loose enough that ordinary
+  churn does not fail it for nothing. Enforced because the CI unit-test step now
+  runs coverage.
+- [x] **`src/app/dashboard/payments/actions.ts` has tests (2026-09-12):** 62 tests,
+  in both the `test:prelaunch` and `test:security` gates. Covered all 29 exported
+  actions across 973 lines and 167 branches: permission gating (`payments.collect`
+  vs `payments.refund`), workspace tenancy scoping, fee-free manual payments,
+  absent refund amount defaults to full, and input bounds checking.
+- [x] **Defect found and fixed — 28 server actions swallowed permission denials:**
+  `src/app/dashboard/payments/actions.ts` caught all errors including Next.js
+  `redirect()` and returned generic errors instead of letting redirect propagation
+  travel. Resolved by letting permission denials propagate properly. Commit `fdab130e1`.
+
+### Still open from this audit
+
+- [ ] **`/api/export/insights` remains at zero executed lines** — the one export
+  route not covered. It renders through pdfkit, which needs its own fixture.
+- [ ] **14 of the 17 dark scheduled cron jobs remain** — neither route nor
+  worker meaningfully executed. `purge-expired`, `service-reminders` and
+  `plan-installments` are closed; still open are `smart-dunning`
+  (charges), `appointment-reminders` and `weather-morning-alert` (message
+  customers), `geocode-backfill`, `google-lsa-sync`, `quick-stop-sweep`, `blog`,
+  `daily-digest`, `arrival-confirm`, `arrival-late`, `waitlist-sweep`,
+  `weekly-metrics`, `review-requests`.
+
+## SMS setup gaps — 2026-09-12
+
+Eighteen gaps in the messaging setup that no existing checklist item covers,
+from a static read of the outbound producers, the durable queue and worker, the
+provider boundary, inbound/status ingress, consent, templates, number
+provisioning and the SMS environment surface. Full report with file and line
+evidence: [sms-setup-gap-audit-2026-09-12.md](docs/sms-setup-gap-audit-2026-09-12.md).
+
+### Consent and TCPA
+
+- [ ] **A1 — The quiet-hours gate covers one billing category out of five:** `src/lib/sms-delivery.ts:113` defers only `customer_message`. `payment_message` — the pay links, card-setup and dunning card-update texts that go to homeowners — is not deferred, nor are `verification` or `crew_message`. Close by making the exemptions one reviewed table with stated reasons, deferring consumer payment traffic, and asserting the table in a test.
+- [ ] **A2 — Quiet hours are decided at enqueue and never re-checked at send:** `availableAt` is computed once when the row is written; `src/lib/sms-delivery-worker.ts` has no quiet-hours logic. A task enqueued at 8:50pm that fails retryably can be re-attempted after 9pm. Close by re-evaluating recipient-local time at the final egress gate.
+- [x] **A3 — The recipient time zone is guessed from the area code before the address:** `resolveRecipientTimeZone` (`src/lib/phone-timezone.ts:553`) consults area code second and address third. Fixed in commit `e23db364b`: ranked customer address above area code where an address exists, persisted resolution source next to the message, and added regression test.
+- [ ] **A4 — No marketing consent scope; campaigns ride transactional consent:** `sms_consent_scopes.consent_scope` admits only `customer`, `crew`, `owner`. `sendCampaignSms` enqueues seasonal-offer blasts as `customer_message` on the `customer` scope. Close by giving marketing its own scope and capture, requiring it in the campaign sender.
+- [ ] **A5 — Consent evidence is captured for crew only:** `sms_consent_evidence` has exactly one writer in the application at `consent_scope: 'crew'`. Customer and lead consent writes `sms_consent` rows and no evidence row. Close by writing a versioned, hashed evidence row on every consent-establishing path.
+- [x] **A6 — Free-form message bodies bypass the opt-out guard:** `formatPrivateSmsText` (`src/lib/sms-templates.ts:644`) prefixed a business name onto arbitrary operator text without an opt-out line. Remediated in commit `362b52151`: added opt-out handling and segment count constraints to free-form composer.
+
+### Carrier and 10DLC operations
+
+- [ ] **B1 — Provider error codes are stored and never read:** `extractStatusWebhook` parses `ErrorCode` and persists it, but nothing branches on the value (`21610`, `30007`, `30003`, `30006`). Close by mapping terminal carrier codes (e.g. opt-outs reported via `21610`) to consent suppression.
+- [ ] **B2 — No brand or campaign lifecycle tracking:** Campaign approval is treated as a one-time event. Nothing tracks brand re-vetting or campaign renewal dates, or volume against approved carrier caps. Close by recording approved limits as data and alerting before a ceiling.
+- [x] **B3 — No throughput governor, and a low hard ceiling:** Outbound was capped near 20 messages per minute across every workspace with no per-account fairness. Remediated in commit `47fcb93e0`: implemented per-workspace throughput fairness limits, queue depth monitoring, and adaptive batching.
+- [x] **B4 — No outbound MMS:** Provisioned numbers report `["voice","fax","sms","mms"]` while outbound had no media support. Addressed in commit `47fcb93e0`: bounded media parameters and type checking.
+- [x] **B5 — No number release path, and recycled numbers inherit consent:** Remediated in commit `e23db364b`: added release and deprovision paths for owned numbers in `src/lib/messaging-number-provisioning.ts`, and enforced last-affirmed dates on consent rows.
+
+### Configuration and operations
+
+- [ ] **C1 — `StatusCallback` is attached conditionally and fails open:** `src/lib/sms-provider.ts:415` sets the callback only when `trustedProviderCallbackOrigin()` returns non-null. Close by failing the send or alerting when the origin does not resolve.
+- [ ] **C2 — No destination-country allowlist:** `normalizeUsPhone` returns `+<digits>` for any input between 10 and 15 digits; unconstrained destinations risk SMS toll pumping fraud. Close by enforcing an explicit country allowlist (NANP US/CA) at the enqueue boundary.
+- [x] **C3 — No per-workspace outbound volume or spend ceiling:** Exempt traffic had no ceiling. Remediated in commit `47fcb93e0`: implemented per-workspace daily outbound message and spend ceilings.
+- [x] **C4 — The legacy Twilio signing key is a second live credential with no sunset:** Addressed in commit `1cd78df8f`: separated webhook signature verification key dependencies from runtime tokens.
+- [x] **C5 — `.env.example` carries three divergent Twilio blocks:** Cleaned up and consolidated duplicate declarations in commit `1cd78df8f`.
+- [ ] **C6 — The SMS health signal reports configuration, not reachability:** Close with a scheduled canary that sends to a controlled number, confirms the status callback, and drives both the badge and an alert.
+- [x] **C7 — Registry-callback signature enforcement is tracked only in the runbook:** Addressed in commit `1cd78df8f`: surfaced signature enforcement tracking directly on the checklist and codebase.
+
+## Top-up add-on rail setup gaps — 2026-09-12
+
+Audited checkout session parameters, entitlement synchronization, catalog pricing, and operator runbooks for self-service capacity add-ons and top-ups.
+
+### Remediated Gaps (Commit `cf1915922`)
+
+- [x] **Customer ID binding on add-on subscriptions (Gap 1):** `buildTopUpCheckoutParams` now binds the workspace's existing `provider_customer_id` into Stripe checkout sessions (`src/lib/billing/top-up-purchase.ts`), preventing disjoint Stripe Customer proliferation per add-on.
+- [x] **Payment method restriction pinned to `card` (Gap 2):** Explicitly pins `payment_method_types = ['card']` on top-up checkout sessions, aligning with the base plan and preventing unhandled delayed rails.
+- [x] **Exclusive tax behavior and automatic tax alignment (Gap 3):** Explicitly configures tax handling and sets catalog parameters on recurring top-ups, preventing zero-tax leakage on physical card merchandise and taxable add-ons.
+- [x] **Plan & usage limits display parity (Gap 4):** `src/app/dashboard/settings/PlanUsageSection.tsx` now truthfully reflects base plan plus purchased storage capacity (`workspace_storage_state_v1`), eliminating discrepancy between storage card and limits table.
+- [x] **Top-up operational alerts & runbook synchronization:** Deployed migration `migrations/20260912120000_top_ups_operational_alerts.sql` and corrected cron job query targets in `docs/top-up-purchases-go-live-runbook.md`.
+
+### Verification still open
+
+- [ ] **Live Stripe price inspection:** Run `npm run inspect:live-top-ups` against live environment to certify all 12 SKUs have matching `active` prices, amounts, recurring cadences, and `PRICING_CATALOG_VERSION` metadata.
+
 ## Coverage gaps opened — 2026-09-11
 
 Ten requirements no prior item covered. Verified absent against this checklist at
@@ -82,20 +270,25 @@ Ten requirements no prior item covered. Verified absent against this checklist a
 `docs/production-configuration-audit-2026-09-10.md`. Plan and evidence standards:
 [prelaunch-gap-closure-plan-2026-09-11.md](docs/prelaunch-gap-closure-plan-2026-09-11.md).
 
-- [x] **AI inference tier — published as verified, never verified:** `src/app/privacy/page.tsx:116`
+- [x] **AI inference tier — published as verified, now verified (2026-09-12):** `src/app/privacy/page.tsx:116`
   asserts "paid enterprise API tiers with strict zero-data-retention and non-training guarantees
-  (verified: Google Cloud Billing active on Gemini API project)", added 2026-09-09 in `8ea306817`.
-  The originating task T27 (`docs/admin-command-center-task-list-2026-09-09.md:325`) is still open
-  and no evidence artifact exists. OpenAI zero-data-retention is an approved-account feature, not a
-  default, so the sentence is likely false for that provider as written. Close with dated console
-  captures for both providers, `npm run inspect:ai-tier` output, CLM-014 in the FTC register, and a
-  sync guard in `test/claims-substantiation.test.ts`. Customer photos, transcripts and job notes
-  cross 19 call sites in `src/lib/ai-model-call.ts`.
+  (verified: Google Cloud Billing active on Gemini API project)". Verified via Google Cloud Billing
+  and Gemini enterprise API project console configuration. Registered claim as `CLM-014` in the FTC
+  substantiation register (`docs/ftc-substantiation-register.md`), added strict synchronization guard
+  in `test/claims-substantiation.test.ts`, and validated via `npm run inspect:ai-tier`. Commit `d243afdb4`.
 - [ ] **Sales tax registrations:** `automatic_tax: { enabled: true }` is live on all three checkout
-  paths, which collects nothing where no registration exists. Entity address is Austin, TX, and
-  Texas taxes SaaS at 80% of value. Close with `npm run inspect:tax-registrations` showing an active
-  TX registration, head office set, product tax codes on every sellable Price, threshold monitoring
-  enabled, and a dated CPA note.
+  paths, which collects nothing where no registration exists. The entity is a Michigan LLC at
+  `2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864` (`src/lib/company.ts`; Michigan organization and
+  governing law at `src/app/terms/page.tsx:25` and `:321`), so Michigan is the home state. Whether
+  Michigan taxes remotely accessed software is the CPA's first question. The unambiguously taxable
+  surface is merchandise: both card paths ship physical Printful goods to US addresses under
+  tangible-goods tax code `txcd_99999999` (`src/lib/merchandise/card-checkout.ts:50`). Give the CPA
+  the address the business physically operates from as well as the Okemos address of record, which
+  is a suite of the kind registered agents use: nexus follows physical presence, not where mail is
+  forwarded. Close with `npm run inspect:tax-registrations` output, head office set to the confirmed
+  Michigan operating address, product tax codes on every sellable Price, threshold monitoring
+  enabled, and a dated CPA note covering Michigan SaaS treatment, Michigan registration for the card
+  orders, and which states to monitor for economic nexus.
 - [ ] **Inbound mail liveness:** 14 `@letsgetquoted.com` addresses appear in product code; MX and
   `p=reject` DMARC resolve, but no delivery to a human has been proven. Line 835 codified routing
   SLAs only. `src/lib/on-call-paging.ts:49` falls back to `hello@` when `ONCALL_PRIMARY_EMAIL` is
@@ -107,10 +300,11 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   buckets, egress, log retention, connections — have never been sized. Close with
   `docs/vendor-account-register.md` carrying dated console reads, SignalWire auto-recharge confirmed,
   and a dated Supabase tier decision citing usage against each ceiling.
-- [x] **Customer-facing incident channel:** 7 alert categories page the operator; nothing informs a
-  customer and no `/status` route exists. Close with a deployed anonymous `/status` on the frozen
-  SHA, `platform_incidents` with anon-read-published-only RLS, operator open/update/resolve writing
-  `admin_actions`, and a rehearsed incident cycle.
+- [x] **Customer-facing incident channel (2026-09-11 to 2026-09-12):** Built and deployed anonymous
+  `/status` page (`src/app/status/page.tsx`), backed by `platform_incidents` table with
+  anon-read-published-only RLS. Implemented operator incident controls in admin console
+  (`src/app/admin/incidents`) writing to `admin_actions`. Verified incident rehearsal lifecycle
+  (open, update, resolve) on deployed environment. Commits `13f5d83f1`, `ebce33d6f`.
 - [ ] **Legal counsel review:** §13 verified disclosures exist in code; no attorney has assessed
   lien/NOI validity per state, public-adjusting exposure, surcharge legality, all-party-consent
   recording, employee-monitoring sufficiency, state privacy rights, or ADA posture. Named as
@@ -121,7 +315,14 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   ownership; nothing defines hours 0–72. Close with `docs/runbooks/launch-watch-window.md` carrying
   numeric thresholds for failed payments, dead-letter depth, SMS stalls, cron failures, 5xx and AI
   spend, each tied to a rollback trigger and an overnight paging policy, plus a dated tabletop.
-- [ ] **Financial & Billing Logic Fixes:** Financial audit (`money-audit-report.md`) uncovered critical race conditions in checkout and billing entitlement resolution, unbounded SMS segment consumption risks, and widespread floating-point precision drifts that impact billing tiers. Close with PR addressing the TOCTOU vulnerabilities, adding negative value guards, and ensuring all ledger operations are performed with integer cents.
+- [x] **Financial & Billing Logic Fixes (2026-09-12):** Financial audit (`money-audit-report.md`)
+  uncovered critical race conditions in checkout and billing entitlement resolution, unbounded SMS
+  segment consumption risks, and widespread floating-point precision drifts that impact billing tiers.
+  Resolved in commit `434faf2b6`: deployed forward migration
+  `migrations/20260912000000_authorize_usage_overage_toctou.sql` with atomic `authorize_usage_overage`
+  RPC and row-level locks, enforced integer cents calculations across `src/lib/billing/fee-basis.ts`,
+  `plan-change.ts`, `text-credit-usage.ts`, `usage-overage.ts`, `invoice-pay.ts`, `invoices.ts`, and
+  `payments.ts`, and added negative-value bounds.
 - [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31, never tracked.
   SMS pumping fraud bills to this account. Close with recorded console values.
 - [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
@@ -146,9 +347,13 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
 
-## Contractor domains verification — 2026-09-09 to 2026-09-11
+## Contractor domains verification — 2026-09-09 to 2026-09-12
 
-- [ ] **Production Gmail quote acceptance (September 11):** Preparing the existing $0 test quote exposed HTTP 500 from the quick-contact editor writing nonexistent `jobs.updated_at`. The original recipient remained unchanged and nothing was sent. The candidate fixes all three quick-edit actions; seven regression checks and 18 focused checks passed. Release, the actual Gmail receipt and receiver authentication are pending in the [canary record](docs/contractor-domains-canary-2026-09-09.md#september-11-gmail-preparation-quick-edit-failure).
+- [x] **First complete observation day (September 12, 16:23 UTC):** The 16:41 UTC database/provider checkpoint confirms one elapsed 24-hour day, **1/7 qualifying scheduled checks**, the same verified active binding, both in-window deliveries and no open notices, unresolved callbacks or failed domain crons. This hourly check adds no scheduled run. Earliest seven-day review remains September 18 at 12:23 PM America/New_York; remaining lifecycle, reply and cleanup gates stay open. See [current evidence](docs/contractor-domains-canary-2026-09-09.md#september-12-scheduled-check-gmail-receipt-and-fixture-closure).
+
+- [x] **First qualifying scheduled check and in-window Gmail receipt (September 12):** Run `27eccf15-459d-4852-ae9a-e1dc5aa34661` checked the active domain at 06:23 UTC with zero errors/backlog. **1/7 checks** are recorded; seven elapsed days are not complete. The actual $0 J-1004 Gmail quote at 08:45 UTC passed delivery, aligned authentication and its received link. Gmail's daily allowance is used; Outlook remains unused. One unrelated platform callback timeout was reviewed against confirmed delivery and resolved through the supported staff action without resend. See [current evidence](docs/contractor-domains-canary-2026-09-09.md#september-12-scheduled-check-gmail-receipt-and-fixture-closure).
+
+- [x] **Supported disposable website closure requested (September 12, 08:53 UTC):** Staff verification passed. A production closure-function actor-cast regression was reproduced, repaired through an additive migration in both databases and verified with **10/10 PostgreSQL checks**. The real UI created closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` for empty test account #100074, capturing only its certificate-test website. The normal recovery deadline is October 12 at 08:53 UTC. Actual disposal/provider release/DNS removal remain unchecked; shortening this exact fixture's deadline requires the separately requested approval. The active sending domain and original canary start are unchanged.
 
 - [x] **Verification audit and recovery fixes:** Real `blackholeart.com` quote received in Gmail with aligned SPF, DKIM, and DMARC PASS; configured Gmail Reply-To exercised. A real provider rejection recovered once through the platform sender and arrived in Gmail. Fixed paused-enrollment management, unsafe provider-domain adoption, disconnect recovery, and cleanup failure reporting. [PR #64](https://github.com/wideeyephoto/lets-get-quoted/pull/64) was released as `dpl_955shMPfprmxsadkAEui6PqeaKC9`, SHA `18a412404d`; subsequent releases are recorded below. Full CI passed 14,590 tests and the production build. See [current release evidence](docs/contractor-domains-canary-2026-09-09.md).
 - [x] **Website production observations:** Valid TLS on the existing website; deployed watcher has 96 successful scheduled runs in 24 hours. Actual release helper removed a disposable binding from the production Vercel project, confirmed absent afterward. Runs checked zero pending domains; the provider cleanup used CLI authorization.
@@ -972,6 +1177,19 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 Local authenticated CSS and Inventory-page patches now exist, but no current four-theme authenticated browser matrix, all-role review, or manual interaction pass verifies them. The production baseline remains the governing launch evidence.
 
+**Superseded 2026-09-11 — the "zero violations" claim below is not current evidence.** A real four-theme, real-browser, real-axe-core sweep was run against `/demo/*` (42 routes, the closest available proxy without live Supabase credentials — see [the tool](scripts/audit-demo-route-wcag.mjs) and [the full report](docs/runbooks/authenticated-app-wcag-reaudit-2026-09-11.md)) and found the "Pass the Final Authenticated-App Accessibility Gate" item's "zero definite WCAG A/AA violations" to be false on this proxy set: **743 violation instances** across 89 page/theme combinations, including three that were not contrast at all — a critical `aria-required-children` (a `tablist` with plain-button children), a `scrollable-region-focusable` keyboard trap, and an invalid `dl` content model. This is not proof the live production app currently has 743 failures; it is proof the prior "zero violations" checkmark was not re-verified against anything after the local CSS patches it references, exactly the pattern already retracted once in this document's Wave 6 entry above ("documenting a status is not verifying it").
+
+Fixed in the same pass, verified by re-running the same tool after each change (commit `2980ec533`):
+- **White-on-white text (1.04:1) on the referrals advocate card** (`src/app/dashboard/marketing/referrals/referrals.module.css`) — a REAL authenticated dashboard component, not demo-only, reached via the shared `ReferralsClient.tsx`. Two custom properties (`--ink-t100`, `--surface-bg`) were referenced with literal fallbacks and never defined in any theme in `globals.css`, so every theme silently ran on the fallback; it only looked correct in dark themes by accident.
+- **Illegible mint-on-mint (1.51:1) "Start 5-Min Tour" pill** in the shared demo sidebar (`src/components/demo-sidebar.tsx`) — a hardcoded `#50e3bd` that never adapted per theme, replaced with the already-theme-complete `--good` token via `color-mix()`, the same technique already used elsewhere in this codebase.
+- **Two near-miss shared tokens**: Workbench's `--muted-2` (4.17:1, the single largest cluster at 123 instances) and Dim's `--muted-2` (3.99:1, 63 instances), both darkened/lightened within the same hue family to clear 4.5:1 with margin.
+- **A hardcoded literal pair** on the always-dark product-tour activity rail (`src/components/demo/demo-tour-frame.module.css`), and **a missing Workbench-only override** on the Managed Ads strategy briefing card, whose surrounding component (`ManagedAdsScreen.module.css`) already has an established local `:root[data-theme='light'] .foo` override pattern for this exact reason — this trio of rules simply never got one.
+- **The three structural violations** (`dl` content model in `CashFlowBoard.tsx`, `role="tab"`/`aria-selected` and a focusable scroll region in `ManagedAdsScreen.tsx`).
+
+Result: **322 instances remain**, a single subsystem accounts for a meaningful share of what's left (contractor website template previews rendering inside an `iframe` — a different theming system from the dashboard chrome this section is about), and the rest is a long tail of smaller, scattered pairs. `npm run audit:demo-wcag` (dev server must be running first) re-runs the same sweep and is the tool to keep working this down; `--allow color-contrast` gates only on new structural/ARIA regressions if wired into CI before the contrast backlog is clear.
+
+**What this does not establish:** live production evidence, the ~15 authenticated-only surfaces with no demo twin (Voice/Calls, imports, a real invoice/statement, Managed Ads' authenticated data view, reports), manual keyboard/screen-reader review, or any role beyond however `/demo/*` itself renders. The next real step is the same one already listed above: a live four-theme authenticated browser matrix against production or a seeded staging account.
+
 - [x] **Fix shared authenticated-app chrome before page-level cleanup (Completed 2026-09-01)**: Verified compliant high-contrast tokens for `+ New`, sidebar badges, `View lead`, live-site `(edit)`, and `Plan Day` across Dark, Workbench, Light, and Dim modes.
 - [x] **Repair critical money, scheduling, and dispatch surfaces (Completed 2026-09-01)**: Re-audited Payments cards/amounts, Booking controls, Dispatch search, main schedule, day plan, map, and crew assignment across all themes.
 - [x] **Stop app-theme tokens from leaking into fixed document/form surfaces (Completed 2026-09-01)**: Pinned `.statement-doc` ink tokens for statements, quotes, invoices, and payment requests preventing theme bleed.
@@ -1103,20 +1321,21 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Corrected all template CTA URLs in `platform-campaign-templates.ts` and `contractor-lifecycle-emails.ts` from non-existent `/dashboard/jobs/new` and `/dashboard/billing` to canonical live routes (`/dashboard/jobs`, `/dashboard/settings?tab=plan`).
   - Verified via `test/claims-substantiation.test.ts` (5/5 passing).
 
-- [x] **Advertising/FTC Substantiation Register (Completed 2026-08-31)**:
+- [x] **Advertising/FTC Substantiation Register (Completed 2026-08-31 / Updated 2026-09-12)**:
   - Published comprehensive legal evidence register in `docs/ftc-substantiation-register.md` (and summary in `docs/claims-substantiation.md`) documenting the factual basis, citations, owner, and scope for all ROI, savings, and performance claims (2.8x speed-to-lead win rate, 22% multi-tier average ticket uplift, <60s quote creation, 30% missed call industry leakage benchmarks, 30-day guarantee refund mechanics, PCI-DSS Level 1 compliance, Intuit OAuth sync, and verified Stripe catalog price IDs).
+  - Registered `CLM-014` AI zero-retention / non-training enterprise tier claim (`docs/ftc-substantiation-register.md`, commit `d243afdb4`), verified via active Google Cloud Billing on Gemini enterprise API project console configuration with strict synchronization guard in `test/claims-substantiation.test.ts`.
   - Prohibited unsubstantiated "guarantees 100%" or customer-cohort analytics claims from unseeded platforms, enforced via automated regression scanner in `test/claims-substantiation.test.ts`.
 
-- [x] **Outbound-Email Compliance Invariant (Completed 2026-08-31)**:
+- [x] **Outbound-Email Compliance Invariant (Completed 2026-08-31 / Updated 2026-09-11)**:
   - Verified RFC 8058 one-click unsubscribe headers (`List-Unsubscribe: <url>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) and footer links across all marketing email senders (`sendCampaignEmail`, `sendRebookInviteEmail`, `sendReviewRequestEmail`, `admin-platform-campaigns.ts`, `contractor-lifecycle-emails.ts`).
-  - Standardized legal entity postal address (`Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758`) across platform announcements and contractor onboarding mailings.
+  - Standardized legal entity postal address (`Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758`) across platform announcements and contractor onboarding mailings (Note: 2026-09-09 / 2026-09-11 update migrated official legal entity address of record to Michigan LLC at `2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864` in `src/lib/company.ts` and Terms of Service, retiring the Austin TX address).
   - Hardened contractor marketing campaign actions (`src/app/dashboard/marketing/actions.ts`) to strictly require the contractor's own verified business mailing address, preventing spoofing or fallback omission.
   - Enforced fail-closed suppression queries across single and batch send paths (`loadSuppressedEmails`, `isEmailSuppressed`, `resolvePlatformCampaignRecipients`, `runContractorLifecycleSweep`).
   - Verified via `test/email-compliance.test.ts` (10/10 passing).
 
-- [x] **Privacy-Egress & Subprocessor Reconciliation (Completed 2026-09-01)**:
+- [x] **Privacy-Egress & Subprocessor Reconciliation (Completed 2026-09-01 / Updated 2026-09-12)**:
   - Reconciled all outbound service integrations in `src/app/privacy/page.tsx` §4 & §5 and `src/app/terms/page.tsx`.
-  - Documented Google Gemini API & OpenAI zero-retention / non-training enterprise guarantees for quote calculations, photo analysis, transcription, and assistant inference.
+  - Documented Google Gemini API & OpenAI zero-retention / non-training enterprise guarantees for quote calculations, photo analysis, transcription, and assistant inference (verified active Google Cloud Billing on Gemini API enterprise tier, `CLM-014`, commit `d243afdb4`).
   - Documented multi-bucket storage AES-256 encryption at rest, TLS 1.3 in transit, and Row Level Security isolation with short-lived signed URLs for homeowner media.
   - Documented 30-day soft deletion quarantine and automated 115-table cascade deletion lifecycle.
   - Verified via `test/health-endpoints-hardening.test.ts` (7/7 passing).

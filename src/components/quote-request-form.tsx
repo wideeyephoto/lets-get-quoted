@@ -3,6 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
+
+const ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+]);
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';
@@ -11,6 +20,7 @@ import ContactPreferenceControl, { type ContactPreferenceValue } from '@/compone
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import IntroVideo from '@/lib/templates/IntroVideo';
 import styles from './quote-request-form.module.css';
+import ResponseTimeBadge from '@/lib/templates/ResponseTimeBadge';
 
 const MAX_PHOTOS = 6;
 const STEP_LABELS = ['Your project', 'Your contact info'];
@@ -18,7 +28,7 @@ const TOTAL_STEPS = STEP_LABELS.length;
 const LAST_STEP = TOTAL_STEPS - 1;
 
 type QuoteRequestFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
+  site: Pick<Site, 'template' | 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'>;
 };
 
 export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
@@ -175,13 +185,26 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       }
       data.delete('photos');
       const photos = selectedPhotos.slice(0, MAX_PHOTOS);
-      for (const photo of photos) data.append('photos', await compressImage(photo, 1600, 0.8));
+      for (const photo of photos) {
+        if (photo.type.startsWith('video/')) {
+          data.append('photos', photo);
+          continue;
+        }
+        try {
+          data.append('photos', await compressImage(photo, 1600, 0.8));
+        } catch (err) {
+          if (ALLOWED_TYPES.has(photo.type)) {
+            data.append('photos', photo);
+          } else {
+            console.warn(`Could not attach ${photo.name}`, err);
+          }
+        }
+      }
 
       const attribution = getOrCaptureAttribution();
       if (attribution) {
         data.set('attribution', JSON.stringify(attribution));
       }
-
       await new Promise<void>((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open('POST', '/api/public/leads');
@@ -325,7 +348,7 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
         {step > 0 && <button type="button" className={styles.back} onClick={goToPreviousStep} disabled={isSubmitting}>Back</button>}
         {step < LAST_STEP
           ? <button type="button" className={styles.next} onClick={goToNextStep}>Continue</button>
-          : <button type="submit" className={styles.next} disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : 'Get My Free Estimate'}</button>}
+          : <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}><ResponseTimeBadge site={site} className={styles.replyBadge} /></div>}
       </div>
 
       {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</p>}

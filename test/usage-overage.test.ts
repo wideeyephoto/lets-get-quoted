@@ -18,20 +18,12 @@ import {
  */
 
 const rpc = vi.fn();
-const from = vi.fn();
-const admin = { rpc, from } as never;
+const admin = { rpc } as never;
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
-const withPeriod = (start: string | null, end: string | null) => {
-  from.mockReturnValue({
-    select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { period_start: start, period_end: end }, error: null }) }) }),
-  });
-};
 
 beforeEach(() => {
   rpc.mockReset();
-  from.mockReset();
-  withPeriod('2026-08-01T00:00:00Z', '2026-09-01T00:00:00Z');
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -112,7 +104,6 @@ describe('nothing is charged without approval', () => {
   });
 
 
-
   it('treats a database error as no authorization, never as approval', async () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
     const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
@@ -130,12 +121,13 @@ describe('what it reports back', () => {
   it('passes the rate and period the database needs to decide', async () => {
     rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
     await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
-    expect(rpc).toHaveBeenCalledWith('authorize_usage_overage', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('authorize_usage_overage', {
       p_account_id: ACCOUNT,
       p_resource_code: 'text_segments',
       p_units: 10,
       p_rate_millicents: 4_800,
-    }));
+      p_idempotency_key: 'test:v1:text_segments-10',
+    });
   });
 
   it('reports an accrual with what is left of the cap', async () => {
@@ -159,6 +151,13 @@ describe('what it reports back', () => {
     rpc.mockResolvedValue({ data: [{ decision: 'cap_reached', accrued_millicents: 5_000_000, cap_millicents: 5_000_000, charged_millicents: 0, period_start: '2026-08-01T00:00:00Z' }], error: null });
     const d = await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(d).toMatchObject({ outcome: 'cap_reached', capMillicents: 5_000_000 });
+  });
+  it('does not pass a period — the database resolves it atomically', async () => {
+    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000, period_start: '2026-09-01T00:00:00Z' }], error: null });
+    await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 1, idempotencyKey: 'test:v1:text_segments-1' }, { enabled: true });
+    const args = rpc.mock.calls[0][1];
+    expect(args).not.toHaveProperty('p_period_start');
+    expect(args).not.toHaveProperty('p_period_end');
   });
 });
 

@@ -9,6 +9,7 @@ import { sendClientPortalLinkSms } from '@/lib/sms';
 import { portalLinkText } from '@/lib/sms-templates';
 import { issuePortalLink } from '@/lib/client-portal-data';
 import { parsePortalIdentifier, PORTAL_REQUEST_ACK } from '@/lib/client-portal';
+import { portalViewUrlFull } from '@/lib/portal-urls';
 
 /**
  * "Send me a link to my jobs" — by email OR by text.
@@ -56,9 +57,8 @@ export async function requestPortalLinkAction(subdomain: string, formData: FormD
 
     const issued = await issuePortalLink(admin, site.account_id, identifier);
     if (issued) {
-      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
       const businessName = site.company_name || account.business_name || 'your contractor';
-      const linkUrl = `${origin}/portal/view/${issued.token}`;
+      const linkUrl = portalViewUrlFull(issued.token);
 
       if (identifier.kind === 'email') {
         await sendClientPortalLinkEmail({

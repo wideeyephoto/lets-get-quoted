@@ -1,23 +1,22 @@
 import { registerTemplate, getTemplate } from './types';
-import ForgeTemplate from './forge';
-import GuildTemplate from './professional';
-import VistaTemplate from './modern';
-import HandyTemplate from './handy';
-import CoatTemplate from './coat';
-import FixitTemplate from './fixit';
-import RenoTemplate from './reno';
-import ShineTemplate from './shine';
+import dynamic from 'next/dynamic';
 
-// Only the 3 curated templates are offered and maintained. Any legacy template
-// id stored on an existing site falls back to Forge via getTemplate (see
-// ./types), so no published site ever 404s.
-registerTemplate('carbon', ForgeTemplate);
-registerTemplate('professional', GuildTemplate);
-registerTemplate('modern', VistaTemplate);
-registerTemplate('handy', HandyTemplate);
-registerTemplate('coat', CoatTemplate);
-registerTemplate('fixit', FixitTemplate);
-registerTemplate('reno', RenoTemplate);
-registerTemplate('shine', ShineTemplate);
+const ForgeTemplate = dynamic(() => import('./forge'));
+const GuildTemplate = dynamic(() => import('./professional'));
+const VistaTemplate = dynamic(() => import('./modern'));
+const HandyTemplate = dynamic(() => import('./handy'));
+const CoatTemplate = dynamic(() => import('./coat'));
+const FixitTemplate = dynamic(() => import('./fixit'));
+const RenoTemplate = dynamic(() => import('./reno'));
+const ShineTemplate = dynamic(() => import('./shine'));
+
+registerTemplate('carbon', ForgeTemplate as any);
+registerTemplate('professional', GuildTemplate as any);
+registerTemplate('modern', VistaTemplate as any);
+registerTemplate('handy', HandyTemplate as any);
+registerTemplate('coat', CoatTemplate as any);
+registerTemplate('fixit', FixitTemplate as any);
+registerTemplate('reno', RenoTemplate as any);
+registerTemplate('shine', ShineTemplate as any);
 
 export { getTemplate };

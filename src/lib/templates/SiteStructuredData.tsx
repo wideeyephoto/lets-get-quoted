@@ -1,7 +1,7 @@
 import type { Site } from '@/lib/sites';
 import { cspNonce } from '@/lib/csp-nonce';
-import { getPublishedVideoSections } from '@/lib/site-content';
-import { buildLocalBusinessJsonLd, siteCanonicalUrl } from '@/lib/seo/site-seo';
+import { getPublishedVideoSections, getPublishedFaqs } from '@/lib/site-content';
+import { buildLocalBusinessJsonLd, buildFaqJsonLd, siteCanonicalUrl } from '@/lib/seo/site-seo';
 import { buildVideoGraphJsonLd } from '@/lib/seo/video-seo';
 
 // Serialize JSON-LD safely for an inline <script>: escape the one sequence that
@@ -20,6 +20,10 @@ function jsonLdSafe(data: unknown): string {
 // Rendered once from the public routes, so it covers every template.
 export default async function SiteStructuredData({ site }: { site: Site }) {
   const data = buildLocalBusinessJsonLd(site);
+
+  const faqsData = getPublishedFaqs(site.content);
+  const faqs = faqsData ? buildFaqJsonLd(faqsData.items) : null;
+
 
   // Videos embedded on this page get their own nodes. Only the clips a band
   // actually RENDERS — getPublishedVideoSections trims each band to what its
@@ -40,7 +44,7 @@ export default async function SiteStructuredData({ site }: { site: Site }) {
     },
   );
 
-  if (!data && !videos) return null;
+  if (!data && !videos && !faqs) return null;
 
   // nonce: script-src covers ld+json too, and Next only stamps its own scripts.
   // Without this, enforcing the CSP would drop these tags from every contractor
@@ -49,6 +53,7 @@ export default async function SiteStructuredData({ site }: { site: Site }) {
     <>
       {data && <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: jsonLdSafe(data) }} />}
       {videos && <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: jsonLdSafe(videos) }} />}
+      {faqs && <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: jsonLdSafe(faqs) }} />}
     </>
   );
 }

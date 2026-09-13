@@ -13,7 +13,7 @@
     "test:all": "tsc --noEmit -p tsconfig.test.json && vitest run",
     "test:coverage": "vitest run --coverage",
     "test:coverage:open": "vitest run --coverage && npx open-cli coverage/lcov-report/index.html",
-    "test:prelaunch": "vitest run test/edge-routing-security-matrix.test.ts test/environment-variable-parity.test.ts test/secret-rotation-resilience.test.ts test/custom-domain-lifecycle.test.ts test/token-surface-security-audit.test.ts test/health-endpoints-hardening.test.ts test/permit-lifecycle-ui-contract.test.ts test/booking-abuse-guards.test.ts test/voice-contractor-dispatch-migration.test.ts test/voice-signalwire-adapter.test.ts test/voice-minute-usage.test.ts test/voice-contractor-actions.test.ts test/booking-requests.test.ts test/booking-second-choice.test.ts test/crew-verification.test.ts test/voice-settlement.test.ts test/voice-swaig-tools.test.ts test/booking-sms.test.ts test/voice-grounding.test.ts test/voice-admission.test.ts test/voice-route-readiness.test.ts test/voice-operator-health.test.ts test/voice-number-reconciliation.test.ts test/cron-jobs.test.ts test/signalwire-number-provisioning.test.ts test/messaging-number-provisioning.test.ts test/voice-number-provisioning-migration.test.ts test/voice-number-provisioning.test.ts test/voice-number-provisioning-admin-ui.test.ts test/voice-provider-status-route.test.ts test/voice-provider-status-signature.integration.test.ts test/voice-staff-step-up-migration.test.ts test/voice-staff-step-up.test.ts test/voice-swaig-staff-step-up-route.test.ts test/voice-settlement-outcomes.test.ts test/voice-webhook-auth.test.ts test/data-disposition-registry.test.ts test/sms-producer-queue-boundary.test.ts test/deliverability-recovery-matrix.test.ts test/portal-message-alert-sms.test.ts",
+    "test:prelaunch": "vitest run test/edge-routing-security-matrix.test.ts test/environment-variable-parity.test.ts test/secret-rotation-resilience.test.ts test/custom-domain-lifecycle.test.ts test/token-surface-security-audit.test.ts test/health-endpoints-hardening.test.ts test/permit-lifecycle-ui-contract.test.ts test/booking-abuse-guards.test.ts test/voice-contractor-dispatch-migration.test.ts test/voice-signalwire-adapter.test.ts test/voice-minute-usage.test.ts test/voice-contractor-actions.test.ts test/booking-requests.test.ts test/booking-second-choice.test.ts test/crew-verification.test.ts test/voice-settlement.test.ts test/voice-swaig-tools.test.ts test/booking-sms.test.ts test/voice-grounding.test.ts test/voice-admission.test.ts test/voice-route-readiness.test.ts test/voice-operator-health.test.ts test/voice-number-reconciliation.test.ts test/cron-jobs.test.ts test/signalwire-number-provisioning.test.ts test/messaging-number-provisioning.test.ts test/voice-number-provisioning-migration.test.ts test/voice-number-provisioning.test.ts test/voice-number-provisioning-admin-ui.test.ts test/voice-provider-status-route.test.ts test/voice-provider-status-signature.integration.test.ts test/voice-staff-step-up-migration.test.ts test/voice-staff-step-up.test.ts test/voice-swaig-staff-step-up-route.test.ts test/voice-settlement-outcomes.test.ts test/voice-webhook-auth.test.ts test/data-disposition-registry.test.ts test/sms-producer-queue-boundary.test.ts test/deliverability-recovery-matrix.test.ts test/portal-message-alert-sms.test.ts test/server-actions-billing.test.ts test/server-actions-voice-provisioning.test.ts test/server-actions-admin-operations.test.ts test/server-actions-client-portal.test.ts test/server-actions-intake-and-field.test.ts test/api-public-leads-wizard.test.ts test/api-webhooks-and-v1.test.ts test/api-field-and-payroll.test.ts test/api-cron-execution-matrix.test.ts test/estimate-and-reschedule-offers.test.ts test/admin-operations-core.test.ts test/integrations-sync-engines.test.ts test/background-sweeps-and-workers.test.ts test/crew-pay-and-google-ads-core.test.ts test/email-engine-coverage.test.ts test/ui-portal-interactions.test.ts test/sms-engine-coverage.test.ts test/google-ads-engine-coverage.test.ts test/jobs-and-crew-pay-coverage.test.ts test/ui-quote-request-forms.test.ts test/quickbooks-sync-coverage.test.ts test/job-feed-and-crew-pay-data.test.ts test/account-governance-and-financing.test.ts test/leads-and-intake-intelligence.test.ts test/change-orders-and-margin-intelligence.test.ts test/data-exports-and-travel-clock.test.ts test/subcontractor-tax-identity.test.ts test/property-passport-data.test.ts test/quick-stop-logistics-and-exclusions.test.ts test/crew-labor-and-inventory-data.test.ts test/tax-vault.test.ts",
     "test:security": "vitest run test/token-surface-security-audit.test.ts test/security-penetration-testing.test.ts test/service-role-scoping-audit.test.ts test/secret-rotation-resilience.test.ts test/storage-realtime-tenancy-matrix.test.ts test/soft-deletion-and-audit.test.ts",
     "test:pg17:late-success": "tsc --noEmit -p tsconfig.test.json && vitest run --config vitest.pg17.config.ts",
     "test:pg17:storage-usage": "node scripts/verify-storage-usage-migration.mjs",
@@ -84,7 +84,8 @@
     "rehearse:incident-cycle": "node scripts/rehearse-incident-cycle.mjs",
     "test:incident-rehearsal": "node --test scripts/rehearse-incident-cycle.test.mjs",
     "verify:mobile-matrix": "node scripts/verify-token-mobile-matrix.mjs",
-    "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs"
+    "verify:plan-change-agnostic": "node scripts/verify-plan-change-table-agnostic.mjs",
+    "test:perf": "lhci autorun"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
@@ -109,10 +110,12 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@electric-sql/pglite": "0.5.8",
     "@iconify-json/lucide": "^1.2.120",
     "@iconify-json/simple-icons": "^1.2.93",
     "@iconify/utils": "^3.1.4",
+    "@lhci/cli": "^0.15.1",
     "@types/google.maps": "^3.65.2",
     "@types/node": "^22.10.1",
     "@types/pdfkit": "^0.17.6",
@@ -124,11 +127,13 @@
     "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.5.24",
+    "jsdom": "^30.0.1",
     "jsqr": "^1.4.0",
     "playwright": "^1.62.0",
     "react-test-renderer": "18.3.1",
     "typescript": "^5.6.2",
-    "vitest": "^2.1.9"
+    "vitest": "^2.1.9",
+    "vitest-axe": "^0.1.0"
   },
   "overrides": {
     "postcss": "^8.5.26"
