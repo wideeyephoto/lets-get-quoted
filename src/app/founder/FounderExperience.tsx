@@ -187,29 +187,29 @@ export default function FounderExperience() {
             </ul>
           </div>
 
-          {/* Right Visual: Founder Portrait Card with Glassmorphic Elements */}
+          {/* Right Visual: Founder Portrait Card with Circular Edge Fade & Deep Shadow */}
           <div className={styles.heroVisual}>
             <div className={styles.visualOrbitOne} aria-hidden="true" />
             <div className={styles.visualOrbitTwo} aria-hidden="true" />
             <div className={styles.portraitGlowBack} aria-hidden="true" />
 
-            <div className={styles.portraitEnclosure}>
-              <div className={styles.cornerBracketTopLeft} aria-hidden="true" />
-              <div className={styles.cornerBracketBottomRight} aria-hidden="true" />
+            <div className={styles.portraitWrapper}>
+              <div className={styles.portraitEnclosure}>
+                <Image
+                  src="/founder/brett-workshop.jpg"
+                  alt="Brett, founder of Let's Get Quoted, with his dog"
+                  width={750}
+                  height={750}
+                  className={styles.portraitImg}
+                  priority
+                />
+                <div className={styles.portraitEdgeFade} aria-hidden="true" />
+              </div>
 
               <div className={styles.portraitTag}>
                 <span className={styles.statusLiveDot} aria-hidden="true" />
                 <span>BUILDER · FOUNDER</span>
               </div>
-
-              <Image
-                src="/founder/brett-workshop.jpg"
-                alt="Brett, founder of Let's Get Quoted, working at a workshop workbench"
-                width={1122}
-                height={1402}
-                className={styles.portraitImg}
-                priority
-              />
 
               <div className={styles.portraitOverlayCaption}>
                 <span className={styles.portraitName}>Brett</span>
