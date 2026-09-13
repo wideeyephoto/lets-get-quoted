@@ -38,6 +38,7 @@ async function runOpsMetricsSnapshotCron(admin?: SupabaseClient) {
     client
       .from('jobs')
       .select('id', { count: 'exact', head: true })
+      .in('status', ['draft', 'quoted', 'approved', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'])
       .gte('created_at', yesterday.toISOString()),
   ]);
 

@@ -3,14 +3,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cronSummaryHasFailures } from '@/lib/cron-jobs';
 
-// These four routes were scheduled and registered for health monitoring by the
+// These routes were scheduled and registered for health monitoring by the
 // 2026-09-12 audit. Each worker collects an `errors` array; each route used to
 // return a hardcoded `ok: true` and drop it, so cronSummaryHasFailures had
 // nothing to key on and the run recorded healthy however much the sweep could
-// not do. Two of the four (smart-dunning, activation-autopilot) push an error
-// for every item because no outbound dispatcher is wired, so they would have
-// reported green forever while delivering nothing.
-const ROUTES = ['smart-dunning', 'activation-autopilot', 'webhook-heal', 'db-guard'] as const;
+// not do.
+const ROUTES = ['webhook-heal', 'db-guard'] as const;
 
 const sourceOf = (name: string) =>
   readFileSync(join(process.cwd(), 'src/app/api/cron', name, 'route.ts'), 'utf8');

@@ -887,7 +887,7 @@ export async function executeOperatorTool(
               days,
               available: false,
               history: [] as OpsTrendSnapshot[],
-              error: 'No historical snapshots recorded yet. The ops-metrics-snapshot cron writes one row per day at 6 AM UTC.',
+              error: 'No historical metrics or snapshots recorded yet. The ops-metrics-snapshot cron writes one row per day at 6 AM UTC.',
             },
           };
         }
