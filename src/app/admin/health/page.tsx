@@ -108,6 +108,7 @@ export default async function AdminHealthPage({
     voiceOperations,
     uptimeReport,
     circuitBreakers,
+    monitorState,
   ] = await Promise.all([
     loadCronStatus(admin, CRON_JOBS.map((j) => j.job)),
     getUnresolvedWebhookFailures(admin, { diagnostics }),
@@ -116,6 +117,7 @@ export default async function AdminHealthPage({
     loadVoiceOperatorHealth(admin),
     runSyntheticUptimeProbe(admin),
     listCircuitBreakers(admin),
+    admin.from('operational_monitor_state').select('*').eq('id', 'primary').maybeSingle().then((r) => r.data ?? null, () => null),
   ]);
 
   // On-Call data
@@ -176,6 +178,22 @@ export default async function AdminHealthPage({
           Every background cron job, quoting engine rail, and communication provider is reporting healthy on schedule.
         </div>
       )}
+
+      {monitorState?.monitor_state === 'degraded' ? (
+        <div className={`${styles.banner} ${styles.err}`} style={{ borderColor: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)' }}>
+          <strong>Operational Monitor is Degraded.</strong> An isolated interruption occurred at stage <code>{monitorState.last_failed_stage}</code> ({monitorState.last_error || 'timeout'}). Evidence is retained without urgent alerting. Next scheduled scan will verify recovery.
+        </div>
+      ) : null}
+      {monitorState?.monitor_state === 'outage' ? (
+        <div className={`${styles.banner} ${styles.err}`}>
+          <strong>Operational Monitoring Outage ({monitorState.outage_id || 'Active'}).</strong> Stage <code>{monitorState.last_failed_stage}</code> has failed {monitorState.consecutive_failures} consecutive times since {ago(monitorState.first_failure_at, now)}. Immediate operator review required.
+        </div>
+      ) : null}
+      {monitorState?.last_interruption_recovered_at && ago(monitorState.last_interruption_recovered_at, now) !== '—' && (now.getTime() - new Date(monitorState.last_interruption_recovered_at).getTime() < 3600000) && monitorState?.monitor_state === 'healthy' ? (
+        <div className={`${styles.banner} ${styles.ok}`}>
+          Operational monitor successfully recovered from brief interruption {ago(monitorState.last_interruption_recovered_at, now)}.
+        </div>
+      ) : null}
 
       {/* Emergency Kill Switches & Circuit Breakers */}
       <CircuitBreakerPanel initialBreakers={circuitBreakers} canManage={canManageOps} />
@@ -367,7 +385,13 @@ export default async function AdminHealthPage({
                       </div>
                     </td>
                     <td>
-                      <span className={`${styles.pill} ${styles[HEALTH_CLASS[health]]}`}>{CRON_HEALTH_LABEL[health]}</span>
+                      {spec.job === 'operational-alerts' && monitorState?.monitor_state === 'degraded' ? (
+                        <span className={styles.pill} style={{ color: '#fbbf24', borderColor: '#f59e0b' }}>Degraded</span>
+                      ) : spec.job === 'operational-alerts' && monitorState?.monitor_state === 'outage' ? (
+                        <span className={`${styles.pill} ${styles.bad}`}>Outage</span>
+                      ) : (
+                        <span className={`${styles.pill} ${styles[HEALTH_CLASS[health]]}`}>{CRON_HEALTH_LABEL[health]}</span>
+                      )}
                     </td>
                     <td className={styles.muted} style={{ whiteSpace: 'nowrap', fontSize: '.8rem' }}>
                       {scheduleInWords(spec.schedule)}
@@ -379,11 +403,21 @@ export default async function AdminHealthPage({
                     <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{ago(successAt, now)}</td>
                     <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{duration(run?.duration_ms ?? null)}</td>
                     <td style={{ fontSize: '.78rem', maxWidth: '34ch' }}>
-                      {run?.error ? (
+                      {spec.job === 'operational-alerts' && monitorState?.monitor_state === 'degraded' ? (
+                        <div>
+                          <span style={{ color: '#fbbf24' }}>Degraded: {monitorState.last_failed_stage} ({monitorState.last_error || 'timeout'})</span>
+                          <div className={styles.muted} style={{ fontSize: '.72rem' }}>Awaiting next 5m verification</div>
+                        </div>
+                      ) : run?.error ? (
                         <span style={{ color: '#fca5a5' }}>{run.error}</span>
                       ) : (
                         <span className={styles.muted}>{summaryLine(run?.summary ?? null) || '—'}</span>
                       )}
+                      {spec.job === 'operational-alerts' && monitorState?.last_interruption_recovered_at && ago(monitorState.last_interruption_recovered_at, now) !== '—' && (now.getTime() - new Date(monitorState.last_interruption_recovered_at).getTime() < 86400000) ? (
+                        <div className={styles.muted} style={{ fontSize: '.72rem', color: '#86efac', marginTop: '.2rem' }}>
+                          Recovered interruption ({ago(monitorState.last_interruption_recovered_at, now)})
+                        </div>
+                      ) : null}
                       {health === 'failing' || health === 'stale' ? (
                         <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '.3rem' }}>
                           {spec.consequence}

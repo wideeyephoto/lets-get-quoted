@@ -9,6 +9,8 @@ vi.mock('@/lib/supabase-admin', () => ({
 vi.mock('@/lib/operational-monitor.mjs', () => ({
   runOperationalMonitor: vi.fn(),
   sendMonitorFailure: vi.fn(),
+  sendMonitorRecovery: vi.fn(),
+  recordDurableFailure: vi.fn(),
 }));
 
 vi.mock('../../../../../vercel.json', () => ({
@@ -43,6 +45,8 @@ describe('Operational Alerts Cron Route', () => {
   let createAdminClientMock: any;
   let runOperationalMonitorMock: any;
   let sendMonitorFailureMock: any;
+  let sendMonitorRecoveryMock: any;
+  let recordDurableFailureMock: any;
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(async () => {
@@ -57,7 +61,13 @@ describe('Operational Alerts Cron Route', () => {
     runOperationalMonitorMock.mockResolvedValue({ failed: false, checks: 5 });
 
     sendMonitorFailureMock = (await import('@/lib/operational-monitor.mjs')).sendMonitorFailure;
-    sendMonitorFailureMock.mockResolvedValue();
+    sendMonitorFailureMock.mockResolvedValue('msg-id');
+
+    sendMonitorRecoveryMock = (await import('@/lib/operational-monitor.mjs')).sendMonitorRecovery;
+    sendMonitorRecoveryMock.mockResolvedValue('rec-id');
+
+    recordDurableFailureMock = (await import('@/lib/operational-monitor.mjs')).recordDurableFailure;
+    recordDurableFailureMock.mockResolvedValue({ should_alert: true, monitor_state: 'outage' });
   });
   
   afterEach(() => {
@@ -100,9 +110,37 @@ describe('Operational Alerts Cron Route', () => {
     expect(sendMonitorFailureMock).toHaveBeenCalled();
   });
 
-  it('handles thrown errors and sends failure', async () => {
+  it('dispatches recovery notification when complete success follows an outage', async () => {
+    runOperationalMonitorMock.mockResolvedValue({ failed: false, wasOutage: true, outageId: 'outage-1' });
+
+    const req = new NextRequest('http://localhost/api/cron/operational-alerts', {
+      headers: { authorization: 'Bearer test_secret' }
+    });
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    expect(sendMonitorRecoveryMock).toHaveBeenCalledWith(expect.objectContaining({
+      result: expect.objectContaining({ wasOutage: true }),
+    }));
+  });
+
+  it('does not dispatch emergency notification when failure is degraded with recent success', async () => {
+    runOperationalMonitorMock.mockRejectedValue(new Error('claim:gateway_timeout'));
+    recordDurableFailureMock.mockResolvedValue({ should_alert: false, monitor_state: 'degraded' });
+
+    const req = new NextRequest('http://localhost/api/cron/operational-alerts', {
+      headers: { authorization: 'Bearer test_secret' }
+    });
+    const res = await GET(req);
+
+    expect(res.status).toBe(500);
+    expect(sendMonitorFailureMock).not.toHaveBeenCalled();
+  });
+
+  it('handles thrown errors and sends failure on outage', async () => {
     runOperationalMonitorMock.mockRejectedValue(new Error('Total failure'));
-    
+    recordDurableFailureMock.mockResolvedValue({ should_alert: true, monitor_state: 'outage' });
+
     const req = new NextRequest('http://localhost/api/cron/operational-alerts', {
       headers: { authorization: 'Bearer test_secret' }
     });

@@ -2777,6 +2777,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 2555, startEvent: 'immediate' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+
+  // Operational monitor state tracking consecutive failures, degraded status, and recovery
+  operational_monitor_state: {
+    tableName: 'operational_monitor_state',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
 };
 
 export function getExportableTables(): string[] {
