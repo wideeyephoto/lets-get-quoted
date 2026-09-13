@@ -32,10 +32,17 @@ import {
   legacyDestinationCheckoutProjectionEnabled,
   legacyDestinationCompareAndSetStandsDown,
 } from '@/lib/billing/legacy-destination-checkout-projection';
+import {
+  legacyWebhookBodyTooLarge,
+  legacyWebhookContentLengthTooLarge,
+  legacyWebhookSecretCollides,
+} from '@/lib/billing/legacy-webhook-admission';
 
-// Stripe webhooks require the raw request body for signature verification,
-// so this route must not be statically optimized or have its body parsed.
+// Stripe webhooks require the raw request body for signature verification, so
+// this route must not be statically optimized or have its body parsed, and it
+// must run on Node.js — the other three Stripe endpoints already pin both.
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 const STRIPE_CHECKOUT_SESSION_PATTERN = /^cs_(?:test_)?[A-Za-z0-9_]+$/;
@@ -559,11 +566,32 @@ export async function POST(request: Request) {
   const signature = request.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  if (!signature || !webhookSecret) {
-    return NextResponse.json({ error: 'Webhook not configured.' }, { status: 400 });
+  if (!signature) {
+    return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
+  }
+
+  // A missing or cross-wired secret is OUR misconfiguration, not a bad request,
+  // so it answers 503: Stripe retries a 5xx, and the event survives long enough
+  // for somebody to fix the environment. The old 400 told Stripe the delivery
+  // was defective and not to bother again, which quietly dropped real payments
+  // during exactly the window an operator was repairing config.
+  if (!webhookSecret || legacyWebhookSecretCollides()) {
+    return NextResponse.json({ error: 'Webhook unavailable.' }, { status: 503 });
+  }
+
+  if (legacyWebhookContentLengthTooLarge(request.headers.get('content-length'))) {
+    return NextResponse.json({ error: 'Payload too large.' }, { status: 413 });
   }
 
   const rawBody = await request.text();
+
+  // Content-Length is a claim; this is the measurement. A chunked delivery
+  // carries no length header at all, so without this the ceiling above is
+  // advisory only.
+  if (legacyWebhookBodyTooLarge(rawBody)) {
+    return NextResponse.json({ error: 'Payload too large.' }, { status: 413 });
+  }
+
   const stripe = getStripeClient();
 
   let event: Stripe.Event;
@@ -571,10 +599,16 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
     console.error('Stripe webhook signature verification failed:', err);
+    // Deliberately no payload excerpt. This body failed verification, so it is
+    // unverified caller-controlled content, and webhook_failures renders in the
+    // admin Command Center. The newer receipt boundary under src/lib/billing
+    // refuses to retain a rejected body for the same reason. The operator signal
+    // here is the RATE of these, not their contents — and a genuinely failing
+    // Stripe delivery would otherwise land customer PII in a table with no
+    // retention policy.
     await logWebhookFailure({
       source: 'stripe',
       errorMessage: err instanceof Error ? err.message : 'Signature verification failed',
-      payloadExcerpt: rawBody.slice(0, 500),
     });
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
   }
