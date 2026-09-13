@@ -21,7 +21,7 @@ async function runAuditLogRetention() {
   if (copyError) {
     // Insert old rows into archive
     const { data: oldRows } = await client
-      .from('ai_operator_audit_log')
+      .from('ai_operator_logs')
       .select('*')
       .lt('created_at', cutoffDate)
       .limit(500);
@@ -37,7 +37,7 @@ async function runAuditLogRetention() {
 
       // 2. Delete archived rows from the hot table
       const { error: deleteError } = await client
-        .from('ai_operator_audit_log')
+        .from('ai_operator_logs')
         .delete()
         .lt('created_at', cutoffDate)
         .limit(500);
