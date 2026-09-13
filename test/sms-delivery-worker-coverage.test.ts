@@ -149,9 +149,11 @@ describe('sms-delivery-worker coverage', () => {
           billingCategory: 'customer_message',
           eventId: 'evt',
           attemptNumber: 1,
+          claimToken: 'tok',
         } as any,
         'signalwire',
         '+15556667777',
+        undefined,
         beforeRequest
       );
 

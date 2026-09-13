@@ -19,6 +19,7 @@ export type SmsDeliveryContext =
   | 'subcontractor'
   | 'owner'
   | 'customer'
+  | 'marketing'
   | 'automation'
   | 'platform';
 
@@ -42,6 +43,7 @@ export type EnqueueSmsDeliveryInput = Readonly<{
   senderNumberId?: string | null;
   availableAt?: Date | string | null;
   bypassQuietHours?: boolean;
+  mediaUrls?: string[];
 }>;
 
 export type EnqueuedSmsDelivery = Readonly<{
@@ -111,7 +113,7 @@ export async function enqueueSmsDelivery(
   }
 
   let availableAt = input.availableAt;
-  if (!availableAt && !input.bypassQuietHours && input.billingCategory === 'customer_message') {
+  if (!availableAt && !input.bypassQuietHours && ['customer_message', 'payment_message'].includes(input.billingCategory)) {
     const tz = resolveRecipientTimeZone({ phone: input.phoneNumber });
     const check = getTcpaCompliantSendTime(new Date(), tz);
     if (check.isDelayed) {

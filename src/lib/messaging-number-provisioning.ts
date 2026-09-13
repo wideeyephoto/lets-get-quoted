@@ -542,7 +542,7 @@ export async function recordMessagingComplianceVerification(input: Readonly<{
 export type MessagingNumberOperationSummary = Readonly<{
   id: string;
   applicationId: string;
-  type: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+  type: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
   state: 'pending' | 'claimed' | 'request_started' | 'succeeded' | 'failed' | 'indeterminate' | 'cancelled';
   attemptCount: number;
   errorCode: string | null;
@@ -1044,7 +1044,7 @@ export type SignalWireAssignmentActivationEvidence = Readonly<{
 export interface MessagingNumberOperationStore {
   claim(input: Readonly<{
     applicationId: string;
-    operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+    operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
     idempotencyKey: string;
     fingerprint: string;
     payload: Record<string, unknown>;
@@ -1445,7 +1445,7 @@ function safeErrorDetail(error: unknown): string {
 
 async function executeProviderMutation<T extends { id: string }>(input: Readonly<{
   applicationId: string;
-  operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+  operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
   idempotencyKey: string;
   payload: Record<string, unknown>;
   request: (client: SignalWireNumberProvisioningClient) => Promise<T>;
@@ -1582,6 +1582,27 @@ export async function purchaseMessagingNumber(input: Readonly<{
       name: phone.name,
       capabilities: phone.capabilities,
     }),
+    runtime,
+  });
+}
+
+export async function releaseMessagingNumber(input: Readonly<{
+  applicationId: string;
+  accountId: string;
+  providerNumberId: string;
+  number: string;
+  actorReference: string;
+  runtime?: MessagingNumberOperationRuntime;
+}>) {
+  assertMutationGate(input.runtime);
+  const runtime = input.runtime ?? defaultRuntime();
+  return executeProviderMutation({
+    applicationId: input.applicationId,
+    operationType: 'release_number',
+    idempotencyKey: `messaging:${input.applicationId}:release:${input.providerNumberId}`,
+    payload: { provider_number_id: input.providerNumberId, number: input.number },
+    request: (client) => client.releasePhoneNumber({ providerNumberId: input.providerNumberId, number: input.number }),
+    result: () => ({ id: input.providerNumberId, released: true }),
     runtime,
   });
 }

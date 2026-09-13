@@ -87,8 +87,6 @@ paths not traversable, the lead photo proxy allowlisted to the project's own
 Supabase host with per-hop redirect revalidation, the rate-limit RPC atomic,
 all four inbound webhooks deduplicated, environment parity complete except
 platform-provided variables, no public caching of tenant data, and no CORS
-wildcards.
-
 ## Untested-code audit and coverage widening — 2026-09-12
 
 Every file under `src/` examined for one question: does anything in the test
@@ -1306,7 +1304,7 @@ Result: **322 instances remain**, a single subsystem accounts for a meaningful s
   - Verified multi-tenant isolation: 162/162 tables enforce RLS, cross-tenant storage path traversal blocked via `ownedPhotoPaths` (`../`, absolute paths, foreign UUID prefixes), and tenant-scoped private Realtime channels.
   - Verified service-role query scoping: static AST check across 142 route handlers and server actions enforcing pre-execution authentication, cryptographic webhook signatures, cron secret bearer tokens, or single-use HMAC tokens prior to `createAdminClient` execution, plus mandatory `account_id` filtering on all tenant queries.
   - Verified SSRF resistance: `isAllowedProxyUrl` blocks AWS/GCP cloud metadata (`169.254.169.254`, `metadata.google.internal`), IPv6 mapped equivalents (`[::ffff:169.254.169.254]`), loopback, RFC 1918 private subnets, non-HTTP protocols (`file:`, `gopher:`), and enforces bounded egress timeouts.
-  - Verified webhook signature verification & replay resistance: Stripe HMAC raw-body signature validation, SignalWire `validateRequest` checking, Resend Svix HMAC verification with 300s replay window enforcement, and idempotent event inbox deduplication.
+  - Verified webhook signature verification & replay resistance: Stripe HMAC raw-body signature validation, SignalWire `validateRequest` checking, SignalWire 10DLC registry callback, Resend Svix HMAC verification with 300s replay window enforcement, and idempotent event inbox deduplication.
   - Verified via `test/security-penetration-testing.test.ts` (14/14 passing), `test/service-role-scoping-audit.test.ts` (3/3 passing), `test/lead-photo-proxy-ssrf.test.ts` (17/17 passing), `test/storage-realtime-tenancy-matrix.test.ts` (14/14 passing), `test/tenant-idor-guard.test.ts` (2/2 passing), `test/stripe-connected-payment-webhook-route.test.ts` (17/17 passing), `test/resend-webhook-route.test.ts` (7/7 passing), and `test/voice-webhook-auth.test.ts` (18/18 passing) — total 102/102 security tests passing.
 
 ---

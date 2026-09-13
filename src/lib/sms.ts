@@ -10,6 +10,11 @@ import {
   getCrewSmsDisclosureHash,
 } from '@/lib/crew-sms-disclosure';
 import {
+  CUSTOMER_SMS_DISCLOSURE_VERSION,
+  CUSTOMER_SMS_FULL_DISCLOSURE,
+  getCustomerSmsDisclosureHash,
+} from '@/lib/customer-sms-disclosure';
+import {
   adWalletRefillText,
   appointmentReminderText,
   arrivalTimeChangedText,
@@ -926,6 +931,18 @@ export async function recordSmsConsent(accountId: string, phone: string, source 
           evidence_source: source,
           established_at: now,
         }, { onConflict: 'account_id,phone_number,consent_scope', ignoreDuplicates: true });
+
+      await admin.from('sms_consent_evidence').insert({
+        account_id: accountId,
+        phone_number: normalized,
+        consent_scope: 'customer',
+        disclosure_version: CUSTOMER_SMS_DISCLOSURE_VERSION,
+        disclosure_text: CUSTOMER_SMS_FULL_DISCLOSURE,
+        disclosure_hash: getCustomerSmsDisclosureHash(),
+        consented_at: now,
+        source: source,
+        source_page: 'system_inference',
+      });
     } catch {
       // Non-fatal if scope write fails
     }
@@ -1044,7 +1061,7 @@ export async function hasCurrentSmsConsent(accountId: string, phone: string): Pr
   const [baseResult, scopeResult] = await Promise.all([
     admin
       .from('sms_consent')
-      .select('status,consented_at,opted_out_at')
+      .select('status,consented_at,updated_at,opted_out_at')
       .eq('account_id', accountId)
       .eq('phone_number', normalized)
       .maybeSingle(),
@@ -1064,10 +1081,24 @@ export async function hasCurrentSmsConsent(accountId: string, phone: string): Pr
     return false;
   }
   const base = baseResult.data;
-  return scopeResult.data?.consent_scope === 'customer'
-    && base?.status === 'opted_in'
-    && Boolean(base.consented_at)
-    && !base.opted_out_at;
+  if (!base || base.status !== 'opted_in' || base.opted_out_at || !base.consented_at) return false;
+  
+  const lastConfirmedDate = base.updated_at ? new Date(base.updated_at) : new Date(base.consented_at);
+  const isExpired = (Date.now() - lastConfirmedDate.getTime()) > 365 * 24 * 60 * 60 * 1000;
+
+  return scopeResult.data?.consent_scope === 'customer' && !isExpired;
+}
+
+export async function reaffirmSmsConsent(accountId: string, phone: string): Promise<void> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return;
+  const admin = createAdminClient();
+  await admin
+    .from('sms_consent')
+    .update({ updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('phone_number', normalized)
+    .eq('status', 'opted_in');
 }
 
 // Establishes the approved audience scope in one step for an insert-if-absent
@@ -2134,6 +2165,7 @@ export async function sendCampaignSms(params: {
     body: message,
     messageKind: 'campaign',
     category: 'customer_message',
+    context: 'marketing',
     idempotencyKey: params.idempotencyKey,
   });
 }

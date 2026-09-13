@@ -492,9 +492,9 @@ describe('Dashboard Payments Server Actions (dashboard/payments/actions.ts)', ()
 
       const res = await generateAccountingJournalCsvAction('qbo');
       expect(res.success).toBe(true);
-      expect(res.data).toContain('Date,Transaction Type,Num,Name,Memo,Account,Debit,Credit');
+      expect(res.data).toContain('JournalNo,Date,AccountNo,AccountName,Debit,Credit,Description,Customer,JobRef');
       expect(res.data).toContain('John Doe');
-      expect(res.data).toContain('Stripe Clearing');
+      expect(res.data).toContain('Undeposited Funds / Cash Clearing');
     });
 
     it('generates Xero format journal CSV', async () => {
@@ -540,7 +540,7 @@ describe('Dashboard Payments Server Actions (dashboard/payments/actions.ts)', ()
 
       const res = await generateAccountingJournalCsvAction('xero');
       expect(res.success).toBe(true);
-      expect(res.data).toContain('*ContactName,EmailAddress,POAddressLine1');
+      expect(res.data).toContain('*JournalNumber,*Date,*AccountCode,*Description,*Debit,*Credit,Reference');
       expect(res.data).toContain('Jane Smith');
     });
   });

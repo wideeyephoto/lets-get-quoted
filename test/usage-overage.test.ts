@@ -118,8 +118,8 @@ describe('nothing is charged without approval', () => {
 });
 
 describe('what it reports back', () => {
-  it('passes the rate and period the database needs to decide', async () => {
-    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000 }], error: null });
+  it('passes the rate and idempotency key the database needs to decide', async () => {
+    rpc.mockResolvedValue({ data: [{ decision: 'accrued', accrued_millicents: 48_000, cap_millicents: 5_000_000, charged_millicents: 48_000, period_start: '2026-08-01T00:00:00Z' }], error: null });
     await tryUsageOverage(admin, { accountId: ACCOUNT, resourceCode: 'text_segments', units: 10, idempotencyKey: 'test:v1:text_segments-10' }, { enabled: true });
     expect(rpc).toHaveBeenCalledWith('authorize_usage_overage', {
       p_account_id: ACCOUNT,

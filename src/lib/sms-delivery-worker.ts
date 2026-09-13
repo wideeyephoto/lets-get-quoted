@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/auth';
 import { quoteFollowupDeliveryEligibility } from '@/lib/quote-followup-delivery';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import { lgqSmsDeliveryHold } from '@/lib/sms-brand';
+import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
 import {
   outboundSmsSuppression,
   sendProviderMessage,
@@ -21,7 +22,7 @@ import {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PHONE = /^\+[1-9][0-9]{7,14}$/;
-const MAX_BATCH = 25;
+const MAX_BATCH = 75;
 
 export type SmsDeliveryClaim = Readonly<{
   claimToken: string;
@@ -34,6 +35,7 @@ export type SmsDeliveryClaim = Readonly<{
   senderPurpose: string;
   attemptNumber: number;
   leaseExpiresAt: string;
+  mediaUrls?: string[];
 }>;
 
 export type SmsDeliveryStage = Readonly<{
@@ -44,6 +46,7 @@ export type SmsDeliveryStage = Readonly<{
 }>;
 
 export interface SmsDeliveryStore {
+  admin: SupabaseClient;
   claimBatch(batchSize: number): Promise<readonly SmsDeliveryClaim[]>;
   stage(claim: SmsDeliveryClaim, provider: SmsProviderId): Promise<SmsDeliveryStage>;
   markRequestStarted(claim: SmsDeliveryClaim, usage: SmsUsageEvidence): Promise<void>;
@@ -63,6 +66,7 @@ export interface SmsDeliveryMessenger {
     claim: SmsDeliveryClaim,
     provider: SmsProviderId,
     senderE164: string,
+    mediaUrls: string[] | undefined,
     beforeRequest: (usage: SmsUsageEvidence) => Promise<void>,
   ): Promise<string>;
 }
@@ -151,6 +155,9 @@ function parseClaims(value: unknown, limit: number): readonly SmsDeliveryClaim[]
       senderPurpose: string(row.sender_purpose, 'sender_purpose'),
       attemptNumber: integer(row.attempt_number, 'attempt_number', 1, 8),
       leaseExpiresAt: timestamp(row.lease_expires_at, 'lease_expires_at'),
+      mediaUrls: Array.isArray(row.media_urls)
+        ? row.media_urls.filter((url): url is string => typeof url === 'string')
+        : undefined,
     });
   });
   if (new Set(claims.map((claim) => claim.eventId)).size !== claims.length
@@ -184,7 +191,7 @@ function parseStage(value: unknown): SmsDeliveryStage {
 }
 
 export class SupabaseSmsDeliveryStore implements SmsDeliveryStore {
-  constructor(private readonly admin: SupabaseClient = createAdminClient()) {}
+  constructor(public readonly admin: SupabaseClient = createAdminClient()) {}
 
   async claimBatch(batchSize: number): Promise<readonly SmsDeliveryClaim[]> {
     if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > MAX_BATCH) {
@@ -306,6 +313,7 @@ export class ProviderSmsDeliveryMessenger implements SmsDeliveryMessenger {
     claim: SmsDeliveryClaim,
     provider: SmsProviderId,
     senderE164: string,
+    mediaUrls: string[] | undefined,
     beforeRequest: (usage: SmsUsageEvidence) => Promise<void>,
   ): Promise<string> {
     return sendProviderMessage(
@@ -315,6 +323,7 @@ export class ProviderSmsDeliveryMessenger implements SmsDeliveryMessenger {
       {
         provider,
         from: string(senderE164, 'sender_e164', PHONE),
+        mediaUrls,
         // A received provider rejection is safe to retry and gives its hold
         // back. The next attempt therefore needs a new billing identity, while
         // the domain delivery remains the same sms_event.
@@ -445,11 +454,46 @@ export async function runSmsDeliveryBatch(
   let indeterminateCount = 0;
   let failedCount = 0;
 
-  for (let index = 0; index < batchSize; index += 1) {
+  const accountCounts = new Map<string, number>();
+  const dailyVolumeCache = new Map<string, number>();
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  let claimAttempts = 0;
+  // B3: We allow up to 500 claims to churn past a flooded tenant, 
+  // but stop once we've successfully sent `batchSize` (75) to respect carrier limits.
+  while ((claimedCount - deferredCount - cancelledCount - failedCount) < batchSize && claimAttempts < 500) {
     const claims = await store.claimBatch(1);
     const claim = claims[0];
     if (!claim) break;
+    claimAttempts += 1;
     claimedCount += 1;
+
+    // C3: Daily workspace volume ceiling
+    if (!dailyVolumeCache.has(claim.accountId)) {
+      const { count } = await store.admin
+        .from('sms_events')
+        .select('*', { count: 'exact', head: true })
+        .eq('account_id', claim.accountId)
+        .gte('created_at', startOfDay.toISOString());
+      dailyVolumeCache.set(claim.accountId, count || 0);
+    }
+    const todayCount = dailyVolumeCache.get(claim.accountId)!;
+    if (todayCount >= 2000) {
+      await store.fail(claim, 'sms_daily_volume_exceeded', false);
+      failedCount += 1;
+      continue;
+    }
+
+    // B3: Fairness throttle (15 msgs per account per minute)
+    const accountClaims = accountCounts.get(claim.accountId) || 0;
+    if (accountClaims >= 15) {
+      await store.defer(claim, 'sms_fairness_throttle', 60);
+      deferredCount += 1;
+      continue;
+    }
+    accountCounts.set(claim.accountId, accountClaims + 1);
+    dailyVolumeCache.set(claim.accountId, todayCount + 1);
 
     if (canaries.size > 0 && !canaries.has(claim.accountId)) {
       await store.defer(claim, 'sms_canary_account_not_enabled', 3600);
@@ -469,6 +513,17 @@ export async function runSmsDeliveryBatch(
       continue;
     }
 
+    if (['customer_message', 'payment_message'].includes(claim.billingCategory)) {
+      const tz = resolveRecipientTimeZone({ phone: claim.phoneNumber });
+      const check = getTcpaCompliantSendTime(new Date(), tz);
+      if (check.isDelayed) {
+        const delaySeconds = Math.max(1, Math.floor((check.sendAt.getTime() - Date.now()) / 1000));
+        await store.defer(claim, 'sms_quiet_hours', delaySeconds);
+        deferredCount += 1;
+        continue;
+      }
+    }
+
     let requestStarted = false;
     try {
       const stage = await store.stage(claim, provider);
@@ -485,6 +540,7 @@ export async function runSmsDeliveryBatch(
         claim,
         provider,
         stage.senderE164,
+        claim.mediaUrls,
         async (usage) => {
           try {
             await store.markRequestStarted(claim, usage);

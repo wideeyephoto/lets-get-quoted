@@ -50,6 +50,7 @@ function store(overrides: Partial<SmsDeliveryStore> = {}) {
   let claimed = false;
   const calls: string[] = [];
   const value: SmsDeliveryStore = {
+    admin: {} as any,
     claimBatch: vi.fn(async () => {
       calls.push('claim');
       if (claimed) return [];

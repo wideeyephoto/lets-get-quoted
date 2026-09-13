@@ -406,14 +406,24 @@ export function buildSendRequest(
   to: string,
   body: string,
   fromOverride?: string,
+  mediaUrls?: string[],
 ): SendRequest {
   const data = new URLSearchParams({ To: to, Body: body });
   if (fromOverride) data.set('From', fromOverride);
   else if (config.senderPoolId) data.set('MessagingServiceSid', config.senderPoolId);
   else if (config.from) data.set('From', config.from);
 
+  if (mediaUrls && mediaUrls.length > 0) {
+    for (const url of mediaUrls) {
+      data.append('MediaUrl', url);
+    }
+  }
+
   const origin = trustedProviderCallbackOrigin();
-  if (origin) data.set('StatusCallback', `${origin}/api/sms/status`);
+  if (!origin) {
+    throw new Error('Cannot send SMS: trusted provider callback origin is missing.');
+  }
+  data.set('StatusCallback', `${origin}/api/sms/status`);
 
   return {
     url: config.messagesUrl,
@@ -592,6 +602,7 @@ export async function sendProviderMessage(
      * omit it and retain their existing behavior.
      */
     beforeRequest?: (usage: SmsUsageEvidence) => Promise<void>;
+    mediaUrls?: string[];
   }> = {},
 ): Promise<string> {
   const suppressed = outboundSmsSuppression();
@@ -649,7 +660,7 @@ export async function sendProviderMessage(
 
   let requestAttempted = false;
   try {
-    const request = buildSendRequest(config, to, body, options.from);
+    const request = buildSendRequest(config, to, body, options.from, options.mediaUrls);
     const usage: SmsUsageEvidence = lease
       ? Object.freeze({
         kind: 'reservation' as const,
@@ -735,7 +746,7 @@ function isDefinitiveProviderRejection(status: number): boolean {
 
 export type SignatureCheck =
   | { ok: true; provider: SmsProviderId }
-  | { ok: false; reason: 'missing-header' | 'secret-not-configured' | 'mismatch' };
+  | { ok: false; reason: 'missing-header' | 'secret-not-configured' | 'mismatch' | 'twilio_sunset' };
 
 /**
  * Whether this webhook really came from the provider it claims to be.
@@ -796,6 +807,11 @@ export function validateWebhookSignature(
 
   if (!claim) return { ok: false, reason: 'missing-header' };
   if (!claim.key) return { ok: false, reason: 'secret-not-configured' };
+
+  // C4: Hardcoded sunset for legacy Twilio callbacks
+  if (claim.provider === 'twilio' && Date.now() > new Date('2026-10-31T00:00:00Z').getTime()) {
+    return { ok: false, reason: 'twilio_sunset' };
+  }
 
   const urls = candidateUrls(request);
   if (urls.length === 0) return { ok: false, reason: 'mismatch' };
