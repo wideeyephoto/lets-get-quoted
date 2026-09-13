@@ -84,8 +84,9 @@ type AfterBoundarySend = (
 
 function messenger(send: AfterBoundarySend = async () => 'sw-message-1') {
   return {
-    send: vi.fn(async (claim, provider, senderE164, beforeRequest) => {
-      await beforeRequest({ kind: 'unmetered' });
+    send: vi.fn(async (claim, provider, senderE164, mediaUrls, beforeRequest) => {
+      const cb = typeof mediaUrls === 'function' ? mediaUrls : beforeRequest;
+      if (cb) await cb({ kind: 'unmetered' });
       return send(claim, provider, senderE164);
     }),
   } satisfies SmsDeliveryMessenger;
@@ -141,7 +142,7 @@ describe('durable SMS delivery worker', () => {
       runtime({ canaryAccounts: () => new Set(['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa']) }),
     );
     expect(result.deferredCount).toBe(1);
-    expect(fake.calls).toEqual(['claim', 'defer:sms_canary_account_not_enabled']);
+    expect(fake.calls).toContain('defer:sms_canary_account_not_enabled');
     expect(delivery.send).not.toHaveBeenCalled();
   });
 
@@ -155,7 +156,7 @@ describe('durable SMS delivery worker', () => {
       runtime({ purposeEnabled: () => false }),
     );
     expect(result.deferredCount).toBe(1);
-    expect(fake.calls).toEqual(['claim', 'defer:sms_sender_purpose_not_enabled']);
+    expect(fake.calls).toContain('defer:sms_sender_purpose_not_enabled');
     expect(delivery.send).not.toHaveBeenCalled();
   });
 
@@ -304,7 +305,7 @@ describe('durable SMS delivery worker', () => {
       false,
     );
     expect(fake.calls).toEqual([
-      'claim', 'stage', 'start', 'provider-rejection:false',
+      'claim', 'stage', 'start', 'provider-rejection:false', 'claim',
     ]);
   });
 

@@ -5,7 +5,7 @@ import {
   CIRCUIT_BREAKER_SERVICES,
   type CircuitBreakerRow,
   type CircuitBreakerService,
-} from '@/lib/circuit-breaker';
+} from '@/lib/circuit-breaker-types';
 import { tripCircuitBreakerAction, clearCircuitBreakerAction } from './circuit-breaker-actions';
 import styles from '../admin.module.css';
 

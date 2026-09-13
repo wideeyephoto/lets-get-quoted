@@ -2722,6 +2722,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
     vendorDependency: 'resend',
   },
+
+  // Platform operational circuit breakers and kill switches
+  platform_circuit_breakers: {
+    tableName: 'platform_circuit_breakers',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
 };
 
 export function getExportableTables(): string[] {

@@ -39,11 +39,11 @@ function live() {
   vi.stubEnv('LGQ_DISABLE_OUTBOUND_SMS', '');
 }
 
-const carrierAccepts = () => vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-  new Response(JSON.stringify({ sid: 'SM123' }), { status: 201 }),
+const carrierAccepts = () => vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+  Promise.resolve(new Response(JSON.stringify({ sid: 'SM123' }), { status: 201 })),
 );
-const carrierRejects = () => vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-  new Response(JSON.stringify({ message: 'carrier said no' }), { status: 400 }),
+const carrierRejects = () => vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+  Promise.resolve(new Response(JSON.stringify({ message: 'carrier said no' }), { status: 400 })),
 );
 
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';

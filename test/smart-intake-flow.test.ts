@@ -40,7 +40,7 @@ describe('Smart Intake homeowner flow', () => {
 
   it('keeps service-area qualification server authoritative', () => {
     expect(HERO).not.toContain("data.set('inArea'");
-    expect(LEAD_ROUTE).toContain('if (fromWizard && filters.serviceAreaGate)');
+    expect(LEAD_ROUTE).toContain('if (location && filters.serviceAreaGate)');
     expect(LEAD_ROUTE).toContain('serviceAreaVerdict(location, servedCities)');
     expect(LEAD_ROUTE).not.toContain("text(data, 'inArea'");
   });

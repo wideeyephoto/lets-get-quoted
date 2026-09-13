@@ -221,18 +221,19 @@ describe('stalled quote sweep', () => {
 
 describe('queued quote follow-up revalidation before the provider boundary', () => {
   const jobId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const daytime = new Date('2026-09-09T14:00:00Z');
   const claim: SmsDeliveryClaim = {
     claimToken: '22222222-2222-4222-8222-222222222222',
     eventId: '33333333-3333-4333-8333-333333333333',
     accountId: 'account-a', phoneNumber: phone, body: 'Quote reminder',
     messageKind: 'quote-followup', billingCategory: 'customer_message', senderPurpose: 'contractor_dedicated',
-    attemptNumber: 1, leaseExpiresAt: '2026-09-09T10:05:00Z',
+    attemptNumber: 1, leaseExpiresAt: '2026-09-09T14:05:00Z',
   };
-  const context = { accountId: claim.accountId, eventId: claim.eventId, phone, now };
+  const context = { accountId: claim.accountId, eventId: claim.eventId, phone, now: daytime };
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(now);
+    vi.setSystemTime(daytime);
     rows.jobs = [{ id: jobId, account_id: 'account-a', status: 'new_lead' }];
     rows.client_job_access[0].job_id = jobId;
     rows.sms_events.push({ id: claim.eventId, account_id: 'account-a', phone_number: phone,
@@ -244,22 +245,23 @@ describe('queued quote follow-up revalidation before the provider boundary', () 
 
   function delivery() {
     const store = new SupabaseSmsDeliveryStore(client);
-    vi.spyOn(store, 'claimBatch').mockResolvedValue([claim]);
+    vi.spyOn(store, 'claimBatch').mockResolvedValueOnce([claim]).mockResolvedValue([]);
     const fail = vi.spyOn(store, 'fail').mockImplementation(async (_claim, _code, retryable) => retryable ? 'retryable' : 'terminal');
     const start = vi.spyOn(store, 'markRequestStarted').mockResolvedValue(undefined);
     const complete = vi.spyOn(store, 'complete').mockResolvedValue(undefined);
+    const defer = vi.spyOn(store, 'defer').mockResolvedValue(undefined);
     const rpc = vi.spyOn(client, 'rpc').mockImplementation(() => Promise.resolve({
       data: { dispatch_status: 'ready', sender_number_id: '44444444-4444-4444-8444-444444444444',
         sender_e164: '+18103042888', provider_number_id: 'sender-test' }, error: null,
     }) as never);
-    const send = vi.fn(async (_claim, _provider, _sender, beforeRequest) => {
+    const send = vi.fn(async (_claim, _provider, _sender, _mediaUrls, beforeRequest) => {
       await beforeRequest({ kind: 'unmetered' });
       return 'provider-test-id';
     });
     const run = () => runSmsDeliveryBatch(1, store, { send }, {
       suppression: () => null, provider: () => 'signalwire', canaryAccounts: () => new Set(),
     });
-    return { fail, start, complete, rpc, send, run };
+    return { fail, start, complete, defer, rpc, send, run };
   }
 
   it('sends when the persisted quote context is still eligible', async () => {
@@ -347,7 +349,7 @@ describe('queued quote follow-up revalidation before the provider boundary', () 
       rows.client_job_access[0].created_at = '2026-09-08T05:00:00Z';
     } else {
       // Valid when queued on day 2, stale when dispatch is delayed to day 9.
-      vi.setSystemTime(new Date('2026-09-16T10:00:00Z'));
+      vi.setSystemTime(new Date('2026-09-16T14:00:00Z'));
     }
     const check = delivery();
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});

@@ -81,7 +81,7 @@ describe('Site Images Route', () => {
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.url).toBe('http://example.com/img.jpg');
-    expect(uploadSiteImageMock).toHaveBeenCalledWith('acct_1', expect.any(File));
+    expect(uploadSiteImageMock).toHaveBeenCalledWith('acct_1', expect.any(File), 0, 0);
   });
 
   it('handles upload failure', async () => {

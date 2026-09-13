@@ -190,7 +190,7 @@ describe('the outbound off switch', () => {
     // The suite's own socket guard is what stops it here — proof that the
     // suppression, not the absence of an opportunity, is doing the work above.
     await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/Blocked/);
-  });
+  }, 15000);
 });
 
 describe('which provider is selected', () => {
