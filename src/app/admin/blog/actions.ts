@@ -66,6 +66,9 @@ export async function createAdminBlogPostAction(formData: FormData) {
   const blocks: PlatformBlogBlock[] = parseContentToBlocks(contentRaw);
 
   const now = new Date().toISOString().slice(0, 10);
+  const datePublishedRaw = String(formData.get('date_published') ?? '').trim();
+  const datePublished = datePublishedRaw || now;
+
   const newPost: PlatformBlogPost = {
     id: `post-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     slug,
@@ -79,7 +82,7 @@ export async function createAdminBlogPostAction(formData: FormData) {
       avatarUrl: '/apple-icon.png',
     },
     readMinutes,
-    datePublished: now,
+    datePublished,
     status,
     tags,
     blocks,
@@ -137,6 +140,9 @@ export async function updateAdminBlogPostAction(id: string, formData: FormData) 
     ? parseContentToBlocks(contentRaw)
     : existing.blocks;
 
+  const datePublishedRaw = String(formData.get('date_published') ?? '').trim();
+  const datePublished = datePublishedRaw || existing.datePublished;
+
   const updated: PlatformBlogPost = {
     ...existing,
     title,
@@ -150,6 +156,7 @@ export async function updateAdminBlogPostAction(id: string, formData: FormData) 
       role: authorRole,
     },
     readMinutes,
+    datePublished,
     status,
     tags,
     blocks,

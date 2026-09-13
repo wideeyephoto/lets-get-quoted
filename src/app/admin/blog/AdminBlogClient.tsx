@@ -102,6 +102,20 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
           </button>
           <button
             type="button"
+            onClick={() => setFilterStatus('scheduled')}
+            className={`${styles.filterButton || styles.btn} ${filterStatus === 'scheduled' ? styles.btnPrimary : styles.btnSecondary}`}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Scheduled ({posts.filter((p) => p.status === 'scheduled').length})
+          </button>
+          <button
+            type="button"
             onClick={() => setFilterStatus('draft')}
             className={`${styles.filterButton || styles.btn} ${filterStatus === 'draft' ? styles.btnPrimary : styles.btnSecondary}`}
             style={{
@@ -226,12 +240,21 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
                         background:
                           post.status === 'published'
                             ? 'rgba(78, 224, 188, 0.15)'
-                            : 'rgba(255, 196, 77, 0.15)',
-                        color: post.status === 'published' ? '#4ee0bc' : '#ffc44d',
+                            : post.status === 'scheduled'
+                              ? 'rgba(167, 139, 250, 0.15)'
+                              : 'rgba(255, 196, 77, 0.15)',
+                        color:
+                          post.status === 'published'
+                            ? '#4ee0bc'
+                            : post.status === 'scheduled'
+                              ? '#a78bfa'
+                              : '#ffc44d',
                         border:
                           post.status === 'published'
                             ? '1px solid rgba(78, 224, 188, 0.3)'
-                            : '1px solid rgba(255, 196, 77, 0.3)',
+                            : post.status === 'scheduled'
+                              ? '1px solid rgba(167, 139, 250, 0.3)'
+                              : '1px solid rgba(255, 196, 77, 0.3)',
                       }}
                     >
                       {post.status}

@@ -11,6 +11,7 @@ export default async function AdminBlogPage() {
 
   const posts = await getPlatformBlogPosts({ status: 'all' });
   const publishedCount = posts.filter((p) => p.status === 'published').length;
+  const scheduledCount = posts.filter((p) => p.status === 'scheduled').length;
   const draftCount = posts.filter((p) => p.status === 'draft').length;
 
   return (
@@ -38,6 +39,14 @@ export default async function AdminBlogPage() {
           <span className={styles.statLabel}>Live Published</span>
           <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
             Broadcasting on /blog &amp; RSS feed
+          </span>
+        </div>
+
+        <div className={`${styles.panel} ${styles.statCard} ${styles.accentPurple || styles.accentBlue}`}>
+          <span className={styles.statValue}>{scheduledCount}</span>
+          <span className={styles.statLabel}>Scheduled</span>
+          <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
+            Auto-publishing on target date
           </span>
         </div>
 

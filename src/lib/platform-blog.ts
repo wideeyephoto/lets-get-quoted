@@ -689,12 +689,17 @@ export interface ListBlogOptions {
  */
 export function getPlatformBlogPostsSync(options: ListBlogOptions = {}): PlatformBlogPost[] {
   const { status = 'published', category, search, tag, limit } = options;
+  const todayKey = new Date().toISOString().slice(0, 10);
   const allPosts = Array.from(memoryPostStore.values()).sort((a, b) =>
     b.datePublished.localeCompare(a.datePublished),
   );
 
   let filtered = allPosts;
-  if (status !== 'all') {
+  if (status === 'published') {
+    filtered = filtered.filter(
+      (p) => p.status === 'published' || (p.status === 'scheduled' && p.datePublished <= todayKey),
+    );
+  } else if (status !== 'all') {
     filtered = filtered.filter((p) => p.status === status);
   }
   if (category) {
@@ -710,6 +715,69 @@ export function getPlatformBlogPostsSync(options: ListBlogOptions = {}): Platfor
 }
 
 /**
+ * Promotes any scheduled platform blog posts whose target date has arrived to 'published'.
+ * Updates both Supabase (if configured) and the in-memory fallback store.
+ */
+export async function publishDuePlatformBlogPosts(
+  todayKey = new Date().toISOString().slice(0, 10),
+): Promise<{ count: number; publishedSlugs: string[] }> {
+  const publishedSlugs: string[] = [];
+
+  // 1) Update in-memory store
+  for (const post of memoryPostStore.values()) {
+    if (post.status === 'scheduled' && post.datePublished <= todayKey) {
+      post.status = 'published';
+      post.dateModified = todayKey;
+      publishedSlugs.push(post.slug);
+    }
+  }
+
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return {
+      count: publishedSlugs.length,
+      publishedSlugs,
+    };
+  }
+
+  // 2) Update Supabase platform_blog_posts table
+  try {
+    const admin = createAdminClient();
+    const { data: duePosts, error: selectError } = await admin
+      .from('platform_blog_posts')
+      .select('id, slug')
+      .eq('status', 'scheduled')
+      .lte('date_published', todayKey);
+
+    if (!selectError && duePosts && duePosts.length > 0) {
+      const ids = duePosts.map((p) => p.id);
+      const { error: updateError } = await admin
+        .from('platform_blog_posts')
+        .update({
+          status: 'published',
+          date_modified: todayKey,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', ids);
+
+      if (!updateError) {
+        for (const p of duePosts) {
+          if (!publishedSlugs.includes(p.slug)) {
+            publishedSlugs.push(p.slug);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('publishDuePlatformBlogPosts Supabase sweep failed:', err);
+  }
+
+  return {
+    count: publishedSlugs.length,
+    publishedSlugs,
+  };
+}
+
+/**
  * Fetch blog posts, reading from Supabase table `platform_blog_posts` if present,
  * otherwise falling back cleanly to in-memory/seed catalog.
  */
@@ -719,6 +787,7 @@ export async function getPlatformBlogPosts(options: ListBlogOptions = {}): Promi
   }
 
   const { status = 'published', category, search, tag, limit } = options;
+  const todayKey = new Date().toISOString().slice(0, 10);
 
   try {
     const admin = createAdminClient();
@@ -727,7 +796,9 @@ export async function getPlatformBlogPosts(options: ListBlogOptions = {}): Promi
       .select('*')
       .order('date_published', { ascending: false });
 
-    if (status !== 'all') {
+    if (status === 'published') {
+      query = query.or(`status.eq.published,and(status.eq.scheduled,date_published.lte.${todayKey})`);
+    } else if (status !== 'all') {
       query = query.eq('status', status);
     }
     if (category) {
@@ -774,7 +845,11 @@ export async function getPlatformBlogPosts(options: ListBlogOptions = {}): Promi
   );
 
   let filtered = allPosts;
-  if (status !== 'all') {
+  if (status === 'published') {
+    filtered = filtered.filter(
+      (p) => p.status === 'published' || (p.status === 'scheduled' && p.datePublished <= todayKey),
+    );
+  } else if (status !== 'all') {
     filtered = filtered.filter((p) => p.status === status);
   }
   if (category) {
@@ -820,7 +895,11 @@ export function getPlatformBlogPostBySlugSync(
   const cleanSlug = slug.toLowerCase().trim();
   const post = Array.from(memoryPostStore.values()).find((p) => p.slug === cleanSlug);
   if (!post) return undefined;
-  if (!options.preview && post.status !== 'published') return undefined;
+  if (options.preview) return post;
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const isLive =
+    post.status === 'published' || (post.status === 'scheduled' && post.datePublished <= todayKey);
+  if (!isLive) return undefined;
   return post;
 }
 
@@ -843,13 +922,14 @@ export async function getPlatformBlogPostBySlug(
   }
 
   const cleanSlug = slug.toLowerCase().trim();
+  const todayKey = new Date().toISOString().slice(0, 10);
 
   try {
     const admin = createAdminClient();
     let query = admin.from('platform_blog_posts').select('*').eq('slug', cleanSlug);
 
     if (!options.preview) {
-      query = query.eq('status', 'published');
+      query = query.or(`status.eq.published,and(status.eq.scheduled,date_published.lte.${todayKey})`);
     }
 
     const { data, error } = await query.maybeSingle();
@@ -932,6 +1012,12 @@ export async function savePlatformBlogPost(post: PlatformBlogPost): Promise<Plat
     dateModified: now,
   };
 
+  memoryPostStore.set(updatedPost.id, updatedPost);
+
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return updatedPost;
+  }
+
   try {
     const admin = createAdminClient();
     const row = {
@@ -964,7 +1050,6 @@ export async function savePlatformBlogPost(post: PlatformBlogPost): Promise<Plat
     console.warn('Supabase upsert failed, retaining in memory store:', err);
   }
 
-  memoryPostStore.set(updatedPost.id, updatedPost);
   return updatedPost;
 }
 
@@ -972,13 +1057,18 @@ export async function savePlatformBlogPost(post: PlatformBlogPost): Promise<Plat
  * Delete a blog post.
  */
 export async function deletePlatformBlogPost(id: string): Promise<boolean> {
+  const deleted = memoryPostStore.delete(id);
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') {
+    return deleted;
+  }
+
   try {
     const admin = createAdminClient();
     await admin.from('platform_blog_posts').delete().eq('id', id);
   } catch {
     // Ignore DB error and proceed
   }
-  return memoryPostStore.delete(id);
+  return deleted;
 }
 
 /**

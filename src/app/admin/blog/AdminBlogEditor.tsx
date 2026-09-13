@@ -15,6 +15,7 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
   const [title, setTitle] = useState(initialPost?.title || '');
   const [slug, setSlug] = useState(initialPost?.slug || '');
   const [isAutoSlug, setIsAutoSlug] = useState(!isEditing);
+  const [status, setStatus] = useState<string>(initialPost?.status || 'draft');
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
@@ -217,7 +218,8 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
               </label>
               <select
                 name="status"
-                defaultValue={initialPost?.status || 'draft'}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '7px 10px',
@@ -230,8 +232,44 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
               >
                 <option value="draft">Draft (Private to staff)</option>
                 <option value="published">Published (Live on site &amp; RSS)</option>
-                <option value="scheduled">Scheduled</option>
+                <option value="scheduled">Scheduled (Delayed planned posting)</option>
               </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
+                {status === 'scheduled' ? 'Scheduled Release Date *' : 'Publish Date'}
+              </label>
+              <input
+                type="date"
+                name="date_published"
+                defaultValue={initialPost?.datePublished || new Date().toISOString().slice(0, 10)}
+                style={{
+                  width: '100%',
+                  padding: '7px 10px',
+                  background: status === 'scheduled' ? 'rgba(167, 139, 250, 0.1)' : 'rgba(0, 0, 0, 0.4)',
+                  border:
+                    status === 'scheduled'
+                      ? '1px solid rgba(167, 139, 250, 0.4)'
+                      : '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '13px',
+                }}
+              />
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  color: status === 'scheduled' ? '#a78bfa' : '#88909b',
+                  marginTop: '4px',
+                  lineHeight: '1.4',
+                }}
+              >
+                {status === 'scheduled'
+                  ? 'Will automatically go live on this date at 09:00 UTC (or immediately once date arrives).'
+                  : 'Publication date displayed on the article and in RSS feeds.'}
+              </span>
             </div>
 
             <div>
