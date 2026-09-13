@@ -19,10 +19,26 @@ export async function generateMetadata(): Promise<Metadata> {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const origin = marketingOrigin(rootDomain);
   const url = `${origin}/blog`;
+  const ogImage = `${origin}/blog/per-seat-pricing.jpg`;
 
   return {
     title: 'Contractor Business Blog & Industry Guides · Let’s Get Quoted',
     description: BLOG_DESCRIPTION,
+    keywords: [
+      'contractor business guide',
+      'trade business playbooks',
+      'field service management',
+      'contractor pricing calculator',
+      'contractor instant estimates',
+      'speed to lead contractors',
+      'good better best quotes',
+      'contractor change orders',
+      'HVAC pricing strategies',
+      'electrical contractor operations',
+    ],
+    authors: [{ name: 'Brett', url: `${origin}/founder` }],
+    creator: 'Brett',
+    publisher: "Let's Get Quoted",
     alternates: {
       canonical: url,
       types: {
@@ -30,16 +46,40 @@ export async function generateMetadata(): Promise<Metadata> {
         'application/feed+json': [{ url: `${origin}/blog/feed.json`, title: "Let's Get Quoted Blog JSON Feed" }],
       },
     },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
     openGraph: {
       title: 'Contractor Business Blog & Tactical Guides · Let’s Get Quoted',
       description: BLOG_DESCRIPTION,
       url,
+      siteName: "Let's Get Quoted",
+      locale: 'en_US',
       type: 'website',
+      images: [
+        {
+          url: ogImage,
+          width: 1280,
+          height: 720,
+          alt: "Let's Get Quoted Contractor Business Blog",
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
+      site: '@letsgetquoted',
+      creator: '@letsgetquoted',
       title: 'Contractor Business Blog · Let’s Get Quoted',
       description: BLOG_DESCRIPTION,
+      images: [ogImage],
     },
   };
 }
@@ -56,16 +96,33 @@ export default async function BlogPage() {
     name: "Let's Get Quoted Contractor Blog",
     description: BLOG_DESCRIPTION,
     url: `${origin}/blog`,
+    inLanguage: 'en-US',
+    publisher: {
+      '@type': 'Organization',
+      name: "Let's Get Quoted",
+      url: origin,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${origin}/apple-icon.png`,
+        width: 512,
+        height: 512,
+      },
+    },
     blogPost: posts.map((post) => ({
       '@type': 'BlogPosting',
       headline: post.title,
       description: post.excerpt,
+      image: post.coverImage ? `${origin}${post.coverImage}` : undefined,
       url: `${origin}/blog/${post.slug}`,
-      datePublished: post.datePublished,
-      dateModified: post.dateModified || post.datePublished,
+      datePublished: `${post.datePublished}T09:00:00Z`,
+      dateModified: `${post.dateModified || post.datePublished}T09:00:00Z`,
+      keywords: [post.targetKeyword, ...post.tags].filter(Boolean).join(', '),
+      articleSection: post.category,
       author: {
         '@type': 'Person',
         name: post.author.name,
+        jobTitle: post.author.role,
+        url: `${origin}/founder`,
       },
     })),
   };

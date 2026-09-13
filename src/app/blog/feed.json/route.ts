@@ -21,6 +21,7 @@ export async function GET(): Promise<Response> {
       url: `${origin}/blog/${post.slug}`,
       title: post.title,
       summary: post.excerpt,
+      image: post.coverImage ? `${origin}${post.coverImage}` : undefined,
       date_published: new Date(`${post.datePublished}T12:00:00Z`).toISOString(),
       ...(post.dateModified
         ? { date_modified: new Date(`${post.dateModified}T12:00:00Z`).toISOString() }

@@ -49,20 +49,23 @@ export type ParkedCronRoute = {
   reason: string;
 };
 
-export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
-  {
-    job: 'smart-dunning',
-    reason:
-      'Duplicates the working `dunning` job and dirties the rows it touches. Its candidate query selects payments whose dunning_state is needs_card or exhausted -- the two TERMINAL states dunning.ts sets together with next_retry_at: null precisely to STOP retrying -- and writes a fresh next_retry_at onto them. It never selects decline_code either, so every row falls through to the default branch and gets now+48h whatever the card actually did. No wrongful charge results: the dunning sweep additionally requires dunning_state = scheduled, and this worker never writes that column. What does result is terminal payments carrying a rolling next_retry_at that should be null, which getPaymentsNeedingAttention feeds to the admin command center and the operator briefing. It also has no outbound dispatcher, so it cannot send the card-update prompt the feature catalog advertises -- dunning.ts already sends that via sendCardUpdateSms. Schedule only if it is rewritten to a purpose that does not overlap dunning.ts.',
-  },
-  {
-    job: 'activation-autopilot',
-    reason:
-      'Has no path to success. recordNudge returns false before writing, because contractor_onboarding_nudges does not exist in production (every insert returns PGRST205), and no SMS or email sender reads that table even when a write succeeds. The sweep scans accounts and records one error per candidate. Scheduling it bought a daily FAILED run and nothing else. Schedule once the table exists AND a dispatcher reads it.',
-  },
-];
+export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [];
 
 export const CRON_JOBS: CronJobSpec[] = [
+  {
+    job: 'ops-metrics-snapshot',
+    label: 'Daily operational metrics snapshot',
+    schedule: '0 6 * * *',
+    importance: 'housekeeping',
+    consequence: 'AI Operator trend history becomes stale and the get_ops_trend_history tool returns empty results.',
+  },
+  {
+    job: 'audit-log-retention',
+    label: 'AI operator audit log archival',
+    schedule: '30 5 * * 0',
+    importance: 'housekeeping',
+    consequence: 'AI operator audit log table grows unbounded, slowing admin console queries.',
+  },
   {
     job: 'operational-alerts', label: 'Operational failure alerts', schedule: '*/5 * * * *',
     importance: 'money', consequence: 'Webhook, billing, messaging and dispute failures stop reaching the operator by email.',

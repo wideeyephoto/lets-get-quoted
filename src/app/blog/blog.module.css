@@ -829,6 +829,44 @@
   margin: 0 0 24px;
 }
 
+/* Article Tags Cloud */
+.tagCloud {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.tagLabel {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dim);
+}
+
+.tagPill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(247, 247, 244, 0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.tagPill:hover {
+  background: rgba(255, 113, 55, 0.12);
+  border-color: rgba(255, 113, 55, 0.35);
+  color: var(--orange-light);
+}
+
 @media (max-width: 768px) {
   .featuredCard {
     padding: 20px;

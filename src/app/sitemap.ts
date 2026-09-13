@@ -140,6 +140,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: post.dateModified ?? post.datePublished,
       changeFrequency: 'weekly' as const,
       priority: 0.7,
+      ...(post.coverImage ? { images: [`${origin}${post.coverImage}`] } : {}),
     })),
     { url: `${origin}/contact`, lastModified, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${origin}/founder`, lastModified, changeFrequency: 'yearly', priority: 0.4 },

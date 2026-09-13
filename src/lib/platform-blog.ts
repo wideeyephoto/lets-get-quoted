@@ -39,6 +39,8 @@ export interface PlatformBlogPost {
   blocks: PlatformBlogBlock[];
   featured?: boolean;
   targetKeyword?: string;
+  metaTitle?: string;
+  metaDescription?: string;
   featureLinks?: PlatformBlogLink[];
 }
 
@@ -1441,6 +1443,12 @@ export async function generateBlogRssXml(origin = 'https://letsgetquoted.com'): 
       const escapedExcerpt = escapeXml(post.excerpt);
       const author = escapeXml(post.author.name);
       const category = escapeXml(post.category);
+      const mediaTag = post.coverImage
+        ? `\n      <media:content url="${origin}${post.coverImage}" medium="image" type="image/jpeg" width="1280" height="720"/>\n      <enclosure url="${origin}${post.coverImage}" length="750000" type="image/jpeg"/>`
+        : '';
+      const tagsXml = (post.tags || [])
+        .map((t) => `\n      <category>${escapeXml(t)}</category>`)
+        .join('');
 
       return `    <item>
       <title>${escapedTitle}</title>
@@ -1449,13 +1457,13 @@ export async function generateBlogRssXml(origin = 'https://letsgetquoted.com'): 
       <description>${escapedExcerpt}</description>
       <pubDate>${pubDate}</pubDate>
       <author>${author}</author>
-      <category>${category}</category>
+      <category>${category}</category>${tagsXml}${mediaTag}
     </item>`;
     })
     .join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
     <title>Let's Get Quoted Contractor Blog</title>
     <link>${origin}/blog</link>

@@ -30,6 +30,8 @@ import {
   triageSupportCase,
 } from './support-copilot';
 import { staffCan } from '@/lib/staff';
+import { scanContractorsForChurnRisk } from './churn-detector';
+import { generateLiveFinancialForecast } from './financial-forecasting';
 
 type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
@@ -315,6 +317,24 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
           description: 'Number of historical days to inspect (default: 7)',
         },
       },
+    },
+  },
+  {
+    name: 'scan_churn_risk',
+    description:
+      'Identifies contractor accounts showing early churn signals including login dormancy, quote velocity drops, and payment failures. Returns risk-scored accounts with recommended retention actions.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'generate_financial_forecast',
+    description:
+      'Produces a 90-day predictive MRR, subscriber count, and gross revenue forecast based on current platform metrics and growth trajectory.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
     },
   },
 ];
@@ -852,23 +872,87 @@ export async function executeOperatorTool(
       };
     }
 
-    // Withheld: nothing in this platform records a daily metrics snapshot.
-    //
-    // The series returned here was synthesised arithmetically -- MRR was literally
-    // `168 + i * 15`, with contractor counts hardcoded -- and presented to the founder
-    // as "7-Day Operational Trends". Serving this needs a snapshot table plus a cron
-    // that writes one row a day; today's numbers cannot be backfilled into history.
     case 'get_ops_trend_history': {
       const days = Number(args.days) || 7;
-      return {
-        data: {
-          days,
-          available: false,
-          history: [] as OpsTrendSnapshot[],
-          error:
-            'No historical metrics are recorded, so trends cannot be reported. Current-moment figures are available via get_system_health and get_revenue_and_billing_summary.',
-        },
-      };
+      try {
+        const { data: snapshots } = await supabase
+          .from('ops_metrics_snapshots')
+          .select('*')
+          .order('snapshot_date', { ascending: false })
+          .limit(days);
+
+        if (!snapshots || snapshots.length === 0) {
+          return {
+            data: {
+              days,
+              available: false,
+              history: [] as OpsTrendSnapshot[],
+              error: 'No historical snapshots recorded yet. The ops-metrics-snapshot cron writes one row per day at 6 AM UTC.',
+            },
+          };
+        }
+
+        const history: OpsTrendSnapshot[] = snapshots.map((s: any) => ({
+          date: s.snapshot_date,
+          mrrEstimated: Number(s.mrr_estimated) || 0,
+          totalActiveContractors: s.total_active_contractors || 0,
+          stripeConnectedContractors: s.stripe_connected_contractors || 0,
+          smsDeliverabilityPct: s.sms_deliverability_pct != null ? Number(s.sms_deliverability_pct) : 100,
+          unresolvedWebhooksCount: s.unresolved_webhooks_count || 0,
+          incidentCount: s.incident_count || 0,
+        }));
+
+        return {
+          data: {
+            days,
+            available: true,
+            snapshotsCount: history.length,
+            history,
+          },
+        };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+
+    case 'scan_churn_risk': {
+      try {
+        const result = await scanContractorsForChurnRisk(supabase);
+
+        recordOperatorAudit({
+          category: 'growth_lifecycle',
+          actionName: 'Churn Risk Scan',
+          severity: 'info',
+          toolName: 'scan_churn_risk',
+          outputResult: { totalScanned: result.totalScanned, atRiskCount: result.atRiskCount, atRiskMrrDollars: result.atRiskMrrDollars },
+          reasoningSummary: `Scanned ${result.totalScanned} accounts: ${result.atRiskCount} at-risk ($${result.atRiskMrrDollars} MRR at risk).`,
+          status: 'success',
+        });
+
+        return { data: result };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+
+    case 'generate_financial_forecast': {
+      try {
+        const forecast = await generateLiveFinancialForecast(supabase);
+
+        recordOperatorAudit({
+          category: 'executive',
+          actionName: 'Financial Forecast Generated',
+          severity: 'info',
+          toolName: 'generate_financial_forecast',
+          outputResult: { currentMrr: forecast.currentMrrDollars, projected90DayMrr: forecast.projected90DayMrrDollars },
+          reasoningSummary: `90-day forecast: current MRR $${forecast.currentMrrDollars} → projected $${forecast.projected90DayMrrDollars}.`,
+          status: 'success',
+        });
+
+        return { data: forecast };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
     }
 
     default:

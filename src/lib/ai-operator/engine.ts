@@ -23,6 +23,8 @@ import { refundPayment } from '@/lib/payments';
 import { generateExecutiveBriefing } from './briefing';
 import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops';
 import { sendActivationNudgeBatch } from '@/lib/contractor-lifecycle-emails';
+import { scanContractorsForChurnRisk } from './churn-detector';
+import { generateLiveFinancialForecast } from './financial-forecasting';
 
 /** One prior turn of the cockpit conversation, replayed so follow-ups resolve. */
 export interface OperatorChatTurn {
@@ -31,7 +33,16 @@ export interface OperatorChatTurn {
 }
 
 /** Guards against a tool-call loop that never converges on a final answer. */
-const MAX_TOOL_TURNS = 4;
+const BASE_MAX_TOOL_TURNS = 4;
+const EXTENDED_MAX_TOOL_TURNS = 7;
+
+/** Returns a higher tool turn limit for multi-step queries containing account IDs or multi-part instructions. */
+function getMaxToolTurns(query: string): number {
+  const hasAccountId = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(query);
+  const isMultiPart = (query.match(/\b(and|then|also|plus|additionally)\b/gi) || []).length >= 2;
+  const isComplex = query.length > 200;
+  return (hasAccountId || isMultiPart || isComplex) ? EXTENDED_MAX_TOOL_TURNS : BASE_MAX_TOOL_TURNS;
+}
 
 export interface AutonomousCycleReport {
   cycleId: string;
@@ -220,6 +231,24 @@ export async function askAiOperator(
       };
     }
 
+    if (q.includes('churn') || q.includes('at risk') || q.includes('retention') || q.includes('dormant')) {
+      const churnResult = await executeOperatorTool('scan_churn_risk', {}, ctx);
+      return {
+        answer: `**Churn Risk Analysis**:\n\n${JSON.stringify(churnResult.data, null, 2)}`,
+        toolCallsExecuted: ['scan_churn_risk'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('forecast') || q.includes('projection') || q.includes('next quarter') || q.includes('90 day') || q.includes('90-day')) {
+      const forecastResult = await executeOperatorTool('generate_financial_forecast', {}, ctx);
+      return {
+        answer: `**90-Day Financial Forecast**:\n\n${JSON.stringify(forecastResult.data, null, 2)}`,
+        toolCallsExecuted: ['generate_financial_forecast'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
     const briefing = await generateExecutiveBriefing(ctx.supabase);
     return {
       answer: briefing.markdownSummary,
@@ -263,7 +292,8 @@ Invariants:
     // then dumped the raw JSON at the founder -- the results were never returned to
     // the model, so it never synthesised anything. Each result now goes back as a
     // functionResponse and the model gets to answer with it in hand.
-    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+    const maxTurns = getMaxToolTurns(query);
+    for (let turn = 0; turn < maxTurns; turn++) {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: formattedContents,
