@@ -231,5 +231,38 @@ describe('Platform Blog System', () => {
       expect(stats.size).toBeGreaterThan(10000); // Image has substantial size
     }
   });
+
+  it('ensures all seed posts have high-converting SEO metadata and keywords', () => {
+    expect(SEED_BLOG_POSTS.length).toBe(9);
+
+    for (const post of SEED_BLOG_POSTS) {
+      // Keyword validation
+      expect(post.targetKeyword).toBeDefined();
+      expect(post.targetKeyword!.length).toBeGreaterThanOrEqual(10);
+
+      // Meta Title validation (under 70 chars for SERP display)
+      expect(post.metaTitle).toBeDefined();
+      expect(post.metaTitle!.length).toBeGreaterThanOrEqual(30);
+      expect(post.metaTitle!.length).toBeLessThanOrEqual(70);
+
+      // Meta Description validation (100 to 175 chars for Google SERP snippet)
+      expect(post.metaDescription).toBeDefined();
+      expect(post.metaDescription!.length).toBeGreaterThanOrEqual(100);
+      expect(post.metaDescription!.length).toBeLessThanOrEqual(175);
+
+      // Categorization and tagging
+      expect(BLOG_CATEGORIES).toContain(post.category as any);
+      expect(post.tags.length).toBeGreaterThanOrEqual(3);
+
+      // Verify keyword is represented in tags or title
+      const keywordTokens = post.targetKeyword!.toLowerCase().split(' ');
+      const titleLower = post.title.toLowerCase();
+      const tagsString = post.tags.join(' ').toLowerCase();
+      const someTokensPresent = keywordTokens.some(
+        (token) => token.length > 3 && (titleLower.includes(token) || tagsString.includes(token))
+      );
+      expect(someTokensPresent).toBe(true);
+    }
+  });
 });
 

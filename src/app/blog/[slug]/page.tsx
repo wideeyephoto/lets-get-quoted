@@ -35,19 +35,61 @@ export async function generateMetadata({ params }: BlogArticlePageProps): Promis
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const origin = marketingOrigin(rootDomain);
   const url = `${origin}/blog/${post.slug}`;
+  const title = post.metaTitle || `${post.title} · Let’s Get Quoted Blog`;
+  const description = post.metaDescription || post.excerpt;
+
+  const keywords = Array.from(
+    new Set(
+      [
+        post.targetKeyword,
+        ...post.tags,
+        post.category,
+        'contractor business guide',
+        'field service operations',
+        'contractor software',
+      ].filter((k): k is string => Boolean(k))
+    )
+  );
 
   return {
-    title: `${post.title} · Let’s Get Quoted Blog`,
-    description: post.excerpt,
-    alternates: { canonical: url },
+    title,
+    description,
+    keywords,
+    authors: [{ name: post.author.name, url: `${origin}/founder` }],
+    creator: post.author.name,
+    publisher: "Let's Get Quoted",
+    category: post.category,
+    alternates: {
+      canonical: url,
+      types: {
+        'application/rss+xml': [{ url: `${origin}/blog/rss.xml`, title: "Let's Get Quoted Blog RSS Feed" }],
+        'application/feed+json': [{ url: `${origin}/blog/feed.json`, title: "Let's Get Quoted Blog JSON Feed" }],
+      },
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
     openGraph: {
-      title: post.title,
-      description: post.excerpt,
+      title,
+      description,
       url,
+      siteName: "Let's Get Quoted",
+      locale: 'en_US',
       type: 'article',
-      publishedTime: post.datePublished,
-      modifiedTime: post.dateModified || post.datePublished,
+      publishedTime: post.datePublished.includes('T') ? post.datePublished : `${post.datePublished}T08:00:00Z`,
+      modifiedTime: (post.dateModified || post.datePublished).includes('T')
+        ? post.dateModified || post.datePublished
+        : `${post.dateModified || post.datePublished}T08:00:00Z`,
       authors: [post.author.name],
+      section: post.category,
       tags: post.tags,
       images: post.coverImage
         ? [
@@ -62,8 +104,10 @@ export async function generateMetadata({ params }: BlogArticlePageProps): Promis
     },
     twitter: {
       card: 'summary_large_image',
-      title: post.title,
-      description: post.excerpt,
+      title,
+      description,
+      site: '@letsgetquoted',
+      creator: '@letsgetquoted',
       images: post.coverImage ? [`${origin}${post.coverImage}`] : undefined,
     },
   };
@@ -80,6 +124,37 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
   const articleUrl = `${origin}/blog/${post.slug}`;
   const relatedPosts = await getRelatedPlatformBlogPosts(post.slug, 3);
 
+  // Calculate approximate word count across text blocks for SEO schema
+  const totalWords = post.blocks.reduce((acc, block) => {
+    switch (block.type) {
+      case 'p':
+      case 'h2':
+      case 'h3':
+        return acc + (block.text ? block.text.trim().split(/\s+/).filter(Boolean).length : 0);
+      case 'ul':
+        return acc + block.items.reduce((sum, item) => sum + item.trim().split(/\s+/).filter(Boolean).length, 0);
+      case 'callout':
+        return (
+          acc +
+          (block.text ? block.text.trim().split(/\s+/).filter(Boolean).length : 0) +
+          (block.title ? block.title.trim().split(/\s+/).filter(Boolean).length : 0)
+        );
+      case 'quote':
+        return acc + (block.quote ? block.quote.trim().split(/\s+/).filter(Boolean).length : 0);
+      default:
+        return acc;
+    }
+  }, 0);
+
+  const publishedIso = post.datePublished.includes('T')
+    ? post.datePublished
+    : `${post.datePublished}T08:00:00Z`;
+  const modifiedIso = (post.dateModified || post.datePublished).includes('T')
+    ? post.dateModified || post.datePublished
+    : `${post.dateModified || post.datePublished}T08:00:00Z`;
+
+  const categorySlug = encodeURIComponent(post.category.toLowerCase().replace(/\s+/g, '-'));
+
   // Extract table of contents from H2 headings
   const tocItems = post.blocks
     .filter((b): b is Extract<PlatformBlogBlock, { type: 'h2' }> => b.type === 'h2')
@@ -93,26 +168,51 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
     '@graph': [
       {
         '@type': 'BlogPosting',
+        '@id': `${articleUrl}#article`,
+        isPartOf: {
+          '@type': 'Blog',
+          '@id': `${origin}/blog#blog`,
+          name: "Let's Get Quoted Contractor Growth Hub",
+          url: `${origin}/blog`,
+        },
         headline: post.title,
-        description: post.excerpt,
-        image: post.coverImage ? `${origin}${post.coverImage}` : undefined,
+        name: post.title,
+        description: post.metaDescription || post.excerpt,
+        articleSection: post.category,
+        keywords: [post.targetKeyword, ...post.tags].filter(Boolean).join(', '),
+        inLanguage: 'en-US',
+        wordCount: totalWords > 0 ? totalWords : undefined,
+        timeRequired: `PT${post.readMinutes}M`,
+        isAccessibleForFree: true,
         url: articleUrl,
-        datePublished: post.datePublished,
-        dateModified: post.dateModified || post.datePublished,
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': articleUrl,
+        },
+        image: post.coverImage ? [`${origin}${post.coverImage}`] : undefined,
+        datePublished: publishedIso,
+        dateModified: modifiedIso,
         author: {
           '@type': 'Person',
           name: post.author.name,
           jobTitle: post.author.role,
+          url: `${origin}/founder`,
         },
         publisher: {
           '@type': 'Organization',
           name: "Let's Get Quoted",
           url: origin,
-          logo: `${origin}/apple-icon.png`,
+          logo: {
+            '@type': 'ImageObject',
+            url: `${origin}/apple-icon.png`,
+            width: 180,
+            height: 180,
+          },
         },
       },
       {
         '@type': 'BreadcrumbList',
+        '@id': `${articleUrl}#breadcrumb`,
         itemListElement: [
           {
             '@type': 'ListItem',
@@ -129,6 +229,12 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
           {
             '@type': 'ListItem',
             position: 3,
+            name: post.category,
+            item: `${origin}/blog#category-${categorySlug}`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 4,
             name: post.title,
             item: articleUrl,
           },
@@ -163,12 +269,18 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
               <Link href="/" className={styles.breadcrumbLink}>
                 Home
               </Link>
-              <span className={styles.breadcrumbSep}>/</span>
+              <span className={styles.breadcrumbSep} aria-hidden="true">/</span>
               <Link href="/blog" className={styles.breadcrumbLink}>
                 Blog
               </Link>
-              <span className={styles.breadcrumbSep}>/</span>
-              <span style={{ color: 'var(--orange)' }}>{post.category}</span>
+              <span className={styles.breadcrumbSep} aria-hidden="true">/</span>
+              <Link
+                href={`/blog?category=${encodeURIComponent(post.category)}`}
+                className={styles.breadcrumbLink}
+                style={{ color: 'var(--orange)' }}
+              >
+                {post.category}
+              </Link>
             </nav>
 
             {/* Article Header */}
@@ -177,6 +289,18 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                 <span>{post.category}</span>
                 <span>·</span>
                 <span>{post.readMinutes} min read</span>
+                <span>·</span>
+                <time dateTime={post.datePublished}>
+                  {formatDate(post.datePublished)}
+                </time>
+                {post.dateModified && post.dateModified !== post.datePublished && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      Updated <time dateTime={post.dateModified}>{formatDate(post.dateModified)}</time>
+                    </span>
+                  </>
+                )}
               </div>
               <h1 className={styles.articleHeaderTitle}>{post.title}</h1>
               {post.subtitle && <p className={styles.articleHeaderSubtitle}>{post.subtitle}</p>}
@@ -184,15 +308,29 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
               {/* Author and Share Bar */}
               <div className={styles.authorCard}>
                 <div className={styles.authorInfo}>
-                  <img
-                    src={post.author.avatarUrl || '/apple-icon.png'}
-                    alt={post.author.name}
-                    className={styles.authorAvatar}
-                  />
-                  <div>
-                    <p className={styles.authorName}>{post.author.name}</p>
-                    <p className={styles.authorRole}>{post.author.role}</p>
-                  </div>
+                  <Link
+                    href="/founder"
+                    rel="author"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                    }}
+                  >
+                    <img
+                      src={post.author.avatarUrl || '/apple-icon.png'}
+                      alt={post.author.name}
+                      className={styles.authorAvatar}
+                      width={44}
+                      height={44}
+                    />
+                    <div>
+                      <p className={styles.authorName}>{post.author.name}</p>
+                      <p className={styles.authorRole}>{post.author.role}</p>
+                    </div>
+                  </Link>
                 </div>
 
                 <BlogArticleClient title={post.title} url={articleUrl} />
@@ -204,7 +342,10 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                     src={post.coverImage}
                     alt={post.coverAlt || post.title}
                     className={styles.heroCoverImage}
+                    width={1280}
+                    height={720}
                     loading="eager"
+                    fetchPriority="high"
                   />
                 </div>
               )}
@@ -292,6 +433,22 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                 }
               })}
             </article>
+
+            {/* Article Tags Cloud */}
+            {post.tags && post.tags.length > 0 && (
+              <nav className={styles.tagCloud} aria-label="Article Topics">
+                <span className={styles.tagLabel}>Topics:</span>
+                {post.tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/blog?q=${encodeURIComponent(tag)}`}
+                    className={styles.tagPill}
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </nav>
+            )}
 
             {/* Feature Links to Product */}
             {post.featureLinks && post.featureLinks.length > 0 && (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { PlatformBlogPost } from '@/lib/platform-blog';
 import styles from './blog.module.css';
@@ -13,6 +13,19 @@ interface BlogIndexClientProps {
 export default function BlogIndexClient({ posts, categories }: BlogIndexClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get('q');
+      const cat = params.get('category');
+      if (q) setSearchQuery(q);
+      if (cat) setSelectedCategory(cat);
+    } catch {
+      // Ignore URL parsing errors
+    }
+  }, []);
 
   const featuredPost = useMemo(() => {
     return posts.find((p) => p.featured) || posts[0];

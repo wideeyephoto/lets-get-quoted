@@ -84,6 +84,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: true,
     tags: ['software pricing', 'per-seat pricing', 'contractor overhead', 'field crew', 'margins'],
     targetKeyword: 'field service management per seat pricing',
+    metaTitle: 'Contractor Software Pricing: What Adding Crew Costs (Worksheet)',
+    metaDescription:
+      'Stop paying extra software fees for apprentices. Use our contractor seat-audit worksheet and role matrix to eliminate per-seat licensing bloat.',
     blocks: [
       {
         type: 'p',
@@ -183,6 +186,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['lead generation', 'angi', 'thumbtack', 'marketing', 'cost per won job', 'margins'],
     targetKeyword: 'are paid contractor leads profitable',
+    metaTitle: 'Are Paid Contractor Leads Profitable? True Cost per Won Job',
+    metaDescription:
+      'Calculate your real cost per won job from Angi, Thumbtack, and shared lead brokers. Includes contact rate, estimate drive time, and profit formulas.',
     blocks: [
       {
         type: 'p',
@@ -286,6 +292,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['speed to lead', 'lead capture', 'intake', 'customer experience', 'dispatching'],
     targetKeyword: 'after hours contractor lead capture',
+    metaTitle: 'After-Hours Contractor Leads: High-Converting Intake Guide',
+    metaDescription:
+      'Capture evening homeowner repair inquiries without answering 9 PM calls. 5-step structured intake flow, photo prompts, and morning dispatch scripts.',
     blocks: [
       {
         type: 'p',
@@ -376,6 +385,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['change orders', 'cash flow', 'margin', 'pricing', 'contracts'],
     targetKeyword: 'contractor change order process',
+    metaTitle: 'Contractor Change Orders: Free Template & Sign-Off Process',
+    metaDescription:
+      'Protect your margins from mid-job scope creep. A complete trade change order guide with itemized costs, labor impact, and customer e-signature protocol.',
     blocks: [
       {
         type: 'p',
@@ -469,6 +481,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['ai voice', 'receptionist', 'speed to lead', 'customer service', 'emergency dispatch', 'operations'],
     targetKeyword: 'ai phone receptionist for contractors',
+    metaTitle: 'AI Receptionist for Contractors: Call Triage & Escalation Rules',
+    metaDescription:
+      'Stop losing high-value jobs to voicemail. Learn how AI call intake triages urgent calls, gathers job details, and escalates emergency dispatch to crew leads.',
     blocks: [
       {
         type: 'p',
@@ -571,6 +586,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['quick stops', 'route density', 'scheduling', 'field operations', 'travel time', 'profitability'],
     targetKeyword: 'contractor route density quick stops',
+    metaTitle: 'Contractor Route Density: Drive-Time Costs & Quick Stops Guide',
+    metaDescription:
+      'Cut windshield time and fuel expenses. Calculate vehicle wear and technician hourly cost per mile, and evaluate high-margin quick stops along active routes.',
     blocks: [
       {
         type: 'p',
@@ -667,6 +685,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['instant estimates', 'website builder', 'lead conversion', 'pricing calculator', 'estimating'],
     targetKeyword: 'instant estimate calculator contractor website',
+    metaTitle: 'Contractor Instant Estimates: Website Ballpark Calculator Guide',
+    metaDescription:
+      'Convert evening website visitors with interactive ballpark estimates. Includes exact pricing formulas, electrical panel upgrade model, and disclaimers.',
     blocks: [
       {
         type: 'p',
@@ -767,6 +788,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['tiered quotes', 'good better best', 'estimating', 'hvac pricing', 'gross margin'],
     targetKeyword: 'good better best contractor quotes',
+    metaTitle: 'Good Better Best Contractor Quotes: 3-Tier Proposal Example',
+    metaDescription:
+      'Win bigger jobs and protect margins with 3-tier proposals. Complete worked 3-ton heat pump replacement example with equipment, labor, and profit margins.',
     blocks: [
       {
         type: 'p',
@@ -852,6 +876,9 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
     featured: false,
     tags: ['deposit scheduling', 'card on file', 'stripe payments', 'cash flow', 'cancellation policy'],
     targetKeyword: 'contractor deposit before scheduling',
+    metaTitle: 'Contractor Deposit Before Scheduling: Policies & Booking Rules',
+    metaDescription:
+      'Eliminate no-shows and cash flow strain. How to structure diagnostic dispatch fees, 50% material deposits, and card-on-file policies that homeowners accept.',
     blocks: [
       {
         type: 'p',
