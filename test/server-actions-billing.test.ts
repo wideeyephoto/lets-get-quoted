@@ -267,7 +267,9 @@ describe('Server Actions: Billing & Payments', () => {
 
       const tooHigh = await setOverageAuthorizationAction(true, 50000);
       expect(tooHigh.ok).toBe(false);
-      expect(tooHigh.error).toMatch(/higher than we can accept/);
+      if (!tooHigh.ok) {
+        expect(tooHigh.error).toMatch(/higher than we can accept/);
+      }
     });
 
     it('enforces rate limit for overage changes', async () => {

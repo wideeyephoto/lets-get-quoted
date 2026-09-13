@@ -92,7 +92,7 @@ function makeCost(overrides: Partial<Cost>): Cost {
     hours: null,
     rate: null,
     burden_amount: 0,
-    cost_source: 'manual',
+    cost_source: 'unspecified',
     created_at: '2024-01-01T00:00:00Z',
     ...overrides,
   };

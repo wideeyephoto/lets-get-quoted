@@ -215,7 +215,7 @@ describe('google-ads-api — resolveServingCustomerId', () => {
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
-    vi.mocked(createAdminClient).mockReturnValue(mockChain as ReturnType<typeof createAdminClient>);
+    vi.mocked(createAdminClient).mockReturnValue(mockChain as unknown as ReturnType<typeof createAdminClient>);
 
     // resolveServingCustomerId returns null when DB has no override and no
     // GOOGLE_ADS_CLIENT_CUSTOMER_ID env is set

@@ -118,6 +118,7 @@ export function DocumentVault({ documents, jobs }: DocumentVaultProps) {
               }}
             />
             <select
+              aria-label="Filter by project"
               value={activeJob}
               onChange={(e) => setActiveJob(e.target.value)}
               style={{
@@ -135,6 +136,7 @@ export function DocumentVault({ documents, jobs }: DocumentVaultProps) {
               ))}
             </select>
             <select
+              aria-label="Sort order"
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
               style={{

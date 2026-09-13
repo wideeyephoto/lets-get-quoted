@@ -74,15 +74,19 @@ describe('Crew Pay Data Engine & Google Ads API Core Logic', () => {
   describe('Crew Pay Data Engine (crew-pay-data)', () => {
     const mockPeriod = {
       mode: 'weekly' as const,
+      offset: 0,
       startIso: '2026-06-08T00:00:00.000Z',
       endIso: '2026-06-14T23:59:59.999Z',
       label: 'Jun 8 – Jun 14, 2026',
+      rangeLabel: 'Jun 8 – Jun 14',
+      open: false,
     };
 
     const mockSettings = {
       overtimeThreshold: 40,
       rounding: 'none' as const,
       periodMode: 'weekly' as const,
+      exportFormat: 'summary' as const,
     };
 
     it('returns available: false when tables do not exist yet (42P01 error)', async () => {
@@ -304,7 +308,7 @@ describe('Crew Pay Data Engine & Google Ads API Core Logic', () => {
         'acc-1',
         'period-1',
         snapshots,
-        { paymentDate: '2026-06-15', paymentMethod: 'direct_deposit', paymentReference: 'DD-9988' },
+        { paymentDate: '2026-06-15', paymentMethod: 'direct_deposit', paymentReference: 'DD-9988', paymentNote: null },
         'admin@example.com',
       );
       expect(paid).toHaveLength(1);
@@ -408,7 +412,7 @@ describe('Crew Pay Data Engine & Google Ads API Core Logic', () => {
 
     it('provisionManagedSearchCampaign simulates sandbox deployment in development environment', async () => {
       delete process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-      process.env.NODE_ENV = 'development';
+      (process.env as any).NODE_ENV = 'development';
 
       const result = await provisionManagedSearchCampaign({
         accountId: 'acc-1',

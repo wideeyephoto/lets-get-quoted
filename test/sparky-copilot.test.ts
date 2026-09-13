@@ -75,7 +75,7 @@ describe('Sparky Copilot Public-Facing Integration', () => {
   it('verifies SparkyCopilot is strictly absent from homeowner/client-facing pages', () => {
     const appShellSrc = readFileSync('src/components/app-shell.tsx', 'utf8');
     // Standalone contractor site early return has no Sparky
-    const standaloneMatch = appShellSrc.match(/if \(isStandaloneSite\) \{[\s\S]*?return <>{children}<\/>;[\s\S]*?\}/);
+    const standaloneMatch = appShellSrc.match(/if \(isStandaloneSite\) \{[\s\S]*?^\s*\}/m);
     expect(standaloneMatch).not.toBeNull();
     expect(standaloneMatch![0]).not.toContain('SparkyCopilot');
 

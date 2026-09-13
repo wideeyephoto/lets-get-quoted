@@ -796,6 +796,20 @@ export async function submitPortalMessage(
     }
   }
 
+  // If client phone exists, log inbound SMS message
+  if (normalizedClientPhone) {
+    try {
+      await admin.from('sms_messages').insert({
+        account_id: input.accountId,
+        phone_number: normalizedClientPhone,
+        direction: 'inbound',
+        body,
+      });
+    } catch (err) {
+      console.error('Failed to log inbound message from portal:', err);
+    }
+  }
+
   // Notify contractor via alert email
   try {
     const ownerEmail = await getAccountOwnerEmail(admin, input.accountId);
@@ -825,7 +839,9 @@ export async function submitPortalMessage(
   // Notify contractor via alert SMS if configured
   if (account?.alert_phone && account?.high_value_sms_enabled !== false) {
     try {
-      const dashboardUrl = targetJobId
+      const dashboardUrl = normalizedClientPhone
+        ? `${APP_ORIGIN}/dashboard/messages?thread=${encodeURIComponent(normalizedClientPhone)}`
+        : targetJobId
         ? `${APP_ORIGIN}/dashboard/jobs/${targetJobId}`
         : `${APP_ORIGIN}/dashboard/clients/${input.clientId}`;
 

@@ -3,6 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
+
+const ALLOWED_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'video/mp4',
+  'video/quicktime',
+  'video/webm',
+]);
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';
@@ -176,13 +185,26 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       }
       data.delete('photos');
       const photos = selectedPhotos.slice(0, MAX_PHOTOS);
-      for (const photo of photos) data.append('photos', await compressImage(photo, 1600, 0.8));
+      for (const photo of photos) {
+        if (photo.type.startsWith('video/')) {
+          data.append('photos', photo);
+          continue;
+        }
+        try {
+          data.append('photos', await compressImage(photo, 1600, 0.8));
+        } catch (err) {
+          if (ALLOWED_TYPES.has(photo.type)) {
+            data.append('photos', photo);
+          } else {
+            console.warn(`Could not attach ${photo.name}`, err);
+          }
+        }
+      }
 
       const attribution = getOrCaptureAttribution();
       if (attribution) {
         data.set('attribution', JSON.stringify(attribution));
       }
-
       await new Promise<void>((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open('POST', '/api/public/leads');

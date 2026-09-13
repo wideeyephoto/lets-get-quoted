@@ -156,9 +156,9 @@ export default async function ClientJobDashboardPage({
     listingUrl: siteContent.testimonials.googleUrl,
   });
 
-  const signatureRow = (wide.error && access
+  const signatureRow = (wide.error ? (access
     ? (await admin.from('jobs').select('quote_signer_name, quote_signed_at, quoted_amount').eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle()).data
-    : wide.data) as
+    : null) : wide.data) as
     | {
         quote_signer_name?: string | null;
         quote_signed_at?: string | null;
@@ -177,12 +177,12 @@ export default async function ClientJobDashboardPage({
       <main className="wide-shell workspace-shell client-job-dashboard">
         <section className="panel workspace-section-card quote-dead-link">
           <p className="eyebrow">{t(locale, 'expired.eyebrow')}</p>
-          <h1 className="workspace-title">{t(locale, 'expired.title')}</h1>
+          <h1 className="workspace-title">{t(locale, 'expired.title') || 'This quote link is no longer active'}</h1>
           <p className="workspace-lead">
             {t(locale, 'expired.body1')}
           </p>
           <p className="workspace-lead">
-            {t(locale, 'expired.body2')}
+            {t(locale, 'expired.body2') || 'Reply to the text or email you received it in and ask for a fresh link.'}
           </p>
         </section>
       </main>

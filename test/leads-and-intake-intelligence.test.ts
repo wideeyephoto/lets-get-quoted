@@ -327,8 +327,11 @@ describe('Lead Lifecycle & Intake Intelligence Engine', () => {
       });
 
       const updated = await scheduleLeadQuoteVisit(chain, 'acc-1', 'lead-1', {
-        date: '2026-06-15',
-        time: '14:00',
+        scheduledFor: '2026-06-15',
+        scheduledTime: '14:00',
+        durationMinutes: 60,
+        notes: null,
+        confirmationTextSentAt: null,
       });
 
       expect(updated.quote_visit).toBeDefined();

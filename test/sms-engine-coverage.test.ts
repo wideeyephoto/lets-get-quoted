@@ -121,7 +121,7 @@ const mockEnqueueSmsDelivery = vi.mocked(enqueueSmsDelivery);
 beforeEach(() => {
   vi.clearAllMocks();
   const { from, rpc } = createMockAdmin();
-  mockCreateAdmin.mockReturnValue({ from, rpc } as ReturnType<typeof createAdminClient>);
+  mockCreateAdmin.mockReturnValue({ from, rpc } as unknown as ReturnType<typeof createAdminClient>);
   mockEnqueueSmsDelivery.mockResolvedValue({ eventId: 'test-event-uuid-1234-5678-9abc-def012345678' } as Awaited<ReturnType<typeof enqueueSmsDelivery>>);
 });
 
@@ -132,7 +132,7 @@ describe('sms-engine-coverage — owner alert sends', () => {
     // isPhoneOptedOut uses admin.rpc → return false (not opted out)
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendOwnerHighValueLeadSms({
       accountId: 'acct-1',
@@ -153,7 +153,7 @@ describe('sms-engine-coverage — owner alert sends', () => {
   it('sendOwnerHighValueLeadSms skips send when phone is opted out', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: true, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendOwnerHighValueLeadSms({
       accountId: 'acct-1',
@@ -185,7 +185,7 @@ describe('sms-engine-coverage — owner alert sends', () => {
   it('sendOwnerVoiceEmergencyAlertSms queues SMS with emergency category', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendOwnerVoiceEmergencyAlertSms({
       accountId: 'acct-2',
@@ -204,7 +204,7 @@ describe('sms-engine-coverage — owner alert sends', () => {
   it('sendOwnerVoiceCallNotificationSms queues call notification', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendOwnerVoiceCallNotificationSms({
       accountId: 'acct-3',
@@ -225,7 +225,7 @@ describe('sms-engine-coverage — voice caller sends', () => {
   it('sendCallerVoiceBookingLinkSms returns ok:true on success', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendCallerVoiceBookingLinkSms({
       accountId: 'acct-4',
@@ -242,7 +242,7 @@ describe('sms-engine-coverage — voice caller sends', () => {
   it('sendCallerVoiceBookingLinkSms returns ok:false when opted out', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: true, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendCallerVoiceBookingLinkSms({
       accountId: 'acct-4',
@@ -269,7 +269,7 @@ describe('sms-engine-coverage — voice caller sends', () => {
   it('sendCallerVoiceBookingConfirmationSms succeeds with valid inputs', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendCallerVoiceBookingConfirmationSms({
       accountId: 'acct-5',
@@ -286,7 +286,7 @@ describe('sms-engine-coverage — voice caller sends', () => {
   it('sendCallerVoicePostCallFollowupSms succeeds with optional fields', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendCallerVoicePostCallFollowupSms({
       accountId: 'acct-6',
@@ -401,7 +401,7 @@ describe('sms-engine-coverage — booking decision sends', () => {
   it('sendBookingDecisionSms queues when not opted out', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendBookingDecisionSms({
       accountId: 'acct-12',
@@ -417,7 +417,7 @@ describe('sms-engine-coverage — booking decision sends', () => {
   it('sendBookingDecisionSms skips silently when opted out (never throws)', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: true, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendBookingDecisionSms({
       accountId: 'acct-12',
@@ -432,7 +432,7 @@ describe('sms-engine-coverage — booking decision sends', () => {
   it('sendBookingRequestCustomerConfirmationSms returns true on success', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendBookingRequestCustomerConfirmationSms({
       accountId: 'acct-13',
@@ -479,7 +479,7 @@ describe('sms-engine-coverage — booking decision sends', () => {
       from: vi.fn(() => mockChain),
       rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
     };
-    mockCreateAdmin.mockReturnValue(admin as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue(admin as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendOwnerBookingRequestAlertSms({
       accountId: 'acct-14',
@@ -509,7 +509,7 @@ describe('sms-engine-coverage — booking decision sends', () => {
       from: vi.fn(() => mockChain),
       rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
     };
-    mockCreateAdmin.mockReturnValue(admin as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue(admin as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendOwnerBookingRequestAlertSms({
       accountId: 'acct-14',
@@ -539,7 +539,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
       from: vi.fn(() => mockChain),
       rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
     };
-    mockCreateAdmin.mockReturnValue(admin as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue(admin as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await sendOwnerPortalMessageAlertSms({
       accountId: 'acct-15',
@@ -560,7 +560,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
     admin.rpc
       .mockResolvedValueOnce({ data: false, error: null }) // isPhoneOptedOut
       .mockResolvedValueOnce({ data: true, error: null }); // ensureSmsConsentBaseline
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendClientPortalLinkSms({
       accountId: 'acct-16',
@@ -575,7 +575,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
   it('sendClientPortalLinkSms skips when opted out (never throws)', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: true, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendClientPortalLinkSms({
       accountId: 'acct-16',
@@ -589,7 +589,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
   it('sendOwnerEstimateAcceptedSms queues owner alert on answer', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendOwnerEstimateAcceptedSms({
       accountId: 'acct-17',
@@ -606,7 +606,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
   it('sendQuickStopOfferSms queues payment_message category', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendQuickStopOfferSms({
       accountId: 'acct-18',
@@ -627,7 +627,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
   it('sendQuickStopConfirmedSms queues after payment clears', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendQuickStopConfirmedSms({
       accountId: 'acct-19',
@@ -644,7 +644,7 @@ describe('sms-engine-coverage — portal and quick stop sends', () => {
   it('sendQuickStopStatusSms queues with withOptOut wrapper', async () => {
     const admin = createMockAdmin();
     admin.rpc.mockResolvedValue({ data: false, error: null });
-    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: admin.from, rpc: admin.rpc } as unknown as ReturnType<typeof createAdminClient>);
 
     await sendQuickStopStatusSms({
       accountId: 'acct-20',
@@ -682,7 +682,7 @@ describe('sms-engine-coverage — consent record operations', () => {
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({ data: { status: 'opted_in' }, error: null }),
     };
-    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await isOwnerPhoneVerified('acct-21', '5551234567');
     expect(result).toBe(true);
@@ -694,7 +694,7 @@ describe('sms-engine-coverage — consent record operations', () => {
       eq: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
-    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await isOwnerPhoneVerified('acct-21', '5551234567');
     expect(result).toBe(false);
@@ -713,7 +713,7 @@ describe('sms-engine-coverage — consent record operations', () => {
       select: vi.fn().mockResolvedValue({ data: [{ id: 'row-1' }], error: null }),
       from: vi.fn().mockReturnThis(),
     };
-    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await recordOwnerSmsConsent('acct-22', '5551234567', 'v2.1');
     expect(result).toBe('recorded');
@@ -744,7 +744,7 @@ describe('sms-engine-coverage — consent record operations', () => {
         maybeSingle: vi.fn().mockResolvedValue({ data: { status: 'opted_out' }, error: null }),
       };
     });
-    mockCreateAdmin.mockReturnValue({ from: mockFrom } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: mockFrom } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await recordOwnerSmsConsent('acct-22', '5551234567', 'v2.1');
     expect(result).toBe('suppressed');
@@ -763,7 +763,7 @@ describe('sms-engine-coverage — consent record operations', () => {
     const mockChain = {
       insert: vi.fn().mockResolvedValue({ error: { message: 'DB error', code: '99999' } }),
     };
-    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: vi.fn(() => mockChain) } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await recordCrewSmsConsent({
       accountId: 'acct-23',
@@ -795,7 +795,7 @@ describe('sms-engine-coverage — consent record operations', () => {
         upsert: vi.fn().mockResolvedValue({ error: null }),
       };
     });
-    mockCreateAdmin.mockReturnValue({ from: mockFrom } as ReturnType<typeof createAdminClient>);
+    mockCreateAdmin.mockReturnValue({ from: mockFrom } as unknown as ReturnType<typeof createAdminClient>);
 
     const result = await recordCrewSmsConsent({
       accountId: 'acct-23',

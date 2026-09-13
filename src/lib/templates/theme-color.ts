@@ -8,8 +8,8 @@
 //    contrast against the page background(s) (bg and surface) when used as
 //    text/links/icons, preserving the owner's chosen hue as closely as possible.
 
-const DARK_TEXT = '#000000';
-const LIGHT_TEXT = '#ffffff';
+const DARK_TEXT = '#111';
+const LIGHT_TEXT = '#fff';
 
 // Parse #rgb / #rrggbb (with or without the leading #) to [r,g,b] 0-255.
 export function parseHex(input: string): [number, number, number] | null {

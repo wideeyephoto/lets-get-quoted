@@ -190,7 +190,7 @@ describe('Admin Operations Core Business Logic', () => {
       fakeAdmin.from.mockImplementation(() => createFluentBuilder([]));
 
       const data = await buildCommandCenterData(fakeAdmin, {
-        role: 'platform_admin',
+        role: 'super_admin',
         staffEmail: 'staff@example.com',
         range: '30d',
       });

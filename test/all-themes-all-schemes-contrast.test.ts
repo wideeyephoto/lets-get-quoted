@@ -4,7 +4,10 @@ import path from 'path';
 import { COLOR_SCHEMES } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 
-const THEMES_CSS = fs.readFileSync(path.join(process.cwd(), 'src/lib/templates/themes.module.css'), 'utf8');
+const TEMPLATE_CSS_FILES = ['themes', 'coat', 'fixit', 'forge', 'guild', 'handy', 'reno', 'shine', 'vista'];
+const THEMES_CSS = TEMPLATE_CSS_FILES
+  .map((f) => fs.readFileSync(path.join(process.cwd(), `src/lib/templates/${f}.module.css`), 'utf8'))
+  .join('\n');
 
 describe('All Themes & All Color Systems Contrast and Token Integrity', () => {
   it('defines all 8 templates and 12 active/legacy schemes', () => {

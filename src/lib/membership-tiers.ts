@@ -334,7 +334,7 @@ export function getMemberBenefitsSummary(
     freeFiltersPerYear: benefits.freeFilterReplacements || 0,
     membershipStatus: active ? 'active' : 'paused',
     statusLabel: active ? 'Active Club Member' : 'Membership Paused',
-    annualSavingsEstimate: 0,
+    annualSavingsEstimate: ((benefits.discountPercentage || 0) * 18) + (included * 149) + ((benefits.freeFilterReplacements || 0) * 25),
   };
 }
 

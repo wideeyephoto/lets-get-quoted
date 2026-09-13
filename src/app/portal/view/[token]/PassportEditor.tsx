@@ -159,7 +159,7 @@ export function PassportEditor({ passports, token, businessName, brandPhone }: P
               <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>Add New Equipment</div>
               {errorMsg && <div style={{ color: 'red', fontSize: '0.8rem' }}>{errorMsg}</div>}
               <input name="name" required placeholder="Equipment Name *" className="form-input" style={{ padding: '0.3rem', fontSize: '0.85rem' }} />
-              <select name="category" required className="form-input" style={{ padding: '0.3rem', fontSize: '0.85rem' }}>
+              <select aria-label="Category" name="category" required className="form-input" style={{ padding: '0.3rem', fontSize: '0.85rem' }}>
                 <option value="hvac">HVAC</option>
                 <option value="plumbing">Plumbing</option>
                 <option value="electrical">Electrical</option>

@@ -230,7 +230,7 @@ describe('site-content — slugifyBlogTitle', () => {
 
 describe('site-content — videoStyleCapacity', () => {
   it('returns a positive integer for any known style', () => {
-    const capacity = videoStyleCapacity('grid');
+    const capacity = videoStyleCapacity('hero');
     expect(typeof capacity).toBe('number');
     expect(capacity).toBeGreaterThan(0);
   });
