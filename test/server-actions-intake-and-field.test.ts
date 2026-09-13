@@ -191,12 +191,14 @@ describe('Server Actions: Intake, Field & Account Operations', () => {
     });
 
     it('reports no-show within grace window', async () => {
+      const now = new Date();
+      const today = now.toISOString().slice(0, 10);
       mocks.getQuickStopRequestById.mockResolvedValue({
         account_id: 'acc-1',
         status: 'confirmed',
         arrived_at: null,
-        arrival_date: '2026-09-12',
-        arrival_end: '18:00',
+        arrival_date: today,
+        arrival_end: '23:59',
       });
 
       await expect(reportNoShowQuickStopAction('qs-1')).rejects.toThrow(
