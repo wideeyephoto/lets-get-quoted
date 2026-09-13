@@ -336,6 +336,336 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
       },
     ],
   },
+  {
+    id: 'post-ai-voice-receptionist',
+    slug: 'ai-phone-receptionist-stop-losing-jobs-to-voicemail',
+    title: 'The 24/7 AI Receptionist: How Independent Contractors Stop Losing $15,000/Month to Voicemail',
+    subtitle: 'Over 75% of homeowners hang up rather than leave a message. An AI phone agent answers on ring one.',
+    excerpt:
+      'When you are on a ladder or running a crew, you can’t answer every inbound call. But letting high-margin emergency calls roll to voicemail costs thousands. Here is how 24/7 AI voice reception captures and qualifies calls live.',
+    category: 'Speed-to-Lead',
+    author: DEFAULT_AUTHOR,
+    readMinutes: 7,
+    datePublished: '2026-09-13',
+    status: 'published',
+    featured: false,
+    tags: ['ai voice', 'receptionist', 'speed to lead', 'customer service', 'emergency dispatch'],
+    targetKeyword: 'ai phone receptionist for contractors',
+    blocks: [
+      {
+        type: 'p',
+        text: 'When a pipe bursts at 8:30 PM or an AC compressor dies in the middle of a July heatwave, the homeowner does not search for a contractor and calmly leave a voicemail. They search Google, tap the first number, and if nobody answers, they immediately hang up and call the next competitor.',
+      },
+      {
+        type: 'h2',
+        text: 'The $15,000 voicemail black hole',
+        id: 'voicemail-black-hole',
+      },
+      {
+        type: 'p',
+        text: 'Industry data across thousands of trade service calls confirms that over 75% of residential callers refuse to leave a voicemail. If your average emergency or replacement ticket is $3,500, missing just 4–5 qualified callers a month is a $15,000 revenue leak.',
+      },
+      {
+        type: 'callout',
+        kind: 'warning',
+        title: 'The Real Cost of Answering Services',
+        text: 'Traditional live answering call centers charge $300 to $600/month, employ operators unfamiliar with trade terminology, and only take basic notes that take hours to email back to you.',
+      },
+      {
+        type: 'h2',
+        text: 'How 24/7 AI Voice Reception captures and qualifies calls live',
+        id: 'how-ai-voice-works',
+      },
+      {
+        type: 'p',
+        text: 'An AI phone agent gives your contracting business a dedicated local phone number that answers on the first ring, 24 hours a day, 365 days a year. It speaks naturally, understands contractor terminology, and asks trade-specific scoping questions:',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Immediate emergency triage: Escalates active water leaks or electrical hazards directly to your personal mobile phone.',
+          'Project scoping & address verification: Collects property address, square footage, urgency, and issue description.',
+          'Pricing guardrails: Delivers approximate ballpark ranges based on your saved pricing catalog without locking you into uninspected bids.',
+          'Instant SMS follow-up: Sends callers a branded text message with an interactive online booking or photo upload link before they call someone else.',
+        ],
+      },
+      {
+        type: 'p',
+        text: 'With Let’s Get Quoted, you can provision a verified 10DLC local phone number in 3 clicks, configure your triage rules, and let your AI voice receptionist handle calls while you focus on the job site.',
+      },
+    ],
+    featureLinks: [
+      {
+        href: '/features/ai-voice',
+        label: '24/7 AI Phone Receptionist',
+        blurb: 'Capture every inbound call, qualify homeowner leads, and triage emergencies automatically.',
+      },
+      {
+        href: '/pricing',
+        label: 'Included in Flex & Scale Plans',
+        blurb: 'Activate AI phone answering without expensive monthly call center retainers.',
+      },
+    ],
+  },
+  {
+    id: 'post-route-quick-stops',
+    slug: 'route-quick-stops-extra-revenue-no-drive-time',
+    title: 'Route Quick-Stops: How to Squeeze $850/Day in Neighbor Fills Without Adding Drive Time',
+    subtitle: 'Turn dead windshield time into booked revenue by clustering 20-minute service calls along your active routes.',
+    excerpt:
+      'Driving 45 minutes across town for small repairs kills contractor productivity. Learn how route-aware Quick-Stops automatically cluster high-margin minor jobs within 2 miles of active sites.',
+    category: 'Operations & Crew',
+    author: DEFAULT_AUTHOR,
+    readMinutes: 6,
+    datePublished: '2026-09-13',
+    status: 'published',
+    featured: false,
+    tags: ['quick stops', 'route density', 'scheduling', 'field operations', 'travel time'],
+    targetKeyword: 'contractor route density quick stops',
+    blocks: [
+      {
+        type: 'p',
+        text: 'Windshield time is the single greatest unbillable waste in the trades. If a two-man crew spends 2.5 hours every day driving between opposite ends of town, you are burning over $25,000 a year in unbillable wages, fuel, and vehicle wear per truck.',
+      },
+      {
+        type: 'h2',
+        text: 'What is a Quick-Stop?',
+        id: 'what-is-a-quick-stop',
+      },
+      {
+        type: 'p',
+        text: 'A Quick-Stop is a minor service, diagnostic, or tune-up task that takes 15 to 30 minutes to complete (e.g. an electrical outlet swap, seasonal AC filter check, or pipe diagnostic). Instead of sending a truck across town for a $150 ticket, you fit that job between your major installations based on geographic proximity.',
+      },
+      {
+        type: 'callout',
+        kind: 'tip',
+        title: 'The 2-Mile Proximity Rule',
+        text: 'Restricting quick service stops to within 2 miles of an active major job turns zero-revenue driving time into $250–$400 in incremental profit per stop.',
+      },
+      {
+        type: 'h2',
+        text: 'Automating neighborhood fills with route intelligence',
+        id: 'automating-neighborhood-fills',
+      },
+      {
+        type: 'p',
+        text: 'Traditional dispatching forces you to manually scan maps and cross-reference dates. Let’s Get Quoted’s Quick-Stops engine automates the entire process:',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Automatic proximity alerts: Flags incoming homeowner inquiries that are along active crew routes.',
+          'Neighborhood halo notifications: Automatically texts nearby past clients when a truck is already scheduled on their street.',
+          'Arrival window buffers: Automatically calculates 2-hour arrival windows with driving buffers so crews never run late.',
+        ],
+      },
+      {
+        type: 'p',
+        text: 'Contractors using Let’s Get Quoted’s Quick-Stops engine routinely add 1 to 2 extra service visits per day per truck, adding an average of $850 in daily gross profit without hiring more technicians.',
+      },
+    ],
+    featureLinks: [
+      {
+        href: '/features/quick-stops',
+        label: 'Quick-Stops Neighbor Fills',
+        blurb: 'Automatically cluster short service leads with active crew routes to maximize daily revenue.',
+      },
+      {
+        href: '/features/scheduling',
+        label: 'Visual Schedule Workbench',
+        blurb: 'Drag and drop jobs onto calendar slots with auto-adjusted travel buffers.',
+      },
+    ],
+  },
+  {
+    id: 'post-instant-estimate-calculators',
+    slug: 'instant-estimates-convert-after-hours-homeowners',
+    title: 'Instant Estimates: Why Interactive Ballpark Pricing Converts 3x More Website Visitors',
+    subtitle: 'Giving an estimated range doesn’t lock you into a bad quote — it builds trust and filters out tire-kickers.',
+    excerpt:
+      'Contractors fear quoting without seeing the job in person. But giving transparent ballpark pricing on your website stops homeowners from bouncing to competitors. Here is the exact calculator formula.',
+    category: 'Lead Acquisition',
+    author: DEFAULT_AUTHOR,
+    readMinutes: 5,
+    datePublished: '2026-09-12',
+    status: 'published',
+    featured: false,
+    tags: ['instant estimates', 'website builder', 'lead conversion', 'pricing calculator'],
+    targetKeyword: 'instant estimate calculator contractor website',
+    blocks: [
+      {
+        type: 'p',
+        text: 'Most contractor websites feature a generic “Contact Us for a Quote” form with name, email, and a blank text box. When a homeowner fills it out, they have no idea if your company charges $1,000 or $10,000. So they open three more browser tabs and fill out your competitors’ forms too.',
+      },
+      {
+        type: 'h2',
+        text: 'Why ballpark ranges protect your time and build trust',
+        id: 'why-ballpark-ranges-work',
+      },
+      {
+        type: 'p',
+        text: 'Giving an interactive ballpark range (e.g. $3,800 to $4,900 based on square footage and material grade) does not obligate you to a final number. It clearly states: “Final investment confirmed after on-site inspection.” But that single estimated range changes the dynamic entirely:',
+      },
+      {
+        type: 'ul',
+        items: [
+          'It filters out low-budget tire-kickers who only have $500 to spend, saving you hours of unbillable site visits.',
+          'It gives qualified buyers the confidence to submit their real phone number and project address.',
+          'It satisfies the immediate curiosity of evening shoppers browsing after 8:00 PM.',
+        ],
+      },
+      {
+        type: 'quote',
+        quote:
+          'Homeowners don’t expect an exact penny on the web. They want to know what ballpark they are playing in before they invite a stranger to their house.',
+        author: 'Let’s Get Quoted Contractor Conversion Study',
+      },
+      {
+        type: 'p',
+        text: 'Every contractor website built on Let’s Get Quoted includes customized interactive Instant Estimate calculators for over 20 trades, capturing qualified inquiries directly into your CRM board.',
+      },
+    ],
+    featureLinks: [
+      {
+        href: '/features/website-builder',
+        label: 'Free Contractor Website Builder',
+        blurb: 'Launch an SEO-optimized contractor website with interactive instant estimate forms built in.',
+      },
+      {
+        href: '/tools/estimate-generator',
+        label: 'Free Estimate Generator Tool',
+        blurb: 'Test our interactive contractor estimate generator and see how homeowners experience it.',
+      },
+    ],
+  },
+  {
+    id: 'post-good-better-best-quoting',
+    slug: 'good-better-best-tiered-quoting-clean-energy-rebates',
+    title: 'Good, Better, Best Quoting: How 3-Tier Proposals and Clean Energy Rebates Lift Average Tickets by 35%',
+    subtitle: 'Sending a single price forces a yes-or-no decision. Offering 3 tiers plus IRA 25C tax credits turns bids into upgrades.',
+    excerpt:
+      'Single-price quotes leave thousands on the table. Discover how presenting Good/Better/Best options paired with instant clean energy rebate deductions drives 60%+ of homeowners to choose the higher tier.',
+    category: 'Cash Flow & Margin',
+    author: DEFAULT_AUTHOR,
+    readMinutes: 7,
+    datePublished: '2026-09-11',
+    status: 'published',
+    featured: false,
+    tags: ['tiered quotes', 'good better best', 'clean energy rebates', 'sales conversion', 'ticket size'],
+    targetKeyword: 'good better best contractor quotes',
+    blocks: [
+      {
+        type: 'p',
+        text: 'When you email a homeowner a single quote for $8,500, their brain has only one decision to make: “Is this contractor worth $8,500, or should I get two more bids?” When you present three tiered packages — Good, Better, and Best — the question transforms into: “Which level of quality and warranty fits our family best?”',
+      },
+      {
+        type: 'h2',
+        text: 'The 20-60-20 rule of customer psychology',
+        id: 'the-psychology-rule',
+      },
+      {
+        type: 'p',
+        text: 'Across residential contracting, customer budgets naturally distribute across three distinct segments:',
+      },
+      {
+        type: 'ul',
+        items: [
+          '20% Budget-Constrained: Looking for basic code compliance at the lowest upfront cost.',
+          '60% Value-Focused: Seeking modern durability, better warranties, and enhanced aesthetics. This tier drives your highest volume.',
+          '20% Premium Buyers: Want top-tier architectural finishes, lifetime transferable guarantees, and priority scheduling.',
+        ],
+      },
+      {
+        type: 'h2',
+        text: 'The clean energy rebate multiplier (IRA 25C)',
+        id: 'clean-energy-rebate-multiplier',
+      },
+      {
+        type: 'p',
+        text: 'Under the Inflation Reduction Act, homeowners can claim federal tax credits up to 30% ($2,000 for qualifying heat pumps, and $1,200 for electrical panel upgrades, windows, and insulation). Presenting the gross investment side-by-side with the net post-rebate cost makes premium equipment feel affordable.',
+      },
+      {
+        type: 'p',
+        text: 'Let’s Get Quoted’s quote builder lets contractors generate interactive Good/Better/Best quotes in seconds, complete with automated clean energy rebate deductions and mobile e-signatures.',
+      },
+    ],
+    featureLinks: [
+      {
+        href: '/features/quotes',
+        label: 'Interactive Tiered Quotes',
+        blurb: 'Build Good/Better/Best quotes with instant clean energy rebate deductions and mobile e-signatures.',
+      },
+      {
+        href: '/features/client-portal',
+        label: 'Interactive Client Approvals',
+        blurb: 'Let homeowners compare tiers side-by-side and sign on their phone.',
+      },
+    ],
+  },
+  {
+    id: 'post-deposit-gated-scheduling',
+    slug: 'deposit-gated-scheduling-ends-no-shows-late-invoices',
+    title: 'Deposit-Gated Scheduling: The Simple Policy That Ends No-Shows and Deadbeat Invoices Forever',
+    subtitle: 'Holding calendar dates on verbal promises leaves crews sitting idle on Monday morning.',
+    excerpt:
+      'Every time you put a job on the calendar without collecting a deposit, you take 100% of the financial risk. Learn how deposit-gated scheduling and pre-authorized card-on-file billing guarantee fast payment.',
+    category: 'Cash Flow & Margin',
+    author: DEFAULT_AUTHOR,
+    readMinutes: 6,
+    datePublished: '2026-09-10',
+    status: 'published',
+    featured: false,
+    tags: ['deposit scheduling', 'card on file', 'stripe payments', 'cash flow', 'no shows'],
+    targetKeyword: 'contractor deposit before scheduling',
+    blocks: [
+      {
+        type: 'p',
+        text: '“Put us on the calendar for next Tuesday!” It feels great to hear a homeowner say yes on the phone. But if Monday rolls around and they text you saying they had an unexpected emergency or decided to wait until spring, your crew sits in the warehouse with zero billable work.',
+      },
+      {
+        type: 'h2',
+        text: 'Why calendar gating works without scaring customers',
+        id: 'why-calendar-gating-works',
+      },
+      {
+        type: 'p',
+        text: 'Requiring an upfront deposit is standard professional business practice. When framed properly — “Our team holds your installation window for 48 hours while your deposit link is active, after which it opens to our next waitlist customer” — customers view you as organized and in high demand.',
+      },
+      {
+        type: 'h2',
+        text: 'Card-on-file billing: getting paid the minute the crew packs up',
+        id: 'card-on-file-billing',
+      },
+      {
+        type: 'p',
+        text: 'When a customer pays their deposit through Stripe on Let’s Get Quoted, their payment method is securely tokenized. Your agreement specifies that once the crew wraps up and the customer signs the digital completion walkthrough, the final balance is charged directly to the card on file.',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Zero trips to the bank to deposit paper checks.',
+          'Zero 30-day accounts receivable waiting periods.',
+          'Immediate funds payout directly to your business bank account.',
+        ],
+      },
+      {
+        type: 'p',
+        text: 'Let’s Get Quoted unites deposit-gated scheduling with Stripe payment intents, eliminating receivables and protecting contractor cash flow on every job.',
+      },
+    ],
+    featureLinks: [
+      {
+        href: '/features/scheduling',
+        label: 'Deposit-Gated Scheduling',
+        blurb: 'Automatically lock calendar bookings to cleared Stripe deposit payments.',
+      },
+      {
+        href: '/features/payments',
+        label: 'Stripe Card-on-File Settlements',
+        blurb: 'Settle remaining balances automatically upon project completion sign-off.',
+      },
+    ],
+  },
 ];
 
 // In-memory store for runtime post modifications in environments without DB tables
