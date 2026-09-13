@@ -1011,6 +1011,87 @@ export async function publishDuePlatformBlogPosts(
   };
 }
 
+export interface BatchQueueResult {
+  count: number;
+  queue: Array<{
+    id: string;
+    slug: string;
+    title: string;
+    datePublished: string;
+  }>;
+}
+
+/**
+ * Calculates the next available scheduling slot.
+ * Finds the latest datePublished among existing scheduled/published posts,
+ * or starts from today, and adds intervalDays (default: 3).
+ */
+export function getNextScheduleDate(intervalDays = 3, fromDate?: string): string {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  let baseDate = fromDate || todayKey;
+
+  if (!fromDate) {
+    const allDates = Array.from(memoryPostStore.values())
+      .map((p) => p.datePublished)
+      .filter(Boolean)
+      .sort();
+
+    const latestExisting = allDates[allDates.length - 1];
+    if (latestExisting && latestExisting > baseDate) {
+      baseDate = latestExisting;
+    }
+  }
+
+  const d = new Date(`${baseDate}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + intervalDays);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Sequentially queues an array of platform blog posts to release every N days (default: 3 days).
+ * Sets each post's status to 'scheduled' with sequential publication dates.
+ */
+export async function batchQueuePlatformBlogPosts(
+  postIds: string[],
+  options: { intervalDays?: number; startDate?: string } = {},
+): Promise<BatchQueueResult> {
+  const { intervalDays = 3, startDate } = options;
+  const queue: BatchQueueResult['queue'] = [];
+
+  let nextDate = startDate || getNextScheduleDate(intervalDays);
+
+  for (const id of postIds) {
+    const post = await getPlatformBlogPostById(id);
+    if (!post) continue;
+
+    const updatedPost: PlatformBlogPost = {
+      ...post,
+      status: 'scheduled',
+      datePublished: nextDate,
+      dateModified: new Date().toISOString().slice(0, 10),
+    };
+
+    await savePlatformBlogPost(updatedPost);
+
+    queue.push({
+      id: updatedPost.id,
+      slug: updatedPost.slug,
+      title: updatedPost.title,
+      datePublished: updatedPost.datePublished,
+    });
+
+    // Advance by intervalDays for the next post
+    const d = new Date(`${nextDate}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + intervalDays);
+    nextDate = d.toISOString().slice(0, 10);
+  }
+
+  return {
+    count: queue.length,
+    queue,
+  };
+}
+
 /**
  * Fetch blog posts, reading from Supabase table `platform_blog_posts` if present,
  * otherwise falling back cleanly to in-memory/seed catalog.

@@ -3,7 +3,11 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { PlatformBlogPost } from '@/lib/platform-blog';
-import { toggleAdminBlogPostStatusAction, deleteAdminBlogPostAction } from './actions';
+import {
+  toggleAdminBlogPostStatusAction,
+  deleteAdminBlogPostAction,
+  batchQueueBlogPostsAction,
+} from './actions';
 import styles from '../admin.module.css';
 
 interface AdminBlogClientProps {
@@ -52,6 +56,42 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
       try {
         await deleteAdminBlogPostAction(id);
         setPosts((prev) => prev.filter((p) => p.id !== id));
+      } catch (err) {
+        alert(err instanceof Error ? err.message : String(err));
+      }
+    });
+  };
+
+  const handleBatchQueue = () => {
+    const targetPosts = posts.filter((p) => p.status === 'draft' || p.status === 'scheduled');
+    if (targetPosts.length === 0) {
+      alert('All posts are currently published. To use the 3-day queue, create drafts or toggle articles to draft/scheduled.');
+      return;
+    }
+
+    const confirmMsg = `Queue and space out ${targetPosts.length} article(s) to release sequentially every 3 days?`;
+    if (!confirm(confirmMsg)) return;
+
+    startTransition(async () => {
+      try {
+        const result = await batchQueueBlogPostsAction(
+          targetPosts.map((p) => p.id),
+          3,
+        );
+        setPosts((prev) =>
+          prev.map((p) => {
+            const queued = result.queue.find((q) => q.id === p.id);
+            if (queued) {
+              return {
+                ...p,
+                status: 'scheduled',
+                datePublished: queued.datePublished,
+              };
+            }
+            return p;
+          }),
+        );
+        alert(`Successfully queued ${result.count} article(s) every 3 days!`);
       } catch (err) {
         alert(err instanceof Error ? err.message : String(err));
       }
@@ -147,6 +187,33 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
               minWidth: '220px',
             }}
           />
+          <button
+            type="button"
+            onClick={handleBatchQueue}
+            disabled={isPending}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 14px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              fontSize: '13px',
+              background: 'rgba(167, 139, 250, 0.15)',
+              border: '1px solid rgba(167, 139, 250, 0.35)',
+              color: '#c4b5fd',
+              cursor: isPending ? 'wait' : 'pointer',
+            }}
+            title="Auto-schedule all drafts and scheduled posts sequentially every 3 days"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Queue Schedule (Every 3 Days)
+          </button>
           <Link
             href="/admin/blog/new"
             className={styles.btnPrimary}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { BLOG_CATEGORIES, type PlatformBlogPost, DEFAULT_AUTHOR } from '@/lib/platform-blog';
+import { getNextScheduleDateAction } from './actions';
 import styles from '../admin.module.css';
 
 interface AdminBlogEditorProps {
@@ -16,6 +17,9 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
   const [slug, setSlug] = useState(initialPost?.slug || '');
   const [isAutoSlug, setIsAutoSlug] = useState(!isEditing);
   const [status, setStatus] = useState<string>(initialPost?.status || 'draft');
+  const [datePublished, setDatePublished] = useState<string>(
+    initialPost?.datePublished || new Date().toISOString().slice(0, 10),
+  );
 
   const handleTitleChange = (val: string) => {
     setTitle(val);
@@ -237,13 +241,42 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
-                {status === 'scheduled' ? 'Scheduled Release Date *' : 'Publish Date'}
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '12px', color: '#c0c3ca' }}>
+                  {status === 'scheduled' ? 'Scheduled Release Date *' : 'Publish Date'}
+                </label>
+                {status === 'scheduled' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const nextSlot = await getNextScheduleDateAction(3);
+                        setDatePublished(nextSlot);
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : String(err));
+                      }
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      color: '#c4b5fd',
+                      background: 'rgba(167, 139, 250, 0.15)',
+                      border: '1px solid rgba(167, 139, 250, 0.35)',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
+                    title="Automatically pick the next available release slot 3 days after the latest scheduled post"
+                  >
+                    +3 Days (Next Slot)
+                  </button>
+                )}
+              </div>
               <input
                 type="date"
                 name="date_published"
-                defaultValue={initialPost?.datePublished || new Date().toISOString().slice(0, 10)}
+                value={datePublished}
+                onChange={(e) => setDatePublished(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '7px 10px',

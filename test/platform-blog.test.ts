@@ -7,6 +7,8 @@ import {
   savePlatformBlogPost,
   deletePlatformBlogPost,
   publishDuePlatformBlogPosts,
+  getNextScheduleDate,
+  batchQueuePlatformBlogPosts,
   SEED_BLOG_POSTS,
   BLOG_CATEGORIES,
   DEFAULT_AUTHOR,
@@ -151,4 +153,64 @@ describe('Platform Blog System', () => {
       await deletePlatformBlogPost(duePost.id);
     }
   });
+
+  it('calculates the next 3-day schedule slot and batch queues posts sequentially every 3 days', async () => {
+    // 1) Test next schedule slot calculation
+    const slot = getNextScheduleDate(3, '2026-09-13');
+    expect(slot).toBe('2026-09-16');
+
+    // 2) Batch queue test
+    const p1 = {
+      id: 'post-test-queue-1',
+      slug: 'test-queue-post-1',
+      title: 'Queue Post 1',
+      excerpt: 'First queued post.',
+      category: 'Software Economics',
+      author: DEFAULT_AUTHOR,
+      readMinutes: 3,
+      datePublished: '2026-09-13',
+      status: 'draft' as const,
+      tags: ['queue'],
+      blocks: [{ type: 'p' as const, text: 'Post 1' }],
+    };
+    const p2 = {
+      id: 'post-test-queue-2',
+      slug: 'test-queue-post-2',
+      title: 'Queue Post 2',
+      excerpt: 'Second queued post.',
+      category: 'Software Economics',
+      author: DEFAULT_AUTHOR,
+      readMinutes: 3,
+      datePublished: '2026-09-13',
+      status: 'draft' as const,
+      tags: ['queue'],
+      blocks: [{ type: 'p' as const, text: 'Post 2' }],
+    };
+
+    await savePlatformBlogPost(p1);
+    await savePlatformBlogPost(p2);
+
+    try {
+      const result = await batchQueuePlatformBlogPosts([p1.id, p2.id], {
+        intervalDays: 3,
+        startDate: '2026-09-16',
+      });
+
+      expect(result.count).toBe(2);
+      expect(result.queue[0].datePublished).toBe('2026-09-16');
+      expect(result.queue[1].datePublished).toBe('2026-09-19');
+
+      const updatedP1 = await getPlatformBlogPostBySlug(p1.slug, { preview: true });
+      const updatedP2 = await getPlatformBlogPostBySlug(p2.slug, { preview: true });
+
+      expect(updatedP1?.status).toBe('scheduled');
+      expect(updatedP1?.datePublished).toBe('2026-09-16');
+      expect(updatedP2?.status).toBe('scheduled');
+      expect(updatedP2?.datePublished).toBe('2026-09-19');
+    } finally {
+      await deletePlatformBlogPost(p1.id);
+      await deletePlatformBlogPost(p2.id);
+    }
+  });
 });
+

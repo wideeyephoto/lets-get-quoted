@@ -8,6 +8,8 @@ import {
   savePlatformBlogPost,
   deletePlatformBlogPost,
   getPlatformBlogPostById,
+  getNextScheduleDate,
+  batchQueuePlatformBlogPosts,
   type PlatformBlogPost,
   type PlatformBlogBlock,
   DEFAULT_AUTHOR,
@@ -225,6 +227,42 @@ export async function deleteAdminBlogPostAction(id: string) {
   });
 
   revalidateAllBlogPaths(post.slug);
+}
+
+export async function getNextScheduleDateAction(intervalDays = 3, fromDate?: string): Promise<string> {
+  await requireAdmin();
+  return getNextScheduleDate(intervalDays, fromDate);
+}
+
+export async function batchQueueBlogPostsAction(
+  postIds: string[],
+  intervalDays = 3,
+  startDate?: string,
+) {
+  const context = await requireAdmin();
+  const { admin } = context;
+
+  if (!postIds || postIds.length === 0) {
+    throw new Error('No post IDs provided for queue scheduling');
+  }
+
+  const result = await batchQueuePlatformBlogPosts(postIds, { intervalDays, startDate });
+
+  await logAdminAction(admin, context, {
+    action: 'blog_post.batch_queue',
+    targetType: 'platform_blog_post',
+    targetId: 'multiple',
+    reason: `Staff scheduled ${result.count} blog posts every ${intervalDays} days`,
+    meta: {
+      postCount: result.count,
+      intervalDays,
+      queue: result.queue,
+    },
+  });
+
+  revalidateAllBlogPaths();
+
+  return result;
 }
 
 function parseContentToBlocks(raw: string): PlatformBlogBlock[] {
