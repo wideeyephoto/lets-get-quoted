@@ -103,20 +103,26 @@ export async function POST(request: Request) {
     // Resend retries, so a sustained misconfiguration writes repeat rows. That
     // is the right trade: identical rows read as one problem in the panel, and
     // the alternative is silence about a webhook that is dropping every event.
+    //
+    // No excerpt: with no secret configured nothing here has been verified, so
+    // the body is whatever the caller sent. The signal is that this is
+    // happening at all, which the row already carries.
     await logWebhookFailure({
       source: 'resend',
       errorMessage: 'RESEND_WEBHOOK_SECRET is not set — every delivery is being rejected',
-      payloadExcerpt: rawBody.slice(0, 500),
     });
     return NextResponse.json({ error: 'Webhook not configured.' }, { status: 500 });
   }
 
   if (!verifyResendSignature(rawBody, request.headers, secret)) {
     console.error('Resend webhook signature verification failed');
+    // No excerpt: this body failed verification, so it is caller-controlled
+    // content, and webhook_failures renders in the admin Command Center. The
+    // JSON-parse branch below keeps its excerpt — that body has already passed
+    // the signature check, so it is genuinely Resend's and worth reading.
     await logWebhookFailure({
       source: 'resend',
       errorMessage: 'Signature verification failed',
-      payloadExcerpt: rawBody.slice(0, 500),
     });
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
   }
