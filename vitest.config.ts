@@ -67,20 +67,22 @@ export default defineConfig({
       ],
       exclude: [
         'src/lib/**/index.ts',         // barrel re-exports
+        'src/lib/**/types.ts',         // pure type declarations
+        'src/app/**/types.ts',         // pure type declarations
         'src/lib/site-content.ts',     // 146KB generated content catalog
         'src/lib/trades.ts',           // 222KB generated trade definitions
         '**/*.d.ts',                   // type declarations
         '**/*.test.*',                 // tests themselves
       ],
-      // No thresholds initially — establish a baseline first, then set floors
-      // to prevent regressions. Uncomment and tune after reviewing the
-      // corrected report:
-      // thresholds: {
-      //   lines: 50,
-      //   functions: 50,
-      //   branches: 50,
-      //   statements: 50,
-      // },
+      // Coverage floors — prevent regressions. Set conservatively at the
+      // post-phase-1-5 baseline; raise incrementally as coverage continues
+      // to grow toward the 85% target.
+      thresholds: {
+        lines: 60,
+        functions: 65,
+        branches: 55,
+        statements: 60,
+      },
     },
   },
 });

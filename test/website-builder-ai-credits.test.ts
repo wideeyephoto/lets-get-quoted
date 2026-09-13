@@ -139,7 +139,7 @@ describe('Website Builder AI Credits Display', () => {
   it('supports background AI logo generation and notifications in WebsiteBuilder.tsx', () => {
     expect(BUILDER_CODE).toContain('pendingAiLogo');
     expect(BUILDER_CODE).toContain('getAiLogosAction');
-    expect(BUILDER_CODE).toContain('AI Art Director is building your logo');
+    expect(BUILDER_CODE).toContain('AI Art Director is generating your logo');
     expect(BUILDER_CODE).toContain('AI Art Director is generating your logo in the background');
     expect(BUILDER_CODE).toContain('savedLogos={aiLogos}');
     expect(BUILDER_CODE).toContain('pendingGeneration={pendingAiLogo}');

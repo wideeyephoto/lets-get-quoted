@@ -8,6 +8,8 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { setRecurringPlanActive } from '@/lib/recurring';
 import { checkRateLimit, checkRateLimitStrict } from '@/lib/rate-limit';
 import { revalidatePath } from 'next/cache';
+import { updateEquipmentOnPassport, addEquipmentToPassport } from '@/lib/property-passport-data';
+
 
 export async function sendPortalMessageAction(
   token: string,
@@ -266,4 +268,45 @@ export async function payPortalOutstandingAction(token: string) {
 
 export async function requestPlanRescheduleAction(token: string, planId: string, details: any) {
   console.log('Reschedule plan', planId, details);
+}
+
+
+export async function updatePassportEquipmentAction(
+  token: string,
+  equipmentId: string,
+  fields: { name?: string; brand?: string; modelNumber?: string; serialNumber?: string; notes?: string },
+): Promise<{ ok: boolean; message?: string }> {
+  'use server';
+  const access = await resolvePortalAccess(createAdminClient(), token);
+  if (!access) return { ok: false, message: 'Invalid or expired link.' };
+  const admin = createAdminClient();
+  const result = await updateEquipmentOnPassport(admin, access.accountId, equipmentId, fields);
+  if (result.ok) revalidatePath(`/portal/view/${token}`);
+  return result;
+}
+
+export async function addPassportEquipmentAction(
+  token: string,
+  passportId: string,
+  fields: { name: string; brand?: string; modelNumber?: string; serialNumber?: string; category?: string; notes?: string },
+): Promise<{ ok: boolean; message?: string }> {
+  'use server';
+  const access = await resolvePortalAccess(createAdminClient(), token);
+  if (!access) return { ok: false, message: 'Invalid or expired link.' };
+  const admin = createAdminClient();
+  try {
+    await addEquipmentToPassport(admin, access.accountId, passportId, {
+      category: (fields.category as any) || 'other',
+      name: fields.name,
+      brand: fields.brand || '',
+      modelNumber: fields.modelNumber || '',
+      serialNumber: fields.serialNumber || '',
+      installedOn: new Date().toISOString().slice(0, 10),
+      notes: fields.notes || '',
+    });
+    revalidatePath(`/portal/view/${token}`);
+    return { ok: true };
+  } catch (err: any) {
+    return { ok: false, message: err?.message || 'Could not add equipment.' };
+  }
 }

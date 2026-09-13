@@ -325,6 +325,42 @@ export async function addEquipmentToPassport(
   return shapeEquipmentItem(data);
 }
 
+export async function updateEquipmentOnPassport(
+  admin: SupabaseClient,
+  accountId: string,
+  equipmentId: string,
+  input: {
+    name?: string;
+    brand?: string;
+    modelNumber?: string;
+    serialNumber?: string;
+    location?: string;
+    notes?: string;
+    specs?: Record<string, unknown>;
+  },
+): Promise<{ ok: boolean; message?: string }> {
+  const updates: Record<string, unknown> = {};
+  if (input.name !== undefined) updates.name = input.name;
+  if (input.brand !== undefined) updates.brand = input.brand;
+  if (input.modelNumber !== undefined) updates.model_number = input.modelNumber;
+  if (input.serialNumber !== undefined) updates.serial_number = input.serialNumber;
+  if (input.location !== undefined) updates.location = input.location;
+  if (input.notes !== undefined) updates.notes = input.notes;
+  if (input.specs !== undefined) updates.specs = input.specs;
+  updates.updated_at = new Date().toISOString();
+
+  if (Object.keys(updates).length <= 1) return { ok: false, message: 'Nothing to update.' };
+
+  const { error } = await admin
+    .from('equipment_passports')
+    .update(updates)
+    .eq('account_id', accountId)
+    .eq('id', equipmentId);
+
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
 export async function addPassportLedgerEntry(
   supabase: SupabaseClient,
   accountId: string,

@@ -9,6 +9,8 @@ import SpeculationRules from '@/components/speculation-rules';
 import GoogleTag from '@/components/google-tag';
 import { ThemeProvider } from '@/components/use-theme';
 import { cspNonce } from '@/lib/csp-nonce';
+import { resolveTenantHost } from '@/lib/tenant-host';
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
 import {
   parseThemeChoice,
   resolveTheme,
@@ -143,12 +145,29 @@ const THEME_INIT_SCRIPT = `
 `;
 
 async function readServerTheme() {
-  const isStandaloneSite = (await headers()).get('x-lgq-standalone-site') === '1';
+  const reqHeaders = await headers();
+  const isStandaloneSite = reqHeaders.get('x-lgq-standalone-site') === '1';
+  let siteLanguage = 'en';
+
+  if (isStandaloneSite) {
+    const host = reqHeaders.get('x-forwarded-host') || reqHeaders.get('host');
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+    const tenant = resolveTenantHost(host, rootDomain);
+    
+    if (tenant.kind === 'subdomain') {
+      const site = await getCachedPublicSiteBySubdomain(tenant.subdomain);
+      if (site?.language) siteLanguage = site.language;
+    } else if (tenant.kind === 'customDomain') {
+      const site = await getCachedPublicSiteByCustomDomain(tenant.domain);
+      if (site?.language) siteLanguage = site.language;
+    }
+  }
+
   const jar = await cookies();
   const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'dark';
   const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
   const theme = isStandaloneSite ? 'dark' : resolveTheme(choice, systemPrefersLight);
-  return { choice, isStandaloneSite, theme } as const;
+  return { choice, isStandaloneSite, theme, siteLanguage } as const;
 }
 
 export async function generateViewport(): Promise<Viewport> {
@@ -162,7 +181,7 @@ export async function generateViewport(): Promise<Viewport> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const { choice, isStandaloneSite, theme } = await readServerTheme();
+  const { choice, isStandaloneSite, theme, siteLanguage } = await readServerTheme();
   const nonce = await cspNonce();
   // Explicit choices and known system preferences are stamped during the
   // server render. On a first-ever visit there is no system mirror cookie yet,
@@ -181,7 +200,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     // person asked for. They differ exactly when the choice is 'system', and
     // the controls need the second one to show Auto as selected.
     <html
-      lang="en"
+      lang={siteLanguage}
       data-theme={theme}
       data-theme-choice={isStandaloneSite ? 'dark' : choice}
       suppressHydrationWarning

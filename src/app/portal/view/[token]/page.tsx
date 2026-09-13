@@ -18,7 +18,10 @@ import { customerTogglePlanAction } from './actions';
 import { PortalTracker } from './PortalTracker';
 import { ReferralButtons } from './ReferralButtons';
 import { DocumentLink } from './DocumentLink';
+import { DocumentVault } from './DocumentVault';
 import { InViewTracker } from './InViewTracker';
+import { PassportEditor } from './PassportEditor';
+
 
 export const dynamic = 'force-dynamic';
 // Never indexed. A live portal link in a search result is somebody's home
@@ -457,78 +460,12 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         ) : null}
 
         {/* Durable Property & Equipment Passport */}
-        {portal.propertyPassports && portal.propertyPassports.length > 0 ? (
-          <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'passport' }} />
-                <p className="eyebrow">Durable Home Passport</p>
-              <h2>Mechanical systems &amp; property records</h2>
-            </div>
-
-            {portal.propertyPassports.map((passport) => (
-              <div key={passport.id} style={{ marginTop: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', padding: '0.75rem 1rem', background: 'var(--surface-subtle, #f8fafc)', borderRadius: '8px', border: '1px solid var(--edge-t12, #e2e8f0)', marginBottom: '0.85rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Passport ID: {passport.passportCode}
-                    </span>
-                    <strong style={{ display: 'block', fontSize: '1rem', color: '#0f172a' }}>{passport.address}</strong>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Home Health:</span>
-                    <span style={{ padding: '0.2rem 0.55rem', borderRadius: '6px', background: passport.healthScore.score >= 80 ? '#ecfdf5' : '#fffbeb', color: passport.healthScore.score >= 80 ? '#065f46' : '#b45309', fontWeight: 800, fontSize: '0.85rem', border: '1px solid currentColor' }}>
-                      {passport.healthScore.grade} ({passport.healthScore.score}/100)
-                    </span>
-                  </div>
-                </div>
-
-                {passport.equipment.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
-                    {passport.equipment.map((eq) => (
-                      <div key={eq.id} style={{ padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--edge-t16, #cbd5e1)', background: 'var(--surface-color, #fff)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.4rem' }}>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                            <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>{eq.name}</strong>
-                            <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
-                              {eq.condition}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4 }}>
-                            {eq.brand ? <div>Brand: <strong>{eq.brand}</strong></div> : null}
-                            {eq.modelNumber ? <div>Model: {eq.modelNumber}</div> : null}
-                            {eq.serialNumber ? <div>Serial: {eq.serialNumber}</div> : null}
-                            {eq.specs?.filterSize ? (
-                              <div style={{ color: '#0369a1', fontWeight: 600, marginTop: '0.2rem' }}>
-                                🔍 Filter Spec: {eq.specs.filterSize}
-                              </div>
-                            ) : null}
-                            <div style={{ marginTop: '0.2rem', fontSize: '0.75rem' }}>
-                              Installed {eq.installedOn} (approx. {eq.estimatedAgeYears} yrs old)
-                            </div>
-                          </div>
-                        </div>
-
-                        {brand.phone ? (
-                          <div style={{ marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9' }}>
-                            <a
-                              href={`sms:${brand.phone.replace(/[^0-9+]/g, '')}?&body=${encodeURIComponent(`Hi ${portal.businessName}, I would like to schedule service/filter replacement for my ${eq.name} at ${passport.address}.`)}`}
-                              className="btn secondary"
-                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem', width: '100%', textAlign: 'center' }}
-                            >
-                              🔧 Request Unit Service
-                            </a>
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Passport record active. Installed equipment details will appear as work is completed.</p>
-                )}
-              </div>
-            ))}
-          </section>
-        ) : null}
+        <PassportEditor
+          passports={portal.propertyPassports}
+          token={params.token}
+          businessName={portal.businessName}
+          brandPhone={brand.phone}
+        />
 
         {/* 4. Active & Past Work History */}
         <section className="panel workspace-section-card">
@@ -559,68 +496,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         </section>
 
         {/* 5. Document & Media Vault */}
-        {portal.documents.length > 0 ? (
-          <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'vault' }} />
-                <p className="eyebrow">Document & Media Vault</p>
-              <h2>Project records, proof & certificates</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem', marginTop: '0.8rem' }}>
-              {portal.documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  style={{
-                    padding: '0.85rem 1rem',
-                    borderRadius: '10px',
-                    border: '1px solid var(--edge-t16, #cbd5e1)',
-                    background: 'var(--surface-color, #ffffff)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute-t50, #64748b)', fontWeight: 600 }}>
-                        {doc.kindLabel}
-                      </span>
-                      {doc.badge ? (
-                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#f1f5f9', color: '#334155', fontWeight: 600 }}>
-                          {doc.badge}
-                        </span>
-                      ) : null}
-                    </div>
-                    <strong style={{ fontSize: '0.88rem', display: 'block', lineHeight: 1.35 }}>
-                      {doc.title}
-                    </strong>
-                    {doc.jobScope || doc.jobRef ? (
-                      <span style={{ fontSize: '0.78rem', color: 'var(--mute-t50, #64748b)' }}>
-                        {doc.jobScope || doc.jobRef}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.78rem' }}>
-                    <span style={{ color: 'var(--mute-t50, #64748b)' }}>{formatDay(doc.createdAt)}</span>
-                    {doc.url ? (
-                      <a
-                        href={doc.url}
-                        target={doc.url.startsWith('http') ? '_blank' : undefined}
-                        rel="noreferrer"
-                        className="btn secondary"
-                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem' }}
-                      >
-                        📄 View
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <DocumentVault documents={portal.documents} jobs={portal.jobs} />
 
         {/* 6. Conversation & Direct Message Center */}
         <section id="portal-message-section" className="panel workspace-section-card">
