@@ -51,6 +51,7 @@ describe('the hero is a note from the founder', () => {
     expect(PAGE).toContain('href="#story"');
     expect(PAGE).toContain('Read the founder truths');
     expect(PAGE).toContain('id="story"');
+    expect(PAGE).toContain('<FounderFeatureRequest');
   });
 
   it('states the core assurances in the hero', () => {

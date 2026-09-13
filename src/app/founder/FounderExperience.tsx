@@ -6,6 +6,7 @@ import { MARKETING_MAIN_ID, MARKETING_PAGE_CLASS } from '@/components/marketing/
 import MarketingCta from '@/components/marketing/marketing-cta';
 import SiteFooter from '@/components/site-footer';
 import StickyCta from '@/components/sticky-cta';
+import FounderFeatureRequest from '@/components/founder-feature-request';
 import styles from './founder.module.css';
 
 /* ---- Data Constants ---- */
@@ -173,6 +174,7 @@ export default function FounderExperience() {
               <a className={styles.storyLinkBtn} href="#story">
                 Read the founder truths <span aria-hidden="true">↓</span>
               </a>
+              <FounderFeatureRequest />
             </div>
 
             <ul className={styles.assurancesList} aria-label="Founder assurances">
@@ -364,7 +366,10 @@ export default function FounderExperience() {
             </ul>
 
             <div className={styles.directionNote}>
-              <strong>Where this goes next:</strong> more of the thinking and less of the typing—intake that gets better at reading a job, and quotes that start themselves from what the homeowner already described. That is the direction I am building in. I would rather say when each piece lands than sell it in advance.
+              <p style={{ margin: '0 0 16px' }}>
+                <strong>Where this goes next:</strong> more of the thinking and less of the typing—intake that gets better at reading a job, and quotes that start themselves from what the homeowner already described. That is the direction I am building in. I would rather say when each piece lands than sell it in advance.
+              </p>
+              <FounderFeatureRequest />
             </div>
 
             <div className={styles.signatureRow}>
