@@ -85,7 +85,7 @@ export async function scanContractorsForChurnRisk(
       const mrrDollars = PLAN_MRR_WEIGHTS[acc.plan?.toLowerCase()] || 0;
       
       let riskLevel: 'critical' | 'elevated' | 'low' = 'low';
-      let riskFactors: string[] = [];
+      const riskFactors: string[] = [];
 
       if (daysSinceLastLogin > 14 || velocityDropPercent > 75) {
         riskLevel = 'critical';
