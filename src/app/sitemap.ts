@@ -5,6 +5,7 @@ import { ARTICLES } from '@/lib/resources';
 import { getAllArticles } from '@/components/help-center/help-center-data';
 import { COMPARISONS } from '@/app/compare/compare-data';
 import { MANUAL_ARTICLES } from '@/lib/help/user-manual';
+import { getPlatformBlogPostsSync } from '@/lib/platform-blog';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,7 @@ const MARKETING_REVISED = '2026-09-08';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = marketingOrigin(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com');
   const lastModified = MARKETING_REVISED;
+  const blogPosts = getPlatformBlogPostsSync({ status: 'published' });
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: origin, lastModified, changeFrequency: 'monthly', priority: 1 },
@@ -105,6 +107,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/faq`, lastModified, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${origin}/security`, lastModified, changeFrequency: 'yearly', priority: 0.5 },
     { url: `${origin}/resources`, lastModified, changeFrequency: 'weekly', priority: 0.6 },
+    { url: `${origin}/blog`, lastModified, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${origin}/changelog`, lastModified: '2026-08-26', changeFrequency: 'weekly', priority: 0.7 },
     { url: `${origin}/help`, lastModified: '2026-08-29', changeFrequency: 'weekly', priority: 0.8 },
     { url: `${origin}/help/manual`, lastModified: '2026-08-29', changeFrequency: 'weekly', priority: 0.7 },
@@ -131,6 +134,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: article.dateModified ?? article.datePublished,
       changeFrequency: 'yearly' as const,
       priority: 0.5,
+    })),
+    ...blogPosts.map((post) => ({
+      url: `${origin}/blog/${post.slug}`,
+      lastModified: post.dateModified ?? post.datePublished,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
     })),
     { url: `${origin}/contact`, lastModified, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${origin}/founder`, lastModified, changeFrequency: 'yearly', priority: 0.4 },

@@ -42,6 +42,7 @@ export const FOOTER_PRIMARY: readonly FooterLink[] = [
   ['/compare', 'Compare'],
   ['/tools', 'Free Tools'],
   ['/resources', 'Resources'],
+  ['/blog', 'Blog'],
   ['/changelog', 'Changelog'],
   ['/faq', 'FAQ'],
   ['/help', 'Help Center'],
