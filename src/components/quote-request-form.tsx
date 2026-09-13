@@ -3,15 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
-
-const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-]);
+import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { HoneypotField } from '@/components/honeypot-field';
@@ -346,9 +338,16 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
 
       <div className={styles.stepNav}>
         {step > 0 && <button type="button" className={styles.back} onClick={goToPreviousStep} disabled={isSubmitting}>Back</button>}
-        {step < LAST_STEP
-          ? <button type="button" className={styles.next} onClick={goToNextStep}>Continue</button>
-          : <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}><ResponseTimeBadge site={site} className={styles.replyBadge} /></div>}
+        {step < LAST_STEP ? (
+          <button type="button" className={styles.next} onClick={goToNextStep}>Continue</button>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <button type="submit" className={styles.next} disabled={isSubmitting}>
+              {isSubmitting ? 'Sending request...' : (getEstimateButtonLabel(siteContent) || 'Get My Free Estimate')}
+            </button>
+            <ResponseTimeBadge site={site} className={styles.replyBadge} />
+          </div>
+        )}
       </div>
 
       {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</p>}

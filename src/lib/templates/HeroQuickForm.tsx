@@ -12,6 +12,7 @@ import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatin
 import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
+import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 import { getOrCaptureAttribution } from '@/lib/attribution';
 
 const ALLOWED_TYPES = new Set([
@@ -472,6 +473,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       setStep('qa');
       return;
     }
+    if ((result as any)?.continuationToken || result?.responseId) {
+      setChatResponseId(((result as any)?.continuationToken as string) || (result?.responseId as string) || '');
+    }
     const min = Number(result?.min);
     const max = Number(result?.max);
     const basis = typeof result?.basis === 'string' ? result.basis.trim().slice(0, 60) : '';
@@ -841,6 +845,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         }
         if (fit.excluded) data.set('excluded', 'true');
         data.set('wizard', '1');
+        if (chatResponseId) data.set('continuationToken', chatResponseId);
+        if (visualObservation) data.set('visualObservation', visualObservation);
         if (verify && verifyCode.trim()) {
           data.set('verifyToken', verify.token);
           data.set('verifyExpires', String(verify.expiresAt));

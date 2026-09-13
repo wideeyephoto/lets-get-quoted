@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => ({
   isPhoneOptedOut: vi.fn(),
   sendClientJobDashboardSms: vi.fn(),
   sendCrewAssignmentSms: vi.fn(),
+  patchJob: vi.fn(),
 }));
 
 vi.mock('next/cache', () => ({
@@ -421,7 +422,7 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
         expect.anything(),
         TEST_ACCOUNT_ID,
         'job-1',
-        expect.objectContaining({ kind: 'job_rescheduled' })
+        expect.objectContaining({ kind: 'job_scheduled', title: 'Job removed from schedule' })
       );
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
     });
@@ -475,7 +476,8 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
       const cost = await createCostAction('job-1', fd);
       expect(cost.id).toBe('cost-1');
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs/job-1');
-      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/cash-flow');
+      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/expenses');
+      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
     });
 
     it('deleteCostAction removes cost record', async () => {
@@ -515,7 +517,7 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
       const job = { id: 'job-1', client_phone: '555-0000', client_email: 'test@example.com' };
       mocks.getJob.mockResolvedValue(job);
 
-      await createClientJobLinkAction('job-1');
+      await expect(createClientJobLinkAction('job-1')).rejects.toThrow('NEXT_REDIRECT');
       expect(mocks.createClientJobAccessToken).toHaveBeenCalledWith(
         expect.anything(),
         TEST_ACCOUNT_ID,
@@ -528,7 +530,7 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
         'job-1',
         expect.objectContaining({ kind: 'client_link_created' })
       );
-      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs/job-1');
+      expect(mocks.redirect).toHaveBeenCalledWith('/client/jobs/tok_abc123');
     });
 
     it('revokeClientJobLinkAction revokes active access and logs event', async () => {
@@ -552,7 +554,8 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
       expect(mocks.deleteJob).toHaveBeenCalledWith(
         expect.anything(),
         TEST_ACCOUNT_ID,
-        'job-to-delete'
+        'job-to-delete',
+        expect.anything()
       );
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/calendar');
