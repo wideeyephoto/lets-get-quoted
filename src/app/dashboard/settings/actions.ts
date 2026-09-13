@@ -58,6 +58,7 @@ import {
 } from '@/lib/choice-reminders';
 import { pickBusinessName } from '@/lib/business-name';
 import { APP_ORIGIN } from '@/lib/app-origin';
+import { sanitizeAddress } from '@/emails/brand';
 import {
   getAccountOwnerEmail,
   sendAppointmentReminderEmail,
@@ -91,11 +92,11 @@ export async function updateBusinessBasicsAction(formData: FormData) {
 
   let replyToEmail: string | null = null;
   if (rawReplyTo) {
-    // Basic email format validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawReplyTo)) {
+    const sanitized = sanitizeAddress(rawReplyTo);
+    if (!sanitized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized)) {
       throw new Error('Enter a valid email address for customer replies.');
     }
-    replyToEmail = rawReplyTo.toLowerCase().slice(0, 255);
+    replyToEmail = sanitized.toLowerCase().slice(0, 255);
   }
 
   const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, { trade, zip, smsSignoff });

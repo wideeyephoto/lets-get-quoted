@@ -741,6 +741,51 @@ describe('Dashboard Settings Server Actions (Phase A)', () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/sites');
   });
 
+  it('updateBusinessBasicsAction saves sanitized lowercased replyToEmail and clears when empty', async () => {
+    const mockDb = createMockSupabase({
+      sites: { data: [{ id: 'site-1', content: {} }], error: null },
+      accounts: { data: [{ id: accountId }], error: null },
+    });
+    mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });
+
+    // 1. Valid uppercase with whitespace
+    const form1 = new FormData();
+    form1.append('replyToEmail', '  Quotes@ApexElectrical.COM  ');
+    await updateBusinessBasicsAction(form1);
+    expect(mockDb.from).toHaveBeenCalledWith('accounts');
+
+    // 2. Empty string clears to null
+    const form2 = new FormData();
+    form2.append('replyToEmail', '   ');
+    await updateBusinessBasicsAction(form2);
+    expect(mockDb.from).toHaveBeenCalledWith('accounts');
+  });
+
+  it('updateBusinessBasicsAction throws on hostile or malformed replyToEmail', async () => {
+    const mockDb = createMockSupabase({
+      sites: { data: [{ id: 'site-1', content: {} }], error: null },
+      accounts: { data: [{ id: accountId }], error: null },
+    });
+    mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });
+
+    const hostileInputs = [
+      '<quotes@apexelectrical.com>',
+      'quotes@apexelectrical.com\r\nBcc: evil@example.com',
+      '"quotes"@apexelectrical.com',
+      'quotes@nodomain',
+      'quotes @apexelectrical.com',
+      'quotes@ apexelectrical.com',
+    ];
+
+    for (const input of hostileInputs) {
+      const form = new FormData();
+      form.append('replyToEmail', input);
+      await expect(updateBusinessBasicsAction(form)).rejects.toThrow(
+        'Enter a valid email address for customer replies.',
+      );
+    }
+  });
+
   it('setJobCostingAction validates margins and updates account', async () => {
     const mockDb = createMockSupabase();
     mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });

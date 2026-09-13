@@ -320,6 +320,33 @@ export default function EmailSendingDomainSection({
             </div>
           )}
 
+          {domainRow.status === 'verified' && (
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '16px',
+                fontSize: '13px',
+                lineHeight: 1.6,
+                color: '#334155',
+              }}
+            >
+              <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>
+                📬 Where do customer replies go?
+              </div>
+              <p style={{ margin: '0 0 10px 0', color: '#475569' }}>
+                When customers click <strong>Reply</strong> to your quotes or invoices, their messages land directly in your regular business email address via the email <code>Reply-To</code> header.
+              </p>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px' }}>
+                <span style={{ fontWeight: 500, color: '#0f172a' }}>💡 Recommended tip for your email provider:</span>
+                <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
+                  If a customer manually copies or types <code>{domainRow.from_local_part}@{domainRow.domain}</code> into a brand new message, your existing email provider (Google Workspace, Microsoft 365, etc.) handles the delivery. We recommend setting up a free <strong>{domainRow.from_local_part}</strong> email alias or forwarder in your email provider pointing to your primary inbox so you never miss a direct email.
+                </p>
+              </div>
+            </div>
+          )}
+
           {domainRow.status !== 'verified' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
