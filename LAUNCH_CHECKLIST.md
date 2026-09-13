@@ -80,7 +80,9 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
 
-## Contractor domains verification — 2026-09-09 to 2026-09-12
+## Contractor domains verification — 2026-09-09 to 2026-09-13
+
+- [x] **Production release continuity (September 13, 02:43–02:46 UTC):** READY `0f195874` changes public website routing and quote-page rendering while retaining the contractor email/domain/reconciliation paths. The actual website and existing Gmail receipt's quote button both rendered the matching BrokePipes content; J-1004 remains $0 and unsigned. Provider/database checks remain healthy. No new mail, qualifying scheduled run or canary reset occurred. See [release and received-link evidence](docs/contractor-domains-canary-2026-09-09.md#september-13-release-continuity-and-received-link-check).
 
 - [x] **First complete observation day (September 12, 16:23 UTC):** The 16:41 UTC database/provider checkpoint confirms one elapsed 24-hour day, **1/7 qualifying scheduled checks**, the same verified active binding, both in-window deliveries and no open notices, unresolved callbacks or failed domain crons. This hourly check adds no scheduled run. Earliest seven-day review remains September 18 at 12:23 PM America/New_York; remaining lifecycle, reply and cleanup gates stay open. See [current evidence](docs/contractor-domains-canary-2026-09-09.md#september-12-scheduled-check-gmail-receipt-and-fixture-closure).
 
