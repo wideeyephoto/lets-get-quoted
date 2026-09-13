@@ -858,15 +858,14 @@ export const signalwireVoiceProvider: VoiceProvider = {
             enable_turn_detection: true,
             turn_detection_timeout: 250,
             function_wait_for_talking: false,
-            // Redaction runs inline. SignalWire recommends combining cleanup
-            // and redaction in one utility pass, instead of serial text passes.
-            // Keep provider masking and the independent receipt sanitizer.
-            utility_model: 'gpt-4.1-nano',
-            auto_correct: true,
-            enable_text_normalization: 'off',
-            transparent_barge: true,
-            barge_functions: false,
-            interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
+            ...(plan.contractorMode ? {
+              utility_model: 'gpt-4.1-nano',
+              auto_correct: true,
+              enable_text_normalization: 'off',
+              transparent_barge: true,
+              barge_functions: false,
+              interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
+            } : {}),
             hard_stop_time: `${maxDurationSeconds - 15}s`,
             hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can

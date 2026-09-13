@@ -17,6 +17,7 @@ export default defineConfig({
   },
   esbuild: { jsx: 'automatic' }, test: {
     environment: 'node',
+    pool: 'forks',
     include: ['test/**/*.test.{ts,tsx}'],
     // Blocks the socket to every SMS provider host. See the file for why the
     // existing in-code gate is not enough on its own.

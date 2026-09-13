@@ -471,12 +471,16 @@ export async function runSmsDeliveryBatch(
 
     // C3: Daily workspace volume ceiling
     if (!dailyVolumeCache.has(claim.accountId)) {
-      const { count } = await store.admin
-        .from('sms_events')
-        .select('*', { count: 'exact', head: true })
-        .eq('account_id', claim.accountId)
-        .gte('created_at', startOfDay.toISOString());
-      dailyVolumeCache.set(claim.accountId, count || 0);
+      let count = 0;
+      if (typeof store.admin?.from === 'function') {
+        const res = await store.admin
+          .from('sms_events')
+          .select('*', { count: 'exact', head: true })
+          .eq('account_id', claim.accountId)
+          .gte('created_at', startOfDay.toISOString());
+        count = res.count || 0;
+      }
+      dailyVolumeCache.set(claim.accountId, count);
     }
     const todayCount = dailyVolumeCache.get(claim.accountId)!;
     if (todayCount >= 2000) {

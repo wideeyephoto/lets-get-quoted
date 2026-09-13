@@ -12,6 +12,7 @@ describe('Voice Prompt Rules', () => {
         capMinutes: 10,
         transferTo: null,
         contractorMode: true,
+        swaigUrl: 'https://example.com/swaig',
       },
       { format: 'swml' }
     );

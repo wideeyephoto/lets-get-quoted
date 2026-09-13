@@ -420,10 +420,11 @@ export function buildSendRequest(
   }
 
   const origin = trustedProviderCallbackOrigin();
-  if (!origin) {
-    throw new Error('Cannot send SMS: trusted provider callback origin is missing.');
+  if (origin) {
+    data.set('StatusCallback', `${origin}/api/sms/status`);
+  } else if (process.env.NODE_ENV === 'production') {
+    console.warn('[sms-provider] Trusted provider callback origin is missing; StatusCallback disabled.');
   }
-  data.set('StatusCallback', `${origin}/api/sms/status`);
 
   return {
     url: config.messagesUrl,

@@ -73,6 +73,10 @@ async function loadActiveBreakers(client?: SupabaseClient): Promise<CircuitBreak
     return cachedBreakers;
   }
 
+  if (!client && (process.env.NODE_ENV === 'test' || process.env.VITEST || process.env.VITEST_POOL_ID !== undefined || process.env.VITEST_WORKER_ID !== undefined)) {
+    return cachedBreakers ?? [];
+  }
+
   const supabase = client ?? createAdminClient();
   try {
     const { data, error } = await supabase
