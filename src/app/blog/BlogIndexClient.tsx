@@ -39,7 +39,7 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
       {featuredPost && selectedCategory === 'All' && !searchQuery && (
         <section className={styles.featuredSection} aria-label="Featured Article">
           <Link href={`/blog/${featuredPost.slug}`} className={styles.featuredCard}>
-            <div>
+            <div className={styles.featuredContent}>
               <div className={styles.featuredTag}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
@@ -68,6 +68,16 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
                 <span className={styles.metaItem}>By {featuredPost.author.name}</span>
               </div>
             </div>
+            {featuredPost.coverImage && (
+              <div className={styles.featuredImageWrapper}>
+                <img
+                  src={featuredPost.coverImage}
+                  alt={featuredPost.coverAlt || featuredPost.title}
+                  className={styles.featuredImage}
+                  loading="eager"
+                />
+              </div>
+            )}
           </Link>
         </section>
       )}
@@ -141,6 +151,16 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
         <div className={styles.articlesGrid}>
           {filteredPosts.map((post) => (
             <Link key={post.id} href={`/blog/${post.slug}`} className={styles.articleCard}>
+              {post.coverImage && (
+                <div className={styles.cardImageWrapper}>
+                  <img
+                    src={post.coverImage}
+                    alt={post.coverAlt || post.title}
+                    className={styles.cardImage}
+                    loading="lazy"
+                  />
+                </div>
+              )}
               <span className={styles.cardCategory}>{post.category}</span>
               <h3 className={styles.cardTitle}>{post.title}</h3>
               <p className={styles.cardExcerpt}>{post.excerpt}</p>

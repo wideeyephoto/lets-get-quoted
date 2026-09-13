@@ -217,10 +217,12 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
             </h3>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
+              <label htmlFor="blog-editor-status" style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
                 Status
               </label>
               <select
+                id="blog-editor-status"
+                aria-label="Publishing Status"
                 name="status"
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -306,10 +308,12 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
+              <label htmlFor="blog-editor-category" style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
                 Category
               </label>
               <select
+                id="blog-editor-category"
+                aria-label="Article Category"
                 name="category"
                 defaultValue={initialPost?.category || 'Software Economics'}
                 style={{
@@ -373,6 +377,48 @@ export default function AdminBlogEditor({ initialPost, action, isEditing }: Admi
                 name="tags"
                 defaultValue={initialPost?.tags?.join(', ') || ''}
                 placeholder="e.g. software, pricing, crew"
+                style={{
+                  width: '100%',
+                  padding: '7px 10px',
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '13px',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
+                Cover Image URL
+              </label>
+              <input
+                type="text"
+                name="cover_image"
+                defaultValue={initialPost?.coverImage || ''}
+                placeholder="e.g. /blog/per-seat-pricing.jpg"
+                style={{
+                  width: '100%',
+                  padding: '7px 10px',
+                  background: 'rgba(0, 0, 0, 0.4)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '13px',
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#c0c3ca', marginBottom: '4px' }}>
+                Cover Image Alt Text
+              </label>
+              <input
+                type="text"
+                name="cover_alt"
+                defaultValue={initialPost?.coverAlt || ''}
+                placeholder="Descriptive text for accessibility & SEO"
                 style={{
                   width: '100%',
                   padding: '7px 10px',

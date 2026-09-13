@@ -64,6 +64,9 @@ export async function createAdminBlogPostAction(formData: FormData) {
     .map((t) => t.trim().toLowerCase())
     .filter(Boolean);
 
+  const coverImage = String(formData.get('cover_image') ?? '').trim() || undefined;
+  const coverAlt = String(formData.get('cover_alt') ?? '').trim() || undefined;
+
   // Parse raw text into structured blocks (splitting paragraphs and headings)
   const blocks: PlatformBlogBlock[] = parseContentToBlocks(contentRaw);
 
@@ -83,6 +86,8 @@ export async function createAdminBlogPostAction(formData: FormData) {
       role: authorRole,
       avatarUrl: '/apple-icon.png',
     },
+    coverImage,
+    coverAlt,
     readMinutes,
     datePublished,
     status,
@@ -145,6 +150,13 @@ export async function updateAdminBlogPostAction(id: string, formData: FormData) 
   const datePublishedRaw = String(formData.get('date_published') ?? '').trim();
   const datePublished = datePublishedRaw || existing.datePublished;
 
+  const coverImage = formData.has('cover_image')
+    ? String(formData.get('cover_image') ?? '').trim() || undefined
+    : existing.coverImage;
+  const coverAlt = formData.has('cover_alt')
+    ? String(formData.get('cover_alt') ?? '').trim() || undefined
+    : existing.coverAlt;
+
   const updated: PlatformBlogPost = {
     ...existing,
     title,
@@ -157,6 +169,8 @@ export async function updateAdminBlogPostAction(id: string, formData: FormData) 
       name: authorName,
       role: authorRole,
     },
+    coverImage,
+    coverAlt,
     readMinutes,
     datePublished,
     status,

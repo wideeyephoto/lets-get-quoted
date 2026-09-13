@@ -49,11 +49,22 @@ export async function generateMetadata({ params }: BlogArticlePageProps): Promis
       modifiedTime: post.dateModified || post.datePublished,
       authors: [post.author.name],
       tags: post.tags,
+      images: post.coverImage
+        ? [
+            {
+              url: `${origin}${post.coverImage}`,
+              width: 1280,
+              height: 720,
+              alt: post.coverAlt || post.title,
+            },
+          ]
+        : undefined,
     },
     twitter: {
       card: 'summary_large_image',
       title: post.title,
       description: post.excerpt,
+      images: post.coverImage ? [`${origin}${post.coverImage}`] : undefined,
     },
   };
 }
@@ -84,6 +95,7 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
         '@type': 'BlogPosting',
         headline: post.title,
         description: post.excerpt,
+        image: post.coverImage ? `${origin}${post.coverImage}` : undefined,
         url: articleUrl,
         datePublished: post.datePublished,
         dateModified: post.dateModified || post.datePublished,
@@ -185,6 +197,17 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
 
                 <BlogArticleClient title={post.title} url={articleUrl} />
               </div>
+
+              {post.coverImage && (
+                <div className={styles.heroCoverWrapper}>
+                  <img
+                    src={post.coverImage}
+                    alt={post.coverAlt || post.title}
+                    className={styles.heroCoverImage}
+                    loading="eager"
+                  />
+                </div>
+              )}
             </header>
 
             {/* Table of Contents */}
@@ -303,6 +326,16 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                 <div className={styles.articlesGrid}>
                   {relatedPosts.map((rel) => (
                     <Link key={rel.id} href={`/blog/${rel.slug}`} className={styles.articleCard}>
+                      {rel.coverImage && (
+                        <div className={styles.cardImageWrapper}>
+                          <img
+                            src={rel.coverImage}
+                            alt={rel.coverAlt || rel.title}
+                            className={styles.cardImage}
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
                       <span className={styles.cardCategory}>{rel.category}</span>
                       <h4 className={styles.cardTitle}>{rel.title}</h4>
                       <p className={styles.cardExcerpt}>{rel.excerpt}</p>

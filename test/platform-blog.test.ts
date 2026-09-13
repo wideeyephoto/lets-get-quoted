@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { describe, it, expect } from 'vitest';
 import {
   getPlatformBlogPosts,
@@ -210,6 +212,23 @@ describe('Platform Blog System', () => {
     } finally {
       await deletePlatformBlogPost(p1.id);
       await deletePlatformBlogPost(p2.id);
+    }
+  });
+
+  it('ensures all seed posts have custom cover images that exist in public/', () => {
+    expect(SEED_BLOG_POSTS.length).toBe(9);
+
+    for (const post of SEED_BLOG_POSTS) {
+      expect(post.coverImage).toBeDefined();
+      expect(post.coverImage?.startsWith('/blog/')).toBe(true);
+      expect(post.coverAlt).toBeDefined();
+      expect(post.coverAlt?.length).toBeGreaterThan(15);
+
+      const filePath = path.join(process.cwd(), 'public', post.coverImage!);
+      expect(fs.existsSync(filePath)).toBe(true);
+
+      const stats = fs.statSync(filePath);
+      expect(stats.size).toBeGreaterThan(10000); // Image has substantial size
     }
   });
 });

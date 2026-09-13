@@ -268,11 +268,29 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
                     fontSize: '13px',
                   }}
                 >
-                  <td style={{ padding: '12px 10px', maxWidth: '340px' }}>
-                    <div style={{ fontWeight: 600, color: '#f7f7f4', marginBottom: '2px' }}>
-                      {post.title}
+                  <td style={{ padding: '12px 10px', maxWidth: '380px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {post.coverImage && (
+                        <img
+                          src={post.coverImage}
+                          alt=""
+                          style={{
+                            width: '48px',
+                            height: '27px',
+                            objectFit: 'cover',
+                            borderRadius: '4px',
+                            flexShrink: 0,
+                            border: '1px solid rgba(255, 255, 255, 0.15)',
+                          }}
+                        />
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: '#f7f7f4', marginBottom: '2px' }}>
+                          {post.title}
+                        </div>
+                        <code style={{ fontSize: '11px', color: '#88909b' }}>/blog/{post.slug}</code>
+                      </div>
                     </div>
-                    <code style={{ fontSize: '11px', color: '#88909b' }}>/blog/{post.slug}</code>
                   </td>
                   <td style={{ padding: '12px 10px' }}>
                     <span
