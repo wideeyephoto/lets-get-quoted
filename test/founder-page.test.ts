@@ -40,14 +40,16 @@ describe('the hero is a note from the founder', () => {
   });
 
   it('carries the headline highlighting craftsman values', () => {
-    expect(PAGE).toContain('Great craftsmanship shouldn’t lose jobs to mediocre competitors with a');
-    expect(PAGE).toContain('<em>better website and faster follow-up.</em>');
+    expect(PAGE).toContain('I built Let’s Get Quoted for the person');
+    expect(PAGE).toContain(
+      'doing the work, answering the phone, writing the quotes, and running the business.',
+    );
   });
 
   it('offers the two primary hero actions', () => {
     expect(PAGE).toContain("spec={{ label: 'Build my free site' }}");
     expect(PAGE).toContain('href="#story"');
-    expect(PAGE).toContain('Read the letter');
+    expect(PAGE).toContain('Read the founder truths');
     expect(PAGE).toContain('id="story"');
   });
 
