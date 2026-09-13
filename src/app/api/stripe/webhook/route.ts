@@ -33,6 +33,8 @@ import {
   legacyDestinationCompareAndSetStandsDown,
 } from '@/lib/billing/legacy-destination-checkout-projection';
 import {
+  inspectLegacyWebhookEvent,
+  legacyWebhookAdmissionMode,
   legacyWebhookBodyTooLarge,
   legacyWebhookContentLengthTooLarge,
   legacyWebhookSecretCollides,
@@ -611,6 +613,37 @@ export async function POST(request: Request) {
       errorMessage: err instanceof Error ? err.message : 'Signature verification failed',
     });
     return NextResponse.json({ error: 'Invalid signature.' }, { status: 400 });
+  }
+
+  // Envelope admission. The signature proves Stripe sent this; these rules decide
+  // whether THIS endpoint is entitled to act on it — right mode, right account.
+  // Dark by default: with the flag unset nothing below evaluates at all.
+  const admissionMode = legacyWebhookAdmissionMode();
+  if (admissionMode !== 'off') {
+    const verdict = inspectLegacyWebhookEvent(event);
+    if (verdict.outcome === 'reject') {
+      // One greppable prefix, because the whole point of `observe` is to read
+      // these back before anyone turns on enforcement.
+      console.error(
+        `[legacy-stripe-admission] ${admissionMode} ${verdict.kind}: ${verdict.reason}`
+        + ` (event ${event.id}, type ${event.type})`,
+      );
+
+      if (admissionMode === 'enforce') {
+        // Only enforcement records a failure row. webhook_failures feeds the
+        // Command Center alerts, and an observation is not a failure — the event
+        // below still dispatches and still settles.
+        await logWebhookFailure({
+          source: 'stripe',
+          eventType: event.type,
+          referenceId: event.id,
+          errorMessage: `admission_rejected_${verdict.kind}: ${verdict.reason}`,
+        });
+        return verdict.kind === 'config'
+          ? NextResponse.json({ error: 'Webhook unavailable.' }, { status: 503 })
+          : NextResponse.json({ error: 'Event not accepted.' }, { status: 400 });
+      }
+    }
   }
 
   const admin = createAdminClient();
