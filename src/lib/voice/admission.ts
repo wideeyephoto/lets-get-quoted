@@ -414,6 +414,14 @@ export async function planInboundCall(
       ),
       systemPrompt,
       postPrompt,
+      hints: [
+        ...(grounding?.serviceNames || []),
+        ...(grounding?.serviceAreas ? grounding.serviceAreas.split(',').map((s: string) => s.trim()) : []),
+        ...(grounding?.companyName ? [grounding.companyName] : []),
+        ...(grounding?.recognizedCaller?.clientName ? [grounding.recognizedCaller.clientName] : []),
+        ...(grounding?.recognizedCaller?.serviceAddress ? [grounding.recognizedCaller.serviceAddress] : []),
+        ...(grounding?.recognizedCaller?.activeJobRef ? [grounding.recognizedCaller.activeJobRef] : []),
+      ].filter(Boolean),
       capMinutes: decision.capMinutes,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
