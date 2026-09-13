@@ -132,6 +132,10 @@ export default function EmailSendingDomainSection({
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
             Send quotes, invoices, and job updates from your own business email address (e.g. <code>quotes@{domainRow?.domain || 'yourbusiness.com'}</code>).
           </p>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: '8px 0 0', lineHeight: 1.5 }}>
+            This sets up outgoing mail and does not create an inbox. Replies go to your Customer reply email in Business basics.
+            To receive new messages sent directly to your sending address, set up that mailbox or alias with your email provider.
+          </p>
         </div>
 
         {domainRow && (
@@ -261,7 +265,7 @@ export default function EmailSendingDomainSection({
               </div>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                 {domainRow.status === 'verified'
-                  ? 'Active · DKIM & SPF aligned to your domain'
+                  ? 'Active · Domain verified for sending'
                   : domainRow.status === 'failed'
                   ? 'Connection needs attention · Outbound mail currently uses platform default'
                   : domainRow.status === 'disabled'
