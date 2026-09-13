@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
   // Timezone & TCPA
   resolveRecipientTimeZone: vi.fn(() => 'America/New_York'),
   getJurisdictionTcpaRules: vi.fn(() => ({ quietStartHour: 20, quietEndHour: 8 })),
-  getTcpaCompliantSendTime: vi.fn(() => ({ isDelayed: false, sendAt: new Date(), reason: undefined })),
+  getTcpaCompliantSendTime: vi.fn(() => ({ isDelayed: false, sendAt: new Date(), reason: undefined as string | undefined })),
   // Quick Stops
   createJob: vi.fn(),
   resolveQuickStopCancellation: vi.fn(),
@@ -879,7 +879,7 @@ describe('dashboard weather and schedule actions', () => {
       pastForm.set('jobId', 'job-1');
       pastForm.set('fromDate', '2026-09-15');
       pastForm.set('toDate', '2026-09-14');
-      const pastRes = await sendRescheduleOfferAction({ ok: false }, pastForm);
+      const pastRes = await sendRescheduleOfferAction({ ok: false, message: null }, pastForm);
       expect(pastRes.ok).toBe(false);
       expect(pastRes.message).toContain('not into the past');
 
@@ -893,7 +893,7 @@ describe('dashboard weather and schedule actions', () => {
       badWindowForm.set('windowStart', '12:00');
       badWindowForm.set('windowEnd', '10:00');
       badWindowForm.set('arrivalTime', '11:00');
-      const badWindowRes = await sendRescheduleOfferAction({ ok: false }, badWindowForm);
+      const badWindowRes = await sendRescheduleOfferAction({ ok: false, message: null }, badWindowForm);
       expect(badWindowRes.ok).toBe(false);
       expect(badWindowRes.message).toContain('ends before it starts');
     });
@@ -931,7 +931,7 @@ describe('dashboard weather and schedule actions', () => {
       form.set('savedMiles', '4.5');
       form.set('savedMinutes', '15');
 
-      const res = await sendRescheduleOfferAction({ ok: false }, form);
+      const res = await sendRescheduleOfferAction({ ok: false, message: null }, form);
       expect(res.ok).toBe(true);
       expect(mocks.createRescheduleOffer).toHaveBeenCalled();
       expect(mocks.sendEstimateOfferSms).toHaveBeenCalled();
@@ -969,7 +969,7 @@ describe('dashboard weather and schedule actions', () => {
       form.set('windowEnd', '11:00');
       form.set('arrivalTime', '09:30');
 
-      const res = await sendRescheduleOfferAction({ ok: false }, form);
+      const res = await sendRescheduleOfferAction({ ok: false, message: null }, form);
       expect(res.ok).toBe(false);
       expect(res.message).toContain("The text didn't send");
       expect(mocks.deleteRescheduleOffer).toHaveBeenCalledWith(mockDb, accountId, 'offer-err-1');
@@ -982,7 +982,7 @@ describe('dashboard weather and schedule actions', () => {
       const form = new FormData();
       form.set('offerId', 'offer-123');
 
-      const res = await withdrawRescheduleOfferAction({ ok: false }, form);
+      const res = await withdrawRescheduleOfferAction({ ok: false, message: null }, form);
       expect(res.ok).toBe(true);
       expect(mocks.cancelRescheduleOffer).toHaveBeenCalledWith(mockDb, accountId, 'offer-123');
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/schedule/plan');

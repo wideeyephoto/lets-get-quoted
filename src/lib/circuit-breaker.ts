@@ -4,6 +4,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase-admin';
 import { logAdminAction, type AuditActor } from '@/lib/admin';
 
+import {
+  type CircuitBreakerService,
+  type CircuitBreakerScope,
+  type CircuitBreakerRow,
+  CIRCUIT_BREAKER_SERVICES,
+} from './circuit-breaker-types';
 export * from './circuit-breaker-types';
 
 export type CircuitBreakerCheckResult = {

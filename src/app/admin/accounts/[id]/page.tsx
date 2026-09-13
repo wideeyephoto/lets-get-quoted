@@ -1521,7 +1521,7 @@ export default async function AdminAccountDetailPage({
           <strong>⚡ OPERATIONAL CIRCUIT BREAKER TRIPPED FOR THIS ACCOUNT:</strong>{' '}
           {activeBreakers.map((b) => (
             <span key={b.id} style={{ marginRight: '0.75rem' }}>
-              <strong>{CIRCUIT_BREAKER_SERVICES[b.service]?.label || b.service}</strong> ({b.reason})
+              <strong>{(CIRCUIT_BREAKER_SERVICES as Record<string, { label: string } | undefined>)[b.service]?.label || b.service}</strong> ({b.reason})
             </span>
           ))}
           <div style={{ marginTop: '0.4rem' }}>

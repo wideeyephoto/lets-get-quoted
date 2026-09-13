@@ -488,10 +488,10 @@ describe('Dashboard Sites Server Actions (Phase A)', () => {
   it('createSiteVideoUploadAction and deleteSiteVideoAction handle video lifecycle', async () => {
     const mockDb = createMockSupabase();
     mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });
-    mocks.createSignedVideoUpload.mockResolvedValue({ uploadUrl: 'https://upload.url', publicUrl: 'https://cdn/video.mp4' });
+    mocks.createSignedVideoUpload.mockResolvedValue({ bucket: 'videos', path: 'video.mp4', token: 'tok_123', publicUrl: 'https://cdn/video.mp4' });
 
-    const upload = await createSiteVideoUploadAction('video.mp4');
-    expect(upload.uploadUrl).toBe('https://upload.url');
+    const upload = await createSiteVideoUploadAction('video.mp4', 'video/mp4', 1000);
+    expect(upload.publicUrl).toBe('https://cdn/video.mp4');
 
     await deleteSiteVideoAction('https://cdn/video.mp4');
     expect(mocks.deleteSiteVideo).toHaveBeenCalled();
@@ -586,9 +586,9 @@ describe('Dashboard Sites Server Actions (Phase A)', () => {
     const res = await generateLogoTaglinesAction({
       companyName: 'Apex Roofs',
       trade: 'roofing',
-      vibes: ['professional', 'reliable'],
+      serviceArea: 'Austin, TX',
     });
-    expect(res.taglines.length).toBeGreaterThanOrEqual(1);
+    expect(res.taglines?.length).toBeGreaterThanOrEqual(1);
   });
 
   it('generateAiLogoAction checks credits and generates logo options', async () => {
@@ -704,7 +704,8 @@ describe('Dashboard Sites Server Actions (Phase A)', () => {
     mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });
 
     const res = await testIntakeLocationAction({
-      address: '100 Main St, Austin, TX 78701',
+      testLocation: 'Austin, TX',
+      servedCities: ['Austin', 'Round Rock'],
     });
     expect(res).toHaveProperty('matched');
   });
