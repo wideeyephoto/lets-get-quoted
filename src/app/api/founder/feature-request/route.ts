@@ -1,11 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendFounderFeatureRequestAlert } from '@/lib/founder-alerts';
-import { clientIpFrom } from '@/lib/rate-limit';
+import { createAdminClient } from '@/lib/auth';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = clientIpFrom(req.headers);
+    const admin = createAdminClient();
+
+    const allowed = await checkRateLimit(admin, `founder_feature:${ip}`, 15, 60);
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'Too many requests. Please wait a moment.' },
+        { status: 429 },
+      );
+    }
+
     let body: Record<string, unknown> = {};
     try {
       body = await req.json();
@@ -30,7 +42,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const ip = clientIpFrom(req.headers);
     const userAgent = req.headers.get('user-agent') || 'unknown';
 
     // Dispatch notification to founder (non-blocking / resilient)

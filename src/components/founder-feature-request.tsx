@@ -56,6 +56,7 @@ export default function FounderFeatureRequest({ className = '' }: { className?: 
           onClick={() => setOpen(true)}
           className={styles.featureRequestTrigger}
           aria-expanded="false"
+          aria-controls="founder-feature-request-form"
           aria-label="Request a feature from Brett"
         >
           <span className={styles.featureRequestIcon} aria-hidden="true">💡</span>
@@ -68,6 +69,7 @@ export default function FounderFeatureRequest({ className = '' }: { className?: 
         </div>
       ) : (
         <form
+          id="founder-feature-request-form"
           onSubmit={handleSubmit}
           className={styles.featureRequestBar}
           role="region"
