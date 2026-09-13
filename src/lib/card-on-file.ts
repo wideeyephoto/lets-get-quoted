@@ -18,12 +18,18 @@ type PlanCustomerInput = {
 export async function ensurePlanCustomer(plan: PlanCustomerInput): Promise<string> {
   if (plan.stripe_customer_id) return plan.stripe_customer_id;
   const stripe = getStripeClient();
+  // Keyed on the plan so two concurrent callers converge on ONE customer. The
+  // read-then-create above is not atomic: without this, both branches create a
+  // customer, the second write wins the row, and the first is orphaned at
+  // Stripe — taking any card saved against it out of reach of every later
+  // off-session charge. Same shape as `card-customer:${quote.id}` in
+  // merchandise/card-checkout.ts.
   const customer = await stripe.customers.create({
     name: plan.client_name || undefined,
     email: plan.client_email || undefined,
     phone: plan.client_phone || undefined,
     metadata: { account_id: plan.account_id, recurring_plan_id: plan.id },
-  });
+  }, { idempotencyKey: `plan-customer:${plan.id}` });
   await createAdminClient()
     .from('recurring_plans')
     .update({ stripe_customer_id: customer.id, updated_at: new Date().toISOString() })

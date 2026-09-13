@@ -332,7 +332,14 @@ export async function createTerminalPaymentIntent(
       }
     }
 
-    const intent = await stripe.paymentIntents.create(paymentIntentParams);
+    // The payment row is inserted above, so its id is a stable natural key for
+    // exactly one intent. A crash-and-rerun against the same row returns
+    // Stripe's cached intent instead of minting a second one; a genuine retry
+    // of the whole flow inserts a new row, so it gets a new key and a new
+    // intent, which is what a second tap should do.
+    const intent = await stripe.paymentIntents.create(paymentIntentParams, {
+      idempotencyKey: `terminal:${payment.id}`,
+    });
     paymentIntentId = intent.id;
     clientSecret = intent.client_secret || clientSecret;
 

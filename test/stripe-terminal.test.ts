@@ -296,7 +296,10 @@ describe('Stripe Terminal & Tap to Pay Core Library', () => {
           capture_method: 'automatic',
           transfer_data: { destination: 'acct_connect_123' },
           application_fee_amount: expect.any(Number),
-        })
+        }),
+        // Keyed on the payment row so a crash-and-rerun against that row cannot
+        // mint a second intent for one tap.
+        { idempotencyKey: 'terminal:pay_test_999' }
       );
       expect(mockStripe.terminal.readers.processPaymentIntent).toHaveBeenCalledWith(
         'tmr_real_reader_1',

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getStripeClient, toCents } from '@/lib/stripe';
 import { provisionManagedSearchCampaign, isGoogleAdsConfigured } from '@/lib/google-ads-api';
 import { siteOrigin } from '@/lib/seo/site-pages';
@@ -122,6 +123,35 @@ export function validateAdReturnUrl(returnUrl?: string | null, accountOrigin?: s
  * 2. Auto-Refilling Advertising Wallet (strictly bound to ALLOWED_WALLET_* constants)
  * 3. Monthly subscription fallback (strictly bound to server-approved budgets)
  */
+/**
+ * Binds a caller-supplied idempotency key to the workspace that supplied it.
+ *
+ * Stripe scopes idempotency keys per PLATFORM account, so every workspace on
+ * this system shares one flat namespace. Passing the caller's string through
+ * verbatim therefore let any authenticated account occupy a key another account
+ * might use: because the two requests differ (metadata.account_id alone
+ * guarantees it) Stripe answers the second one 400 rather than handing over the
+ * first one's Session, so this was never session disclosure — but it was a
+ * durable cross-tenant denial, and one account could grief every other by
+ * claiming plausible key strings.
+ *
+ * Hashed rather than concatenated for two reasons: it bounds the key at a fixed
+ * length whatever the caller sends (Stripe caps at 255, and the caller's string
+ * is unvalidated), and the NUL separator keeps `account + key` unambiguous so no
+ * pair of distinct inputs can produce one digest. Same construction as
+ * buildBasePlanSubscriptionCheckoutIdempotencyKey on the Billing rail.
+ */
+export function buildAdBudgetCheckoutIdempotencyKey(
+  accountId: string,
+  callerKey: string,
+): string {
+  if (!accountId.trim()) throw new Error('Ad budget idempotency key requires an account.');
+  const digest = createHash('sha256')
+    .update(['ad_budget_checkout', accountId, callerKey].join('\0'))
+    .digest('hex');
+  return `lgq:ad-budget:v1:checkout.create:${digest}`;
+}
+
 export async function createAdBudgetCheckoutSession(params: {
   accountId: string;
   fundingModel?: AdFundingModel;
@@ -449,7 +479,7 @@ export async function createAdBudgetCheckoutSession(params: {
 
   const createOptions: Stripe.RequestOptions = {};
   if (idempotencyKey) {
-    createOptions.idempotencyKey = idempotencyKey;
+    createOptions.idempotencyKey = buildAdBudgetCheckoutIdempotencyKey(accountId, idempotencyKey);
   }
 
   const session = await stripe.checkout.sessions.create(sessionConfig, createOptions);

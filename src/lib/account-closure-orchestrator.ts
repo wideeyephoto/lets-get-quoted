@@ -493,7 +493,13 @@ export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAd
         const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 });
         for (const sub of subs.data) {
           if (sub.status !== 'canceled') {
-            await stripe.subscriptions.cancel(sub.id);
+            // The closure saga retries, and this loop walks up to 100
+            // subscriptions: a re-run after a mid-loop failure re-cancels
+            // everything it already got through. Keyed per subscription so the
+            // repeat is Stripe returning its cached result.
+            await stripe.subscriptions.cancel(sub.id, {}, {
+              idempotencyKey: `closure-cancel:${sub.id}`,
+            });
           }
         }
         return true;
