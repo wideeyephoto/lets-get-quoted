@@ -288,6 +288,25 @@ export async function runAssistantConversation(
     };
   }
 
+  try {
+    const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');
+    const breaker = await checkCircuitBreaker('ai_intake', toolCtx.accountId);
+    if (breaker.blocked) {
+      const companion = getCompanion(ctx.companionId, ctx.companionTrade);
+      return {
+        message: {
+          id: `msg-${Date.now()}`,
+          role: 'assistant',
+          content: `${companion.name} is temporarily offline for maintenance: ${breaker.reason}`,
+          createdAt: new Date().toISOString(),
+        },
+        actionCards: [],
+      };
+    }
+  } catch (err) {
+    console.error('Circuit breaker check failed for AI intake:', err);
+  }
+
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = buildSystemInstruction(enrichedCtx);
 

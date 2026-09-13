@@ -24,6 +24,8 @@ import { voiceWebhookSecuritySummary } from '@/lib/voice/auth';
 import { loadVoiceOperatorHealth } from '@/lib/voice/operator-health';
 import { runSyntheticUptimeProbe, type SubsystemStatus } from '@/lib/uptime-monitoring';
 import { getOnCallRoster, getRecentPagingEvents } from '@/lib/on-call-paging';
+import { listCircuitBreakers } from '@/lib/circuit-breaker';
+import { CircuitBreakerPanel } from './CircuitBreakerPanel';
 import { RunCronButton } from './RunCronButton';
 import { dispatchTestPageAction } from './actions';
 import styles from '../admin.module.css';
@@ -105,6 +107,7 @@ export default async function AdminHealthPage({
     failedSms,
     voiceOperations,
     uptimeReport,
+    circuitBreakers,
   ] = await Promise.all([
     loadCronStatus(admin, CRON_JOBS.map((j) => j.job)),
     getUnresolvedWebhookFailures(admin, { diagnostics }),
@@ -112,6 +115,7 @@ export default async function AdminHealthPage({
     getFailedSmsEvents(admin, { diagnostics }),
     loadVoiceOperatorHealth(admin),
     runSyntheticUptimeProbe(admin),
+    listCircuitBreakers(admin),
   ]);
 
   // On-Call data
@@ -172,6 +176,9 @@ export default async function AdminHealthPage({
           Every background cron job, quoting engine rail, and communication provider is reporting healthy on schedule.
         </div>
       )}
+
+      {/* Emergency Kill Switches & Circuit Breakers */}
+      <CircuitBreakerPanel initialBreakers={circuitBreakers} canManage={canManageOps} />
 
       {/* 1. Synthetic Uptime Monitoring & Subsystems Matrix */}
       <section className={styles.panel}>

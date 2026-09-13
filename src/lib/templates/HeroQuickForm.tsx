@@ -15,14 +15,6 @@ import { trackQuoteFunnelStep } from '@/lib/analytics';
 import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 import { getOrCaptureAttribution } from '@/lib/attribution';
 
-const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-]);
 import { resolveMessageMatchHero, type MessageMatchResult } from '@/lib/ad-message-match';
 import ContactPreferenceControl, { type ContactPreferenceValue } from '@/components/ContactPreferenceControl';
 import IntroVideo from './IntroVideo';

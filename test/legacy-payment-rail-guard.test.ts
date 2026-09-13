@@ -88,7 +88,6 @@ function queuedReadClient(responses: DbResponse[]) {
     select: vi.fn((columns: string) => {
       selections.push(columns);
       const query = {
-        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         is: vi.fn(() => query),
         maybeSingle: vi.fn(async () => responses.shift() ?? { data: null, error: null }),
@@ -113,7 +112,6 @@ function guardOnlyClient(chargeModel: unknown) {
   const table = {
     select: vi.fn(() => {
       const query = {
-        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         is: vi.fn(() => query),
         maybeSingle: vi.fn(async () => ({ data: row, error: null })),
@@ -139,7 +137,6 @@ function mutationClient(input: {
   const deleteFilters: Array<[string, unknown]> = [];
   const update = vi.fn(() => {
     const query = {
-      is: vi.fn(() => query),
       eq: vi.fn((column: string, value: unknown) => {
         filters.push([column, value]);
         return query;
@@ -153,7 +150,6 @@ function mutationClient(input: {
   });
   const remove = vi.fn(() => {
     const query = {
-      is: vi.fn(() => query),
       eq: vi.fn((column: string, value: unknown) => {
         deleteFilters.push([column, value]);
         return query;
@@ -167,7 +163,6 @@ function mutationClient(input: {
   const table = {
     select: vi.fn((columns: string) => {
       const query = {
-        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         is: vi.fn(() => query),
         maybeSingle: vi.fn(async () => (
@@ -254,8 +249,7 @@ function checkoutRaceAdmin(
 
   const query = (response: DbResponse) => {
     const q = {
-      is: vi.fn(() => q),
-        eq: vi.fn(() => q),
+      eq: vi.fn(() => q),
       is: vi.fn(() => q),
       not: vi.fn(() => q),
       gte: vi.fn(() => q),
@@ -317,7 +311,6 @@ function webhookAdmin(
   const update = vi.fn(() => {
     if (!allowUpdates) throw new Error('a direct/malformed webhook row must not be updated');
     const query = {
-      is: vi.fn(() => query),
       eq: vi.fn((column: string, value: unknown) => {
         filters.push([column, value]);
         return query;
@@ -332,7 +325,6 @@ function webhookAdmin(
   const table = {
     select: vi.fn(() => {
       const query = {
-        is: vi.fn(() => query),
         eq: vi.fn(() => query),
         is: vi.fn(() => query),
         maybeSingle: vi.fn(async () => ({ data: row, error: null })),

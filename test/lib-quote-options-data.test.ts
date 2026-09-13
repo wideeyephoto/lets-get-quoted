@@ -80,14 +80,16 @@ describe('Quote Options Data Lib', () => {
     queryMock.maybeSingle.mockResolvedValueOnce({ data: { id: 'j1' } }); // job
     queryMock.maybeSingle.mockResolvedValueOnce({ data: { client_quote_changes: true } }); // settings
     queryMock.maybeSingle.mockResolvedValueOnce({ data: null }); // plan
-    queryMock.then = vi.fn((resolve) => resolve({ data: [] })); // payments
+    queryMock.then = vi.fn((resolve: any) => resolve({ data: [] })); // payments
 
     (jobsModule.parseQuoteItems as any).mockReturnValue([{ id: 'add1', kind: 'addon' }]);
     (quoteOptionsModule.quoteOptionsWindow as any).mockReturnValue({ open: false });
 
     const res = await updateClientQuoteOptions('token', ['add1']);
     expect(res.ok).toBe(false);
-    expect(res.message).toMatch(/no longer open/);
+    if (!res.ok) {
+      expect(res.message).toMatch(/no longer open/);
+    }
   });
 
   it('updates options and records events', async () => {
@@ -104,7 +106,7 @@ describe('Quote Options Data Lib', () => {
       return Promise.resolve({ data: null });
     });
 
-    queryMock.then = vi.fn((resolve) => resolve({ data: [] })); // payments
+    queryMock.then = vi.fn((resolve: any) => resolve({ data: [] })); // payments
 
     const fakeItems = [{ id: 'add1', kind: 'addon' }];
     (jobsModule.parseQuoteItems as any).mockReturnValue(fakeItems);

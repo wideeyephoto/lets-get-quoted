@@ -3,7 +3,7 @@ import { loadArrivalAnalytics } from '@/lib/arrival-analytics-data';
 
 vi.mock('@/lib/arrival-analytics', () => ({
   summariseArrivals: vi.fn().mockReturnValue({ trips: 10 }),
-  summariseByCrew: vi.fn().mockReturnValue([{ crew_id: 'C1' }]),
+  summariseByCrew: vi.fn().mockReturnValue([{ crewId: 'C1' }]),
   arrivalAdvice: vi.fn().mockReturnValue('Do better'),
 }));
 
@@ -37,7 +37,7 @@ describe('Arrival Analytics Data Lib', () => {
       const res = await loadArrivalAnalytics(adminMock, 'acct_1');
       expect(res.available).toBe(true);
       expect(res.summary.trips).toBe(10);
-      expect(res.byCrew[0].crew_id).toBe('C1');
+      expect(res.byCrew[0].crewId).toBe('C1');
       expect(res.advice).toBe('Do better');
     });
   });

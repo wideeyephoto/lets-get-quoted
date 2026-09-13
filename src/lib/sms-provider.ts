@@ -619,6 +619,17 @@ export async function sendProviderMessage(
     return SIMULATED_PROVIDER_ID;
   }
 
+  try {
+    const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');
+    const breaker = await checkCircuitBreaker('sms_outbound', context.accountId);
+    if (breaker.blocked) {
+      console.info(`Outbound SMS suppressed by circuit breaker (${breaker.scope}: ${breaker.reason}).`);
+      return SIMULATED_PROVIDER_ID;
+    }
+  } catch (err) {
+    console.error('Circuit breaker check failed for SMS outbound:', err);
+  }
+
   const config = options.provider
     ? smsProviderConfigFor(options.provider)
     : smsProviderConfig();

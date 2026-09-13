@@ -64,8 +64,8 @@ describe('Crew Pay View Lib', () => {
       });
 
       const res = await loadCrewPayView(supabaseMock, 'acct', {
-        period: { startIso: '2023-01-01', endIso: '2023-01-07', label: '' },
-        settings: { periodMode: 'weekly', startDay: 'monday' },
+        period: { mode: 'weekly', offset: 0, startIso: '2023-01-01', endIso: '2023-01-07', label: '', rangeLabel: '', open: false },
+        settings: { periodMode: 'weekly', overtimeThreshold: 40, rounding: 'none', exportFormat: 'summary' },
         timeZone: 'UTC',
         crew: [],
       });
@@ -92,8 +92,16 @@ describe('Crew Pay View Lib', () => {
       (payPeriodStateMock as any).mockReturnValue('open');
 
       const res = await loadCrewPayView(supabaseMock, 'acct', {
-        period: { startIso: new Date(Date.now() - 86400000).toISOString(), endIso: new Date(Date.now() + 86400000).toISOString(), label: '' },
-        settings: { periodMode: 'weekly', startDay: 'monday' },
+        period: {
+          mode: 'weekly',
+          offset: 0,
+          startIso: new Date(Date.now() - 86400000).toISOString(),
+          endIso: new Date(Date.now() + 86400000).toISOString(),
+          label: '',
+          rangeLabel: '',
+          open: true,
+        },
+        settings: { periodMode: 'weekly', overtimeThreshold: 40, rounding: 'none', exportFormat: 'summary' },
         timeZone: 'UTC',
         crew: [],
         withComparison: true,
@@ -123,8 +131,8 @@ describe('Crew Pay View Lib', () => {
       ]);
 
       const res = await loadCrewPayView(supabaseMock, 'acct', {
-        period: { startIso: '2023-01-01', endIso: '2023-01-07', label: '' },
-        settings: { periodMode: 'weekly', startDay: 'monday' },
+        period: { mode: 'weekly', offset: 0, startIso: '2023-01-01', endIso: '2023-01-07', label: '', rangeLabel: '', open: false },
+        settings: { periodMode: 'weekly', overtimeThreshold: 40, rounding: 'none', exportFormat: 'summary' },
         timeZone: 'UTC',
         crew: [],
       });

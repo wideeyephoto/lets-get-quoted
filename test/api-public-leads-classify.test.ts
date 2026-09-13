@@ -75,20 +75,20 @@ describe('Public Leads Classify Estimate Route', () => {
     clientIpFromMock = (await import('@/lib/rate-limit')).clientIpFrom;
     clientIpFromMock.mockReturnValue('1.2.3.4');
 
-    const siteContentMock = await import('@/lib/site-content');
+    const siteContentMock = (await import('@/lib/site-content')) as any;
     siteContentMock.getSiteContent.mockReturnValue({ serviceAreas: { cities: ['NYC'] }, leadFilters: { exclusions: [] }, estimateRanges: { enabled: true } });
 
-    const presetsMock = await import('@/lib/trade-intake-presets');
+    const presetsMock = (await import('@/lib/trade-intake-presets')) as any;
     presetsMock.matchTradePreset.mockReturnValue({ name: 'plumbing', equipmentSpecs: [], siteVisitTriggers: [] });
 
-    const tokenMock = await import('@/lib/estimate-continuation-token');
+    const tokenMock = (await import('@/lib/estimate-continuation-token')) as any;
     tokenMock.verifyContinuationToken.mockReturnValue(null);
     tokenMock.createContinuationToken.mockReturnValue('tok_123');
 
-    const guardrailsMock = await import('@/lib/estimate-guardrails');
+    const guardrailsMock = (await import('@/lib/estimate-guardrails')) as any;
     guardrailsMock.applyEstimateGuardrails.mockReturnValue({ valid: true, minCents: 10000, maxCents: 20000 });
 
-    const usageMock = await import('@/lib/billing/ai-intake-usage');
+    const usageMock = (await import('@/lib/billing/ai-intake-usage')) as any;
     usageMock.aiIntakeUsageGateEnabled.mockReturnValue(false);
     usageMock.beginAiIntakeUsage.mockResolvedValue({ kind: 'allowed' });
     usageMock.allowAiIntakeProviderAttempt.mockResolvedValue(true);

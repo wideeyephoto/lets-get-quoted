@@ -602,10 +602,7 @@ describe('Dashboard Payments Server Actions (dashboard/payments/actions.ts)', ()
 
     it('confirmTerminalPaymentAction confirms payment and revalidates', async () => {
       mocks.confirmTerminalPayment.mockResolvedValue({ status: 'succeeded', amount: 500 });
-      const res = await confirmTerminalPaymentAction({
-        paymentIntentId: 'pi_123',
-        jobId: 'job-888',
-      });
+      const res = await confirmTerminalPaymentAction('pay-123', 'pi_123');
       expect(res.success).toBe(true);
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/payments');
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/cash-flow');

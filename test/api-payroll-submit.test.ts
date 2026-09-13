@@ -77,20 +77,20 @@ describe('Payroll Submit Route', () => {
 
     unstableRethrowMock = (await import('next/navigation')).unstable_rethrow;
 
-    const laborMock = await import('@/lib/labor');
+    const laborMock = (await import('@/lib/labor')) as any;
     laborMock.normalizePeriodMode.mockReturnValue('weekly');
     laborMock.normalizeOffset.mockReturnValue(0);
     resolvePayPeriodMock = laborMock.resolvePayPeriod;
     resolvePayPeriodMock.mockReturnValue({ rangeLabel: 'Jan 1 - 7' });
 
-    const settingsMock = await import('@/lib/labor-settings');
+    const settingsMock = (await import('@/lib/labor-settings')) as any;
     settingsMock.laborRulesFromAccount.mockReturnValue({});
 
-    const crewPayMock = await import('@/lib/crew-pay');
+    const crewPayMock = (await import('@/lib/crew-pay')) as any;
     crewPayMock.periodEndKey.mockReturnValue('2024-01-07');
     crewPayMock.periodStartKey.mockReturnValue('2024-01-01');
 
-    const dataMock = await import('@/lib/crew-pay-data');
+    const dataMock = (await import('@/lib/crew-pay-data')) as any;
     loadCrewPayContextMock = dataMock.loadCrewPayContext;
     loadCrewPayContextMock.mockResolvedValue({ available: true, rows: [{ crewId: 'c1', eligible: true, hours: 10, review: 'approved', payment: 'unpaid' }] });
     
@@ -103,10 +103,10 @@ describe('Payroll Submit Route', () => {
     logPayEventMock = dataMock.logPayEvent;
     logPayEventMock.mockResolvedValue(undefined);
 
-    const exportMock = await import('@/lib/payroll-export');
+    const exportMock = (await import('@/lib/payroll-export')) as any;
     exportMock.normalizePayrollProvider.mockReturnValue('gusto');
 
-    const integrationMock = await import('@/lib/payroll-api-integration');
+    const integrationMock = (await import('@/lib/payroll-api-integration')) as any;
     validatePayrollSubmissionMock = integrationMock.validatePayrollSubmission;
     validatePayrollSubmissionMock.mockReturnValue({ valid: true, payable: [{}], totalGross: 1000, totalHours: 40 });
     

@@ -30,7 +30,7 @@ describe('Smart Import AI Lib', () => {
 
   it('returns null if fetch fails', async () => {
     (aiModelCallModule.callModel as any).mockResolvedValue({ ok: false, status: 500 });
-    const res = await aiDetectGenericColumns([['Name']], [{ key: 'name', hint: 'Full Name', required: true }], 'contacts');
+    const res = await aiDetectGenericColumns([['Name']], [{ key: 'name', label: 'Name', keywords: [], hint: 'Full Name', required: true }], 'contacts');
     expect(res).toBeNull();
   });
 
@@ -51,8 +51,8 @@ describe('Smart Import AI Lib', () => {
     const res = await aiDetectGenericColumns(
       [['Name', 'Phone'], ['John', '555-1234']],
       [
-        { key: 'name', hint: 'Full Name', required: true },
-        { key: 'phone', hint: 'Phone', required: false }
+        { key: 'name', label: 'Name', keywords: [], hint: 'Full Name', required: true },
+        { key: 'phone', label: 'Phone', keywords: [], hint: 'Phone', required: false }
       ],
       'contacts'
     );
@@ -78,7 +78,7 @@ describe('Smart Import AI Lib', () => {
     // Width = 1 (grid is [['John']])
     const res = await aiDetectGenericColumns(
       [['John']],
-      [{ key: 'name', hint: 'Name', required: true }],
+      [{ key: 'name', label: 'Name', keywords: [], hint: 'Name', required: true }],
       'contacts'
     );
 
@@ -98,7 +98,7 @@ describe('Smart Import AI Lib', () => {
 
     const res = await aiDetectGenericColumns(
       [['Name']],
-      [{ key: 'name', hint: 'Full Name', required: true }],
+      [{ key: 'name', label: 'Name', keywords: [], hint: 'Full Name', required: true }],
       'contacts'
     );
 

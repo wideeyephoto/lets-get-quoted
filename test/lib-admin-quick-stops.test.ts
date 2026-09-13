@@ -24,19 +24,19 @@ describe('Admin Quick Stops Lib', () => {
     };
     
     // Default resolve
-    adminMock.then.mockImplementation((resolve) => resolve({ data: [], count: 0 }));
+    adminMock.then.mockImplementation((resolve: any) => resolve({ data: [], count: 0 }));
   });
 
   describe('listQuickStopRequestsForAdmin', () => {
     it('returns empty on error', async () => {
-      adminMock.then.mockImplementation((resolve) => resolve({ data: null, error: new Error('fail') }));
+      adminMock.then.mockImplementation((resolve: any) => resolve({ data: null, error: new Error('fail') }));
       const res = await listQuickStopRequestsForAdmin(adminMock, { statuses: ['pending'], accountId: '1' });
       expect(res.rows).toEqual([]);
       expect(res.total).toBe(0);
     });
 
     it('loads and maps data', async () => {
-      adminMock.then.mockImplementation((resolve) => resolve({ data: [{ id: '1', account_id: 'acct_1' }], count: 1 }));
+      adminMock.then.mockImplementation((resolve: any) => resolve({ data: [{ id: '1', account_id: 'acct_1' }], count: 1 }));
       
       adminMock.from = vi.fn().mockImplementation((table) => {
         const chain = { ...adminMock };

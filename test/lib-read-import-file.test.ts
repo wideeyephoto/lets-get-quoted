@@ -3,8 +3,8 @@ import { readImportFile } from '@/lib/read-import-file';
 import * as importFormatsModule from '@/lib/import-formats';
 
 vi.mock('@/lib/import-formats', () => ({
-  gridToCsv: vi.fn((grid) => grid.map(r => r.join(',')).join('\n')),
-  vcardsToCsv: vi.fn((vcard) => `vcard_csv:${vcard}`),
+  gridToCsv: vi.fn((grid: any) => grid.map((r: any) => r.join(',')).join('\n')),
+  vcardsToCsv: vi.fn((vcard: any) => `vcard_csv:${vcard}`),
 }));
 
 vi.mock('read-excel-file/browser', () => ({

@@ -33,6 +33,8 @@ import {
 import { loadAccountIrreversibleWork } from '@/lib/admin-closures';
 import { loadAccountApiSurface } from '@/lib/admin-public-api';
 import { loadAccountGoogleLsa } from '@/lib/admin-google-lsa';
+import { getAccountUnitEconomics } from '@/lib/admin-margin';
+import { listCircuitBreakers, CIRCUIT_BREAKER_SERVICES } from '@/lib/circuit-breaker';
 
 export const dynamic = 'force-dynamic';
 
@@ -160,6 +162,8 @@ export default async function AdminAccountDetailPage({
     irreversibleWork,
     apiSurface,
     googleLsa,
+    unitEconomics,
+    activeBreakers,
   ] = await Promise.all([
     listAdminActions(admin, { accountId: params.id, limit: 25 }),
     listSupportCases(admin, { accountId: params.id, limit: 10 }),
@@ -168,6 +172,8 @@ export default async function AdminAccountDetailPage({
     loadAccountIrreversibleWork(admin, params.id),
     loadAccountApiSurface(admin, params.id),
     loadAccountGoogleLsa(admin, params.id),
+    getAccountUnitEconomics(admin, params.id, '30d'),
+    listCircuitBreakers(admin, { activeOnly: true, accountId: params.id }),
   ]);
   const attachmentLinks = await Promise.all(
     detail.attachments.map(async (att) => ({
@@ -375,6 +381,61 @@ export default async function AdminAccountDetailPage({
           );
         })}
       </div>
+    </section>
+  );
+
+  const renderUnitEconomicsPanel = () => (
+    <section className={styles.panel}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.4rem' }}>
+        <h2 className={styles.panelTitle} style={{ margin: 0 }}>Platform Unit Economics & Margin (30d)</h2>
+        <span className={`${styles.pill} ${unitEconomics.isUnprofitable ? styles.bad : styles.good}`}>
+          {unitEconomics.isUnprofitable
+            ? `Loss: -$${Math.abs(unitEconomics.netMarginDollars).toFixed(2)}`
+            : `Net Profit: +$${unitEconomics.netMarginDollars.toFixed(2)}`}
+        </span>
+      </div>
+      <p className={styles.muted} style={{ margin: '0 0 0.75rem', fontSize: '0.76rem' }}>
+        Trailing 30-day recognized platform fee revenue weighed against direct telephony and AI inference COGS.
+      </p>
+
+      <dl className={styles.kv}>
+        <dt>Platform fee revenue</dt>
+        <dd>
+          <strong>${unitEconomics.feeRevenueDollars.toFixed(2)}</strong>
+        </dd>
+        <dt>Telephony COGS</dt>
+        <dd>
+          ${unitEconomics.telephonyCostDollars.toFixed(2)}
+          <span className={styles.muted} style={{ fontSize: '0.74rem' }}>
+            {' '}({unitEconomics.usageBreakdown.smsCount} SMS @ $0.0079 + {unitEconomics.usageBreakdown.voiceMinutes} voice mins @ $0.1666)
+          </span>
+        </dd>
+        <dt>Gemini AI inference COGS</dt>
+        <dd>
+          ${unitEconomics.aiCostDollars.toFixed(2)}
+          <span className={styles.muted} style={{ fontSize: '0.74rem' }}>
+            {' '}({unitEconomics.usageBreakdown.aiThreads} automated/intake threads @ $0.0020)
+          </span>
+        </dd>
+        <dt>Total direct COGS</dt>
+        <dd>
+          <strong>${unitEconomics.totalCogsDollars.toFixed(2)}</strong>
+        </dd>
+        <dt>Net margin</dt>
+        <dd>
+          <strong style={{ color: unitEconomics.isUnprofitable ? '#f87171' : '#34d399' }}>
+            {unitEconomics.netMarginDollars >= 0 ? '+' : ''}${unitEconomics.netMarginDollars.toFixed(2)}
+          </strong>
+          {unitEconomics.marginPct !== null ? (
+            <span className={styles.muted}> ({unitEconomics.marginPct}% margin)</span>
+          ) : null}
+          {unitEconomics.isDrain ? (
+            <span className={`${styles.pill} ${styles.bad}`} style={{ marginLeft: '0.5rem' }}>
+              Resource Drain
+            </span>
+          ) : null}
+        </dd>
+      </dl>
     </section>
   );
 
@@ -1434,6 +1495,20 @@ export default async function AdminAccountDetailPage({
           )}
           {payoutsRestricted ? <span className={`${styles.pill} ${styles.bad}`}>Payouts restricted</span> : null}
           {lockedUntil ? <span className={`${styles.pill} ${styles.warn}`}>Quick Stop locked</span> : null}
+          {activeBreakers.length > 0 && (
+            <span className={`${styles.pill} ${styles.bad}`}>
+              ⚡ {activeBreakers.length} Breaker{activeBreakers.length === 1 ? '' : 's'} Active
+            </span>
+          )}
+          {unitEconomics.isUnprofitable ? (
+            <span className={`${styles.pill} ${styles.bad}`}>
+              Unprofitable (-${Math.abs(unitEconomics.netMarginDollars).toFixed(2)})
+            </span>
+          ) : (
+            <span className={`${styles.pill} ${styles.good}`}>
+              Profitable (+${unitEconomics.netMarginDollars.toFixed(2)})
+            </span>
+          )}
           {a.test_marker ? (
             <span className={`${styles.pill} ${styles.warn}`}>Synthetic · excluded from production reporting</span>
           ) : null}
@@ -1441,6 +1516,21 @@ export default async function AdminAccountDetailPage({
       </header>
 
       {/* Alert Banners */}
+      {activeBreakers.length > 0 && (
+        <div className={`${styles.banner} ${styles.err}`} style={{ borderLeft: '4px solid #ef4444' }}>
+          <strong>⚡ OPERATIONAL CIRCUIT BREAKER TRIPPED FOR THIS ACCOUNT:</strong>{' '}
+          {activeBreakers.map((b) => (
+            <span key={b.id} style={{ marginRight: '0.75rem' }}>
+              <strong>{CIRCUIT_BREAKER_SERVICES[b.service]?.label || b.service}</strong> ({b.reason})
+            </span>
+          ))}
+          <div style={{ marginTop: '0.4rem' }}>
+            <Link href="/admin/health" className={styles.rowLink}>
+              Manage in System Health Console →
+            </Link>
+          </div>
+        </div>
+      )}
       {irreversibleWork.activeClosure && (
         <div className={`${styles.banner} ${styles.err}`} style={{ borderLeft: '4px solid #f87171' }}>
           <strong>⚠️ Account Closure Job Active:</strong> Closure subject <code>{irreversibleWork.activeClosure.closureSubjectId}</code>.
@@ -1578,6 +1668,7 @@ export default async function AdminAccountDetailPage({
           <div className={styles.detailGrid}>
             <div>
               {renderPlanAuthorityPanel()}
+              {renderUnitEconomicsPanel()}
               {renderUsageAndOveragePanel()}
               {renderGoogleLsaPanel()}
               {renderPaymentsPanel()}

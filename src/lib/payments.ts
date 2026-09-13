@@ -588,6 +588,12 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     }
   }
 
+  const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');
+  const breaker = await checkCircuitBreaker('payments_checkout', payment.account_id);
+  if (breaker.blocked) {
+    throw new Error(`Checkout is temporarily unavailable for operational maintenance: ${breaker.reason}`);
+  }
+
   // The rate follows the plan, not trailing volume -- which is what /pricing
   // sells and what the quote on the pay page has already shown this payer.
   // Quick Stop priority visit fees carry the dedicated 10% platform fee.

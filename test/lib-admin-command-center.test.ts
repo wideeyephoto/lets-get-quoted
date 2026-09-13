@@ -54,7 +54,7 @@ describe('Admin Command Center Lib', () => {
   });
 
   it('builds command center data', async () => {
-    const res = await buildCommandCenterData(adminMock, { role: 'admin', staffEmail: 'a@a.com', range: '30d' });
+    const res = await buildCommandCenterData(adminMock, { role: 'super_admin', staffEmail: 'a@a.com', range: '30d' });
     expect(res.range).toBe('30d');
     expect(res.metrics.length).toBe(4);
     expect(res.unavailableSignals).toEqual([]);
@@ -63,7 +63,7 @@ describe('Admin Command Center Lib', () => {
   it('handles account error', async () => {
     adminMock.lt.mockResolvedValue({ count: null, error: new Error('fail') });
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const res = await buildCommandCenterData(adminMock, { role: 'admin', staffEmail: 'a@a.com', range: '30d' });
+    const res = await buildCommandCenterData(adminMock, { role: 'super_admin', staffEmail: 'a@a.com', range: '30d' });
     expect(res.metrics[0].available).toBe(false);
     expect(consoleSpy).toHaveBeenCalled();
     consoleSpy.mockRestore();

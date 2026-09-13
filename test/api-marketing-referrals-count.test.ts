@@ -62,8 +62,7 @@ describe('Marketing Referrals Count Route', () => {
 
   it('fails if no user', async () => {
     getUserMock.mockResolvedValue({ data: { user: null } });
-    const req = new NextRequest('http://localhost/api/marketing/referrals/count');
-    const res = await GET(req);
+    const res = await GET();
     expect(res.status).toBe(401);
     const data = await res.json();
     expect(data.count).toBe(0);
@@ -71,16 +70,14 @@ describe('Marketing Referrals Count Route', () => {
 
   it('fails if no account', async () => {
     getCurrentMembershipMock.mockResolvedValue({ accountId: null });
-    const req = new NextRequest('http://localhost/api/marketing/referrals/count');
-    const res = await GET(req);
+    const res = await GET();
     expect(res.status).toBe(403);
     const data = await res.json();
     expect(data.count).toBe(0);
   });
 
   it('returns count', async () => {
-    const req = new NextRequest('http://localhost/api/marketing/referrals/count');
-    const res = await GET(req);
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.count).toBe(8); // 5 + 3
@@ -88,8 +85,7 @@ describe('Marketing Referrals Count Route', () => {
 
   it('returns 0 on db error', async () => {
     notMock1.mockRejectedValue(new Error('db error'));
-    const req = new NextRequest('http://localhost/api/marketing/referrals/count');
-    const res = await GET(req);
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.count).toBe(0);

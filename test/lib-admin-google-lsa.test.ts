@@ -25,7 +25,7 @@ describe('Admin Google LSA Lib', () => {
     it('returns empty if no data', async () => {
       adminMock.limit.mockResolvedValue({ data: null });
       adminMock.not.mockResolvedValue({ data: null });
-      adminMock.select.mockImplementation((sel) => {
+      adminMock.select.mockImplementation((sel: any) => {
         if (sel === 'id, business_name') {
           return Promise.resolve({ data: null });
         }

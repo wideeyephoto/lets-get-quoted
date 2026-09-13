@@ -44,7 +44,7 @@ describe('Admin Closures Lib', () => {
   describe('loadPendingIrreversibleWork', () => {
     it('returns empty if no data', async () => {
       adminMock.limit.mockResolvedValue({ data: null });
-      adminMock.select.mockImplementation((sel) => {
+      adminMock.select.mockImplementation((sel: any) => {
         if (sel === 'id, business_name, account_number') {
           return Promise.resolve({ data: null });
         }

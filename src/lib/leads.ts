@@ -292,7 +292,7 @@ export type Lead = {
   status: LeadStatus;
   name: string | null;
   phone: string | null;
-  normalized_phone: string | null;
+  normalized_phone?: string | null;
   email: string | null;
   address: string | null;
   project_type: string | null;

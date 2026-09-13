@@ -343,7 +343,7 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
             <button type="submit" className={styles.next} disabled={isSubmitting}>
-              {isSubmitting ? 'Sending request...' : (getEstimateButtonLabel(siteContent) || 'Get My Free Estimate')}
+              {isSubmitting ? 'Sending request...' : (estimateLabel || 'Get My Free Estimate')}
             </button>
             <ResponseTimeBadge site={site} className={styles.replyBadge} />
           </div>

@@ -20,7 +20,7 @@
 
 import type { DateRange } from '@/lib/command-center-logic';
 
-export const ACCOUNT_FILTERS = ['not_onboarded', 'connect_incomplete', 'payouts_paused', 'suspended'] as const;
+export const ACCOUNT_FILTERS = ['not_onboarded', 'connect_incomplete', 'payouts_paused', 'suspended', 'unprofitable'] as const;
 
 export type AccountFilter = (typeof ACCOUNT_FILTERS)[number];
 
@@ -52,6 +52,10 @@ export const ACCOUNT_FILTER_INFO: Record<AccountFilter, { label: string; blurb: 
   suspended: {
     label: 'Suspended',
     blurb: 'Suspended by staff. The owner cannot sign in. Each row shows who did it and why.',
+  },
+  unprofitable: {
+    label: 'Unprofitable (Drain)',
+    blurb: 'Accounts where telephony and AI COGS exceeded platform fee revenue over the trailing 30 days.',
   },
 };
 

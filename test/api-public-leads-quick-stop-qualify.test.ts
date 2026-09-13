@@ -66,7 +66,7 @@ describe('Public Leads Quick Stop Qualify Route', () => {
     qualifyQuickStopMock = (await import('@/lib/quick-stop-qualify')).qualifyQuickStop;
     qualifyQuickStopMock.mockResolvedValue({ eligible: true });
 
-    (await import('@/lib/quick-stop-qualify')).qualifyOptionsFromSettings.mockReturnValue({});
+    ((await import('@/lib/quick-stop-qualify')) as any).qualifyOptionsFromSettings.mockReturnValue({});
 
     quickStopFollowUpsMock = (await import('@/lib/quick-stop-qualify')).quickStopFollowUps;
     quickStopFollowUpsMock.mockReturnValue([]);

@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   sendClientJobDashboardSms: vi.fn(),
   sendCrewAssignmentSms: vi.fn(),
   patchJob: vi.fn(),
+  loadBusinessName: vi.fn().mockResolvedValue('Apex Roofing'),
 }));
 
 vi.mock('next/cache', () => ({
@@ -51,6 +52,10 @@ vi.mock('@/lib/auth', () => ({
   createAdminClient: mocks.createAdminClient,
 }));
 
+vi.mock('@/lib/business-name', () => ({
+  loadBusinessName: mocks.loadBusinessName,
+}));
+
 vi.mock('@/lib/jobs', () => ({
   getJob: mocks.getJob,
   createJob: mocks.createJob,
@@ -59,11 +64,13 @@ vi.mock('@/lib/jobs', () => ({
   updateJobSchedule: mocks.updateJobSchedule,
   createCost: mocks.createCost,
   deleteCost: mocks.deleteCost,
+  listCosts: vi.fn().mockResolvedValue([]),
+  computeMargin: vi.fn().mockReturnValue(50),
+  patchJob: mocks.patchJob,
   formatJobSchedule: vi.fn((forDate, time) => `${forDate} at ${time}`),
   formatJobQuoteSummary: vi.fn(() => 'Quote summary test'),
   parseQuoteItems: vi.fn((items) => items || []),
   saveQuoteItems: vi.fn(),
-  patchJob: vi.fn(),
 }));
 
 vi.mock('@/lib/job-feed', () => ({
@@ -189,8 +196,7 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
       fd.append('estimatedHours', '8');
       fd.append('sendClientText', 'on');
 
-      const res = await createJobAction(fd);
-      expect(res.job).toEqual(createdJob);
+      await expect(createJobAction(fd)).rejects.toThrow('NEXT_REDIRECT');
       expect(mocks.createJob).toHaveBeenCalledWith(
         expect.anything(),
         TEST_ACCOUNT_ID,
@@ -212,7 +218,7 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
         'job-999',
         expect.anything()
       );
-      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
+      expect(mocks.redirect).toHaveBeenCalledWith(expect.stringContaining('/dashboard/jobs/job-999'));
     });
   });
 
@@ -236,8 +242,7 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
       fd.append('clientFeedAccess', 'on');
       fd.append('messageChannel', 'sms');
 
-      const res = await updateJobAction('job-123', fd);
-      expect(res.job).toEqual(updatedJob);
+      await updateJobAction('job-123', fd);
       expect(mocks.updateJob).toHaveBeenCalledWith(
         expect.anything(),
         TEST_ACCOUNT_ID,
@@ -558,7 +563,8 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
         expect.anything()
       );
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
-      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/calendar');
+      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/trash');
+      expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/activity');
     });
   });
 });

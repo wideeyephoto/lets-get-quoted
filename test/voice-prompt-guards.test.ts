@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 
 describe('Voice Prompt Rules', () => {
@@ -7,7 +7,7 @@ describe('Voice Prompt Rules', () => {
       {
         kind: 'ai_agent',
         receiptUrl: 'https://example.com/receipt',
-        receiptAuthorization: { username: 'u', password: 'p' },
+        receiptAuthorization: { scheme: 'basic', username: 'u', password: 'p' },
         greeting: 'Hello',
         capMinutes: 10,
         transferTo: null,
@@ -48,6 +48,6 @@ describe('Voice Prompt Rules', () => {
 
     // 4. Reference preservation rule
     const jobTargetDesc = appendJobCautionOrNote.argument.properties.job_ref_or_client.description;
-    expect(jobTargetDesc).toContain('Map the caller''s chosen description or option to the returned exact reference. Never guess.');
+    expect(jobTargetDesc).toContain("Map the caller's chosen description or option to the returned exact reference. Never guess.");
   });
 });
