@@ -266,6 +266,12 @@ No branch was deleted. Main integration does not itself complete live renewals, 
 
 ## Customer SMS launch acceptance and dispatch recovery — 2026-09-08 to 2026-09-09
 
+**September 9 evening continuation:** the [dispatch operational acceptance report](docs/sms-dispatch-operational-acceptance-2026-09-09.md) records a fresh real STOP/START sequence, four hosted suppression assertions, twelve hosted recovery/accounting cases, and one timed dispatch delivery. Raw evidence stays in the private operator record. This supplements the earlier session; it does not close the entire real-carrier or customer registration matrix.
+
+- [x] **Verify deployed suppression and recovery boundaries:** both test workspaces were blocked by real campaign STOP at staging and the final request boundary; twelve controlled database cases passed for retries, definitive rejection, unknown outcomes, deferral, stale leases, callbacks and usage finalization. All synthetic changes rolled back. These are hosted fixture results, not additional carrier failures or a second live sender.
+- [x] **Prove timed production dispatch and actual segment accounting:** one future-dated test remained queued before release, repeated enqueue reused its event, and the scheduled production worker delivered once after release. The provider's one segment matches one committed application text unit; callbacks processed without error. The temporary crew fixture is archived and START is restored.
+- [ ] **Confirm the timed message on the handset:** provider delivery passed; explicit recipient confirmation is pending at this snapshot.
+
 **Completed checks & evidence:** Customer launch acceptance register (`docs/customer-sms-launch-acceptance-2026-09-09.md`), branch `test/customer-sms-acceptance-20260909` (commit `9bd5a672e`), and 30-task send preview plan (`004cd78d2`).
 
 - [x] **Verify campaign scope & fail-closed customer sender:** Provider inventory has only LGQ support and crew-dispatch campaigns, both excluding contractor-to-customer traffic. Number 2687 remains on support, 0 customer registration applications exist, and production customer readiness is false. No customer send or registration change was made.
