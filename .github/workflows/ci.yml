@@ -43,6 +43,12 @@ jobs:
       - name: Account closure domain database checks
         run: npm run test:pg17:closure-domains
 
+      - name: Lifecycle email ledger database checks
+        run: npm run test:pg17:lifecycle-email
+
+      - name: Read-only lifecycle preview checks
+        run: npm run test:email-dry-run
+
       - name: SEO tests
         run: npm run test:seo
 

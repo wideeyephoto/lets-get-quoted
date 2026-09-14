@@ -58,11 +58,11 @@ test('compiled application sweep previews with real Supabase query construction 
     assert.equal(preview.details[0].stepId, 'welcome_day0');
     assert.equal(preview.details[0].status, 'planned');
     assert.match(preview.details[0].note, /morgan@reliabletrades.com/);
-    assert.equal(requests.length, 5);
+    assert.equal(requests.length, 6);
     // Even accidentally omitting the dryRun option cannot send from this runner.
     await assert.rejects(sweep(admin), /Email provider disabled in dry-run/);
     await assert.rejects(sweep(undefined, { dryRun: true }), /explicit read-only client/);
-    assert.equal(requests.length, 5);
+    assert.equal(requests.length, 6);
   } finally {
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete process.env[key];

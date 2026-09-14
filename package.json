@@ -72,6 +72,8 @@
     "test:pg17:plan-change": "node scripts/verify-plan-change-projection-patch.mjs",
     "test:pg17:cancel-to-flex": "node scripts/verify-cancelled-returns-to-flex.mjs",
     "test:pg17:email-sending-domains": "node scripts/verify-email-sending-domains.mjs",
+    "test:pg17:lifecycle-email": "node scripts/verify-contractor-lifecycle-sends.mjs",
+    "test:email-dry-run": "node --test scripts/dry-run-contractor-lifecycle.test.mjs",
     "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
     "test:pg17:job-access": "node scripts/verify-job-access-boundary.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",

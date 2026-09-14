@@ -17,7 +17,7 @@ const require = createRequire(import.meta.url);
 
 export function createReadOnlyFetch(supabaseUrl, upstream = globalThis.fetch) {
   const origin = new URL(supabaseUrl).origin;
-  const tables = new Set(['accounts', 'account_events', 'jobs', 'email_suppression']);
+  const tables = new Set(['accounts', 'account_events', 'jobs', 'email_suppression', 'contractor_lifecycle_sends']);
   return async (input, init) => {
     const request = new Request(input, init);
     const url = new URL(request.url);

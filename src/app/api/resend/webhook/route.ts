@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { suppressEmail, suppressionReasonFor } from '@/lib/email-suppression';
-import { resendRecipient, resendTags } from '@/lib/resend-tags';
+import { resendRecipient, resendTags, resendTagValue } from '@/lib/resend-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -192,6 +192,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
     }
     if (error) throw new Error(error.message);
+
+    const lifecycleSendId = resendTagValue(event.data.tags, 'lifecycle_send_id');
+    if (kind === 'contractor_lifecycle' && lifecycleSendId) {
+      if (!accountId || !recipient) throw new Error('Lifecycle callback is missing its workspace or recipient');
+      const { data: confirmed, error: confirmError } = await admin.rpc('confirm_contractor_lifecycle_send', {
+        p_id: lifecycleSendId, p_account_id: accountId, p_recipient: recipient, p_provider_id: providerId,
+      });
+      if (confirmError || confirmed !== true) throw new Error('Could not reconcile lifecycle send callback');
+    }
 
     // Recording the bounce was never the point — not sending again was.
     //

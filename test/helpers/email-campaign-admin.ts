@@ -2,7 +2,28 @@ export function emailCampaignAdmin(tables: Record<string, any[]> = {}, failures:
   const queries: Array<{ table: string; filters: Array<[string, string, unknown]> }> = [];
   const admin = {
     queries,
-    rpc: async () => ({ data: tables.owners ?? [], error: failures.owners ? { message: failures.owners } : null }),
+    rpc: async (name: string, input: any) => {
+      if (name === 'owner_emails_for_accounts') return { data: tables.owners ?? [], error: failures.owners ? { message: failures.owners } : null };
+      if (failures[name]) return { data: null, error: { message: failures[name] } };
+      const sends = tables.contractor_lifecycle_sends ??= [];
+      if (name === 'claim_contractor_lifecycle_send') {
+        const existing = sends.find(row => row.account_id === input.p_account_id && row.step_id === input.p_step_id);
+        if (existing) return { data: { action: existing.state === 'accepted' ? 'already_sent' : 'busy' }, error: null };
+        const row = { id: `send-${sends.length}`, account_id: input.p_account_id, step_id: input.p_step_id, state: 'sending' };
+        sends.push(row);
+        return { data: { action: 'send', id: row.id, token: 'claim-token', payload: input.p_payload,
+          key: `contractor-lifecycle/${input.p_account_id}/${input.p_step_id}`,
+          retry_before: new Date(Date.now() + 23 * 3600000).toISOString() }, error: null };
+      }
+      if (name === 'finish_contractor_lifecycle_send') {
+        const row = sends.find(row => row.id === input.p_id && row.account_id === input.p_account_id);
+        if (!row) return { data: false, error: null };
+        Object.assign(row, { state: input.p_provider_id ? 'accepted' : 'retry_wait', provider_id: input.p_provider_id,
+          accepted_at: input.p_provider_id ? new Date().toISOString() : null });
+        return { data: true, error: null };
+      }
+      throw new Error(`Unexpected RPC ${name}`);
+    },
     from: (table: string) => {
       let rows = [...(tables[table] ?? [])];
       let single = false;

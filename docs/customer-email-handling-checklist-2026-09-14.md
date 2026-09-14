@@ -11,6 +11,14 @@ This checklist tracks work; an unchecked live acceptance item is not satisfied b
 - [x] Repair the lifecycle dry-run runner, prove it does not send or advance history, and expose failed prerequisite reads (T03/T17 local subchecks).
 - [x] Run the email regression suite and record results (T15).
 
+## Second implementation pass
+
+- [x] Add durable lifecycle claims shared by welcome, daily sweep and approved activation batches (T16 local subcheck).
+- [x] Preserve exact retry payload/key, bound attempts and recover lost acceptance through signed callbacks (T16/T17/T19 local subchecks).
+- [x] Verify concurrent workers and access restrictions in PostgreSQL; document evidence-based recovery and deployment order in the [lifecycle send runbook](runbooks/contractor-lifecycle-email-sends.md).
+- [ ] Apply the migration and deploy through the approved release process; hosted/live acceptance remains open.
+- [ ] Extend durable intent protection to quote and invoice sends; T16 is not complete for all email paths.
+
 ## Phase 1 — Canary and infrastructure
 
 - [ ] **T01 — Observe seven consecutive clean scheduled canary runs.** Check `/admin/health` after the 06:23 UTC `email-domain-reconcile` run. Verify the expected active-domain count, zero errors, fresh `last_checked_at`, no false downgrade, and actual delivery/reply evidence. Retain run IDs and dates. The pasted Day 1/7 and earliest sign-off date are historical assumptions until reconciled with live evidence. Owner: Operations/Brett.
@@ -68,10 +76,10 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **T12:** Suppression writes now promote an existing marketing opt-out to provider suppression, permanent bounce or complaint. Conditional account/email/reason filters prevent weaker replays from downgrading a stronger reason. The concurrent-insert recovery path also promotes; failed promotion stays retryable. This does not backfill historical lost reasons or add a universal transactional suppression gate. Transactional delivery still relies on Resend's suppression enforcement.
 - **T03/T17:** Account and owner lookup failures now fail the sweep visibly. A null or potentially truncated (1,000-row) suppression result stops the lifecycle sweep and approved activation batch. This conservative guard needs pagination before operating beyond that bound.
 - **T03/T19:** Dry-runs now return `planned` and `dryRun`, keep `sent = 0`, and label preview rows `planned`. Both sweep and activation batch use the same reporting distinction. Existing actual-send counters remain unchanged.
-- **T03:** `node scripts/dry-run-contractor-lifecycle.mjs` now compiles the actual application sweep with TypeScript aliases. The runner disables the email provider, ambient admin client and audit writer; its supplied Supabase transport permits only the four reviewed table reads and owner-email lookup RPC, and refuses redirects. It requires explicitly supplied environment credentials and does not read `.env` automatically. Local integration tests run the compiled sweep through the installed Supabase client against synthetic responses, with no external requests.
+- **T03:** `node scripts/dry-run-contractor-lifecycle.mjs` now compiles the actual application sweep with TypeScript aliases. The runner disables the email provider, ambient admin client and audit writer; its supplied Supabase transport permits only the five reviewed table reads (including the new lifecycle ledger) and owner-email lookup RPC, and refuses redirects. It requires explicitly supplied environment credentials and does not read `.env` automatically. Local integration tests run the compiled sweep through the installed Supabase client against synthetic responses, with no external requests.
 - **T06:** All 10 existing fallback tests pass, covering accepted messages, exact domain rejection, other-domain rejection, rate limits, access errors, thrown timeouts, platform identity and single fallback. No fallback implementation change was needed.
 
-### Verification
+### First-pass verification
 
 - Before changes, the added suppression/lifecycle regression cases reproduced **11 failures** in the focused suite.
 - Email and affected admin/worker regression selection: **35 files, 373 tests passed**. One further real-Supabase-client query-construction test was added afterward; the affected two files then passed **23 tests**, including that new test (374 distinct regression tests in total).
@@ -79,9 +87,17 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - Changed-file lint: passed with **zero warnings/errors**. Whitespace/diff check: passed.
 - Full app/test typecheck: **passed**, including a final incremental check after the added query-construction test and final edits (`node --max-old-space-size=4096 node_modules/typescript/bin/tsc --noEmit -p tsconfig.test.json`).
 
+### Second-pass verification and scope
+
+- **T16:** Added `contractor_lifecycle_sends`, atomic per-account claims, persisted payload/key/provider scope, lease fencing and durable provider acceptance. Welcome, lifecycle sweep and activation batches share the mechanism. Missing best-effort activity writes cannot erase the new acceptance history. Quote/invoice paths remain open.
+- **T17:** Retries use the original snapshot and identity, with five-minute backoff, three attempts maximum and a fixed 23-hour window. Uncertain expired sends require evidence-based closeout. This does not add an automatic retry worker or capacity reservation; a daily rerun can miss the retry window.
+- **T19:** Signed callbacks correlate the exact intent/workspace/recipient/provider ID and recover lost acceptance without sending again. Acceptance is not delivery. Broader event-order/UI tracking remains open.
+- **Verification:** 36 regression files / **392 tests passed**, plus **2 standalone dry-run tests** and **14 actual PostgreSQL 17 checks**. Full app/test typecheck, changed-file lint and schema-order check passed. Supabase security advisor reported no issues against the disposable local database; hosted advisors were not run.
+- Migration prepared at `migrations/20260914133327_contractor_lifecycle_send_ledger.sql`; mirrored in `schema.sql`. Neither hosted migration nor deployment performed. Deployment sequencing, historical reconciliation and recovery are in the [runbook](runbooks/contractor-lifecycle-email-sends.md). CI now includes the database and standalone preview checks.
+
 ### Next work and live gates
 
-1. **T16:** Add a durable send-intent/claim mechanism and recovery for uncertain provider outcomes. The quote/invoice wrapper has no persistent claim, and lifecycle sent history uses best-effort `recordAccountEvent`, which can swallow persistence failures. Provider keys alone do not close this gap. Keyed sender fallback also needs an explicit stable identity for its changed payload; the installed SDK's typed send options do not expose modern idempotency options.
+1. **T16:** Extend durable claims and uncertain-outcome recovery to quote/invoice sends. Lifecycle now has a persistent ledger locally; migrate before deploying it and reconcile uncertain historical sends while old producers are paused. Quote/invoice sender fallback still needs an explicit stable identity for its changed payload. Provider keys alone do not close those gaps.
 2. **T12/T19:** Audit every transactional path and provider-region scope; reconcile historical delivery-block evidence before claiming local enforcement across tenants or providers.
 3. **T03:** Run the repaired read-only runner in the intended hosted environment after review of environment identity. No live recipient preview has been fetched in this pass.
 4. **T01:** The repository canary record, last updated September 11, says Day 1 started September 11. Current scheduled runs were not re-read here; resolve the pasted list's differing date using actual retained run evidence. Keep enrollment closed until all live gates pass.

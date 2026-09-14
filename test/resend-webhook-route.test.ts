@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   createAdminClient: vi.fn(),
   upsert: vi.fn(),
+  rpc: vi.fn(),
   quarantine: vi.fn(),
   suppressEmail: vi.fn(),
   logWebhookFailure: vi.fn(),
@@ -75,10 +76,12 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   mocks.upsert.mockResolvedValue({ error: null });
+  mocks.rpc.mockResolvedValue({ data: true, error: null });
   mocks.quarantine.mockResolvedValue({ error: null });
   mocks.suppressEmail.mockResolvedValue(true);
   mocks.logWebhookFailure.mockResolvedValue(undefined);
   mocks.createAdminClient.mockReturnValue({
+    rpc: mocks.rpc,
     from: vi.fn((table: string) => {
       if (table === 'webhook_failures') return { insert: mocks.quarantine };
       if (table !== 'email_events') throw new Error(`Unexpected table ${table}`);
@@ -93,6 +96,25 @@ afterEach(() => {
 });
 
 describe('Resend webhook outcome projection', () => {
+  it('recovers lifecycle acceptance using the signed intent, workspace and recipient', async () => {
+    const response = await POST(signedRequest('email.delivered', taggedData('lost-response', {
+      tags: { kind: 'contractor_lifecycle', account_id: ACCOUNT_ID, lifecycle_send_id: '20000000-0000-4000-8000-000000000001' },
+    })));
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('confirm_contractor_lifecycle_send', {
+      p_id: '20000000-0000-4000-8000-000000000001', p_account_id: ACCOUNT_ID,
+      p_recipient: RECIPIENT, p_provider_id: 'lost-response',
+    });
+  });
+
+  it.each([{ data: false, error: null }, { data: null, error: { message: 'database unavailable' } }])('keeps a lifecycle callback retryable when correlation cannot be persisted', async result => {
+    mocks.rpc.mockResolvedValue(result);
+    const response = await POST(signedRequest('email.sent', taggedData('retry-callback', {
+      tags: { kind: 'contractor_lifecycle', account_id: ACCOUNT_ID, lifecycle_send_id: '20000000-0000-4000-8000-000000000001' },
+    })));
+    expect(response.status).toBe(500);
+  });
+
   it('durably quarantines a signed foreign-workspace complaint without assigning or suppressing another tenant', async () => {
     mocks.upsert.mockResolvedValue({ error: { code: '23503', message: 'violates foreign key constraint "email_events_account_id_fkey"' } });
     const response = await POST(signedRequest('email.complained', taggedData('foreign-workspace')));
