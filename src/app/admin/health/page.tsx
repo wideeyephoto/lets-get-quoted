@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth';
 import {
   CRON_JOBS,
   CRON_HEALTH_LABEL,
+  cronGateStatus,
   cronHealth,
   expectedIntervalMs,
   graceMs,
@@ -115,7 +116,8 @@ export default async function AdminHealthPage() {
   const rows = CRON_JOBS.map((spec) => {
     const run: CronRunRow | null = last.get(spec.job) ?? null;
     const successAt = lastSuccessAt.get(spec.job) ?? null;
-    return { spec, run, successAt, health: cronHealth(spec, run, successAt, now) };
+    const gate = cronGateStatus(spec);
+    return { spec, run, successAt, health: cronHealth(spec, run, successAt, now), gate };
   }).sort(
     (a, b) =>
       HEALTH_RANK[a.health] - HEALTH_RANK[b.health] ||
@@ -167,6 +169,7 @@ export default async function AdminHealthPage() {
             <thead>
               <tr>
                 <th>Job</th>
+                <th>Gate</th>
                 <th>Status</th>
                 <th>Schedule</th>
                 <th>Last run</th>
@@ -176,7 +179,7 @@ export default async function AdminHealthPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ spec, run, successAt, health }) => {
+              {rows.map(({ spec, run, successAt, health, gate }) => {
                 const interval = expectedIntervalMs(spec.schedule);
                 return (
                   <tr key={spec.job}>
@@ -185,6 +188,22 @@ export default async function AdminHealthPage() {
                       <div className={styles.muted} style={{ fontSize: '.72rem' }}>
                         <code>{spec.job}</code> · {IMPORTANCE_LABEL[spec.importance]}
                       </div>
+                    </td>
+                    <td>
+                      {gate.isGated ? (
+                        gate.isEnabled ? (
+                          <span className={`${styles.pill} ${styles.good}`} title={`Enabled via ${gate.envVar}=1`}>Live</span>
+                        ) : (
+                          <div>
+                            <span className={`${styles.pill} ${styles.neutral}`} title={`Dark worker: ${gate.envVar} is 0 or unset`}>Dark</span>
+                            <div className={styles.muted} style={{ fontSize: '.68rem', marginTop: '.2rem' }}>
+                              <code>{gate.envVar}</code>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <span className={`${styles.pill} ${styles.good}`} title="Always active (ungated)">Always on</span>
+                      )}
                     </td>
                     <td>
                       <span className={`${styles.pill} ${styles[HEALTH_CLASS[health]]}`}>{CRON_HEALTH_LABEL[health]}</span>

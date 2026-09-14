@@ -27,6 +27,8 @@ export type CronJobSpec = {
   importance: CronImportance;
   /** What stops happening if this job stops. Rendered on the health page. */
   consequence: string;
+  /** Environment variable that gates this worker. Missing/0 means dark/disabled. */
+  gateEnvVar?: string;
 };
 
 export const CRON_JOBS: CronJobSpec[] = [
@@ -36,6 +38,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '17 * * * *',
     importance: 'money',
     consequence: 'Ended billing periods are never frozen into a settlement, so authorized extra usage is incurred and can never be billed for.',
+    gateEnvVar: 'LGQ_OVERAGE_PERIOD_CLOSE_ENABLED',
   },
   {
     job: 'overage-settlement',
@@ -43,6 +46,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '37 * * * *',
     importance: 'money',
     consequence: 'Frozen settlements never reach Stripe, so extra usage a contractor authorized and used is never charged.',
+    gateEnvVar: 'LGQ_OVERAGE_SETTLEMENT_ENABLED',
   },
   {
     job: 'voice-retention',
@@ -57,6 +61,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '* * * * *',
     importance: 'customer',
     consequence: 'Authenticated replies that crashed after receipt ingest stop resuming their booking, reschedule, confirmation, or dispatch action.',
+    gateEnvVar: 'LGQ_SMS_INBOUND_ACTION_WORKER_ENABLED',
   },
   {
     job: 'sms-delivery',
@@ -64,6 +69,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '* * * * *',
     importance: 'customer',
     consequence: 'Queued account alerts, dispatch messages, and approved contractor texts stop reaching recipients.',
+    gateEnvVar: 'LGQ_SMS_DELIVERY_WORKER_ENABLED',
   },
   {
     job: 'legacy-quick-stop-late-refunds',
@@ -71,6 +77,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/5 * * * *',
     importance: 'money',
     consequence: 'Expired Quick Stops paid after their hold lapsed stop receiving the required full destination-charge refund.',
+    gateEnvVar: 'LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED',
   },
   {
     job: 'connected-payment-projection',
@@ -78,6 +85,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/5 * * * *',
     importance: 'money',
     consequence: 'Signed connected-account Checkout success events stop marking direct payments paid and reconciled.',
+    gateEnvVar: 'LGQ_STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_ENABLED',
   },
   {
     job: 'top-up-projection',
@@ -85,6 +93,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/5 * * * *',
     importance: 'money',
     consequence: 'Paid top-up purchases stop becoming usage credit, so a workspace is charged and receives nothing.',
+    gateEnvVar: 'LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED',
   },
   {
     job: 'direct-payment-settlement',
@@ -92,6 +101,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/5 * * * *',
     importance: 'money',
     consequence: 'Successful direct payments stop receiving their idempotent job-feed entry and currently-consented receipt text.',
+    gateEnvVar: 'LGQ_DIRECT_PAYMENT_SETTLEMENT_WORKER_ENABLED',
   },
   {
     job: 'billing-subscription-projection',
@@ -99,6 +109,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/5 * * * *',
     importance: 'money',
     consequence: 'Signed Stripe Billing events stop updating paid plans, invoices, and monthly allowance anchors.',
+    gateEnvVar: 'LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED',
   },
   {
     job: 'billing-allowance-resets',
@@ -106,6 +117,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'money',
     consequence: 'Paid contractors stop receiving their anchored monthly usage allowances after renewal.',
+    gateEnvVar: 'LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED',
   },
   {
     // The only worker here with no LGQ_*_ENABLED gate, on purpose. A scheduled
@@ -131,6 +143,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'money',
     consequence: 'A payment refunded once can never be refunded again, and money owed back cannot be sent.',
+    gateEnvVar: 'LGQ_REFUND_RECONCILIATION_ENABLED',
   },
   {
     job: 'voice-allowance',
@@ -138,6 +151,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'money',
     consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
+    gateEnvVar: 'LGQ_VOICE_ALLOWANCE_WORKER_ENABLED',
   },
   {
     job: 'dunning',
@@ -249,6 +263,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     // sweep, and the importance is stated for the world it is being built for.
     importance: 'money',
     consequence: 'Cancelled capacity subscriptions keep granting seats and storage, and lapsed ones are never marked past due.',
+    gateEnvVar: 'LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED',
   },
   {
     job: 'storage-usage-sweep',
@@ -260,6 +275,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     // or refused against a number that stopped moving.
     importance: 'housekeeping',
     consequence: 'Workspace storage measurements freeze, so Plan & usage shows a stale figure and the upload cap is enforced against it.',
+    gateEnvVar: 'LGQ_WORKSPACE_STORAGE_USAGE_SWEEP_ENABLED',
   },
   {
     job: 'usage-reservation-expiry',
@@ -271,8 +287,32 @@ export const CRON_JOBS: CronJobSpec[] = [
     // errors; the balance is simply wrong and stays wrong.
     importance: 'money',
     consequence: 'Credits held by requests that died mid-flight are never released, so a workspace permanently loses balance it paid for.',
+    gateEnvVar: 'LGQ_USAGE_RESERVATION_EXPIRY_ENABLED',
   },
 ];
+
+export type CronGateStatus = {
+  isGated: boolean;
+  isEnabled: boolean;
+  envVar?: string;
+  value?: string;
+};
+
+export function cronGateStatus(
+  spec: CronJobSpec,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): CronGateStatus {
+  if (!spec.gateEnvVar) {
+    return { isGated: false, isEnabled: true };
+  }
+  const value = env[spec.gateEnvVar];
+  return {
+    isGated: true,
+    isEnabled: value === '1',
+    envVar: spec.gateEnvVar,
+    value,
+  };
+}
 
 export function cronJob(job: string): CronJobSpec | undefined {
   return CRON_JOBS.find((j) => j.job === job);
