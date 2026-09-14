@@ -37,42 +37,23 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
   verifyUrl.searchParams.set('token_hash', linkData.properties.hashed_token);
   verifyUrl.searchParams.set('next', safeNextPath(next));
 
-  // Send email via Resend
-  const resend = new Resend(RESEND_API_KEY);
-  
-  const { data, error: emailError } = await sendPlatformTransactionalEmail(admin, resend, {
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+  // Instead of sending inline, enqueue to platform event notices
+  const payload = {
     to: email,
     subject: "Your sign-in link for Let's Get Quoted",
-    html: renderBrandedEmail({
-      design: 'platform',
-      audience: 'account',
-      brand: {
-        businessName: "Let's Get Quoted",
-        accent: '#ff6a24',
-        theme: 'blueprint',
-        logoUrl: null,
-        phone: null,
-        siteUrl: APP_ORIGIN,
-        replyTo: null,
-      },
-      preheader: 'Click to securely sign in to your contractor workspace',
-      eyebrow: 'Contractor Login',
-      heading: 'Sign in to your workspace',
-      paragraphs: [
-        'Tap the secure button below to sign in to your Let\'s Get Quoted account. No password needed.',
-      ],
-      cta: {
-        label: 'Sign in to your dashboard',
-        url: verifyUrl.toString(),
-      },
-      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This link expires in ${TOKEN_EXPIRY_MINUTES} minutes. If you did not request this sign-in link, you can safely ignore this email.</p>`,
-    }),
-    tags: [{ name: 'kind', value: 'magic_link' }],
+    verifyUrl: verifyUrl.toString(),
+    tokenExpiryMinutes: TOKEN_EXPIRY_MINUTES
+  };
+
+  const { error: insertError } = await admin.from('platform_event_notices').insert({
+    account_id: null,
+    event_family: 'auth_link',
+    source_id: 'magic-link-' + Date.now(),
+    payload
   });
 
-  if (emailError || !data?.id) {
-    console.error('Resend magic link error:', emailError);
-    throw new Error(`Failed to send email: ${emailError?.message || 'provider acceptance was not confirmed'}`);
+  if (insertError) {
+    console.error('Failed to queue magic link email:', insertError);
+    throw new Error(`Failed to queue magic link email: ${insertError.message}`);
   }
 }

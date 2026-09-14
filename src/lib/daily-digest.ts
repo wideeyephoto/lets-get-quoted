@@ -231,14 +231,23 @@ export async function runDailyDigests(now: Date = new Date()): Promise<DigestRun
       if (!to) { skippedNoEmail++; continue; }
 
       const businessName = await resolveBusinessName(admin, accountId);
-      await sendDailyDigestEmail({
-        accountId,
-        recipientEmail: to,
+      
+      const payload = {
+        to,
         businessName,
         digest,
         dashboardUrl: `${APP_ORIGIN}/dashboard`,
         manageUrl: `${APP_ORIGIN}/dashboard/automations#daily-digest`,
+      };
+      
+      const { error: insertError } = await admin.from('platform_event_notices').insert({
+        account_id: accountId,
+        event_family: 'daily_digest',
+        source_id: todayKey,
+        payload
       });
+      if (insertError) throw insertError;
+      
       sent++;
     } catch (err) {
       failed++;

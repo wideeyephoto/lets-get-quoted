@@ -101,16 +101,21 @@ export async function sendCustomerMerchandiseReceipt(params: {
   `;
 
   try {
-    const result = await sendAccountScopedEmail(createAdminClient(), resend, params.order.accountId, {
-      from: "Let's Get Quoted <orders@letsgetquoted.com>",
+    const admin = createAdminClient();
+    const payload = {
       to: params.customerEmail,
       subject: `Order Confirmation #${params.order.orderNumber}`,
-      tags: [{ name: 'kind', value: 'merchandise_customer_receipt' }],
       html,
+    };
+    const result = await admin.from('platform_event_notices').insert({
+      account_id: params.order.accountId,
+      event_family: 'merchandise_receipt',
+      source_id: params.order.id,
+      payload
     });
-    return !result.error && Boolean(result.data?.id);
+    return !result.error;
   } catch (err) {
-    console.warn('Failed to send customer merchandise confirmation email:', err);
+    console.warn('Failed to queue customer merchandise confirmation email:', err);
     return false;
   }
 }
@@ -123,11 +128,7 @@ export async function sendStaffMerchandiseAlert(params: {
   provider?: string;
   isSimulated?: boolean;
 }): Promise<boolean> {
-  const resend = getResend();
   const alertRecipient = process.env.STAFF_ALERT_EMAIL || 'hello@letsgetquoted.com';
-  if (!resend) {
-    return false;
-  }
 
   const html = `
     <div style="font-family: monospace; font-size: 13px;">
@@ -142,16 +143,21 @@ export async function sendStaffMerchandiseAlert(params: {
   `;
 
   try {
-    const result = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
-      from: "Let's Get Quoted Alerts <alerts@letsgetquoted.com>",
+    const admin = createAdminClient();
+    const payload = {
       to: alertRecipient,
-      tags: [{name:'kind',value:'merchandise_staff_alert'}],
       subject: `[Merchandise Order] #${params.order.orderNumber} (${formatUsdExact(params.order.totalAmount)})`,
       html,
+    };
+    const result = await admin.from('platform_event_notices').insert({
+      account_id: params.order.accountId,
+      event_family: 'merchandise_alert',
+      source_id: params.order.id + '-alert',
+      payload
     });
-    return !result.error && Boolean(result.data?.id);
+    return !result.error;
   } catch (err) {
-    console.warn('Failed to send staff merchandise alert email:', err);
+    console.warn('Failed to queue staff merchandise alert email:', err);
     return false;
   }
 }
