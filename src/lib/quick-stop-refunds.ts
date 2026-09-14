@@ -4,7 +4,7 @@ import { loadQuickStopTimeZone, quickStopWindowEndMs, quickStopNoShowEligibility
 import { getQuickStopRequest, logQuickStopEvent, type QuickStopRequest } from '@/lib/quick-stop-requests';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { sendQuickStopStatusSms } from '@/lib/sms';
-import { canTransition, centsToDollars } from '@/lib/quick-stop';
+import { centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
 import { logAdminAction, systemActor, type AuditActor } from '@/lib/admin';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
@@ -54,7 +54,21 @@ export async function loadRefundTiers(admin: SupabaseClient, accountId: string):
 }
 
 // How much of a CUSTOMER-initiated cancellation is refundable, by timeline.
-export function computeCustomerRefundPercent(req: QuickStopRequest, now = Date.now(), tiers: RefundTiers = QUICK_STOP_REFUND_TIERS, timeZone = 'America/New_York'): number {
+//
+// `timeZone` IS NOT OPTIONAL, and that is the point. `arrival_date` is a bare
+// date and `arrival_end` a bare time — wall clock in the CONTRACTOR's zone. A
+// default here reads them in whatever zone the caller forgot to think about: on
+// a UTC host a 3 PM window for an America/New_York account ends at 15:00Z
+// instead of 19:00Z, handing out the contractorMissedWindow tier — a 100% refund
+// — four hours (seven, on the west coast) before the window had actually run
+// out. It leads the signature so it cannot be defaulted and cannot be skipped
+// past: every call site becomes a compile error rather than a quiet wrong answer.
+export function computeCustomerRefundPercent(
+  req: QuickStopRequest,
+  timeZone: string,
+  now = Date.now(),
+  tiers: RefundTiers = QUICK_STOP_REFUND_TIERS,
+): number {
   const t = tiers;
   if (!req.paid_at) return 100; // nothing captured yet — full (no-op) refund
   if (now - new Date(req.paid_at).getTime() <= t.withinGraceMinutes * 60_000) return t.grace;
@@ -72,6 +86,35 @@ export function computeCustomerRefundPercent(req: QuickStopRequest, now = Date.n
 }
 
 export type CancellationKind = 'customer_cancel' | 'contractor_cancel' | 'no_show';
+
+/**
+ * WHICH STATUSES EACH RESOLUTION MAY ACT ON.
+ *
+ * A MIRROR, NOT THE GATE. cancel_quick_stop_request enforces these same three
+ * allowlists inside the cancellation transaction, and that is the copy that is
+ * authoritative — it holds the row lock, so it is the only one that can be right
+ * under concurrency. This exists for two reasons the SQL cannot serve: it fails a
+ * bad request fast with a sentence naming the status, instead of a round trip
+ * ending in a raw `raise exception`; and it lets the guard be pinned against
+ * QUICK_STOP_TRANSITIONS by a test, so the table and the rule that implements it
+ * cannot drift apart unnoticed. Keep it in step with the migration.
+ *
+ * The admin console's resolve dropdown is the one caller that guards nothing of
+ * its own, which is how staff could aim a no-show at a request that had been
+ * declined, had expired unpaid, or was already refunded — no money moved, but the
+ * escalating account lock fired regardless, and its third tier is 3650 days.
+ *
+ * `completed` belongs under no_show and the closed statuses do not: the sweep
+ * auto-completes on an ASSUMPTION — the window elapsed and nobody reported
+ * anything — not on proof of arrival, so staff must still be able to record a
+ * no-show against one. A request that never reached `confirmed` never became a
+ * visit, so it cannot have been missed.
+ */
+export const RESOLVABLE_FROM: Record<CancellationKind, QuickStopStatus[]> = {
+  customer_cancel: ['awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'],
+  contractor_cancel: ['contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'],
+  no_show: ['confirmed', 'en_route', 'completed', 'disputed', 'no_show_reported'],
+};
 
 // Atomically cancel the booking and preserve its refund obligation, then attempt
 // the durable refund and notify both parties. Verified contractor no-shows apply
@@ -94,7 +137,11 @@ export async function resolveQuickStopCancellation(
   if (req.status === status) {
     return { pct: 0, refundCents: req.refund_cents ?? 0, refundPending: Boolean(req.refund_due_cents && req.refund_state !== 'completed') };
   }
-  if (!canTransition(req.status, status)) throw new Error('This Quick Stop cannot be resolved from its current state.');
+  if (!RESOLVABLE_FROM[opts.kind].includes(req.status as QuickStopStatus)) {
+    throw new Error(
+      `A ${opts.kind.replace(/_/g, ' ')} can't be recorded against a request that is ${req.status.replace(/_/g, ' ')}.`,
+    );
+  }
   const timeZone = await loadQuickStopTimeZone(admin, accountId);
   if (!timeZone) throw new Error('The account time zone could not be verified.');
   if (opts.kind === 'no_show' && opts.requireReportingWindow && quickStopNoShowEligibility(req, timeZone) !== 'eligible') {
@@ -102,7 +149,7 @@ export async function resolveQuickStopCancellation(
   }
   const tiers = await loadRefundTiers(admin, accountId);
   const refundPct = opts.kind === 'no_show' ? tiers.noShow : opts.kind === 'contractor_cancel'
-    ? tiers.contractorCancel : computeCustomerRefundPercent(req, Date.now(), tiers, timeZone);
+    ? tiers.contractorCancel : computeCustomerRefundPercent(req, timeZone, Date.now(), tiers);
   // Booking transition, evidence checks, calendar archival, and refund intent
   // commit together. An application crash cannot lose the financial obligation.
   const { data: claimed, error: claimError } = await admin.rpc('cancel_quick_stop_request', {

@@ -2,11 +2,36 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { queueQuickStopRefund, processQuickStopRefunds } from '@/lib/quick-stop-refund-recovery';
 import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-requests';
-import { centsToDollars } from '@/lib/quick-stop';
+import { centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
 import { sendQuickStopOfferSms, sendQuickStopConfirmedSms } from '@/lib/sms';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+
+/**
+ * Statuses a charge may still land against after the offer stopped being payable.
+ *
+ * Never keep money without an appointment. The sweep expiring an offer is only
+ * one of the ways that happens — either side walking away closes it just as
+ * effectively, and the charge can still arrive a moment later — so this is every
+ * closed status that can hold a payment, not just `offer_expired`.
+ *
+ * `refunded` is deliberately IN the list and `completed`, `disputed` and every
+ * live status are deliberately out. A redelivered webhook against an already
+ * refunded request must still reconcile, and queueing is idempotent: it preserves
+ * whatever partial or zero obligation the cancellation already recorded. A
+ * `disputed` request has its own resolution running and this path must not cut
+ * across it, and the rest have an appointment the money is paying for.
+ */
+export const LATE_PAYMENT_REFUNDABLE: readonly QuickStopStatus[] = [
+  'offer_expired',
+  'customer_canceled',
+  'customer_declined',
+  'contractor_canceled',
+  'contractor_declined',
+  'no_show_confirmed',
+  'refunded',
+];
 
 function fmtTime(hhmm: string | null): string {
   if (!hhmm) return '';
@@ -78,8 +103,7 @@ export async function confirmQuickStopPayment(admin: SupabaseClient, paymentId: 
       .eq('payment_id', paymentId)
       .maybeSingle();
     if (staleError) throw new Error(staleError.message);
-    if (stale && ['offer_expired', 'customer_canceled', 'customer_declined', 'contractor_canceled',
-      'contractor_declined', 'no_show_confirmed', 'refunded'].includes(stale.status)) {
+    if (stale && LATE_PAYMENT_REFUNDABLE.includes(stale.status as QuickStopStatus)) {
       // A redelivered webhook preserves any existing partial/zero cancellation
       // obligation. A never-booked late charge owes the entire visit fee.
       await queueQuickStopRefund(admin, stale.id as string);

@@ -17,23 +17,20 @@
  *
  * lib/arrival already had zonedInstant for exactly this, with a docstring naming
  * the bug ("how an 8 AM appointment becomes a 3 AM text message on a UTC host").
- * These tests hold the three sites to it, and the last one stops the pattern
- * coming back anywhere in the feature.
+ *
+ * Two of the three sites have since moved into SQL, where the window is resolved
+ * with quick_stop_window_instant against the account's own zone, so the guard for
+ * those reads the migration rather than driving a fake client past a decision the
+ * database now makes. The refund tier is still computed in TypeScript and is
+ * still tested as such. The last block stops the pattern coming back anywhere in
+ * the feature.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeCustomerRefundPercent } from '@/lib/quick-stop-refunds';
-import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { zonedInstant } from '@/lib/arrival';
 import type { QuickStopRequest } from '@/lib/quick-stop-requests';
-import { makeFakeAdmin } from './helpers/fake-supabase';
-
-vi.mock('@/lib/quick-stop-requests', () => ({ logQuickStopEvent: vi.fn() }));
-vi.mock('@/lib/email', () => ({
-  getAccountOwnerEmail: vi.fn().mockResolvedValue(null),
-  sendContractorAlertEmail: vi.fn(),
-}));
 
 const DAY = '2026-07-29';
 const END = '15:00'; // 3 PM, in the contractor's own zone
@@ -80,57 +77,40 @@ describe('the missed-window refund tier respects the contractor’s zone', () =>
 });
 
 describe('auto-complete waits for the zoned window, not the server’s', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  /**
+   * THIS MOVED INTO SQL, so the guard did too.
+   *
+   * The auto-complete used to run in TypeScript, which is where the bug lived and
+   * where the first version of this block drove it through a fake client. It is
+   * now one step of sweep_quick_stop_requests, chosen and committed under the
+   * row lock; sweepQuickStopOffers is a coordinator that counts what came back
+   * (test/lib-quick-stop-sweep.test.ts covers that part). Driving a fake `rpc`
+   * from here would assert nothing about the code that actually decides.
+   *
+   * So this reads the migration. Crude, but it pins the two properties the bug
+   * was about, at the layer that now holds them: the window is resolved in the
+   * ACCOUNT'S zone, and the 2-hour no-show grace has to elapse on top of it.
+   * quick_stop_window_instant itself is exercised against a real PostgreSQL in
+   * the database-backed suite.
+   */
+  const sweepSql = readFileSync(join(process.cwd(), 'migrations/20260914132825_quick_stop_atomic_sweep.sql'), 'utf8');
 
-  const requestRow = {
-    id: 'req1',
-    account_id: 'acct-la',
-    job_id: 'job1',
-    status: 'confirmed',
-    arrival_date: DAY,
-    arrival_end: END,
-    no_show_reported_at: null,
-    payment_id: 'pay1',
-    updated_at: '2026-07-29T10:00:00.000Z',
-  };
-  // 3 PM Los Angeles is 22:00Z; +2h grace means nothing may complete before 00:00Z.
-  const accounts = [{ id: 'acct-la', timezone: 'America/Los_Angeles' }];
-
-  it('leaves the visit alone while the window is still open in its own zone', async () => {
-    // 18:00Z = 11:00 Pacific. The old code read the window as ending at 15:00Z and
-    // auto-completed here, three hours before the tech was even due.
-    vi.setSystemTime(new Date('2026-07-29T18:00:00Z'));
-    const admin = makeFakeAdmin({ extra_stop_requests: [requestRow], accounts, jobs: [{ id: 'job1', account_id: 'acct-la', status: 'in_progress' }] });
-    const summary = await sweepQuickStopOffers(admin as never);
-    expect(summary.autoCompleted).toBe(0);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('confirmed');
-    expect(admin.tables.jobs[0].status).toBe('in_progress');
+  it('resolves the arrival window in the account’s zone, never the server’s', () => {
+    // Both ends, and both from the account row rather than a server default.
+    expect(sweepSql).toMatch(/quick_stop_window_instant\(\s*\w+\.arrival_date\s*,\s*\w+\.arrival_start\s*,[^)]*timezone/);
+    expect(sweepSql).toMatch(/quick_stop_window_instant\(\s*\w+\.arrival_date\s*,\s*\w+\.arrival_end\s*,[^)]*timezone/);
+    // An account with no zone falls back to the documented default, not to UTC.
+    expect(sweepSql).toMatch(/coalesce\(nullif\(a\.timezone,''\),'America\/New_York'\)/);
   });
 
-  it('does not complete during the 2-hour no-show grace either', async () => {
-    vi.setSystemTime(new Date('2026-07-29T23:00:00Z')); // window closed, grace running
-    const admin = makeFakeAdmin({ extra_stop_requests: [requestRow], accounts, jobs: [] });
-    expect((await sweepQuickStopOffers(admin as never)).autoCompleted).toBe(0);
+  it('will not complete a visit until the zoned window plus the no-show grace has elapsed', () => {
+    // `end_at + 2 hours < now` in the candidate scan, and again under the lock.
+    const guards = sweepSql.match(/end_at \+ interval '2 hours'|v_end \+ interval '2 hours'/g) ?? [];
+    expect(guards.length, 'the grace is checked when selecting AND when committing').toBeGreaterThanOrEqual(2);
   });
 
-  it('completes once the zoned window plus grace has really elapsed', async () => {
-    vi.setSystemTime(new Date('2026-07-30T00:30:00Z'));
-    const admin = makeFakeAdmin({ extra_stop_requests: [requestRow], accounts, jobs: [{ id: 'job1', account_id: 'acct-la', status: 'in_progress' }] });
-    const summary = await sweepQuickStopOffers(admin as never);
-    expect(summary.autoCompleted).toBe(1);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('completed');
-    expect(admin.tables.jobs[0].status).toBe('complete');
-  });
-
-  it('never steals a visit whose no-show is already being reported', async () => {
-    vi.setSystemTime(new Date('2026-07-30T00:30:00Z'));
-    const admin = makeFakeAdmin({
-      extra_stop_requests: [{ ...requestRow, no_show_reported_at: '2026-07-30T00:00:00.000Z' }],
-      accounts,
-      jobs: [],
-    });
-    expect((await sweepQuickStopOffers(admin as never)).autoCompleted).toBe(0);
+  it('never steals a visit whose no-show is already being reported', () => {
+    expect(sweepSql).toMatch(/no_show_reported_at is null/);
   });
 });
 

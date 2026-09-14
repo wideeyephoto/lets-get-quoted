@@ -16,7 +16,7 @@
  *     nothing held them together.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { makeFakeAdmin, type Row } from './helpers/fake-supabase';
+import { makeFakeAdmin, type Row, type RpcHandler } from './helpers/fake-supabase';
 import {
   QUICK_STOP_TRANSITIONS,
   QUICK_STOP_CLOSED_STATUSES,
@@ -26,12 +26,14 @@ import {
   type QuickStopStatus,
 } from '@/lib/quick-stop';
 
-const refundPayment = vi.fn();
+const processQuickStopRefunds = vi.fn();
 const sendQuickStopStatusSms = vi.fn();
 const sendContractorAlertEmail = vi.fn();
 const logAdminAction = vi.fn();
 
-vi.mock('@/lib/payments', () => ({ refundPayment: (...a: unknown[]) => refundPayment(...a) }));
+vi.mock('@/lib/quick-stop-refund-recovery', () => ({
+  processQuickStopRefunds: (...a: unknown[]) => processQuickStopRefunds(...a),
+}));
 vi.mock('@/lib/sms', () => ({ sendQuickStopStatusSms: (...a: unknown[]) => sendQuickStopStatusSms(...a) }));
 vi.mock('@/lib/email', () => ({
   getAccountOwnerEmail: vi.fn().mockResolvedValue('owner@example.com'),
@@ -59,7 +61,7 @@ const { resolveQuickStopCancellation, RESOLVABLE_FROM } = await import('@/lib/qu
 const ACCOUNT = 'acct1';
 const PAID_AT = '2026-07-29T12:00:00.000Z';
 
-function world(overrides: Row = {}) {
+function world(overrides: Row = {}, rpcs: Record<string, RpcHandler> = {}) {
   return makeFakeAdmin({
     extra_stop_requests: [
       {
@@ -83,16 +85,58 @@ function world(overrides: Row = {}) {
     ],
     accounts: [{ id: ACCOUNT, timezone: 'America/New_York', extra_stop_refund_tiers: null, extra_stop_locked_until: null }],
     jobs: [{ id: 'job1', account_id: ACCOUNT, status: 'in_progress' }],
+  }, rpcs);
+}
+
+/**
+ * A FIXTURE MIRRORING migrations/20260914132411_quick_stop_refund_recovery.sql,
+ * not a second implementation of it. It reproduces only the parts these tests
+ * depend on: the compare-and-set on the expected status, the paid-visit
+ * precondition for a no-show, the refund obligation it records, and archiving the
+ * placeholder job. Everything the real function also does under the row lock —
+ * the lock ordering, the escalating account lock, queueing the refund task — is
+ * the migration's business and is covered against a real PostgreSQL elsewhere.
+ */
+function cancelRpc(): Record<string, RpcHandler> {
+  return {
+    cancel_quick_stop_request: (args, tables) => {
+      const row = tables.extra_stop_requests.find((r) => r.id === args.p_request_id);
+      if (!row) throw new Error('Quick Stop not found');
+      const status = args.p_kind === 'no_show' ? 'no_show_confirmed'
+        : args.p_kind === 'contractor_cancel' ? 'contractor_canceled' : 'customer_canceled';
+      if (row.status === status) return false;
+      if (row.status !== args.p_expected_status) return false;
+      if (args.p_kind === 'no_show' && (!row.paid_at || !row.payment_id || !row.job_id)) {
+        throw new Error('No-show requires a paid scheduled visit that never arrived');
+      }
+      const pct = args.p_kind === 'customer_cancel' && row.paid_at ? (args.p_refund_pct as number) : 100;
+      const due = row.payment_id ? Math.round(((row.fee_cents as number) ?? 0) * pct / 100) : 0;
+      Object.assign(row, { status, refund_due_cents: due, refund_state: due > 0 ? 'pending' : 'none' });
+      const job = tables.jobs.find((j) => j.id === row.job_id);
+      if (job) job.status = 'archived';
+      return true;
+    },
+  };
+}
+
+/** The recovery worker succeeding: the obligation is settled in full. */
+function settleRefund() {
+  processQuickStopRefunds.mockImplementation(async (admin: { tables: Record<string, Row[]> }, _n, _acct, id) => {
+    const row = admin.tables.extra_stop_requests.find((r) => r.id === id);
+    if (row) row.refund_cents = row.refund_due_cents ?? 0;
   });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  refundPayment.mockResolvedValue({ refundedTotal: 120, isFull: true });
+  // Default: the refund does NOT settle synchronously. That is the honest
+  // default for a durable queue — the obligation is recorded, the money moves
+  // later — and a test that wants the settled case says so.
+  processQuickStopRefunds.mockResolvedValue(undefined);
 });
 
 describe('a resolution has to be legal for the status it is aimed at', () => {
-  it.each(['offer_expired', 'contractor_declined', 'customer_declined', 'refunded', 'no_show_confirmed'])(
+  it.each(['offer_expired', 'contractor_declined', 'customer_declined', 'refunded'])(
     'refuses to record a no-show against a %s request',
     async (status) => {
       const admin = world({ status, paid_at: null, payment_id: null });
@@ -100,28 +144,56 @@ describe('a resolution has to be legal for the status it is aimed at', () => {
         resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' }),
       ).rejects.toThrow(/can't be recorded/i);
 
-      // The point of the guard: no lock, no audit row, no status change.
+      // The point of the guard: it fails before the round trip, so no lock, no
+      // audit row, no status change, and cancel_quick_stop_request never runs.
+      expect(admin.rpcCalls).toEqual([]);
       expect(admin.tables.accounts[0].extra_stop_locked_until).toBeNull();
       expect(logAdminAction).not.toHaveBeenCalled();
       expect(admin.tables.extra_stop_requests[0].status).toBe(status);
     },
   );
 
+  it('treats a repeat of a no-show already recorded as a no-op, not an error', async () => {
+    // Distinct from the statuses above: this is the SAME resolution arriving
+    // twice (a double submit, or a retry), and the honest answer to "record this
+    // no-show" on a request that already carries one is "already done" rather
+    // than a thrown error the caller has to pattern-match. It must still not
+    // extend the lock or write a second audit row.
+    const admin = world({ status: 'no_show_confirmed', paid_at: null, payment_id: null });
+    const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' });
+    expect(out.refundCents).toBe(0);
+    expect(admin.rpcCalls).toEqual([]);
+    expect(admin.tables.accounts[0].extra_stop_locked_until).toBeNull();
+    expect(logAdminAction).not.toHaveBeenCalled();
+  });
+
   it('still lets staff record a no-show against an auto-completed visit', async () => {
     // The sweep completes on an assumption — window elapsed, nobody complained —
     // so `completed` is not proof the tech arrived, and this must stay possible.
-    const admin = world({ status: 'completed' });
+    // `completed` is in RESOLVABLE_FROM.no_show, so the guard lets it through to
+    // the transaction that decides.
+    expect(RESOLVABLE_FROM.no_show).toContain('completed');
+    const admin = world({ status: 'completed' }, cancelRpc());
     const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' });
-    expect(out.refundCents).toBe(12000); // noShow tier is a fixed 100%
+    expect(out.pct).toBe(100); // noShow tier is a fixed 100%
     expect(admin.tables.extra_stop_requests[0].status).toBe('no_show_confirmed');
-    expect(admin.tables.accounts[0].extra_stop_locked_until).toBeTruthy();
+    expect(admin.tables.extra_stop_requests[0].refund_due_cents).toBe(12000);
   });
 
-  it('never locks an account over a request nobody paid for', async () => {
-    // Reachable because the admin console can force `completed` from anywhere; the
-    // lock is gated on the money rather than inferred from the lifecycle.
-    const admin = world({ status: 'completed', paid_at: null, payment_id: null, fee_cents: null });
-    await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' });
+  it('leaves the paid-visit precondition for a no-show to the transaction', async () => {
+    /* The lock is gated on the MONEY, not inferred from the lifecycle — reachable
+       because the admin console can force `completed` from any status at all,
+       which puts an unpaid request back inside the allowlist. That check now sits
+       inside cancel_quick_stop_request, under the row lock, next to the lock it
+       guards ("No-show requires a paid scheduled visit that never arrived"), and
+       a rejection there must surface rather than be swallowed. */
+    const admin = world(
+      { status: 'completed', paid_at: null, payment_id: null, fee_cents: null },
+      cancelRpc(),
+    );
+    await expect(
+      resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' }),
+    ).rejects.toThrow(/paid scheduled visit/i);
     expect(admin.tables.accounts[0].extra_stop_locked_until).toBeNull();
     expect(logAdminAction).not.toHaveBeenCalled();
   });
@@ -141,43 +213,71 @@ describe('a resolution has to be legal for the status it is aimed at', () => {
 });
 
 describe('a refund that did not happen is never reported as one that did', () => {
+  /**
+   * THE ORIGINAL BUG: the sentence read `refund_cents`, which a failed Stripe
+   * call reset to 0 — so somebody who cancelled inside the grace window, owed
+   * every cent back, was texted "No charge was refunded."
+   *
+   * The shape of the fix changed with the architecture. The refund is no longer
+   * attempted inline with a flag for when it fails; the obligation is committed
+   * with the cancellation and a durable worker settles it. So the distinction the
+   * sentence has to carry is no longer refunded-vs-failed but SETTLED versus
+   * STILL OWED, which `refundPending` names and `refund_cents` alone still
+   * cannot. "No charge was refunded" must remain reachable only when nothing was
+   * ever owed.
+   */
   it('tells the customer the money is still coming, and the owner to go and fix it', async () => {
-    refundPayment.mockRejectedValue(new Error('card_declined'));
-    const admin = world({ paid_at: new Date().toISOString() }); // inside grace -> 100%
+    // Inside the grace window -> 100% owed, and the worker has not settled it.
+    const admin = world({ paid_at: new Date().toISOString() }, cancelRpc());
 
     const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
 
-    expect(out.refundFailed).toBe(true);
+    expect(out.refundPending).toBe(true);
     expect(out.refundCents).toBe(0);
-    // The row must never claim money that did not move.
+    // The row must never claim money that did not move...
     expect(admin.tables.extra_stop_requests[0].refund_cents).toBe(0);
+    // ...but it must still record that it is owed.
+    expect(admin.tables.extra_stop_requests[0].refund_due_cents).toBe(12000);
 
     const sms = sendQuickStopStatusSms.mock.calls[0][0].message as string;
     expect(sms).not.toMatch(/no charge was refunded/i);
-    expect(sms).toMatch(/\$120/);
-    expect(sms).toMatch(/didn't complete|finishing it by hand/i);
+    expect(sms).toMatch(/refund is pending/i);
 
     const email = sendContractorAlertEmail.mock.calls[0][0];
-    expect(email.subject).toMatch(/action needed/i);
-    expect(email.bodyLines.join(' ')).toMatch(/has NOT been sent/);
+    expect(email.subject).toMatch(/quick stop canceled/i);
+    expect(email.bodyLines.join(' ')).toMatch(/refund is pending/i);
   });
 
   it('says so plainly when there was genuinely nothing to refund', async () => {
-    const admin = world({ status: 'arrived', arrived_at: new Date().toISOString(), paid_at: PAID_AT });
+    const admin = world(
+      { status: 'arrived', arrived_at: new Date().toISOString(), paid_at: PAID_AT },
+      cancelRpc(),
+    );
     const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
     expect(out.pct).toBe(0); // afterArrived tier
-    expect(out.refundFailed).toBe(false);
-    expect(refundPayment).not.toHaveBeenCalled();
+    expect(out.refundPending).toBe(false);
+    expect(admin.tables.extra_stop_requests[0].refund_due_cents).toBe(0);
     expect(sendQuickStopStatusSms.mock.calls[0][0].message).toMatch(/no charge was refunded/i);
   });
 
-  it('reports a successful refund as issued', async () => {
-    const admin = world({ paid_at: new Date().toISOString() });
+  it('reports a settled refund as issued', async () => {
+    settleRefund();
+    const admin = world({ paid_at: new Date().toISOString() }, cancelRpc());
     const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
-    expect(out.refundFailed).toBe(false);
+    expect(out.refundPending).toBe(false);
     expect(out.refundCents).toBe(12000);
     expect(sendQuickStopStatusSms.mock.calls[0][0].message).toMatch(/refund of \$120 has been issued/i);
     expect(admin.tables.jobs[0].status).toBe('archived');
+  });
+
+  it('promises the refund even when the charge has not landed yet', async () => {
+    // An unpaid offer cancellation still owes 100% of a charge that settles
+    // later, and saying "no charge was refunded" to that customer would be a
+    // promise the ledger contradicts.
+    const admin = world({ status: 'awaiting_customer_payment', paid_at: null }, cancelRpc());
+    const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
+    expect(out.refundPending).toBe(true);
+    expect(sendQuickStopStatusSms.mock.calls[0][0].message).toMatch(/will be refunded/i);
   });
 });
 
@@ -192,12 +292,16 @@ describe('a late charge is handed back from every state that closed the offer', 
       if (status === 'refunded' || status === 'disputed' || status === 'completed') continue;
       expect(LATE_PAYMENT_REFUNDABLE, `${status} can hold a late charge`).toContain(status);
     }
-    for (const status of ['confirmed', 'en_route', 'arrived', 'completed', 'refunded', 'disputed']) {
+    // `refunded` is deliberately NOT excluded: queueing is idempotent and a
+    // redelivered webhook against an already-refunded request must still
+    // reconcile rather than leave money sitting against no appointment.
+    for (const status of ['confirmed', 'en_route', 'arrived', 'completed', 'disputed']) {
       expect(LATE_PAYMENT_REFUNDABLE, `${status} has an appointment or its own resolution`).not.toContain(status);
     }
-    // And each one is a transition the table admits, since the rescue writes
-    // `refunded` from whichever status it found.
+    // And each one either reaches `refunded` in the table, or is already there,
+    // since the rescue settles as `refunded` from whichever status it found.
     for (const status of LATE_PAYMENT_REFUNDABLE) {
+      if (status === 'refunded') continue;
       expect(QUICK_STOP_TRANSITIONS[status as QuickStopStatus]).toContain('refunded');
     }
   });

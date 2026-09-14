@@ -2,32 +2,44 @@
  * Sending a Quick Stop offer: the day it commits to, the slot it takes, and what
  * happens when the payment hand-off falls over.
  *
- * Three holes, all in createQuickStopOfferAction:
- *   - the DAY was never validated. Only the weekday and the times were checked, so
- *     an offer could be dated in the past — which the sweep then auto-completes and
- *     which immediately trips the contractorMissedWindow tier, a 100% refund — and
- *     nothing enforced `daysAhead`, even though the customer-facing picker does.
- *   - the daily cap was check-then-act. The count and the claim were separate round
- *     trips and the claim wrote only `status`; `arrival_date` was stamped later, so
- *     the row did not occupy the day until well after it had been counted, and two
- *     different requests offered for the same date at once both got through.
+ * Three holes were found in createQuickStopOfferAction. All three are closed, but
+ * two of them are no longer closed HERE, so this file checks them where they now
+ * live rather than pretending the TypeScript still decides:
+ *
+ *   - the DAY was never validated, so an offer could be dated in the past — which
+ *     the sweep then auto-completes, immediately tripping the
+ *     contractorMissedWindow tier and a 100% refund. validateQuickStopOfferWindow
+ *     now resolves both ends of the window in the account's zone and refuses one
+ *     that has already ended. It is a pure function, so it is tested as one.
+ *   - the daily cap was check-then-act: the count and the claim were separate
+ *     round trips, so two requests offered for the same date at once both got
+ *     through. Counting and claiming are now a single statement inside
+ *     create_quick_stop_offer, under the row lock. A fake client cannot
+ *     demonstrate that; the test that can is the concurrency script against a
+ *     real PostgreSQL. What is checked here is that the guard is in the
+ *     transaction and that the action surfaces its refusal.
  *   - if sendQuickStopOffer threw, the request was stranded in
- *     `contractor_offer_sent` — a status nothing swept — with a live placeholder job
- *     on the calendar, permanently holding one of the account's daily slots.
+ *     `contractor_offer_sent` with a live placeholder job holding a daily slot.
+ *     The offer is now published atomically before any notification is attempted,
+ *     and recover_stale_quick_stop_offers sweeps an interrupted one instead of
+ *     rolling back by hand.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { makeFakeAdmin, type Row } from './helpers/fake-supabase';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { makeFakeAdmin, type Row, type RpcHandler } from './helpers/fake-supabase';
+import { validateQuickStopOfferWindow } from '@/lib/quick-stop-offers';
+import { QUICK_STOP_DAY_OCCUPYING_STATUSES } from '@/lib/quick-stop';
 
 const state: { admin: ReturnType<typeof makeFakeAdmin> } = { admin: null as never };
 const sendQuickStopOffer = vi.fn();
-const createJob = vi.fn();
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/auth', () => ({
   requireOfficeContext: async () => ({ supabase: state.admin, accountId: ACCOUNT }),
   createAdminClient: () => state.admin,
 }));
-vi.mock('@/lib/jobs', () => ({ createJob: (...a: unknown[]) => createJob(...a) }));
+vi.mock('@/lib/jobs', () => ({ createJob: vi.fn() }));
 vi.mock('@/lib/sms', () => ({ sendQuickStopStatusSms: vi.fn() }));
 vi.mock('@/lib/sms-templates', () => ({ quickStopStatusText: () => 'msg' }));
 vi.mock('@/lib/geocode', () => ({ geocodeArea: vi.fn() }));
@@ -41,9 +53,6 @@ vi.mock('@/lib/quick-stop-requests', async () => {
   return {
     ...actual,
     logQuickStopEvent: vi.fn(),
-    // A COPY, like the real client returns. Handing back the live row would alias
-    // the snapshot the action holds to the row it is about to update, so a
-    // rollback reading `request.status` would read the value it just wrote.
     getQuickStopRequest: async (_admin: unknown, accountId: string, id: string) => {
       const row = state.admin.tables.extra_stop_requests.find((r) => r.id === id && r.account_id === accountId);
       return row ? { ...row } : null;
@@ -58,10 +67,12 @@ const ACCOUNT = 'acct1';
 const NOW = '2026-07-29T14:00:00Z';
 const TODAY = '2026-07-29';
 const TOMORROW = '2026-07-30';
+const ZONE = 'America/New_York';
+const SETTINGS = { weekdays: [1, 2, 3, 4, 5], earliestTime: '08:00', latestEnd: '20:00' };
 
 const ACCOUNT_ROW: Row = {
   id: ACCOUNT,
-  timezone: 'America/New_York',
+  timezone: ZONE,
   connect_onboarded: true,
   stripe_connect_id: 'acct_stripe',
   instant_book_drive_time: false,
@@ -72,7 +83,7 @@ const ACCOUNT_ROW: Row = {
   extra_stop_max_per_day: 1,
   extra_stop_min_fee_cents: 5000,
   extra_stop_max_fee_cents: 25000,
-  extra_stop_days_ahead: 1, // today or tomorrow
+  extra_stop_days_ahead: 1,
   extra_stop_response_deadline_mins: 30,
   extra_stop_payment_deadline_mins: 15,
 };
@@ -82,6 +93,32 @@ function form(overrides: Record<string, string> = {}): FormData {
   const values = { arrivalDate: TODAY, arrivalStart: '13:00', arrivalEnd: '15:00', fee: '120', visitMinutes: '45', ...overrides };
   for (const [k, v] of Object.entries(values)) fd.set(k, v);
   return fd;
+}
+
+/**
+ * A FIXTURE MIRRORING migrations/20260914132439_quick_stop_atomic_offer.sql, not
+ * a second implementation of it. It publishes the offer and applies the daily cap
+ * over the same day-occupying statuses; the row locking that makes the real one
+ * safe under concurrency is the migration's business.
+ */
+function offerRpc(): Record<string, RpcHandler> {
+  return {
+    create_quick_stop_offer: (args, tables) => {
+      const row = tables.extra_stop_requests.find((r) => r.id === args.p_request_id);
+      if (!row) throw new Error('Quick Stop not found');
+      const offer = args.p_offer as Row;
+      const cap = (tables.accounts[0].extra_stop_max_per_day as number) ?? 2;
+      const taken = tables.extra_stop_requests.filter(
+        (r) => r.id !== row.id
+          && r.arrival_date === offer.arrival_date
+          && QUICK_STOP_DAY_OCCUPYING_STATUSES.includes(r.status as never),
+      ).length;
+      if (taken >= cap) throw new Error(`You are at your Quick Stop limit (${cap}) for that day.`);
+      Object.assign(row, { status: 'contractor_offer_sent', ...offer, job_id: 'job-new', payment_id: 'pay-new' });
+      tables.jobs.push({ id: 'job-new', account_id: ACCOUNT, status: 'new_lead' });
+      return true;
+    },
+  };
 }
 
 function setup(extraRequests: Row[] = [], accountRow: Row = ACCOUNT_ROW) {
@@ -106,7 +143,7 @@ function setup(extraRequests: Row[] = [], accountRow: Row = ACCOUNT_ROW) {
     ],
     accounts: [accountRow],
     jobs: [],
-  });
+  }, offerRpc());
   return state.admin;
 }
 
@@ -115,38 +152,52 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(NOW));
   sendQuickStopOffer.mockResolvedValue(undefined);
-  createJob.mockImplementation(async () => {
-    const job = { id: 'job-new', account_id: ACCOUNT, status: 'new_lead' };
-    state.admin.tables.jobs.push(job);
-    return job;
-  });
 });
 afterEach(() => vi.useRealTimers());
 
 describe('the day an offer commits to is validated', () => {
-  it('refuses a date that has already gone', async () => {
-    const admin = setup();
-    await expect(createQuickStopOfferAction('req1', form({ arrivalDate: '2026-07-28' }))).rejects.toThrow(/already passed/i);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('awaiting_contractor');
-    expect(createJob).not.toHaveBeenCalled();
+  const check = (date: string, start: string, end: string, now = Date.parse(NOW)) =>
+    () => validateQuickStopOfferWindow(date, start, end, ZONE, SETTINGS, now);
+
+  it('refuses a date that has already gone', () => {
+    expect(check('2026-07-28', '13:00', '15:00')).toThrow(/has not ended/i);
   });
 
-  it('refuses a date beyond what the account’s own settings allow', async () => {
-    // daysAhead is 1, so Friday is two days past the horizon.
-    const admin = setup();
-    await expect(createQuickStopOfferAction('req1', form({ arrivalDate: '2026-07-31' }))).rejects.toThrow(/outside it/i);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('awaiting_contractor');
+  it('refuses today once today’s last arrival time has passed', () => {
+    // 21:00 on the 29th in New York: an 08:00–09:00 window that day is long over.
+    expect(check(TODAY, '08:00', '09:00', Date.parse('2026-07-30T01:00:00Z'))).toThrow(/has not ended/i);
   });
 
-  it('refuses today once today’s last arrival time has passed', async () => {
-    vi.setSystemTime(new Date('2026-07-30T01:00:00Z')); // 21:00 on the 29th in New York
-    const admin = setup();
-    await expect(createQuickStopOfferAction('req1', form({ arrivalDate: TODAY, arrivalStart: '08:00', arrivalEnd: '09:00' })))
-      .rejects.toThrow(/last arrival time/i);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('awaiting_contractor');
+  it('measures “already ended” in the account’s zone, not the server’s', () => {
+    // 18:00Z is 14:00 in New York — the 13:00–15:00 window is still open. Read as
+    // UTC it would already have ended, which is the bug this replaced.
+    expect(check(TODAY, '13:00', '15:00', Date.parse('2026-07-29T18:00:00Z'))).not.toThrow();
   });
 
-  it('accepts a date inside the window', async () => {
+  it('still refuses a malformed or nonexistent local time', () => {
+    expect(check(TODAY, '13:00', 'half past')).toThrow(/valid arrival date and window/i);
+    expect(check(TODAY, '15:00', '13:00')).toThrow(/end must be after its start/i);
+  });
+
+  it('holds the offer to the account’s own schedule', () => {
+    expect(check('2026-08-01', '13:00', '15:00')).toThrow(/isn’t in your Quick Stop schedule/i); // a Saturday
+    expect(check(TOMORROW, '07:00', '09:00')).toThrow(/can’t start before 08:00/i);
+    expect(check(TOMORROW, '18:00', '21:00')).toThrow(/can’t end after 20:00/i);
+  });
+
+  /**
+   * DELIBERATELY NOT ENFORCED: `daysAhead` bounds the customer-facing picker, not
+   * the contractor. A contractor answering a request may negotiate a date beyond
+   * the horizon the customer could have asked for — see the note on
+   * validateQuickStopOfferWindow. Pinned so that reading the horizon into this
+   * guard is a decision somebody makes on purpose.
+   */
+  it('lets a contractor offer beyond the customer request horizon', () => {
+    expect(ACCOUNT_ROW.extra_stop_days_ahead).toBe(1);
+    expect(check('2026-07-31', '13:00', '15:00')).not.toThrow(); // two days out, a Friday
+  });
+
+  it('accepts a date inside the window and publishes the offer', async () => {
     const admin = setup();
     await createQuickStopOfferAction('req1', form({ arrivalDate: TOMORROW }));
     expect(admin.tables.extra_stop_requests[0].status).toBe('contractor_offer_sent');
@@ -156,71 +207,62 @@ describe('the day an offer commits to is validated', () => {
 });
 
 describe('the daily cap holds even when two offers race for the same day', () => {
-  it('rejects up front when the day is already full', async () => {
+  const offerSql = readFileSync(join(process.cwd(), 'migrations/20260914132439_quick_stop_atomic_offer.sql'), 'utf8');
+
+  it('counts the day and claims the slot inside one transaction', () => {
+    /* The race the old code could not see: the pre-check counts zero, and a
+       competing offer for the same day lands before this one claims. There is no
+       pre-check any more — the count and the raise are inside
+       create_quick_stop_offer, so a competitor cannot land between them. */
+    const fn = offerSql.slice(offerSql.indexOf('function public.create_quick_stop_offer'));
+    const body = fn.slice(0, fn.indexOf('$$;'));
+    expect(body).toMatch(/Quick Stop limit/);
+    expect(body).toMatch(/extra_stop_max_per_day/);
+  });
+
+  it('counts exactly the statuses that still hold a slot on the day', () => {
+    // Drift guard: the SQL list and QUICK_STOP_DAY_OCCUPYING_STATUSES are the
+    // same rule, and a status added to one and not the other silently changes
+    // the cap.
+    for (const status of QUICK_STOP_DAY_OCCUPYING_STATUSES) {
+      expect(offerSql, `${status} holds a slot`).toContain(`'${status}'`);
+    }
+  });
+
+  it('surfaces the refusal to the contractor rather than swallowing it', async () => {
     const admin = setup([
       { id: 'other', account_id: ACCOUNT, status: 'confirmed', arrival_date: TODAY, created_at: '2026-07-29T08:00:00.000Z' },
     ]);
     await expect(createQuickStopOfferAction('req1', form())).rejects.toThrow(/Quick Stop limit/i);
     expect(admin.tables.extra_stop_requests[0].status).toBe('awaiting_contractor');
-  });
-
-  it('stands down and puts the request back when it loses the race', async () => {
-    /* The race the old code could not see: the pre-check counts zero, and a
-       competing offer for the same day lands before this one claims. Simulated by
-       inserting the competitor at the exact moment of the claim — with an earlier
-       created_at, so the deterministic oldest-wins tie-break hands it the slot. */
-    const admin = setup();
-    let injected = false;
-    const base = admin.from.bind(admin);
-    (admin as unknown as { from: (t: string) => unknown }).from = (table: string) => {
-      const q = base(table) as { update: (p: Row) => unknown };
-      if (table === 'extra_stop_requests') {
-        const original = q.update.bind(q);
-        q.update = (patch: Row) => {
-          if (patch.status === 'contractor_offer_sent' && !injected) {
-            injected = true;
-            admin.tables.extra_stop_requests.push({
-              id: 'winner',
-              account_id: ACCOUNT,
-              status: 'contractor_offer_sent',
-              arrival_date: TODAY,
-              created_at: '2026-07-29T08:00:00.000Z',
-            });
-          }
-          return original(patch);
-        };
-      }
-      return q;
-    };
-
-    await expect(createQuickStopOfferAction('req1', form())).rejects.toThrow(/Quick Stop limit/i);
-
-    const req = admin.tables.extra_stop_requests.find((r) => r.id === 'req1')!;
-    expect(req.status).toBe('awaiting_contractor'); // handed back, not stranded
-    expect(req.arrival_date).toBeNull(); // and the day released
     expect(sendQuickStopOffer).not.toHaveBeenCalled();
   });
 });
 
-describe('a failed payment hand-off leaves nothing stranded', () => {
-  it('reverts the request, unlinks and archives the placeholder, and says nothing was charged', async () => {
-    sendQuickStopOffer.mockRejectedValue(new Error('Stripe is down'));
+describe('a failed notification never strands the request', () => {
+  it('publishes the offer before it tries to tell anybody', async () => {
+    /* The ordering IS the fix. The offer, its job and its payment are created in
+       one transaction; the notification comes after and cannot leave a
+       half-created offer behind if it fails. The contractor still sees the error
+       — the reason matters, it tells them whether retrying is worth it — but the
+       work is durable by then. */
+    sendQuickStopOffer.mockRejectedValue(new Error('Finish your Stripe payout setup'));
     const admin = setup();
 
-    await expect(createQuickStopOfferAction('req1', form())).rejects.toThrow(/nothing was charged/i);
+    await expect(createQuickStopOfferAction('req1', form())).rejects.toThrow(/Finish your Stripe payout setup/);
 
     const req = admin.tables.extra_stop_requests.find((r) => r.id === 'req1')!;
-    // Back in the contractor's queue rather than parked in a status no sweep read.
-    expect(req.status).toBe('awaiting_contractor');
-    // And no longer holding a slot on the day — this is what used to leak forever.
-    expect(req.arrival_date).toBeNull();
-    expect(req.job_id).toBeNull();
-    expect(admin.tables.jobs.find((j) => j.id === 'job-new')!.status).toBe('archived');
+    expect(req.status).toBe('contractor_offer_sent');
+    expect(req.job_id).toBe('job-new');
+    expect(admin.rpcCalls.map((c) => c.name)).toContain('create_quick_stop_offer');
   });
 
-  it('surfaces the underlying reason so the contractor knows whether to retry', async () => {
-    sendQuickStopOffer.mockRejectedValue(new Error('Finish your Stripe payout setup'));
-    setup();
-    await expect(createQuickStopOfferAction('req1', form())).rejects.toThrow(/Finish your Stripe payout setup/);
+  it('leaves an offer nobody was told about for the sweep to recover', () => {
+    // What replaced the hand-rolled rollback: an offer whose payment never got
+    // off the ground is expired by recover_stale_quick_stop_offers rather than
+    // sitting in a status nothing read, holding a daily slot forever.
+    const sweepSql = readFileSync(join(process.cwd(), 'migrations/20260914132439_quick_stop_atomic_offer.sql'), 'utf8');
+    expect(sweepSql).toMatch(/function public\.recover_stale_quick_stop_offers/);
+    expect(sweepSql).toMatch(/contractor_offer_sent/);
   });
 });
