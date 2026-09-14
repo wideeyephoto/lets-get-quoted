@@ -6,6 +6,8 @@ Subsequent local work added the disabled-by-default [recovery worker](email-reco
 
 ## Shared delivery policy
 
+The later [maintained sender registry](email-sender-registry.md) records purpose, scope, policy, remaining evidence and reviewed transport signatures for 21 files. Its CI check detects drift within a documented scan boundary. The inventory below remains explanatory; registry membership is not certification of every caller or hosted provider scope.
+
 The account-tagged transport in `src/lib/email.ts` now checks `email_suppression` immediately before every provider request, including a platform fallback. It normalizes and deduplicates To, Cc and Bcc recipients, rejects header injection, scopes the query to the tagged workspace and refuses to send if the check fails. If any recipient is blocked, the whole request stops.
 
 For transactional sends, `hard_bounce`, `complaint` and `provider_suppressed` block submission. Marketing opt-outs alone remain eligible for transactional mail. For the shared `campaign`, `review_request` and `rebook_invite` kinds, every suppression reason blocks submission. A definitive domain rejection cannot bypass a suppression recorded before the fallback attempt. This application check is not atomic with the external provider request; a concurrent suppression can still arrive after the last local read.

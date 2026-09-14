@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "reviewedOn": "2026-09-14",
+  "providerEvidence": {
+    "configuration": "RESEND_API_KEY; local call-site review only",
+    "workspace": "unverified",
+    "region": "unverified",
+    "historicalSuppression": "unreconciled",
+    "capacity": "unverified"
+  },
+  "senders": {
+    "src/app/api/tools/email-report/route.ts": {
+      "purpose": "Requested tool report",
+      "recipientScope": "platform transactional",
+      "transport": "SDK",
+      "suppression": "platform delivery blocks; acceptance ID required",
+      "remaining": "Durable request identity; hosted receipt",
+      "signatures": {
+        "POST:gate:sendPlatformTransactionalEmail": 1,
+        "POST:provider-import:resend": 1
+      }
+    },
+    "src/app/dashboard/marketing/actions.ts": {
+      "purpose": "Authorized theme test",
+      "recipientScope": "workspace transactional",
+      "transport": "SDK",
+      "suppression": "authoritative workspace gate; acceptance ID required",
+      "remaining": "Durable test identity; hosted receipt",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendTestEmailThemeAction:gate:sendAccountScopedEmail": 1
+      }
+    },
+    "src/lib/admin-platform-campaigns.ts": {
+      "purpose": "Platform campaigns and tests",
+      "recipientScope": "platform marketing plus source workspace/address eligibility",
+      "transport": "SDK",
+      "suppression": "all platform reasons and exact workspace/address reasons; final recheck",
+      "remaining": "Durable audience identity; provider capacity; hosted receiver and unsubscribe checks",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendPlatformCampaignBlast:sdk-email-submit": 1,
+        "sendTestPlatformCampaignEmail:sdk-email-submit": 1
+      }
+    },
+    "src/lib/ai-operator/digest.ts": {
+      "purpose": "Operator digests and incident notices",
+      "recipientScope": "platform staff",
+      "transport": "SDK",
+      "suppression": "platform transactional delivery gate; acceptance required",
+      "remaining": "Durable period/event identity; hosted receipt",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "dispatchCriticalAnomalyAlert:gate:sendPlatformTransactionalEmail": 1,
+        "dispatchExecutiveBriefingDigest:gate:sendPlatformTransactionalEmail": 1
+      }
+    },
+    "src/lib/ai-operator/support-auto-responder.ts": {
+      "purpose": "Support auto-reply",
+      "recipientScope": "platform support recipient",
+      "transport": "HTTP",
+      "suppression": "platform delivery blocks; acceptance and persisted resolution separate",
+      "remaining": "No production caller found; durable identity before repeated execution; hosted receipt",
+      "signatures": {
+        "processInboundSupportTicket:gate:preparePlatformTransactionalEmail": 1,
+        "processInboundSupportTicket:provider-url": 1
+      }
+    },
+    "src/lib/contractor-lifecycle-emails.ts": {
+      "purpose": "Lifecycle producer and sweep",
+      "recipientScope": "workspace owner",
+      "transport": "SDK construction and ledger delegation",
+      "suppression": "exact recipient eligibility and lifecycle ledger check",
+      "remaining": "Hosted rollout; source reconciliation and capacity",
+      "signatures": {
+        "<module>:provider-import:resend": 1
+      }
+    },
+    "src/lib/contractor-lifecycle-sends.ts": {
+      "purpose": "Durable lifecycle submission",
+      "recipientScope": "workspace owner",
+      "transport": "provider fetchRequest",
+      "suppression": "ledger fencing, saved provider identity and recipient eligibility",
+      "remaining": "Hosted migration/recovery acceptance",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "executeLifecycleEmailClaim:provider-email-request": 1
+      }
+    },
+    "src/lib/crew-auth.ts": {
+      "purpose": "Crew invitation and self-login",
+      "recipientScope": "workspace invitation or platform self-login",
+      "transport": "SDK",
+      "suppression": "explicit tenant/platform branch; gate after token generation",
+      "remaining": "Durable request identity; token recovery; hosted receipt",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendCrewMagicLink:gate:sendAccountScopedEmail": 1,
+        "sendCrewMagicLink:gate:sendPlatformTransactionalEmail": 1
+      }
+    },
+    "src/lib/document-email-sends.ts": {
+      "purpose": "Quote and invoice ledger submission",
+      "recipientScope": "workspace document recipient",
+      "transport": "provider fetchRequest",
+      "suppression": "ledger fencing and delivery-block gate; saved provider scope and phase",
+      "remaining": "Hosted acceptance; deliberate resend; creation/payment consistency",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "submit:provider-email-request": 1
+      }
+    },
+    "src/lib/email-domain-fallback.ts": {
+      "purpose": "Definitive sender-domain fallback helper",
+      "recipientScope": "inherited caller scope",
+      "transport": "injected SDK-compatible send; type-only import",
+      "suppression": "caller must gate each attempt; only definitive domain rejection permits fallback",
+      "remaining": "Callers and hosted fallback evidence",
+      "signatures": {
+        "<module>:provider-import:resend": 1
+      }
+    },
+    "src/lib/email-recovery-execution.ts": {
+      "purpose": "Shared acceptance bookkeeping",
+      "recipientScope": "inherited lifecycle/document workspace",
+      "transport": "provider contract type-only import",
+      "suppression": "no direct submission; records fenced outcomes",
+      "remaining": "Hosted reconciliation acceptance",
+      "signatures": {
+        "<module>:provider-import:resend": 1
+      }
+    },
+    "src/lib/email-recovery-worker.ts": {
+      "purpose": "Bounded ledger recovery transport",
+      "recipientScope": "saved lifecycle/document workspace",
+      "transport": "HTTP",
+      "suppression": "ledger checks and provider credential fingerprint; disabled by default",
+      "remaining": "Provider pacing/reservation; hosted schedule and recovery receipt",
+      "signatures": {
+        "recoveryProvider:provider-url": 1
+      }
+    },
+    "src/lib/email-send-policy.ts": {
+      "purpose": "Independent workspace sender gate",
+      "recipientScope": "explicit authoritative workspace",
+      "transport": "SDK",
+      "suppression": "delivery blocks for transactional; rejects scope conflicts",
+      "remaining": "Read/submission race; caller durable identity",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendAccountScopedEmail:sdk-email-submit": 1
+      }
+    },
+    "src/lib/email.ts": {
+      "purpose": "Shared tenant notices, marketing, documents and platform support/contact",
+      "recipientScope": "workspace when tagged; explicit platform support/contact; other untagged paths require review",
+      "transport": "SDK wrapper plus document ledger",
+      "suppression": "account-tagged gate; selected platform kinds gated; marketing blocks all opt-outs; fallback rechecks",
+      "remaining": "Audit optional/missing account tags at callers; remaining durable families; provider evidence",
+      "signatures": {
+        "<module>:gate:sendPlatformTransactionalEmail": 1,
+        "<module>:provider-import:resend": 1,
+        "<module>:sdk-email-submit": 1,
+        "sendAppointmentReminderEmail:sdk-email-submit": 1,
+        "sendBookingConfirmationEmail:sdk-email-submit": 1,
+        "sendCampaignEmail:sdk-email-submit": 1,
+        "sendCardSetupEmail:sdk-email-submit": 1,
+        "sendCardUpdateEmail:sdk-email-submit": 1,
+        "sendChoiceReminderTestEmail:sdk-email-submit": 1,
+        "sendClientPortalLinkEmail:sdk-email-submit": 1,
+        "sendClientQuoteEmail:gate:sendDocumentEmail": 1,
+        "sendContactMessageEmail:sdk-email-submit": 1,
+        "sendContractorAlertEmail:sdk-email-submit": 1,
+        "sendCustomDomainConnectedEmail:sdk-email-submit": 1,
+        "sendDailyDigestEmail:sdk-email-submit": 1,
+        "sendInvoiceEmail:gate:sendDocumentEmail": 1,
+        "sendLeadNotificationEmail:sdk-email-submit": 1,
+        "sendMessagingApplicationStatusEmail:sdk-email-submit": 1,
+        "sendMessagingApplicationSubmittedEmail:sdk-email-submit": 1,
+        "sendOfficeInvitationEmail:sdk-email-submit": 1,
+        "sendQuoteFollowupEmail:sdk-email-submit": 1,
+        "sendRebookInviteEmail:sdk-email-submit": 1,
+        "sendReviewRequestEmail:sdk-email-submit": 1,
+        "sendSelectionRequestEmail:sdk-email-submit": 1,
+        "sendSendingDomainFailedEmail:sdk-email-submit": 1,
+        "sendSupportCaseCustomerEmail:sdk-email-submit": 1,
+        "sendSupportCaseStaffEmail:sdk-email-submit": 1
+      }
+    },
+    "src/lib/founder-alerts.ts": {
+      "purpose": "Founder signup, messaging, emergency and feature alerts",
+      "recipientScope": "platform staff",
+      "transport": "SDK",
+      "suppression": "platform delivery blocks; acceptance required before success",
+      "remaining": "Durable event identity; hosted receipt",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendFounderFeatureRequestAlert:gate:sendPlatformTransactionalEmail": 1,
+        "sendFounderMessagingApplicationAlert:gate:sendPlatformTransactionalEmail": 1,
+        "sendFounderSignupAlert:gate:sendPlatformTransactionalEmail": 1,
+        "sendOperationalEmergencyAlert:gate:sendPlatformTransactionalEmail": 1
+      }
+    },
+    "src/lib/magic-link.ts": {
+      "purpose": "Owner login",
+      "recipientScope": "platform transactional",
+      "transport": "SDK",
+      "suppression": "platform gate after token generation; acceptance required",
+      "remaining": "Durable request/token recovery; hosted receipt",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendMagicLinkEmail:gate:sendPlatformTransactionalEmail": 1
+      }
+    },
+    "src/lib/merchandise/merchandise-emails.ts": {
+      "purpose": "Customer order receipt and internal order alert",
+      "recipientScope": "order workspace customer or platform staff",
+      "transport": "SDK",
+      "suppression": "explicit scoped gates and acceptance IDs",
+      "remaining": "Durable order event identity; hosted receipt",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendCustomerMerchandiseReceipt:gate:sendAccountScopedEmail": 1,
+        "sendStaffMerchandiseAlert:gate:sendPlatformTransactionalEmail": 1
+      }
+    },
+    "src/lib/operational-monitor.mjs": {
+      "purpose": "Operational alert delivery and recovery",
+      "recipientScope": "configured operations recipient",
+      "transport": "HTTP",
+      "suppression": "independent durable alert queue and saved payload/key; not shared platform gate",
+      "remaining": "Review operations-specific block policy, provider scope and hosted channel; do not claim universal suppression",
+      "signatures": {
+        "resendRequest:provider-url": 1,
+        "runOperationalMonitor:provider-email-request": 1,
+        "sendMonitorFailureEmail:provider-email-request": 1,
+        "sendMonitorRecovery:provider-email-request": 1
+      }
+    },
+    "src/lib/platform-transactional-email.ts": {
+      "purpose": "Shared platform transactional gate",
+      "recipientScope": "explicit platform recipients",
+      "transport": "SDK and prepared HTTP payload contract",
+      "suppression": "exact To/Cc/Bcc checks; delivery blocks only; callback scope tag",
+      "remaining": "Read/submission race; historical and provider-wide evidence",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "sendPlatformTransactionalEmail:gate:preparePlatformTransactionalEmail": 1,
+        "sendPlatformTransactionalEmail:sdk-email-submit": 2
+      }
+    },
+    "src/lib/resend-domains.ts": {
+      "purpose": "Provider domain management",
+      "recipientScope": "no message recipient",
+      "transport": "HTTP domain API",
+      "suppression": "not an email submission transport",
+      "remaining": "Hosted provider workspace/region evidence",
+      "signatures": {
+        "isSendingDomainProvisioningConfigured:provider-url": 1,
+        "resendRequest:provider-url": 1
+      }
+    },
+    "scripts/run-deliverability-seed-test.mjs": {
+      "purpose": "Controlled seed samples",
+      "recipientScope": "explicit allowlisted platform test recipients",
+      "transport": "HTTP",
+      "suppression": "offline default; final platform check per message; bounded stop-on-failure",
+      "remaining": "No durable deduplication; actual receiver evidence; hosted provider capacity",
+      "signatures": {
+        "runSeedTest:gate:preparePlatformTransactionalEmail": 1,
+        "runSeedTest:provider-url": 1
+      }
+    }
+  }
+}

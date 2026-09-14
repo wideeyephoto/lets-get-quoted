@@ -178,6 +178,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 19 offline runner tests passed, including actual templates/PDF, CLI guards, installed-client suppression queries and provider failure fixtures. Changed-script lint passed. The test command is included in CI. No live emails or hosted changes occurred. See the [seed runner runbook](runbooks/deliverability-seed-runner.md).
 - **Remaining:** Provider scope/history, external transport review, capacity, durable identities and hosted acceptance.
 
+### Thirteenth-pass implementation — maintained sender registry
+
+- **T12/T18/T19:** Added a reviewed machine-readable registry for 21 transport/helper files, with purpose, recipient scope, delivery policy and remaining evidence. CI now detects added, removed or changed transport markers and missing policy descriptions; comments and formatting do not masquerade as transport changes.
+- **Verification:** 10 offline checker tests passed; all reviewed file signatures match; changed-script lint passed. Scan limits are documented. No hosted queries, credentials, live sends or deployment were involved.
+- **Remaining:** Optional account-tag callers, independent operational-alert policy, indirect/external transports, provider workspace/region/history and durable identities remain open. See the [registry runbook](runbooks/email-sender-registry.md).
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

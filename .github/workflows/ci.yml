@@ -52,6 +52,9 @@ jobs:
       - name: Verify guarded email seed runner
         run: npm run test:email-seed
 
+      - name: Review email transport registry drift
+        run: npm run test:email-registry
+
       - name: Document, recovery and platform email database checks
         run: npm run test:pg17:document-email
 
