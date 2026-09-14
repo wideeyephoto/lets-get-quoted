@@ -315,7 +315,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Kansas',
     fips: '20',
     licensingBoard: 'Kansas Local Municipalities / Kansas Roofing Registration',
-    licensingUrl: 'https://ag.ks.gov/business/roofing-contractor-registration',
+    licensingUrl: 'https://www.ag.ks.gov/divisions/public-protection/resources/roofing-registration-directory',
     codes: {
       building: { name: '2018/2021 International Residential Code (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
