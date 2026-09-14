@@ -67,7 +67,7 @@ async function notifyOwner(
     }
 
     // Urgent text to the owner's own mobile — high-value leads only, opt-in.
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com'}/dashboard/leads`;
+    const dashboardUrl = `${APP_ORIGIN}/dashboard/leads`;
     if (alert.highValue && alert.smsEnabled && alert.alertPhone) {
       const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
       await sendOwnerHighValueLeadSms({
