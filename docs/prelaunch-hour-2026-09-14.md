@@ -62,7 +62,7 @@ and [Twilio 21610](https://www.twilio.com/docs/api/errors/21610).
 - Focused real PostgreSQL 17 harness: **14/14 passed**; tests atomic rollback,
   sender/Campaign/provider/recipient isolation, historical review, reassignment,
   reconciliation, duplicate/late receipt handling, concurrent START and RPC ACLs.
-- Complete schema: **28/28 passed**, including real status ingress and replay.
+- Complete schema: **29/29 passed**, including real status ingress and replay.
   The harness now uses the canonical migration order instead of replaying older
   function replacements over newer patches. No production schema was modified.
 - Schema digest and creation order both pass. The new focused database harness
@@ -73,6 +73,10 @@ and [Twilio 21610](https://www.twilio.com/docs/api/errors/21610).
 Release order: apply the migration, verify function grants/scope capture, then
 deploy the route. Historical unbound receipts remain reviewable. Real carrier
 acceptance is still open; local database verification does not substitute for it.
+An additional full-schema regression proves that operator matching of an old
+unbound receipt without sender scope rolls back safely and retains the original
+open unmatched-status review. It cannot silently resolve the consent question;
+that historical case requires a separate supported recovery decision.
 
 ## A1/A2 — Quiet-hour policy and final egress
 
@@ -122,3 +126,28 @@ project (`mfuvvtrkipkigwqqtcal`) showed:
 
 No jobs were invoked and no backlog records were changed. The old four-job
 observation item is corrected to reflect the deliberate parking decision.
+
+## Database-guard report correction
+
+A direct read of production `pg_proc` also confirmed that neither
+`get_long_running_queries` nor `cancel_backend_query` exists in `public`.
+The current worker was reporting `status: healthy` alongside its inspection error.
+It now returns warning for inspection errors, invalid data, and unmitigated queries;
+unknown active connection counts are null. Cancellation is counted only when the
+RPC acknowledges true, while dry runs count no cancellation. The status and audit
+describe cancellation requests rather than asserting that pool recovery was measured.
+Audit writes are flushed before the worker completes. No production cancellation
+or RPC provisioning was performed. The missing database contract and review of its
+query-selection/cancellation safeguards remain open prerequisites.
+
+- 15 new guard regressions and 20 adjacent tests passed.
+- Final application unit suite: **1,428 files / 17,105 passed**, exit 0.
+  `C:/dev/prelaunch-hour-guard-final-tests-20260914.log`.
+- Final production build: PASS, exit 0.
+  `C:/dev/prelaunch-hour-guard-final-build-20260914.log`.
+- Payment late-success/operator-resolution races: **10/10 passed** on isolated
+  PostgreSQL 17; no production/staging target is accepted by that harness.
+  `C:/dev/prelaunch-late-success-pg17-20260914.log`.
+- The schema harness now uses a unique temporary cluster per run to avoid
+  reusing/deleting a directory while Windows still holds a prior process handle.
+  The final **29/29** run used port 54379 after an earlier test left 54359 occupied.
