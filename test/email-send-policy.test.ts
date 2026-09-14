@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CreateEmailOptions } from 'resend';
-import { assertEmailSendAllowed } from '@/lib/email-send-policy';
+import type { CreateEmailOptions, Resend } from 'resend';
+import { assertEmailSendAllowed, sendAccountScopedEmail } from '@/lib/email-send-policy';
 import { sendWithDomainFallback } from '@/lib/email-domain-fallback';
 import { loadSuppressedEmails } from '@/lib/email-suppression';
 
@@ -14,6 +14,13 @@ function fake(data: unknown = [], error: unknown = null) {
   return { admin: { from } as unknown as SupabaseClient, query, from };
 }
 describe('last-moment shared email policy', () => {
+  it.each(['', 'workspace-b'])('rejects an absent or conflicting authoritative workspace: %s', async accountId => {
+    const send = vi.fn();
+    const { admin, from } = fake();
+    await expect(sendAccountScopedEmail(admin, { emails: { send } } as unknown as Resend, accountId, payload())).rejects.toThrow('workspace');
+    expect(from).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
   it.each(['hard_bounce','complaint','provider_suppressed'])('blocks transactional %s', async reason => {
     const { admin } = fake([{ email: 'client@example.com', reason }]);
     await expect(assertEmailSendAllowed(admin, payload())).rejects.toThrow('blocked');

@@ -133,7 +133,7 @@ vi.mock('resend', () => {
   return {
     Resend: class {
       emails = {
-        send: vi.fn().mockResolvedValue({ error: null }),
+        send: vi.fn().mockResolvedValue({ data: { id: 'accepted' }, error: null }),
       };
     },
   };

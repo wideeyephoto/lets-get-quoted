@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
-import { Resend } from 'resend';
+import { Resend, type CreateEmailOptions } from 'resend';
+import { sendAccountScopedEmail } from '@/lib/email-send-policy';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -37,7 +38,8 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
   const admin = createAdminClient();
 
   if (accountId) {
-    const { data: acct } = await admin.from('accounts').select('suspended_at').eq('id', accountId).maybeSingle();
+    const { data: acct, error } = await admin.from('accounts').select('suspended_at').eq('id', accountId).maybeSingle();
+    if (error || !acct) throw new Error('Account status could not be verified.');
     if (acct?.suspended_at) {
       throw new Error('Account is suspended.');
     }
@@ -54,7 +56,7 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
   if (accountId) verifyUrl.searchParams.set('account', accountId);
 
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const { error: emailError } = await resend.emails.send({
+  const payload: CreateEmailOptions = {
     from: `${businessName} via Let's Get Quoted <hello@letsgetquoted.com>`,
     to: email,
     subject: `Sign in to the ${businessName} field app`,
@@ -82,10 +84,13 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
       footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This secure link expires in ${TOKEN_EXPIRY_MINUTES >= 1440 ? `${Math.round(TOKEN_EXPIRY_MINUTES / 1440)} days` : `${TOKEN_EXPIRY_MINUTES} minutes`}. If you did not expect this invite, you can safely ignore this email.</p>`,
     }),
     tags: [{ name: 'kind', value: 'crew_magic_link' }],
-  });
-  if (emailError) {
+  };
+  const { data, error: emailError } = accountId
+    ? await sendAccountScopedEmail(admin, resend, accountId, payload)
+    : await resend.emails.send(payload);
+  if (emailError || !data?.id) {
     console.error('Crew magic link email error:', emailError);
-    throw new Error(`Failed to send the sign-in email: ${emailError.message || 'unknown error'}`);
+    throw new Error(`Failed to send the sign-in email: ${emailError?.message || 'provider acceptance was not confirmed'}`);
   }
 }
 

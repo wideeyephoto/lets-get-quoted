@@ -24,6 +24,7 @@ import { EMAIL_THEMES, normalizeEmailTheme } from '@/emails/brand';
 import { loadEmailBrand } from '@/lib/email-brand';
 import { getSampleEmailPreview, type EmailPreviewKind } from '@/lib/email-previews';
 import { Resend } from 'resend';
+import { sendAccountScopedEmail } from '@/lib/email-send-policy';
 
 /** Save the one layout used by every customer-facing email for this account. */
 export async function updateEmailThemeAction(formData: FormData) {
@@ -70,7 +71,7 @@ export async function sendTestEmailThemeAction(formData: FormData): Promise<{ su
   const preview = await getSampleEmailPreview(theme, requestedKind, brand);
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const result = await resend.emails.send({
+  const result = await sendAccountScopedEmail(createAdminClient(), resend, accountId, {
     from: preview.from,
     to: recipient,
     subject: `[Test] ${preview.subject}`,
@@ -83,9 +84,9 @@ export async function sendTestEmailThemeAction(formData: FormData): Promise<{ su
     ],
   });
 
-  if (result.error) {
+  if (result.error || !result.data?.id) {
     console.error('Failed to send test email theme:', result.error);
-    throw new Error(result.error.message);
+    throw new Error(result.error?.message || 'Email provider acceptance was not confirmed.');
   }
 
   return { success: true, recipient };

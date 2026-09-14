@@ -22,14 +22,19 @@ The marketing suppression-list helper now refuses null or potentially capped res
 | Shared campaign, review and rebook emails | Final account-scoped check blocks all suppression reasons | Durable per-recipient campaign/event identity and capacity budgeting |
 | Shared contact and support staff/customer messages | No account tag; no invented tenant suppression scope | Define platform recipient policy, recovery identity and reporting |
 | `admin-platform-campaigns.ts` | Separate transport and existing audience suppression checks | Final per-recipient recheck, complete platform/account opt-out scope and durable submission |
-| `ai-operator/digest.ts`, `founder-alerts.ts` | Separate transports | Owner/staff suppression scope, durable notice identity, lost-acceptance recovery |
-| `crew-auth.ts`, `magic-link.ts` | Separate authentication transports | Delivery-block scope and bounded recovery without changing authentication/token semantics |
-| `merchandise/merchandise-emails.ts` | Separate transport | Order-event identity, delivery-block policy and recovery |
+| `ai-operator/digest.ts`, `founder-alerts.ts` | Separate platform staff/founder transports; mentioning a customer account does not scope the recipient to it | Platform delivery-block policy, durable notice identity, lost-acceptance recovery |
+| `crew-auth.ts` account invitations | Final workspace delivery-block check; failed/missing account lookup stops token creation; acceptance ID required | Durable request identity and bounded recovery without changing authentication/token semantics |
+| `crew-auth.ts` self-login, `magic-link.ts` | Authentication before workspace selection; no invented tenant scope | Platform delivery-block policy and bounded request recovery |
+| `merchandise/merchandise-emails.ts` | Customer receipt checks the order workspace immediately before submission; customer and staff results require provider acceptance IDs | Order-event identity and recovery; platform staff delivery policy |
 | `app/api/tools/email-report/route.ts` | Separate public report transport | Appropriate recipient policy, report identity and recovery |
-| `app/dashboard/marketing/actions.ts`: theme test | Separate signed-in-user preview transport | Delivery-block check and explicit test-send identity |
+| `app/dashboard/marketing/actions.ts`: theme test | Final check in the authorized workspace; acceptance ID required | Explicit test-send identity and recovery |
 | `operational-monitor.mjs` | Existing durable alert delivery queue, saved payload/key, bounded retry and expiry handling | Hosted notification/channel verification; not routed through the tenant sender |
 
 Inventory covers the application transport call sites reviewed in `src/lib` and `src/app`. It is not certification of external scripts, third-party automations, all caller prerequisites or provider-wide enforcement. In particular, untagged mail must not borrow an arbitrary tenant's opt-out records.
+
+The independent workspace transports use `sendAccountScopedEmail`: reject missing/conflicting scope, attach the authoritative account tag, then check immediately before submission. These three families are transactional; marketing opt-outs alone do not block them. Crew tokens are generated before the final delivery check so a block recorded during token generation is observed; a blocked token is not emailed. This does not introduce retries or a durable send identity. As with the shared gate, the database read and external request are not atomic.
+
+September 14 M2 verification: 10 selected regression files / 182 tests passed, covering actual crew/theme/merchandise paths, account scope, late suppression, failed lookups, provider rejection and related caller behavior. Hosted email receipt and provider-wide enforcement remain unverified.
 
 ## Recovery queue and existing monitor
 

@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import { createAdminClient } from '@/lib/auth';
+import { sendAccountScopedEmail } from '../email-send-policy';
 import type { MerchandiseOrder, ShippingAddress } from './types';
 import { formatUsdExact } from '../money-format';
 
@@ -98,13 +100,14 @@ export async function sendCustomerMerchandiseReceipt(params: {
   `;
 
   try {
-    await resend.emails.send({
+    const result = await sendAccountScopedEmail(createAdminClient(), resend, params.order.accountId, {
       from: "Let's Get Quoted <orders@letsgetquoted.com>",
       to: params.customerEmail,
       subject: `Order Confirmation #${params.order.orderNumber}`,
+      tags: [{ name: 'kind', value: 'merchandise_customer_receipt' }],
       html,
     });
-    return true;
+    return !result.error && Boolean(result.data?.id);
   } catch (err) {
     console.warn('Failed to send customer merchandise confirmation email:', err);
     return false;
@@ -138,13 +141,13 @@ export async function sendStaffMerchandiseAlert(params: {
   `;
 
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: "Let's Get Quoted Alerts <alerts@letsgetquoted.com>",
       to: alertRecipient,
       subject: `[Merchandise Order] #${params.order.orderNumber} (${formatUsdExact(params.order.totalAmount)})`,
       html,
     });
-    return true;
+    return !result.error && Boolean(result.data?.id);
   } catch (err) {
     console.warn('Failed to send staff merchandise alert email:', err);
     return false;

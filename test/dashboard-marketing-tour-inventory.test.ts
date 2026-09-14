@@ -557,6 +557,22 @@ describe('Group 2: Marketing Blog, Marketing Actions, Tours, and Inventory Serve
       expect(mocks.resendSend).toHaveBeenCalled();
     });
 
+    it.each([
+      { data: [{ reason: 'hard_bounce' }], error: null },
+      { data: null, error: { message: 'offline' } },
+    ])('stops theme test mail when delivery eligibility cannot be established', async result => {
+      mocks.requireOfficeContext.mockResolvedValue({ supabase: createMockSupabase(), accountId });
+      mocks.createAdminClient.mockReturnValue(createMockSupabase({ email_suppression: result }));
+      await expect(sendTestEmailThemeAction(new FormData())).rejects.toThrow();
+      expect(mocks.resendSend).not.toHaveBeenCalled();
+    });
+
+    it('does not report theme test success without provider acceptance', async () => {
+      mocks.requireOfficeContext.mockResolvedValue({ supabase: createMockSupabase(), accountId });
+      mocks.resendSend.mockResolvedValueOnce({ data: { id: '' }, error: null });
+      await expect(sendTestEmailThemeAction(new FormData())).rejects.toThrow('acceptance was not confirmed');
+    });
+
     it('marketingCalendarAction and campaignDraftForBeatAction load drafts and calendar', async () => {
       const mockDb = createMockSupabase();
       mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });

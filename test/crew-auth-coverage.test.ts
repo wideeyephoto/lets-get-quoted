@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('resend', () => ({
   Resend: vi.fn().mockImplementation(() => ({
-    emails: { send: vi.fn(async () => ({ data: {}, error: null })) },
+    emails: { send: vi.fn(async () => ({ data: { id: 'accepted' }, error: null })) },
   })),
 }));
 
@@ -99,6 +99,42 @@ describe('crew-auth coverage', () => {
     it('succeeds without accountId', async () => {
       await sendCrewMagicLink('t@t.com', 'Biz');
       expect(mockAdmin.auth.admin.generateLink).toHaveBeenCalledWith({ type: 'magiclink', email: 't@t.com' });
+    });
+
+    it('does not report success without a provider acceptance ID', async () => {
+      const { Resend } = await import('resend');
+      vi.mocked(Resend).mockImplementationOnce(() => ({ emails: { send: vi.fn().mockResolvedValue({ data: null, error: null }) } }) as unknown as InstanceType<typeof Resend>);
+      await expect(sendCrewMagicLink('t@t.com', 'Biz')).rejects.toThrow('acceptance was not confirmed');
+    });
+
+    it.each([{ data: null, error: null }, { data: null, error: { message: 'offline' } }])('stops before token creation when account status is unavailable', async result => {
+      mockAdmin.maybeSingle.mockResolvedValueOnce(result);
+      await expect(sendCrewMagicLink('t@t.com', 'Biz', 'acc_1')).rejects.toThrow('Account status');
+      expect(mockAdmin.auth.admin.generateLink).not.toHaveBeenCalled();
+    });
+
+    it('checks a delivery block recorded while the token was being generated', async () => {
+      mockAdmin.maybeSingle.mockResolvedValueOnce({ data: { suspended_at: null }, error: null });
+      mockAdmin.auth.admin.generateLink.mockImplementationOnce(async () => {
+        mockAdmin.in.mockResolvedValueOnce({ data: [{ reason: 'complaint' }], error: null });
+        return { data: { properties: { hashed_token: 'hash' } }, error: null };
+      });
+      await expect(sendCrewMagicLink('t@t.com', 'Biz', 'acc_1')).rejects.toThrow('blocked');
+      const { Resend } = await import('resend');
+      const client = vi.mocked(Resend).mock.results[0].value;
+      expect(client.emails.send).not.toHaveBeenCalled();
+    });
+
+    it('tags the inviting workspace and preserves the callback when only marketing is opted out', async () => {
+      mockAdmin.maybeSingle.mockResolvedValueOnce({ data: { suspended_at: null }, error: null });
+      mockAdmin.in.mockResolvedValueOnce({ data: [{ reason: 'one_click_unsubscribe' }], error: null });
+      await sendCrewMagicLink('t@t.com', 'Biz', 'acc_1');
+      const { Resend } = await import('resend');
+      const message = vi.mocked(Resend).mock.results[0].value.emails.send.mock.calls[0][0];
+      expect(message.tags).toContainEqual({ name: 'account_id', value: 'acc_1' });
+      expect(message.html).toContain('token_hash=hash');
+      expect(message.html).toContain('account=acc_1');
+      expect(mockAdmin.eq).toHaveBeenCalledWith('account_id', 'acc_1');
     });
   });
 

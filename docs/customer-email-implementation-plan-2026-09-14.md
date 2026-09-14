@@ -43,7 +43,7 @@ Acceptance: simultaneous workers, crash before/after provider submission, timeou
 Checklist: T12, T13, T14, T18, T19.
 
 - [ ] Turn the [sender inventory](runbooks/email-delivery-audit-and-recovery-monitoring.md) into a maintained registry of purpose, recipient scope, transport and suppression behavior. Review application call sites plus operational scripts before claiming complete coverage.
-- [ ] Protect account-tagged independent senders first: theme tests, crew links where account scope exists, account owner/operator notices and merchandise notices where ownership is established.
+- [x] Protect the confirmed workspace paths: theme tests, account-specific crew invitations and customer merchandise receipts. Require provider acceptance IDs before reporting success. Platform operator/founder and merchandise staff alerts have a separate recipient scope, addressed below.
 - [ ] Define explicit platform-recipient policy for login, support/contact, founder alerts and public reports. Keep tenant marketing preferences scoped to their tenant. Determine how verified provider-level delivery blocks apply without borrowing an unrelated tenant's records.
 - [ ] Add the final eligibility check to platform campaigns and their test path. Preserve their correct platform/account unsubscribe scope. Test an opt-out arriving after audience selection.
 - [ ] Replace capped suppression-list reads with complete pagination or bounded exact-recipient queries. Any incomplete lookup must stop the affected send/batch visibly.
@@ -111,6 +111,6 @@ Checklist: T01, T02, T20; preserve existing go-live I04/J04/J05 requirements.
 
 ## First implementation slice
 
-Completed locally: a disabled-by-default recovery worker for the two existing ledgers, including saved-intent resume, bounded due selection, preview, pause behavior, database concurrency checks, provider-failure fixtures and CI coverage. Next implement M2's policies for independent senders and complete the outstanding capacity review. Keep scheduling/enabling in the hosted environment within M5 acceptance.
+Completed locally: a disabled-by-default recovery worker for the two existing ledgers, followed by final workspace delivery checks for theme tests, account-specific crew invitations and customer merchandise receipts. Next complete M2's platform recipient/campaign policies and suppression-list completeness, along with the outstanding capacity review. M2 remains open. Keep scheduling/enabling in the hosted environment within M5 acceptance.
 
 Production-specific inputs needed before M5/M6: environment identity, internal recipient addresses, cohort IDs, current provider capacity, responder and backup. Local implementation can proceed before those inputs are finalized.

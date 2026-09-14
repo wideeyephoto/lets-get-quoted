@@ -131,6 +131,13 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 46 selected regression files / 491 tests passed, followed by 18 passing focused tests including one new fallback case (492 distinct regressions). Both standalone dry-run tests and 22 PostgreSQL 17 checks passed. Disposable local security advisor reported no issues. Full app/test typecheck and changed-file lint passed. See the [worker runbook](runbooks/email-recovery-worker.md).
 - Migration `20260914150046_email_recovery_worker.sql` and a five-minute schedule are prepared locally. Environment and database defaults disable sending; an explicit cohort is required. No hosted migration, deployment, enablement or real email was performed.
 
+### Sixth-pass implementation — independent workspace senders
+
+- **T12/T19:** Added final delivery-block checks for account-specific crew invitations, signed-in theme tests and customer merchandise receipts. The helper binds the authoritative workspace and rejects conflicting tags. Marketing-only opt-outs still allow transactional messages.
+- **T18:** Failed or missing crew account lookups stop token creation. A delivery block recorded during token generation stops submission; callback and expiry behavior stay intact.
+- **T19:** Crew/theme and customer/staff merchandise paths require a provider acceptance ID before reporting success. Provider rejection or missing acceptance is not a successful send.
+- **Verification:** 10 selected regression files / 182 tests passed. Full app/test typecheck passed; lint has zero errors and four pre-existing test warnings. No hosted changes or real email. Platform login, founder/operator/staff mail, public reports and platform campaigns still require their appropriate policy; durable identities remain separate work.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

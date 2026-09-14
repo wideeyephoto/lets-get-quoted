@@ -1,9 +1,21 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CreateEmailOptions } from 'resend';
+import type { CreateEmailOptions, Resend } from 'resend';
 import { resendTagValue } from './resend-tags';
 
 const MARKETING_KINDS = new Set(['campaign', 'review_request', 'rebook_invite']);
 const DELIVERY_BLOCKS = new Set(['hard_bounce', 'complaint', 'provider_suppressed']);
+
+/** Bind independent transports to an explicit workspace before submitting. */
+export async function sendAccountScopedEmail(admin: SupabaseClient, resend: Pick<Resend, 'emails'>,
+  accountId: string, payload: CreateEmailOptions) {
+  if (!accountId?.trim() || payload.tags?.some(tag => tag.name === 'account_id' && tag.value !== accountId)) {
+    throw new Error('Email workspace could not be verified.');
+  }
+  const message = { ...payload, tags: [...(payload.tags ?? []).filter(tag => tag.name !== 'account_id'),
+    { name: 'account_id', value: accountId }] };
+  await assertEmailSendAllowed(admin, message);
+  return resend.emails.send(message);
+}
 
 /** Final account-scoped gate, including each fallback attempt and cc/bcc. */
 export async function assertEmailSendAllowed(admin: SupabaseClient, payload: CreateEmailOptions): Promise<void> {
