@@ -134,7 +134,16 @@ async function deliverRebookInvite(
   } else if (client.email && mailingAddress && !(await isEmailSuppressed(supabase, accountId, client.email))) {
     // Requires a mailing address: a marketing email must carry a physical postal
     // address (CAN-SPAM), so skip the email rather than send a non-compliant one.
-    await sendRebookInviteEmail({ recipientEmail: client.email, businessName, clientName: firstName(client.name), url: bookingUrl, accountId, mailingAddress });
+    await sendRebookInviteEmail(supabase, {
+      recipientEmail: client.email,
+      businessName,
+      clientName: firstName(client.name),
+      url: bookingUrl,
+      accountId,
+      mailingAddress,
+      jobId: '00000000-0000-0000-0000-000000000000', // no job in this context
+      idempotencyKey: `rebook:${client.id}:${new Date().toISOString().slice(0, 10)}:email`,
+    });
     channel = 'email';
   } else {
     // No consented mobile, and either no email, the email unsubscribed, or no

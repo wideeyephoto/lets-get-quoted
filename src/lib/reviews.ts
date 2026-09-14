@@ -376,6 +376,7 @@ export async function sendReviewReminder(
 
   let channel: 'sms' | 'email';
   let smsEventId: string | null = null;
+  let emailEventId: string | null = null;
   try {
     if (route.channel === 'sms' && normalizedPhone) {
       await recordSmsConsent(accountId, normalizedPhone, 'review_request');
@@ -397,7 +398,17 @@ export async function sendReviewReminder(
       if (await isEmailSuppressed(supabase, accountId, row.clientEmail)) {
         return { ok: false, message: `${row.clientName ?? 'This customer'} unsubscribed from emails and has no textable mobile on file.` };
       }
-      await sendReviewRequestEmail({ recipientEmail: row.clientEmail, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId, mailingAddress });
+      const receipt = await sendReviewRequestEmail(admin, {
+        recipientEmail: row.clientEmail,
+        businessName,
+        clientName: clientFirstName,
+        reviewUrl: linkUrl,
+        accountId,
+        mailingAddress,
+        jobId: row.jobId ?? '00000000-0000-0000-0000-000000000000', // fallback if null
+        idempotencyKey: `review-reminder:${id}:${row.remindersSent + 1}:email`,
+      });
+      emailEventId = receipt.id;
       channel = 'email';
     } else if (route.reason === 'opted_out') {
       return { ok: false, message: 'They replied STOP, so no reminder can go to that number — and emailing instead would be routing around it.' };
@@ -441,6 +452,7 @@ export async function sendReviewReminder(
           channel,
           delivery_state: channel === 'sms' ? 'queued' : 'sent',
           sms_event_id: smsEventId,
+          email_event_id: emailEventId,
         },
       });
     } catch (error) {

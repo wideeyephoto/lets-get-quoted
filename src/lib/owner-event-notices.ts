@@ -1,7 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_ORIGIN } from '@/lib/app-origin';
-import { getAccountOwnerEmail, sendOwnerEventNoticeEmail } from '@/lib/email';
+import { getAccountOwnerEmail, sendOwnerEventNoticeEmail, sendLeadNotificationEmail } from '@/lib/email';
 
 type Notice = { id: string; account_id: string; source_id: string; source_type?: string; event_kind: string; source_payload: { title: string | null; body: string; job_id?: string; client_id?: string; recipient_email?: string; business_name?: string; application_id?: string }; attempted_at: string };
 
@@ -24,23 +24,41 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
         p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at, p_recipient: recipient,
       });
       if (prepared.error || prepared.data !== true) throw new Error('notice_prepare_failed');
-      providerId = await sendOwnerEventNoticeEmail({
-        noticeId: notice.id,
-        prepareIntent: async snapshot => {
-          const saved = await admin.rpc('prepare_owner_event_notice_snapshot', {
-            p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at,
-            p_payload: snapshot.payload, p_provider_fingerprint: snapshot.providerFingerprint,
-            p_idempotency_key: snapshot.idempotencyKey,
-          });
-          if (saved.error || saved.data !== true) throw new Error('notice_prepare_failed');
-        },
-        recipientEmail: recipient, businessName: site.data?.company_name?.trim() || 'your business',
-        accountId: notice.account_id,
-        subject: notice.source_payload.title || 'New customer request',
-        heading: notice.source_payload.title || 'New customer request',
-        bodyLines: [notice.source_payload.body], ctaLabel: notice.source_type === 'recurring_failure' ? 'Review recurring payments' : notice.source_type === 'account_connect' ? 'Review payment setup' : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? 'View payments' : notice.source_type === 'quick_stop' ? 'View Quick Stops' : notice.source_type === 'system_sweep' ? 'Open your jobs' : notice.event_kind === 'customer_plan_change' ? 'View Recurring Plans' : notice.event_kind === 'subcontractor_alert' ? 'Open the request' : notice.event_kind === 'lead_notification' ? 'Open leads' : messaging ? 'Open messaging dashboard' : notice.source_payload.job_id ? 'Open the job' : notice.source_type === 'portal_message' ? 'View client' : 'Open dashboard',
-        ctaUrl: notice.source_type === 'recurring_failure' ? `${APP_ORIGIN}/dashboard/recurring` : notice.source_type === 'account_connect' ? `${APP_ORIGIN}/dashboard/settings` : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? `${APP_ORIGIN}/dashboard/payments` : notice.source_type === 'quick_stop' ? `${APP_ORIGIN}/dashboard/quick-stops` : notice.source_type === 'system_sweep' ? `${APP_ORIGIN}/dashboard/jobs` : notice.event_kind === 'customer_plan_change' ? `${APP_ORIGIN}/dashboard/recurring` : notice.event_kind === 'subcontractor_alert' ? `${APP_ORIGIN}/dashboard/crew/requests/${notice.source_payload.request_id}` : notice.event_kind === 'lead_notification' ? `${APP_ORIGIN}/dashboard/leads` : messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : notice.source_payload.job_id ? `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}` : notice.source_type === 'portal_message' && notice.source_payload.client_id ? `${APP_ORIGIN}/dashboard/clients/${notice.source_payload.client_id}` : `${APP_ORIGIN}/dashboard`, tone: notice.event_kind === 'customer_plan_change' ? (notice.source_payload.title?.includes('paused') ? 'warning' : 'info') : 'info',
-      });
+      const prepareIntent = async (snapshot: { payload: unknown, providerFingerprint: string, idempotencyKey: string }) => {
+        const saved = await admin.rpc('prepare_owner_event_notice_snapshot', {
+          p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at,
+          p_payload: snapshot.payload, p_provider_fingerprint: snapshot.providerFingerprint,
+          p_idempotency_key: snapshot.idempotencyKey,
+        });
+        if (saved.error || saved.data !== true) throw new Error('notice_prepare_failed');
+      };
+
+      if (notice.event_kind === 'lead_notification') {
+        const { data: lead } = await admin.from('leads').select('*').eq('id', notice.source_id).single();
+        if (!lead) throw new Error('lead_not_found');
+        providerId = await sendLeadNotificationEmail({
+          noticeId: notice.id,
+          prepareIntent,
+          accountId: notice.account_id,
+          recipientEmail: recipient,
+          businessName: site.data?.company_name?.trim() || 'your business',
+          lead,
+          dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
+          highValue: notice.source_payload.highValue as boolean | undefined,
+          estimate: notice.source_payload.estimate as any,
+        });
+      } else {
+        providerId = await sendOwnerEventNoticeEmail({
+          noticeId: notice.id,
+          prepareIntent,
+          recipientEmail: recipient, businessName: site.data?.company_name?.trim() || 'your business',
+          accountId: notice.account_id,
+          subject: notice.source_payload.title || 'New customer request',
+          heading: notice.source_payload.title || 'New customer request',
+          bodyLines: [notice.source_payload.body], ctaLabel: notice.source_type === 'recurring_failure' ? 'Review recurring payments' : notice.source_type === 'account_connect' ? 'Review payment setup' : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? 'View payments' : notice.source_type === 'quick_stop' ? 'View Quick Stops' : notice.source_type === 'system_sweep' ? 'Open your jobs' : notice.event_kind === 'customer_plan_change' ? 'View Recurring Plans' : notice.event_kind === 'subcontractor_alert' ? 'Open the request' : notice.event_kind === 'lead_notification' ? 'Open leads' : messaging ? 'Open messaging dashboard' : notice.source_payload.job_id ? 'Open the job' : notice.source_type === 'portal_message' ? 'View client' : 'Open dashboard',
+          ctaUrl: notice.source_type === 'recurring_failure' ? `${APP_ORIGIN}/dashboard/recurring` : notice.source_type === 'account_connect' ? `${APP_ORIGIN}/dashboard/settings` : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? `${APP_ORIGIN}/dashboard/payments` : notice.source_type === 'quick_stop' ? `${APP_ORIGIN}/dashboard/quick-stops` : notice.source_type === 'system_sweep' ? `${APP_ORIGIN}/dashboard/jobs` : notice.event_kind === 'customer_plan_change' ? `${APP_ORIGIN}/dashboard/recurring` : notice.event_kind === 'subcontractor_alert' ? `${APP_ORIGIN}/dashboard/crew/requests/${notice.source_payload.request_id}` : notice.event_kind === 'lead_notification' ? `${APP_ORIGIN}/dashboard/leads` : messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : notice.source_payload.job_id ? `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}` : notice.source_type === 'portal_message' && notice.source_payload.client_id ? `${APP_ORIGIN}/dashboard/clients/${notice.source_payload.client_id}` : `${APP_ORIGIN}/dashboard`, tone: notice.event_kind === 'customer_plan_change' ? (notice.source_payload.title?.includes('paused') ? 'warning' : 'info') : 'info',
+        });
+      }
     } catch (error) {
       failure = error instanceof Error && ['owner_email_missing','owner_brand_unavailable','notice_prepare_failed'].includes(error.message)
         ? error.message : 'send_failed_or_outcome_unknown';

@@ -1799,6 +1799,7 @@ async function deliverJobReviewRequest(
   let channel: 'sms' | 'email';
   let sentTo: string;
   let smsEventId: string | null = null;
+  let emailEventId: string | null = null;
   try {
     if (canText && normalizedPhone) {
       await recordSmsConsent(accountId, normalizedPhone, 'review_request');
@@ -1823,7 +1824,17 @@ async function deliverJobReviewRequest(
       if (await isEmailSuppressed(supabase, accountId, job.client_email)) {
         return { ok: false, message: `${job.client_name} unsubscribed from emails and has no textable mobile on file, so the review ask can’t be sent.` };
       }
-      await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId, mailingAddress });
+      const receipt = await sendReviewRequestEmail(admin, {
+        recipientEmail: job.client_email,
+        businessName,
+        clientName: clientFirstName,
+        reviewUrl: linkUrl,
+        accountId,
+        mailingAddress,
+        jobId: job.id,
+        idempotencyKey: `review-request:${job.id}:email`,
+      });
+      emailEventId = receipt.id;
       channel = 'email';
       sentTo = job.client_email;
     } else if (route.reason === 'opted_out') {
@@ -1847,7 +1858,8 @@ async function deliverJobReviewRequest(
       channel,
       to: sentTo,
       delivery_state: channel === 'sms' ? 'queued' : 'sent',
-      sms_event_id: smsEventId,
+      sms_event_id: channel === 'sms' ? smsEventId : null,
+      email_event_id: channel === 'email' ? emailEventId : null,
     },
   });
 

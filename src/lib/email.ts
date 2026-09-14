@@ -1538,10 +1538,12 @@ export async function sendLeadNotificationEmail(input: {
   // subject + a banner so the biggest jobs jump the inbox.
   highValue?: boolean;
   estimate?: { min: number; max: number } | null;
-}): Promise<void> {
+  noticeId?: string;
+  prepareIntent?: PrepareOwnerEmail;
+}): Promise<string> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY not configured; quote request notification skipped');
-    return;
+    return '';
   }
 
   const contact = [input.lead.phone, input.lead.email].filter(Boolean).map(escapeHtml).join(' &middot; ');
@@ -1569,10 +1571,18 @@ export async function sendLeadNotificationEmail(input: {
       cta: { label: `Open quote request in ${input.businessName}`, url: input.dashboardUrl },
     }),
     reply_to: input.lead.email || 'hello@letsgetquoted.com',
-    tags: defaultTags('lead_notification', brand, input.accountId),
+    tags: [
+      ...defaultTags('lead_notification', brand, input.accountId),
+      ...(input.noticeId ? [{ name: 'owner_event_notice_id', value: input.noticeId }] : []),
+    ],
+  }, {
+    ...(input.noticeId && input.prepareIntent ? {
+      idempotencyKey: 'owner-event:v1:' + input.noticeId,
+      prepareIntent: input.prepareIntent,
+    } : {})
   });
   if (result.error) throw new Error(result.error.message);
-}
+  return result.data?.id || '';
 
 // Inbound "contact us" message from the public /contact form, routed to our own
 // support inbox (never displayed on the site). reply_to is the sender so we can

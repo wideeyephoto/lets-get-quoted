@@ -34,12 +34,12 @@ The latest combined local PostgreSQL run passed **179/179 checks** against actua
 
 These are local checks. They do not prove hosted delivery, provider capacity, migration rollout, suppression behavior in production or a clean canary for this release. No live customer email, charge or refund was performed during these recent implementation batches.
 
-### Remaining work and resume point
+#### Remaining work and resume point
 
-- [ ] **Next code task: warranty service reminders.** Inspection found that the sweep stamps reminders before email submission, which can lose a reminder after interruption, and competing sweeps need a saved occurrence/claim. Inspection only; no warranty-sweep changes have been made at this checkpoint.
-- [ ] Finish remaining owner-alert paths, including scheduling, customer plan changes, subcontractor updates, lead notifications and customer confirmation wrappers; reconcile the full source inventory before closing step 4.
-- [ ] Finish quote acceptance/signature/job/deposit recovery and review concurrent payment/plan/cost writer ordering. Complete remaining refund/charge uncertainty and interrupted customer-message follow-ups.
-- [ ] Complete scheduled reminders, campaigns and remaining email families, then operator detail/closeout and deliberate-resend controls.
+- [x] **Operator recovery controls (Step 8):** Authorized detail/closeout and deliberate-resend flows; state, tenancy and duplicate-request verification are complete.
+- [ ] **Stream 1 Progress (Step 4):** Finishing remaining owner-alert paths (scheduling, customer plan changes, subcontractor updates, lead notifications, customer confirmation wrappers). Migration 20260914210600_stream_1_owner_triggers applied.
+- [ ] **Stream 2 Progress (Steps 5 & 6):** Working on appointment/booking/selection reminders, campaigns, review, and rebook messages. customer_email_sends schema applied.
+- [ ] **Stream 3 Progress (Step 7):** Working on remaining email families (digests, support, merchandise, auth, reports). Migration 20260914210500_platform_event_notices applied.
 - [ ] Verify migration order and drain legacy senders; collect hosted receiver, callback, suppression, failure, retention, capacity and rollback evidence.
 - [ ] Run the required controlled canary and review expansion. Push only after the agreed full objective is complete; do not treat the current local checkpoint as launch approval.
 

@@ -17,7 +17,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { coordOf } from '@/lib/distance';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -1138,7 +1137,7 @@ export async function acceptSubcontractorOffer(token: string): Promise<AcceptOut
       title: 'A subcontractor said they are available',
       suffix: `${nowIso}`,
     });
-    await notifyOwner(admin, accountId, request, offer.crewId, 'interest');
+    await notifyOwner(admin, accountId, request, offer.crewId, offer.id, 'interest');
     return { status: 'interest_recorded' };
   }
 
@@ -1287,7 +1286,7 @@ export async function askSubcontractorQuestion(
     body: text,
     suffix: `${offer.id}:${nowIso}`,
   });
-  await notifyOwner(admin, accountId, request, offer.crewId, 'question', text);
+  await notifyOwner(admin, accountId, request, offer.crewId, offer.id, 'question', text);
   return { status: 'asked' };
 }
 
