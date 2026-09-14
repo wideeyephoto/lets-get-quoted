@@ -1,10 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { getJob, listCosts, computeMargin, formatMoney, formatMoneyExact, type Cost } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, formatMoney, type Cost } from '@/lib/jobs';
 import { marginVerdict, costConfidence, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
-import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
-import { APP_ORIGIN } from '@/lib/app-origin';
+import {runOwnerEventNotices} from '@/lib/owner-event-notices';
 
 export interface MarginAlertEvaluation {
   triggered: boolean;
@@ -15,15 +13,11 @@ export interface MarginAlertEvaluation {
   totalCost: number;
   revenue: number;
   emailSent?: boolean;
+  noticeSaved?: boolean;
   feedEventCreated?: boolean;
   message?: string;
 }
 
-/**
- * Cooldown window in milliseconds between email alerts for the same job.
- * Avoids spamming the contractor if multiple small receipts are entered consecutively.
- */
-const MARGIN_ALERT_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 /**
  * Evaluates whether a newly added or updated cost causes a job's gross margin
@@ -42,7 +36,7 @@ export async function evaluateAndTriggerMarginAlert(
 ): Promise<MarginAlertEvaluation> {
   try {
     const admin = createAdminClient();
-    const [job, costs, { data: account }] = await Promise.all([
+    const [job, costs, { data: account, error: accountError }] = await Promise.all([
       getJob(admin, accountId, jobId),
       listCosts(admin, accountId, jobId),
       admin
@@ -52,12 +46,16 @@ export async function evaluateAndTriggerMarginAlert(
         .maybeSingle(),
     ]);
 
+    if (accountError || !account) throw new Error("Could not read margin settings");
     if (!job) {
       return { triggered: false, marginPct: 0, floorPct: 0, profit: 0, totalCost: 0, revenue: 0 };
     }
 
-    const minMarginPct = Number(account?.min_margin_pct) || DEFAULT_MIN_MARGIN_PCT;
+    const configuredFloor = account.min_margin_pct == null ? DEFAULT_MIN_MARGIN_PCT : Number(account.min_margin_pct);
+    if(!Number.isFinite(configuredFloor)) throw new Error('Invalid margin settings');
+    const minMarginPct = Math.min(100,Math.max(0,configuredFloor));
     const margin = computeMargin(job, costs);
+    if(![margin.revenue,margin.totalCost,margin.profit,margin.margin].every(Number.isFinite)) throw new Error('Invalid margin figures');
     const confidence = costConfidence(
       costs.map((c) => ({
         amount: Number(c.amount) || 0,
@@ -91,74 +89,22 @@ export async function evaluateAndTriggerMarginAlert(
       ? `After logging "${newlyAddedCost.description}" ($${Number(newlyAddedCost.amount).toFixed(2)}), job`
       : 'Job';
 
-    const alertMessage = verdict.losing
+    const recordedMessage = verdict.losing
       ? `${costText} ${job.ref} is running at a LOSS (${marginPctRounded}% margin · Profit: ${formatMoney(margin.profit)}). Quoted: ${formatMoney(margin.revenue)}, Total Cost: ${formatMoney(margin.totalCost)}.`
       : `${costText} ${job.ref} margin dropped to ${marginPctRounded}%, below your ${minMarginPct}% target floor. Quoted: ${formatMoney(margin.revenue)}, Total Cost: ${formatMoney(margin.totalCost)}.`;
 
-    // 1. Post internal job activity feed event
-    let feedEventCreated = false;
-    try {
-      await createJobFeedEvent(admin, accountId, jobId, {
-        kind: 'margin_alert',
-        title: verdict.losing ? '⚠️ Profit Warning: Job Operating at Loss' : '⚠️ Margin Warning: Below Floor Target',
-        body: alertMessage,
-        visibility: 'internal',
-        author: 'Margin Sentinel',
-        amount: margin.profit,
-      });
-      feedEventCreated = true;
-    } catch (feedError) {
-      console.error('Failed to post margin alert to job feed:', feedError);
-    }
-
-    // 2. Check cooldown for email delivery using recent activity feed events
-    let emailSent = false;
-    try {
-      const cooldownSince = new Date(Date.now() - MARGIN_ALERT_COOLDOWN_MS).toISOString();
-      const { data: recentAlerts } = await admin
-        .from('job_activity_feed')
-        .select('id, created_at')
-        .eq('account_id', accountId)
-        .eq('job_id', jobId)
-        .eq('kind', 'margin_alert')
-        .gt('created_at', cooldownSince);
-
-      // If more than 1 alert in the last 4h (including the one just created), suppress email
-      const shouldSendEmail = (recentAlerts?.length ?? 0) <= 1;
-
-      if (shouldSendEmail) {
-        const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-        if (ownerEmail) {
-          const businessName = account?.business_name || 'Your Business';
-          const jobUrl = `${APP_ORIGIN}/dashboard/jobs/${jobId}?open=costs`;
-
-          await sendContractorAlertEmail({
-            accountId,
-            recipientEmail: ownerEmail,
-            businessName,
-            subject: verdict.losing
-              ? `⚠️ Loss Alert: Job ${job.ref} (${job.client_name}) is operating at a loss`
-              : `⚠️ Margin Alert: Job ${job.ref} (${job.client_name}) fell below ${minMarginPct}% floor`,
-            heading: verdict.losing ? 'Job Operating at a Loss' : 'Job Margin Below Floor Target',
-            bodyLines: [
-              `Job: ${job.ref} — ${job.client_name}`,
-              `Current Margin: ${marginPctRounded}% (Target Floor: ${minMarginPct}%)`,
-              `Quoted Price: ${formatMoneyExact(margin.revenue)}`,
-              `Total Logged Costs: ${formatMoneyExact(margin.totalCost)} (Net Profit: ${formatMoneyExact(margin.profit)})`,
-              newlyAddedCost
-                ? `Recent Expense: "${newlyAddedCost.description}" — $${Number(newlyAddedCost.amount).toFixed(2)} (${newlyAddedCost.type})`
-                : 'A recent expense adjustment pushed costs above the margin threshold.',
-              'Review line items or issue a change order if additional scope was required.',
-            ],
-            ctaLabel: 'Review Job Costs & Margins',
-            ctaUrl: jobUrl,
-            tone: 'warning',
-          });
-          emailSent = true;
-        }
-      }
-    } catch (emailErr) {
-      console.error('Failed to dispatch contractor margin alert email:', emailErr);
+    const alertMessage = `At this check: ${recordedMessage}${confidence.evidencedPct<0.5?' Much of this cost is estimated; verify the figures.':''} Review current costs before acting.`;
+    const saved=await admin.rpc('record_margin_owner_notice',{
+      p_account_id:accountId,p_job_id:jobId,p_revenue:margin.revenue,p_total_cost:margin.totalCost,p_floor_pct:minMarginPct,
+      p_title:verdict.losing?'Recorded profit warning: loss':'Recorded margin warning: below target',p_body:alertMessage,
+    });
+    if(saved.error || !saved.data?.feed_id) throw new Error('Could not save margin warning');
+    const feedEventCreated=true;
+    const noticeSaved=saved.data.notice_saved===true;
+    let emailSent=false;
+    if(noticeSaved){
+      try{const result=await runOwnerEventNotices(admin,{sourceId:saved.data.feed_id,accountId});emailSent=result.ownersNotified>0;}
+      catch{console.error('Margin owner notice remains saved for pickup');}
     }
 
     return {
@@ -170,6 +116,7 @@ export async function evaluateAndTriggerMarginAlert(
       totalCost: margin.totalCost,
       revenue: margin.revenue,
       emailSent,
+      noticeSaved,
       feedEventCreated,
       message: alertMessage,
     };
