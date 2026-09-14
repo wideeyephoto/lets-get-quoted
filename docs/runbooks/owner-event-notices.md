@@ -416,3 +416,9 @@ Apply 20260914194628_portal_message_request_receipts.sql before updated portal r
 Portal history reads the private receipt through account/client-scoped server queries, including jobless and phoneless messages. Inbox/job copies use the same ID and are deduplicated in the portal reader. Jobless owner notices open the saved client. Form retries preserve text and request UUID after uncertainty; only a confirmed save appends a message. An explicit new message resets the UUID. Accepted retries do not consume the new-message quota.
 
 Local evidence: 69 application tests, 163 PostgreSQL checks, full type checking, registry and clean local security advisor; lint has no errors and one existing warning. Tests include rollback, concurrent submission, changed content, foreign-client job rejection, deletion replay, jobless history, concurrent-return identity and lost-response form retry. Owner SMS uses the saved ID as its key but interrupted SMS delivery remains outside the durable email queue. Verify migration ordering, portal/inbox history, background owner pickup and receiver delivery during hosted acceptance. Legacy history duplicates and timestamp pagination still need separate review.
+
+### Quote-option prerequisite checks
+
+Customer quote-option changes now stop when job, account settings, payment-plan or payment-history reads fail. Unavailable history cannot be interpreted as zero paid. Invalid payment amounts, overflow and invalid new quote totals also stop before writes or notices. Local verification: 54 quote-option tests, full type checking and lint passed.
+
+The quote-option owner alert remains inline. This guard does not close the family: transactionally saved quote/history/notice records, concurrent payment/plan/quote protection, stable request/revision binding and interrupted follow-up recovery are still required. No hosted changes were made.

@@ -119,7 +119,7 @@ describe('Quote Options Data Lib', () => {
     queryMock.update.mockReturnValue(queryMock);
     queryMock.eq.mockReturnValue(queryMock);
     // for the final update:
-    queryMock.then.mockImplementationOnce((resolve: any) => resolve({ error: null })); // update job
+    queryMock.then.mockImplementationOnce((resolve: any) => resolve({ data: [], error: null })); // payments read precedes update
 
     (quoteOptionsModule.optionChangeSentence as any).mockReturnValue('They added a thing.');
     (getAccountOwnerEmail as any).mockResolvedValue('owner@example.com');
@@ -129,5 +129,49 @@ describe('Quote Options Data Lib', () => {
     expect(res).toEqual({ ok: true, total: 200 });
     expect(createJobFeedEvent).toHaveBeenCalled();
     expect(sendContractorAlertEmail).toHaveBeenCalled();
+  });
+
+  it.each(['job', 'settings', 'plan', 'payments'])('does not change the quote or notify when the %s read fails', async failedTable => {
+    vi.mocked(resolveJobAccess).mockResolvedValue({accountId:'a1',jobId:'j1'} as any);
+    queryMock.maybeSingle
+      .mockResolvedValueOnce({data:{id:'j1'},error:failedTable==='job'?{message:'unavailable'}:null})
+      .mockResolvedValueOnce({data:{client_quote_changes:true},error:failedTable==='settings'?{message:'unavailable'}:null})
+      .mockResolvedValueOnce({data:null,error:failedTable==='plan'?{message:'unavailable'}:null});
+    queryMock.then.mockImplementation((resolve:any)=>resolve({data:[],error:failedTable==='payments'?{message:'unavailable'}:null}));
+    expect((await updateClientQuoteOptions('token',['add1'])).ok).toBe(false);
+    expect(queryMock.update).not.toHaveBeenCalled();
+    expect(createJobFeedEvent).not.toHaveBeenCalled();
+    expect(sendContractorAlertEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([null, [{amount:null}], [{amount:'invalid'}], [{amount:-1}], [{amount:Infinity}], [{amount:Number.MAX_VALUE},{amount:Number.MAX_VALUE}]])('rejects unavailable or invalid payment totals %j', async paidRows => {
+    vi.mocked(resolveJobAccess).mockResolvedValue({accountId:'a1',jobId:'j1'} as any);
+    queryMock.maybeSingle
+      .mockResolvedValueOnce({data:{id:'j1'}})
+      .mockResolvedValueOnce({data:{client_quote_changes:true}})
+      .mockResolvedValueOnce({data:null});
+    queryMock.then.mockImplementation((resolve:any)=>resolve({data:paidRows,error:null}));
+    expect((await updateClientQuoteOptions('token',['add1'])).ok).toBe(false);
+    expect(queryMock.update).not.toHaveBeenCalled();
+    expect(createJobFeedEvent).not.toHaveBeenCalled();
+    expect(sendContractorAlertEmail).not.toHaveBeenCalled();
+  });
+
+  it.each([NaN, Infinity, -1])('does not save an invalid computed quote total %s', async total => {
+    vi.mocked(resolveJobAccess).mockResolvedValue({accountId:'a1',jobId:'j1'} as any);
+    queryMock.maybeSingle
+      .mockResolvedValueOnce({data:{id:'j1',quoted_amount:100}})
+      .mockResolvedValueOnce({data:{client_quote_changes:true}})
+      .mockResolvedValueOnce({data:null});
+    queryMock.then.mockImplementation((resolve:any)=>resolve({data:[],error:null}));
+    vi.mocked(jobsModule.parseQuoteItems).mockReturnValue([{id:'add1',kind:'addon'}] as any);
+    vi.mocked(quoteOptionsModule.quoteOptionsWindow).mockReturnValue({open:true,floor:0,until:null});
+    vi.mocked(quoteOptionsModule.describeOptionChange).mockReturnValue({changed:true,removed:[],added:['add1']});
+    vi.mocked(quoteOptionsModule.applyOptionChoice).mockReturnValue([]);
+    vi.mocked(jobsModule.computeQuoteTotal).mockReturnValue(total);
+    expect((await updateClientQuoteOptions('token',['add1'])).ok).toBe(false);
+    expect(queryMock.update).not.toHaveBeenCalled();
+    expect(createJobFeedEvent).not.toHaveBeenCalled();
+    expect(sendContractorAlertEmail).not.toHaveBeenCalled();
   });
 });

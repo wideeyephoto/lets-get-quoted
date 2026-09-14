@@ -41,22 +41,24 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
   const admin = createAdminClient();
   const { accountId, jobId } = access;
 
-  const { data: job } = await admin
+  const { data: job, error: jobError } = await admin
     .from('jobs')
     .select('ref, client_name, status, started_at, scheduled_for, quote_items, quoted_amount')
     .eq('account_id', accountId)
     .eq('id', jobId)
     .maybeSingle();
+  if (jobError) return { ok: false, message: 'We could not check your quote. Please try again.' };
   if (!job) return { ok: false, message: 'We could not find this job.' };
 
   // The contractor's switch and their timezone, read defensively: the switch
   // ships behind its own migration, and a database without it means "off",
   // which is the safe answer either way.
   const settings = await admin.from('accounts').select('client_quote_changes, timezone').eq('id', accountId).maybeSingle();
+  if (settings.error || !settings.data) return { ok: false, message: 'We could not check whether changes are allowed. Please try again.' };
   const allowed = settings.data?.client_quote_changes === true;
   const today = todayIn(settings.data?.timezone as string | null | undefined);
 
-  const [{ data: planRow }, { data: paidRows }] = await Promise.all([
+  const [{ data: planRow, error: planError }, { data: paidRows, error: paymentsError }] = await Promise.all([
     admin
       .from('payment_plans')
       .select('status, authorized_at')
@@ -67,7 +69,17 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
       .maybeSingle(),
     admin.from('payments').select('amount').eq('account_id', accountId).eq('job_id', jobId).eq('status', 'paid'),
   ]);
-  const paidToDate = (paidRows ?? []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  if (planError || paymentsError || !Array.isArray(paidRows)) {
+    return { ok: false, message: 'We could not check your payments. Please try again before changing your options.' };
+  }
+  const paidAmounts = paidRows.map(row => row.amount == null ? NaN : Number(row.amount));
+  if (paidAmounts.some(amount => !Number.isFinite(amount) || amount < 0)) {
+    return { ok: false, message: 'We could not verify your payment totals. Please contact your contractor.' };
+  }
+  const paidToDate = paidAmounts.reduce((sum, amount) => sum + amount, 0);
+  if (!Number.isFinite(paidToDate)) {
+    return { ok: false, message: 'We could not verify your payment totals. Please contact your contractor.' };
+  }
 
   const items = parseQuoteItems(job.quote_items);
   const window = quoteOptionsWindow({
@@ -99,6 +111,9 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
   const finalized = applyOptionChoice(items, chosen);
   const previousTotal = Number(job.quoted_amount) || 0;
   const newTotal = computeQuoteTotal(finalized);
+  if (!Number.isFinite(newTotal) || newTotal < 0) {
+    return { ok: false, message: 'We could not verify the updated quote total. Please contact your contractor.' };
+  }
 
   // Money already taken cannot be un-taken by unticking a box. Dropping below
   // it would leave the customer in credit, and issuing a refund is a decision a
