@@ -27,6 +27,7 @@ import { updateBusinessAddressesAction, updateBusinessBasicsAction, deleteAccoun
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import { chooseGoogleLsaCustomerAction, syncGoogleLsaAction } from './actions';
 import InsuranceSection from './InsuranceSection';
+import ContractorLicensingSection from './ContractorLicensingSection';
 import FieldFormsSettingsSection from './FieldFormsSettingsSection';
 import { listFormTemplates } from '@/lib/forms/forms-data';
 import BusinessWorkspace from './BusinessWorkspace';
@@ -663,12 +664,16 @@ export default async function SettingsPage({
               'marketing-address',
               'finances',
               'insurance',
+              'licensing',
+              'credentials',
               'forms',
               'field-forms',
               'qa',
               'quickbooks',
               'addresses',
               'alerts',
+              'voice-assistant',
+              'ai-receptionist',
             ],
             content: (
               <BusinessWorkspace
@@ -844,7 +849,7 @@ export default async function SettingsPage({
           id: 'trust',
           label: 'Trust & compliance',
           blurb: 'The credentials that go in front of a customer.',
-          anchors: ['insurance', 'forms', 'field-forms', 'qa'],
+          anchors: ['insurance', 'licensing', 'credentials', 'forms', 'field-forms', 'qa'],
           content: (
             <>
               <InsuranceSection
@@ -855,6 +860,7 @@ export default async function SettingsPage({
                 saveAction={updateInsuranceAction}
                 removeAction={removeInsuranceAction}
               />
+              <ContractorLicensingSection />
               <FieldFormsSettingsSection templates={formTemplates} />
             </>
           ),
@@ -863,9 +869,27 @@ export default async function SettingsPage({
           id: 'apps',
           label: 'Connected apps',
           blurb: 'The other tools your business runs on.',
-          anchors: ['quickbooks', 'google-local-services', 'financing', 'homeowner-financing'],
+          anchors: ['quickbooks', 'google-local-services', 'financing', 'homeowner-financing', 'voice-assistant', 'ai-receptionist'],
           content: (
               <>
+                <section className="panel workspace-section-card" id="voice-assistant">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">AI Voice</p>
+                    <h2>24/7 AI Receptionist &amp; Call Handling</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Answers inbound customer calls 24/7, screens inquiries, quotes standard repairs, books arrival windows, and triages emergency calls while you are in the field.
+                  </p>
+                  <div className="workspace-inline-row" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <Link href="/dashboard/voice-calls?view=settings" className="btn primary">
+                      Configure AI receptionist
+                    </Link>
+                    <Link href="/dashboard/voice-calls" className="btn secondary">
+                      Open call log &amp; queue
+                    </Link>
+                  </div>
+                </section>
+
                 {homeownerFinancingEnabled ? (
                   <HomeownerFinancingSection
                     enrollment={(financingEnrollmentData as HomeownerFinancingEnrollmentRow | null) || null}
