@@ -675,7 +675,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Oklahoma',
     fips: '40',
     licensingBoard: 'Oklahoma Construction Industries Board (CIB)',
-    licensingUrl: 'https://cib.ok.gov',
+    licensingUrl: 'https://oklahoma.gov/cib.html',
     codes: {
       building: { name: '2018/2021 Oklahoma Uniform Building Code Commission (OUBCC / IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
