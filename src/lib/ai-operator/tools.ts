@@ -10,7 +10,7 @@ import type {
 import {
   recordOperatorAudit,
   createHitlAction,
-  listPendingHitlActions,
+  listPendingHitlActionsAsync,
   validateActionExecutionSafety,
 } from './audit';
 import {
@@ -537,6 +537,9 @@ export async function executeOperatorTool(
       const title = String(args.title || 'Untitled Action');
       const description = String(args.description || '');
       const actionType = String(args.actionType || 'custom_action');
+      if (actionType === 'sre.inspect_webhook_failure') {
+        return { data: { error: 'Webhook inspection is read-only and does not require approval. Use replay_failed_webhooks with action=diagnose to inspect failures.' } };
+      }
       let payload: Record<string, unknown> = {};
 
       try {
@@ -552,7 +555,7 @@ export async function executeOperatorTool(
         actionType,
         payload,
         expiresInHours: 72,
-      });
+      }, supabase);
 
       return {
         data: {
@@ -566,7 +569,7 @@ export async function executeOperatorTool(
     }
 
     case 'list_pending_action_requests': {
-      const actions = listPendingHitlActions();
+      const actions = await listPendingHitlActionsAsync(new Date(), supabase);
       return { data: { count: actions.length, actions } };
     }
 

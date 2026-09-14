@@ -310,16 +310,12 @@ Invariants:
       if (functionCalls.length === 0) break;
 
       const candidateContent = response.candidates?.[0]?.content;
-      if (candidateContent) {
-        formattedContents.push(candidateContent);
-      } else {
-        formattedContents.push({
-          role: 'model',
-          parts: functionCalls.map((call) => ({
-            functionCall: { name: call.name, args: call.args },
-          })),
-        });
+      if (!candidateContent?.parts?.length) {
+        // Never execute tools if their signed model response cannot be replayed.
+        throw new Error('Gemini returned tool calls without their original response content. Please retry.');
       }
+      // Keep all parts, ordering, call IDs and thoughtSignature metadata intact.
+      formattedContents.push(candidateContent);
 
       const responseParts = [];
       for (const call of functionCalls) {
@@ -360,12 +356,13 @@ Invariants:
       pendingHitlActions: await listPendingHitlActionsAsync(new Date(), ctx.supabase),
     };
   } catch (err: unknown) {
+    await flushOperatorWrites();
     const errorMsg = err instanceof Error ? err.message : String(err);
     const briefing = await generateExecutiveBriefing(ctx.supabase);
     return {
       answer: `AI Engine Note: ${errorMsg}\n\n${briefing.markdownSummary}`,
-      toolCallsExecuted: ['fallback_briefing'],
-      pendingHitlActions: listPendingHitlActions(),
+      toolCallsExecuted: [...toolCallsExecuted, 'fallback_briefing'],
+      pendingHitlActions: await listPendingHitlActionsAsync(new Date(), ctx.supabase),
     };
   }
 }
@@ -513,20 +510,11 @@ export async function executeHitlDecision(
         }
 
         case 'sre.inspect_webhook_failure': {
-          const failureId = action.payload?.failureId ? String(action.payload.failureId) : null;
-          if (failureId && supabase) {
-            const q = supabase.from('webhook_failures');
-            if (typeof q?.update === 'function') {
-              await q
-                .update({
-                  resolved_at: new Date().toISOString(),
-                  resolved_by: resolver || 'admin (operator hitl)',
-                })
-                .eq('id', failureId);
-            }
-          }
-          executionResult = { failureId, status: 'inspected_and_resolved' };
-          break;
+          return {
+            success: false,
+            action,
+            error: 'This read-only inspection approval is obsolete. Review the failure in webhook monitoring; inspection alone cannot resolve it.',
+          };
         }
 
         case 'trigger_contractor_lifecycle_nudge': {

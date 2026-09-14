@@ -20,6 +20,8 @@ async function runWebhookHealCronBatch(admin?: SupabaseClient) {
     replayed: result.replayedCount,
     autoResolved: result.autoResolvedCount,
     escalatedToHitl: result.escalatedToHitlCount,
+    inspectionsLogged: result.inspectionActionsLogged,
+    retiredInspectionApprovals: result.retiredInspectionApprovals,
     errors: result.errors.length,
     errorSamples: result.errors.slice(0, 5),
   };

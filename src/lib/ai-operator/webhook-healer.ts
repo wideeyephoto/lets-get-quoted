@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getUnresolvedWebhookFailures, createAdminSignalDiagnostics } from '@/lib/admin-alerts';
-import { recordOperatorAudit, createHitlAction } from './audit';
+import { recordOperatorAuditOnce, retireWebhookInspectionApprovals } from './audit';
 
 export interface WebhookHealReport {
   scannedAt: string;
@@ -8,6 +8,8 @@ export interface WebhookHealReport {
   replayedCount: number;
   autoResolvedCount: number;
   escalatedToHitlCount: number;
+  inspectionActionsLogged: number;
+  retiredInspectionApprovals: number;
   errors: string[];
 }
 
@@ -25,32 +27,26 @@ export async function runWebhookAutoHealer(
     replayedCount: 0,
     autoResolvedCount: 0,
     escalatedToHitlCount: 0,
+    inspectionActionsLogged: 0,
+    retiredInspectionApprovals: 0,
     errors: [],
   };
   if (opts.dryRun) return report;
+  report.retiredInspectionApprovals = await retireWebhookInspectionApprovals(supabase);
   for (const failure of unresolved) {
-    createHitlAction({
-      id: `hitl-webhook-${failure.id}`,
+    const created = await recordOperatorAuditOnce({
+      id: `audit-webhook-inspection-${failure.id}`,
+      timestamp: report.scannedAt,
       category: 'sre_platform',
-      title: `Inspect Webhook Failure: ${failure.source} (${failure.event_type || 'event'})`,
-      description: `Webhook ${failure.id} failed: "${failure.error_message || 'Unknown error'}". Verify provider identity and business effects before any source-specific recovery. No replay was attempted.`,
-      actionType: 'sre.inspect_webhook_failure',
-      payload: { failureId: failure.id, source: failure.source, error: failure.error_message },
-      requiredRole: 'admin',
-    }, supabase);
-    report.escalatedToHitlCount++;
-  }
-  if (report.escalatedToHitlCount > 0) {
-    recordOperatorAudit({
-      category: 'sre_platform',
-      actionName: 'sre.webhook_failures_inspected',
-      severity: 'safe_auto',
+      actionName: 'sre.webhook_failure_inspected',
+      severity: 'info',
       toolName: 'runWebhookAutoHealer',
-      inputPayload: { totalScanned: unresolved.length },
-      outputResult: report,
-      reasoningSummary: `Created ${report.escalatedToHitlCount} inspection actions. No webhooks replayed or resolved.`,
+      inputPayload: { failureId: failure.id, source: failure.source, error: failure.error_message },
+      outputResult: { replayed: false, resolved: false },
+      reasoningSummary: `Webhook ${failure.id} (${failure.source}) remains unresolved: "${failure.error_message || 'Unknown error'}". Inspection is read-only. Review provider identity and business effects before source-specific recovery. No replay was attempted.`,
       status: 'success',
-    });
+    }, supabase);
+    if (created) report.inspectionActionsLogged++;
   }
   return report;
 }
