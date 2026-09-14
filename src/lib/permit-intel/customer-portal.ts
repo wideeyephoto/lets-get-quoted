@@ -92,7 +92,7 @@ export async function getCustomerPermitSummary(
   } else if (jurisdiction.authorityId === 'mi-ann-arbor') {
     verificationUrl = 'https://stream.a2gov.org';
   } else {
-    verificationUrl = 'https://www.michigan.gov/lara/bureau-list/bcc';
+    verificationUrl = jurisdiction.sourceUrl || 'https://www.michigan.gov/lara/bureau-list/bcc';
   }
 
   if (requirement.decision === 'not_required' && appStatus === 'not_started') {
