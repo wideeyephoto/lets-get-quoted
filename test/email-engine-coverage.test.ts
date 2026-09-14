@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   loadEmailBrand: vi.fn(),
   generateInvoicePdf: vi.fn(),
   rpc: vi.fn(),
+  suppression: vi.fn(),
 }));
 
 vi.mock('resend', () => ({
@@ -15,7 +16,9 @@ vi.mock('resend', () => ({
   },
 }));
 
-vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc }) }));
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc,
+  from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }),
+}) }));
 
 vi.mock('@/lib/email-brand', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/email-brand')>();
@@ -63,6 +66,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
     vi.clearAllMocks();
     process.env.RESEND_API_KEY = 're_test_key_123';
     mocks.send.mockResolvedValue({ data: { id: 'msg_123' }, error: null });
+    mocks.suppression.mockResolvedValue({ data: [], error: null });
     mocks.rpc.mockImplementation(async (name: string, args: any) => ({ data: name === 'claim_document_email_send'
       ? { action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'document/intent/primary',
         payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString() } : true, error: null }));
@@ -174,6 +178,13 @@ describe('Email Engine & Notification System (lib/email)', () => {
   });
 
   describe('sendAppointmentReminderEmail', () => {
+    it('stops a locally blocked recipient before calling the real shared transport', async () => {
+      mocks.suppression.mockResolvedValue({ data: [{ reason: 'hard_bounce' }], error: null });
+      await expect(sendAppointmentReminderEmail({ accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
+        businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null,
+      })).rejects.toThrow('blocked');
+      expect(mocks.send).not.toHaveBeenCalled();
+    });
     it('dispatches reminder with appointment date, time window, and address', async () => {
       await sendAppointmentReminderEmail({
         accountId: 'acc-1',

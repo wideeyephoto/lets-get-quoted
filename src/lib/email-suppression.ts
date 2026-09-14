@@ -3,7 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Marketing opt-outs and provider delivery blocks share storage but have
 // different meanings. Marketing paths consult all these rows. Transactional
-// paths currently rely on Resend's delivery suppression, not marketing opt-outs.
+// paths in the shared sender also enforce local delivery reasons; untagged and
+// separately implemented senders still require a path-specific audit.
 //
 // The unsubscribe link is a stateless, signed token over (account_id, email): no
 // per-recipient row exists to hang it on, so we HMAC the pair and verify it back
@@ -80,7 +81,8 @@ export async function loadSuppressedEmails(supabase: SupabaseClient, accountId: 
     console.error('Failed to load email suppression list (failing closed):', error.message);
     throw new Error(`Failed to load email suppression list: ${error.message}`);
   }
-  return new Set((data ?? []).map((row) => String(row.email).trim().toLowerCase()));
+  if (!data || data.length >= 1000) throw new Error('Email suppression list unavailable or potentially truncated; no marketing emails sent.');
+  return new Set(data.map((row) => String(row.email).trim().toLowerCase()));
 }
 
 // Single-address opt-out check for the one-off send paths (rebook, review). Fail-closed

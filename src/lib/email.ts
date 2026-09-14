@@ -38,6 +38,8 @@ import { resolveHomeownerFinancing } from './bnpl-financing';
 import { sendWithDomainFallback } from './email-domain-fallback';
 import { createAdminClient } from '@/lib/auth';
 import { sendDocumentEmail, type DocumentEmailReceipt } from './document-email-sends';
+import { assertEmailSendAllowed } from './email-send-policy';
+import { resendTagValue } from './resend-tags';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -68,7 +70,10 @@ const resend = {
     send: (...args: Parameters<Resend['emails']['send']>) => {
       if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
       const client = resendClient;
-      return sendWithDomainFallback((payload, options) => client.emails.send(payload, options), ...args);
+      return sendWithDomainFallback(async (payload, options) => {
+        if (resendTagValue(payload.tags, 'account_id')) await assertEmailSendAllowed(createAdminClient(), payload);
+        return client.emails.send(payload, options);
+      }, ...args);
     },
   },
 };

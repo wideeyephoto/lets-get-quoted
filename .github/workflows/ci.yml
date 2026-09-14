@@ -52,6 +52,9 @@ jobs:
       - name: Quote and invoice email ledger database checks
         run: npm run test:pg17:document-email
 
+      - name: Operational alerts and email recovery database checks
+        run: npm run test:pg17:operational-alerts
+
       - name: SEO tests
         run: npm run test:seo
 

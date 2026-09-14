@@ -74,6 +74,7 @@
     "test:pg17:email-sending-domains": "node scripts/verify-email-sending-domains.mjs",
     "test:pg17:lifecycle-email": "node scripts/verify-contractor-lifecycle-sends.mjs",
     "test:pg17:document-email": "node scripts/verify-document-email-sends.mjs",
+    "test:pg17:operational-alerts": "node scripts/verify-operational-alerts.mjs",
     "test:email-dry-run": "node --test scripts/dry-run-contractor-lifecycle.test.mjs",
     "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
     "test:pg17:job-access": "node scripts/verify-job-access-boundary.mjs",
