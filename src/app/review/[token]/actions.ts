@@ -17,6 +17,6 @@ export async function rateReviewAction(token: string, rating: number) {
 export async function submitFeedbackAction(token: string, formData: FormData) {
   const feedback = String(formData.get('feedback') ?? '').trim();
   if (!feedback) redirect(`/review/${token}?step=feedback`);
-  await submitPrivateFeedback(createAdminClient(), token, feedback);
+  await submitPrivateFeedback(createAdminClient(), token, feedback, String(formData.get('request_id') ?? ''));
   redirect(`/review/${token}?done=1`);
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/auth';
 import { getReviewInviteByToken } from '@/lib/reviews';
@@ -74,9 +75,9 @@ export default async function ReviewPage({
   // leave, which is the whole thing we stopped doing.
   if (searchParams.done === '1') {
     return (
-      <Shell eyebrow={businessName} title="Thank you — that's been sent">
+      <Shell eyebrow={businessName} title="Thank you — your note is saved">
         <p className="workspace-lead">
-          {businessName} got your note directly and will be in touch. If you&apos;d also like to say something publicly,
+          Your note is saved for {businessName}. If you&apos;d also like to say something publicly,
           that&apos;s still up to you.
         </p>
         {routes.googleUrl ? <ReviewRoutes token={params.token} googleUrl={routes.googleUrl} businessName={businessName} /> : null}
@@ -89,7 +90,8 @@ export default async function ReviewPage({
       <Shell eyebrow={businessName} title={`Tell ${businessName} directly`}>
         <p className="workspace-lead">This goes straight to the owner and isn&apos;t published anywhere.</p>
         <form action={submitFeedbackAction.bind(null, params.token)} className="review-feedback-form">
-          <textarea name="feedback" rows={5} placeholder="What happened? What would have made it better?" required aria-label="Your feedback" />
+          <input type="hidden" name="request_id" value={randomUUID()} />
+          <textarea maxLength={2000} name="feedback" rows={5} placeholder="What happened? What would have made it better?" required aria-label="Your feedback" />
           <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Send private feedback</SaveButton>
         </form>
         {routes.googleUrl ? (

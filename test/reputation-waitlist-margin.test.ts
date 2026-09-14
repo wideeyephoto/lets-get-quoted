@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  ownerNotice: vi.fn(),
   createAdminClient: vi.fn(),
   // Email
   getAccountOwnerEmail: vi.fn(),
@@ -37,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   rankWaitlistCandidates: vi.fn(),
 }));
 
+vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:mocks.ownerNotice}));
 vi.mock('@/lib/auth', () => ({
   createAdminClient: mocks.createAdminClient,
 }));
@@ -498,10 +500,11 @@ describe('reputation, waitlist, margin, and scheduling engine test suite', () =>
         },
       });
 
-      await submitPrivateFeedback(mockDb, 'tok-fb', 'Tech was polite but was late 30 mins.');
-      expect(mockDb.from).toHaveBeenCalledWith('review_invites');
-      expect(mocks.createJobFeedEvent).toHaveBeenCalled();
-      expect(mocks.sendContractorAlertEmail).toHaveBeenCalled();
+      const rpc=vi.fn().mockResolvedValue({data:{source_id:'source-1',account_id:accountId,replayed:false},error:null});
+      await submitPrivateFeedback({...mockDb,rpc}, 'tok-fb', 'Tech was polite but was late 30 mins.','11111111-1111-4111-8111-111111111111');
+      expect(rpc).toHaveBeenCalledWith('submit_review_link_feedback',expect.objectContaining({p_token:'tok-fb',p_feedback:'Tech was polite but was late 30 mins.'}));
+      expect(mocks.createJobFeedEvent).not.toHaveBeenCalled();
+      expect(mocks.sendContractorAlertEmail).not.toHaveBeenCalled();
     });
   });
 

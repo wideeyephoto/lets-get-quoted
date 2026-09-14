@@ -371,11 +371,12 @@ describe('Server Actions: Customer Portal & Token Access', () => {
 
       const form = new FormData();
       form.set('feedback', 'Excellent work, very prompt!');
+      form.set('request_id','11111111-1111-4111-8111-111111111111');
 
       await expect(submitFeedbackAction('rev-token', form)).rejects.toThrow(
         'NEXT_REDIRECT:/review/rev-token?done=1',
       );
-      expect(mocks.submitPrivateFeedback).toHaveBeenCalledWith(fakeAdmin, 'rev-token', 'Excellent work, very prompt!');
+      expect(mocks.submitPrivateFeedback).toHaveBeenCalledWith(fakeAdmin, 'rev-token', 'Excellent work, very prompt!', '11111111-1111-4111-8111-111111111111');
     });
 
     it('verifies unsubscribe token and registers suppression', async () => {

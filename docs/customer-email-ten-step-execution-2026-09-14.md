@@ -162,3 +162,9 @@ No hosted changes or receiver evidence; step 4 remains in progress.
 - **T16/T17/T19:** Completed-job private feedback now saves its internal timeline event, request receipt and owner notice atomically. Request IDs persist after uncertain responses; changed feedback/rating cannot reuse an ID. Failed saves return an error and deleted events retain replay tombstones.
 - **Verification:** 24 application tests including the rendered retry form, 114 PostgreSQL checks, full type checking and clean local security advisor passed. Lint has no errors and three existing unused-import warnings in the shared action test. Database checks verify internal visibility and unchanged visibility for existing customer questions.
 - **Remaining:** Public review links are unchanged. Review-request campaigns and other private-feedback entry points remain separate families. Other owner alerts, hosted acceptance and steps 5–10 remain open.
+
+### Thirty-third-pass implementation — review-link private feedback
+
+- **T16/T17/T19:** Review-link forms carry request IDs. A service-only transaction resolves the token, records the feedback receipt and invite update, appends an internal job event when applicable, and saves the owner notice. Concurrent retries reuse the source; changed content is rejected. Jobless notices link to the dashboard and deleted invites cancel pending sends.
+- **Verification:** 59 application tests, 116 PostgreSQL checks, full type checking, changed production-file lint and clean local security advisor passed. The receipt registry covers account disposition. Confirmation copy reports saved feedback without claiming email arrival.
+- **Remaining:** Old forms without request IDs must refresh. A newly rendered form represents a new request. Hosted delivery/retention/capacity acceptance, other owner families and steps 5–10 remain open. No live email or rollout occurred.

@@ -1,8 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
+import { clientRequestHash, validClientRequestId } from '@/lib/client-owner-requests';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { createAdminClient } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail, sendReviewRequestEmail } from '@/lib/email';
+import { sendReviewRequestEmail } from '@/lib/email';
 import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { summariseReviewInvites, type ReviewInviteRow, type ReviewsSummary } from '@/lib/review-routing';
 import { loadBusinessName, pickBusinessName } from '@/lib/business-name';
@@ -592,59 +594,11 @@ export async function countCompletedJobsAwaitingReview(
  * This is an additional channel, never a substitute: the public route stays
  * open before, during and after leaving one.
  */
-export async function submitPrivateFeedback(admin: SupabaseClient, token: string, feedback: string): Promise<void> {
-  const { data: invite } = await admin
-    .from('review_invites')
-    .select('account_id, job_id, client_name, rating, responded_at')
-    .eq('token', token)
-    .maybeSingle();
-  if (!invite) throw new Error('Review link not found.');
-
-  const now = new Date().toISOString();
-  await admin
-    .from('review_invites')
-    .update({ feedback, feedback_at: now, routed_to: 'private', ...(invite.responded_at ? {} : { responded_at: now }) })
-    .eq('token', token);
-
-  const rating = invite.rating as number | null;
-  const clientName = (invite.client_name as string | null) || 'A client';
-
-  if (invite.job_id) {
-    try {
-      await createJobFeedEvent(admin, invite.account_id as string, invite.job_id as string, {
-        kind: 'review_feedback',
-        title: `Private feedback${rating ? ` (${rating}★)` : ''}`,
-        body: feedback,
-        visibility: 'internal',
-      });
-    } catch (error) {
-      console.error('Review feedback feed event failed:', error instanceof Error ? error.message : error);
-    }
-  }
-
-  try {
-    const [ownerEmail, businessName] = await Promise.all([
-      getAccountOwnerEmail(admin, invite.account_id as string),
-      loadBusinessName(admin, invite.account_id as string),
-    ]);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId: invite.account_id as string,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: `New private feedback${rating ? ` (${rating}★)` : ''}`,
-        heading: `${clientName} left you private feedback`,
-        bodyLines: [
-          `Rating: ${rating ?? '—'} of 5`,
-          feedback,
-          'They were also offered the public review link, so reach out quickly — this is your chance to put it right.',
-        ],
-        ctaLabel: invite.job_id ? 'Open the job' : 'Open dashboard',
-        ctaUrl: invite.job_id ? `${APP_ORIGIN}/dashboard/jobs/${invite.job_id}` : `${APP_ORIGIN}/dashboard`,
-        tone: 'warning',
-      });
-    }
-  } catch (error) {
-    console.error('Review feedback owner alert failed:', error instanceof Error ? error.message : error);
-  }
+export async function submitPrivateFeedback(admin: SupabaseClient, token: string, feedback: string, requestId: string): Promise<void> {
+  const text = feedback.trim().slice(0,2000);
+  if (!text || !validClientRequestId(requestId)) throw new Error('Refresh the feedback form and try again.');
+  const saved = await admin.rpc('submit_review_link_feedback', {p_token:token,p_request_id:requestId.toLowerCase(),p_payload_hash:clientRequestHash('review_link_feedback',text),p_feedback:text});
+  if(saved.error || !saved.data || typeof saved.data.source_id!=='string' || typeof saved.data.account_id!=='string') throw new Error('Feedback could not be saved. Retry the same form.');
+  try { await runOwnerEventNotices(admin,{sourceId:saved.data.source_id,accountId:saved.data.account_id}); }
+  catch { console.error('Saved review feedback needs background notification pickup'); }
 }

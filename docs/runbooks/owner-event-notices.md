@@ -218,3 +218,26 @@ The form preserves inputs/ID after uncertainty and resets the ID when reopened.
 Verification: 24 application tests, 114 database checks, type checking, lint
 without errors and clean local security advisor. Other private-feedback entry
 points, review campaigns and hosted acceptance remain open.
+
+## Review-link private feedback
+
+Apply 20260914182814_review_link_feedback_requests.sql before the updated
+review-link form and action. Existing forms without IDs must refresh. The
+server-rendered form carries a UUID for that form instance; rendering a new form
+starts a new request. Public Google review routes are unchanged.
+
+The service-only submission RPC resolves and locks the exact invite token,
+binds a receipt to account/invite/request and normalized feedback, then commits
+the invite response, notice and internal job event together. Jobless invites
+produce notices without job events. Tokens are not copied into the notice.
+Repeated requests reuse their receipt; changed feedback under the same ID fails.
+The saved owner snapshot retains the rating at submission even if the invite
+rating changes later. A deleted invite cancels pending notification.
+
+The worker saves the current owner and exact rendered message before sending,
+uses the dashboard for jobless feedback, and retains uncertain outcomes for
+review. Confirmation says the note is saved, not that its email has arrived.
+
+Verification: 59 application tests, 116 PostgreSQL checks, full type checking,
+production-file lint and clean local security advisor. Hosted acceptance remains
+open; no provider delivery or canary evidence is implied by these local checks.
