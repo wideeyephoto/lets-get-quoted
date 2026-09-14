@@ -159,3 +159,23 @@ Verification: 50 application tests, 107 PostgreSQL checks, full type checking,
 lint and clean local security advisor. Customer-facing change-order delivery,
 job-total reconciliation and remaining owner families are separate workstreams.
 Hosted release and canary acceptance remain open.
+
+## Formal warranty claims
+
+Apply 20260914182041_warranty_claim_owner_notices.sql after draining legacy
+warranty claim actions. The claim row is the source; its insertion atomically
+creates the private notice. The trigger verifies exact warranty/account/job
+ownership and records original coverage status, description and attachment paths.
+Parent RLS authorizes the insert; the restricted SECURITY DEFINER trigger permits
+only queue insertion without exposing queue privileges to customers.
+
+The worker checks that the claim remains open/scheduled and that source evidence
+still matches. Resolved, changed or deleted claims cancel pending notices.
+Immediate pickup uses only the saved claim/account and does not undo success on
+mail errors. Coverage text refers to the date of the original report.
+
+Verification: 52 application tests, 110 PostgreSQL checks, type checking, lint
+and clean local security advisor. Request IDs and stable attachment paths remain
+required for formal warranty forms: duplicate source creation is not yet covered.
+Other warranty reminder senders remain in their scheduled-message workstream.
+No hosted changes or receiver evidence in this pass.

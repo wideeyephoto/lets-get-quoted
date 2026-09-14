@@ -3,15 +3,13 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
-import { loadBusinessName } from '@/lib/business-name';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { raiseClaim } from '@/lib/warranties-data';
 import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 /**
  * "Something's gone wrong" — one tap from the homeowner's job page.
@@ -85,33 +83,7 @@ export async function raiseWarrantyClaimAction(
   }
 
   try {
-    const [ownerEmail, businessName] = await Promise.all([
-      getAccountOwnerEmail(admin, access.accountId),
-      loadBusinessName(admin, access.accountId),
-    ]);
-    if (ownerEmail) {
-      const bodyLines = [
-        claim.description,
-        claim.inWarrantyAtClaim
-          ? 'This was inside the warranty on the day they reported it.'
-          : 'Their cover had already ended when they reported this. Still worth a look — it is your call, and they asked you first.',
-      ];
-      if (photoPaths.length > 0) {
-        bodyLines.push(`Attached ${photoPaths.length} photo/video file${photoPaths.length === 1 ? '' : 's'}.`);
-      }
-
-      await sendContractorAlertEmail({
-        accountId: access.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: claim.inWarrantyAtClaim ? 'Warranty request — in warranty' : 'Warranty request — cover has ended',
-        heading: 'A past customer has asked for help',
-        bodyLines,
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
-        tone: claim.inWarrantyAtClaim ? 'warning' : 'info',
-      });
-    }
+    await runOwnerEventNotices(admin, { sourceId: claim.id, accountId: access.accountId });
   } catch (error) {
     console.error('Warranty claim owner alert failed:', error instanceof Error ? error.message : error);
   }

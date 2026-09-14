@@ -114,3 +114,14 @@ it('rejects a request receipt conflict before any upload or notification',async(
   expect((await submit.followup([photo(4)])).ok).toBe(false);
   expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.ownerNotice).not.toHaveBeenCalled();
 });
+
+it('dispatches the committed formal warranty claim in its token workspace',async()=>{
+  expect(await submit.warranty([])).toEqual({ok:true});
+  expect(mocks.ownerNotice).toHaveBeenCalledWith(expect.anything(),{sourceId:'claim-a',accountId:'account-a'});
+});
+it('preserves a saved warranty claim after immediate owner notice pickup fails',async()=>{
+  mocks.ownerNotice.mockRejectedValueOnce(new Error('pickup unavailable'));
+  const log=vi.spyOn(console,'error').mockImplementation(()=>{});
+  try {expect(await submit.warranty([])).toEqual({ok:true});} finally {log.mockRestore();}
+  expect(mocks.claim).toHaveBeenCalledTimes(1);
+});

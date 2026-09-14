@@ -290,3 +290,9 @@ Execution order, acceptance criteria and milestone dependencies are in the [impl
 - **T16/T17/T19:** A sent-to-approved/declined transition now commits its owner notice atomically. Existing one-winner response guards prevent repeated decisions; saved job, title, amount, signature, reason and response time bind the source before sending. Changed/deleted decisions cancel pending notices.
 - **Verification:** 50 application tests, 107 PostgreSQL checks, full type checking, lint and clean local security advisor passed. Database checks include concurrent responses, replay, invalid-source rollback, timezone changes and obsolete decisions. Immediate pickup failure preserves the saved customer response.
 - **Remaining:** Drain legacy response actions before deploying this trigger. This migration covers owner decision alerts; customer change-order delivery and other owner families retain their separate requirements. No hosted rollout or canary evidence.
+
+### Thirtieth-pass implementation — formal warranty claim owner notices
+
+- **T16/T17/T19:** Claim insertion now saves an owner notice in the same transaction, binding warranty/job ownership, original coverage, description and attachments. One worker claims each notice. Resolved, changed and deleted claims cancel pending alerts; immediate pickup failure leaves the saved claim successful.
+- **Verification:** 52 application tests, 110 PostgreSQL checks, full type checking, changed-file lint and clean local security advisor passed. A failed notice write rolls back its claim.
+- **Remaining:** Formal warranty forms still need request IDs and stable attachment paths so repeated submissions cannot create separate claims. The queue protects one saved claim, not repeated source creation. Drain legacy warranty actions before deployment. Other owner families and hosted acceptance remain open.
