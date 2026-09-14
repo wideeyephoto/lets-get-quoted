@@ -197,6 +197,7 @@ export default function JobsWorkspace({
   // Local layout state, so the demo's pickers work without a cookie to write.
   const [localMapView, setLocalMapView] = useState<MapView>(mapView);
   const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const effectiveMapView = readOnly ? localMapView : mapView;
   const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
 
@@ -300,9 +301,23 @@ export default function JobsWorkspace({
           ) : null}
         </div>
       </div>
-      <div className={styles.headerActions}>
+      <div className={styles.headerActions} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button
+          type="button"
+          onClick={() => setPhotoModalOpen(true)}
+          className="btn secondary sm"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem' }}
+          title="Inspect damage photos with AI vision to detect defects, labor hours, and quote line items"
+        >
+          <span aria-hidden="true">📸</span>
+          <span>AI Photo Estimate</span>
+        </button>
         <FieldIntakeHint page="jobs" />
       </div>
+      <PhotoDefectEstimatorModal
+        isOpen={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+      />
     </div>
   ) : null;
 

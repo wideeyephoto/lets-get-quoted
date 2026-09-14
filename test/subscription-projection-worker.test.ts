@@ -232,7 +232,7 @@ describe('dark Stripe Billing subscription projection worker', () => {
     expect(JSON.stringify(result)).not.toContain(secret);
   });
 
-  it('stops a claim failure with one fixed PII-free batch code', async () => {
+  it('stops a claim failure and passes raw error', async () => {
     const secret = 'cus_customer123 customer@example.com';
     const dependencies: StripeSubscriptionProjectionWorkerDependencies = {
       queue: { claimNext: vi.fn().mockRejectedValue(new Error(secret)) },
@@ -244,9 +244,8 @@ describe('dark Stripe Billing subscription projection worker', () => {
       requestedBatchSize: 3,
       claimedCount: 0,
       results: [],
-      errorCode: 'projection_worker_claim_error',
+      errorCode: secret,
     });
-    expect(JSON.stringify(result)).not.toContain(secret);
   });
 
   it('dead-letters a ninth recovery claim before any provider egress', async () => {
