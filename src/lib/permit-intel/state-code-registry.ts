@@ -89,7 +89,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Arkansas',
     fips: '05',
     licensingBoard: 'Arkansas Contractors Licensing Board',
-    licensingUrl: 'https://aclb.arkansas.gov',
+    licensingUrl: 'https://labor.arkansas.gov/licensing/arkansas-contractors-licensing-board/',
     codes: {
       building: { name: '2021 Arkansas Fire Prevention Code (IRC based)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
