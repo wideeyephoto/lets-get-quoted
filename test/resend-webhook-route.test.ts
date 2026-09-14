@@ -356,6 +356,21 @@ describe('operational callback recipient binding', () => {
     expect((await POST(signedRequest('email.complained', { email_id: providerId, to: [RECIPIENT] }))).status).toBe(200);
     expect(mocks.upsert).toHaveBeenCalled();
     expect(mocks.suppressEmail).not.toHaveBeenCalled();
+    expect(mocks.rpc).toHaveBeenCalledWith('record_operational_callback_evidence', {
+      p_provider_id: providerId, p_recipient: RECIPIENT, p_reason: 'complaint',
+      p_event_id: `msg_${providerId}`, p_occurred_at: EVENT_TIME,
+    });
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.operationalLookup.mock.invocationCallOrder[0]);
+  });
+  it.each([{ data: false, error: null }, { data: null, error: { message: 'offline' } }])('does not acknowledge unretained early evidence', async result => {
+    mocks.rpc.mockResolvedValue(result);
+    expect((await POST(signedRequest('email.bounced', { email_id: providerId, to: [RECIPIENT], bounce: { type: 'Permanent' } }))).status).toBe(500);
+    expect(mocks.operationalLookup).not.toHaveBeenCalled();
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+  it('does not record ambiguous bounce classifications in durable block evidence', async () => {
+    await POST(signedRequest('email.bounced', { email_id: providerId, to: [RECIPIENT], bounce: { type: 'Transient' } }));
+    expect(mocks.rpc).not.toHaveBeenCalledWith('record_operational_callback_evidence', expect.anything());
   });
   it('retries failed suppression persistence after a successful binding', async () => {
     bound(); mocks.suppressEmail.mockResolvedValue(false);

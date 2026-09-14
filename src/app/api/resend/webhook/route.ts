@@ -239,7 +239,15 @@ export async function POST(request: Request) {
     // mailbox-provider reputation hit was a syntactic placeholder check.
     let suppressionScope = kind === 'platform_campaign' || kind === 'platform_campaign_test'
       || resendTagValue(event.data.tags, 'delivery_scope') === 'platform_transactional' ? 'platform' : accountId;
-    if (!suppressionScope && suppressionReasonFor({ status, bounceType: event.data.bounce?.type })) {
+    const unscopedReason = suppressionReasonFor({ status, bounceType: event.data.bounce?.type });
+    if (!suppressionScope && unscopedReason) {
+      const singleRecipient = operationalSingleRecipient(event.data.to);
+      if (!singleRecipient) throw new Error('Operational callback requires one verified recipient');
+      const { data: retained, error: evidenceError } = await admin.rpc('record_operational_callback_evidence', {
+        p_provider_id: providerId, p_recipient: singleRecipient, p_reason: unscopedReason,
+        p_event_id: request.headers.get('svix-id'), p_occurred_at: event.created_at ?? new Date().toISOString(),
+      });
+      if (evidenceError || retained !== true) throw new Error('Operational callback evidence could not be retained');
       suppressionScope = await operationalCallbackScope(admin, providerId, event.data.to);
     }
     await maybeSuppress(admin, { status, accountId: suppressionScope,
@@ -265,20 +273,21 @@ async function operationalCallbackScope(admin: ReturnType<typeof createAdminClie
   if (error || data === undefined) throw new Error('Operational callback binding could not be checked');
   if (!data) return null; // Unknown/early callbacks cannot establish platform scope.
   const saved = data.payload;
-  const single = (value: unknown): string | null => {
-    const values = typeof value === 'string' ? [value] : value;
-    if (!Array.isArray(values) || values.length !== 1 || typeof values[0] !== 'string'
-      || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(values[0])) return null;
-    return values[0].toLowerCase();
-  };
-  const recipient = single(to);
-  if (data.provider_id !== providerId || !recipient || recipient !== single(saved?.to)
+  const recipient = operationalSingleRecipient(to);
+  if (data.provider_id !== providerId || !recipient || recipient !== operationalSingleRecipient(saved?.to)
     || (saved?.cc && (!Array.isArray(saved.cc) || saved.cc.length))
     || (saved?.bcc && (!Array.isArray(saved.bcc) || saved.bcc.length))
     || resendTagValue(saved?.tags, 'account_id')) {
     throw new Error('Operational callback recipient binding does not match');
   }
   return 'platform';
+}
+
+function operationalSingleRecipient(value: unknown): string | null {
+  const values = typeof value === 'string' ? [value] : value;
+  if (!Array.isArray(values) || values.length !== 1 || typeof values[0] !== 'string'
+    || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(values[0])) return null;
+  return values[0].toLowerCase();
 }
 
 /**

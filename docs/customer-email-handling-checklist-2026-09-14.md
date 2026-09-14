@@ -203,6 +203,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 4 files / 97 tests passed, including 13 new signed-callback cases; full type checking and changed-file lint passed. No schema, saved-message/key or live changes occurred.
 - **Remaining:** Early callbacks before acceptance bookkeeping, emergency messages without ledger rows, historical/provider evidence and hosted acceptance. See the [operational callback policy](runbooks/operational-email-recipient-policy.md).
 
+### Seventeenth-pass implementation — early callback reconciliation
+
+- **T12/T18/T19:** Added private durable negative evidence and database reconciliation in both arrival directions. Early permanent bounces/complaints/provider suppressions now establish a block once the exact operational provider ID and saved recipient are known. Concurrent arrival, stronger reason provenance and failed-write recovery are covered without changing payloads or retry keys.
+- **Verification:** 100 selected application tests, full type checking and 35 actual PostgreSQL 17 checks passed; the local security advisor found no issues. Changed-file lint and registry checks passed. Migration `20260914164359_operational_callback_evidence.sql` is prepared locally only; no emails or hosted changes occurred.
+- **Remaining:** Unknown/unrecovered IDs, emergency messages without ledgers, historical evidence, storage retention review and hosted acceptance. See the [durable evidence runbook](runbooks/operational-callback-evidence.md).
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

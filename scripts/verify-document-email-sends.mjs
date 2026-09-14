@@ -185,6 +185,7 @@ try {
   await (await import('./verify-email-recovery-worker-checks.mjs')).verifyRecoveryWorker(db, other, root, passed);
   await (await import('./verify-platform-email-policy-checks.mjs')).verifyPlatformEmailPolicy(db, other, root, passed);
   await (await import('./verify-lifecycle-suppression-checks.mjs')).verifyLifecycleSuppression(db, root, passed);
+  await (await import('./verify-operational-callback-evidence-checks.mjs')).verifyOperationalCallbackEvidence(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',
