@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  evaluateAndTriggerMarginAlert: vi.fn().mockResolvedValue({ triggered: false }),
   revalidatePath: vi.fn(),
   redirect: vi.fn((path: string) => {
     const err = new Error(`NEXT_REDIRECT:${path}`);
@@ -44,6 +45,10 @@ vi.mock('next/navigation', () => ({
       throw err;
     }
   }),
+}));
+
+vi.mock('@/lib/margin-alerts', () => ({
+  evaluateAndTriggerMarginAlert: mocks.evaluateAndTriggerMarginAlert,
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -130,7 +135,8 @@ describe('Dashboard Jobs Server Actions (dashboard/jobs/actions.ts)', () => {
 
   function createMockSupabase(overrides: Record<string, any> = {}) {
     return {
-      from: vi.fn((table: string) => {
+      rpc: vi.fn().mockResolvedValue({ data: { feed_id: 'mock-123', notice_saved: true }, error: null }),
+        from: vi.fn((table: string) => {
         const chain: any = {
           select: vi.fn().mockReturnThis(),
           insert: vi.fn().mockReturnThis(),

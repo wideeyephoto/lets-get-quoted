@@ -136,6 +136,65 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+  
+  customer_email_sends: {
+    tableName: 'customer_email_sends', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+  platform_event_notices: {
+    tableName: 'platform_event_notices', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+  platform_event_notice_snapshots: {
+    tableName: 'platform_event_notice_snapshots', relationship: 'fk_chain', primaryKeyColumn: 'notice_id',
+    fkPath: ['notice_id', 'platform_event_notices.account_id'], localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+  platform_email_suppression: {
+    tableName: 'platform_email_suppression', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+  operational_callback_evidence: {
+    tableName: 'operational_callback_evidence', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  email_recovery_control: {
+    tableName: 'email_recovery_control', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  quote_approval_request_receipts: {
+    tableName: 'quote_approval_request_receipts', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  
+  document_email_sends: {
+    tableName: 'document_email_sends', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  contractor_lifecycle_sends: {
+    tableName: 'contractor_lifecycle_sends',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
   owner_event_notices: {
     tableName: 'owner_event_notices',
     relationship: 'direct_account_id',

@@ -1,7 +1,17 @@
 {
   "crons": [
-    { "path": "/api/cron/owner-event-notices", "schedule": "*/5 * * * *" },
-    { "path": "/api/cron/email-recovery", "schedule": "*/5 * * * *" },
+    {
+      "path": "/api/cron/platform-event-notices",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/owner-event-notices",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/email-recovery",
+      "schedule": "*/5 * * * *"
+    },
     {
       "path": "/api/cron/operational-alerts",
       "schedule": "*/5 * * * *"

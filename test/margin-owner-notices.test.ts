@@ -1,7 +1,7 @@
 import {beforeEach,expect,it,vi} from 'vitest';
 import type {SupabaseClient} from '@supabase/supabase-js';
 const mocks=vi.hoisted(()=>({admin:vi.fn(),job:vi.fn(),costs:vi.fn(),notice:vi.fn()}));
-vi.mock('@/lib/auth',()=>({createAdminClient:mocks.admin}));
+vi.mock('@/lib/supabase-admin',()=>({createAdminClient:mocks.admin}));
 vi.mock('@/lib/jobs',async original=>({...await original<typeof import('@/lib/jobs')>(),getJob:mocks.job,listCosts:mocks.costs}));
 vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:mocks.notice}));
 import {evaluateAndTriggerMarginAlert} from '@/lib/margin-alerts';
