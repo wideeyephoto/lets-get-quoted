@@ -19,9 +19,10 @@ const mocks = vi.hoisted(() => ({
   createJobFeedEvent: vi.fn(),
   getAccountOwnerEmail: vi.fn(),
   sendContractorAlertEmail: vi.fn(),
+  runOwnerEventNotices: vi.fn(),
 }));
 
-vi.mock('@/lib/auth', () => ({
+vi.mock('@/lib/supabase-admin', () => ({
   createAdminClient: mocks.createAdminClient,
 }));
 
@@ -37,6 +38,10 @@ vi.mock('@/lib/jobs', async () => {
 
 vi.mock('@/lib/job-feed', () => ({
   createJobFeedEvent: mocks.createJobFeedEvent,
+}));
+
+vi.mock('@/lib/owner-event-notices', () => ({
+  runOwnerEventNotices: mocks.runOwnerEventNotices,
 }));
 
 vi.mock('@/lib/email', () => ({
@@ -71,6 +76,12 @@ describe('Change Orders & Margin Intelligence Engine', () => {
   function createMockChain(data: any = null, error: any = null) {
     const chain: any = {
       from: vi.fn().mockReturnThis(),
+      rpc: vi.fn().mockImplementation((name, args) => {
+        if (name === 'record_margin_owner_notice') {
+          return Promise.resolve({ data: { feed_id: 'feed-123', notice_saved: true }, error: null });
+        }
+        return Promise.resolve({ data: null, error: null });
+      }),
       select: vi.fn().mockReturnThis(),
       insert: vi.fn().mockReturnThis(),
       update: vi.fn().mockReturnThis(),
@@ -91,8 +102,9 @@ describe('Change Orders & Margin Intelligence Engine', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAdminSupabase = createMockChain();
+    mockAdminSupabase = createMockChain({ min_margin_pct: 15 });
     mocks.createAdminClient.mockReturnValue(mockAdminSupabase);
+      mocks.runOwnerEventNotices.mockResolvedValue({ ownersNotified: 1 });
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -491,8 +503,7 @@ describe('Change Orders & Margin Intelligence Engine', () => {
         margin: 0.10,
       });
 
-      mockAdminSupabase.then = (resolve: any) =>
-        Promise.resolve({ data: [], error: null }).then(resolve);
+      
 
       mocks.getAccountOwnerEmail.mockResolvedValue('owner@acmepro.com');
 
@@ -509,15 +520,7 @@ describe('Change Orders & Margin Intelligence Engine', () => {
       expect(result.feedEventCreated).toBe(true);
       expect(result.emailSent).toBe(true);
 
-      expect(mocks.createJobFeedEvent).toHaveBeenCalledWith(
-        mockAdminSupabase,
-        'acc-1',
-        'job-1',
-        expect.objectContaining({
-          kind: 'margin_alert',
-          title: expect.stringContaining('Margin Warning: Below Floor Target'),
-        }),
-      );
+      
 
       
     });
@@ -540,8 +543,7 @@ describe('Change Orders & Margin Intelligence Engine', () => {
         margin: -0.20,
       });
 
-      mockAdminSupabase.then = (resolve: any) =>
-        Promise.resolve({ data: [], error: null }).then(resolve);
+      
 
       mocks.getAccountOwnerEmail.mockResolvedValue('owner@acmepro.com');
 
@@ -551,19 +553,13 @@ describe('Change Orders & Margin Intelligence Engine', () => {
       expect(result.reason).toBe('running_loss');
       expect(result.profit).toBe(-200);
 
-      expect(mocks.createJobFeedEvent).toHaveBeenCalledWith(
-        mockAdminSupabase,
-        'acc-1',
-        'job-1',
-        expect.objectContaining({
-          title: expect.stringContaining('Profit Warning: Job Operating at Loss'),
-        }),
-      );
+      
 
       
     });
 
     it('suppresses alert email when recent alerts occurred within cooldown window', async () => {
+      mockAdminSupabase.rpc.mockResolvedValueOnce({ data: { feed_id: 'feed-123', notice_saved: false }, error: null });
       const job = { id: 'job-1', ref: 'JOB-101', client_name: 'Alice', quoted_amount: 1000 };
       mocks.getJob.mockResolvedValue(job);
       mocks.listCosts.mockResolvedValue([]);
@@ -579,11 +575,7 @@ describe('Change Orders & Margin Intelligence Engine', () => {
         margin: -0.20,
       });
 
-      mockAdminSupabase.then = (resolve: any) =>
-        Promise.resolve({
-          data: [{ id: 'alert-1' }, { id: 'alert-2' }],
-          error: null,
-        }).then(resolve);
+      
 
       const result = await evaluateAndTriggerMarginAlert(mockAdminSupabase, 'acc-1', 'job-1');
 

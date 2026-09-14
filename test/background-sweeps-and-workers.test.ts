@@ -85,7 +85,9 @@ describe('Background Sweeps & Maintenance Workers', () => {
       lte: vi.fn().mockReturnThis(),
       lt: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        insert: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
       delete: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn().mockResolvedValue({ data: dataResult, error: null }),
       single: vi.fn().mockResolvedValue({ data: dataResult, error: null }),
@@ -98,7 +100,7 @@ describe('Background Sweeps & Maintenance Workers', () => {
     vi.clearAllMocks();
     fakeAdmin = {
       from: vi.fn(() => createFluentBuilder([])),
-      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+      rpc: vi.fn().mockResolvedValue({ data: 'mock-notice-id', error: null }),
       storage: {
         from: vi.fn().mockReturnValue({
           remove: vi.fn().mockResolvedValue({ data: [], error: null }),
@@ -215,21 +217,7 @@ describe('Background Sweeps & Maintenance Workers', () => {
   describe('Warranty & Service Reminder Sweeper (warranty-sweep)', () => {
     it('identifies due warranties, stamps service_reminded_at, and emails contractors', async () => {
       fakeAdmin.from.mockImplementation((table: string) => {
-        if (table === 'warranties') {
-          return createFluentBuilder([
-            {
-              id: 'war-1',
-              account_id: 'acc-1',
-              job_id: 'job-1',
-              title: 'Shingle Replacement Warranty',
-              next_service_due: '2026-06-16',
-              service_interval_months: 12,
-              last_service_on: '2025-06-16',
-              service_reminded_at: null,
-            },
-          ]);
-        }
-        return createFluentBuilder([]);
+        if (table === 'warranties') { return createFluentBuilder([{ id: 'war-1', account_id: 'acc-1', job_id: 'job-1', title: 'Shingle Replacement Warranty', next_service_due: '2026-06-16', service_interval_months: 12, last_service_on: '2025-06-16', service_reminded_at: null }]); } if (table === 'platform_event_notices') { return createFluentBuilder({ id: 'notice-1' }); } return createFluentBuilder([]);
       });
 
       mocks.serviceDue.mockReturnValue({ due: true, label: 'Due in 1 day' });

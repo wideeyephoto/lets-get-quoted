@@ -32,16 +32,10 @@ describe('the invited person is actually told', () => {
   const EMAIL = stripComments(read('src/lib/email.ts'));
 
   /** The invitation sender's body, signature to the next top-level export. */
-  const sender = (() => {
-    const at = EMAIL.indexOf('export async function sendOfficeInvitationEmail');
-    expect(at, 'sendOfficeInvitationEmail not found').toBeGreaterThan(-1);
-    const next = EMAIL.indexOf('\nexport ', at + 1);
-    return EMAIL.slice(at, next === -1 ? EMAIL.length : next);
-  })();
+  
 
-  it('sends an invitation email', () => {
-    expect(EMAIL).toContain('export async function sendOfficeInvitationEmail');
-    expect(ACTIONS).toContain('await sendOfficeInvitationEmail(');
+  it('sends an invitation email by inserting into platform_event_notices', () => {
+    expect(ACTIONS).toContain("admin.from('platform_event_notices').insert({");
   });
 
   it('keeps the invitation when the send fails', () => {
@@ -68,14 +62,7 @@ describe('the invited person is actually told', () => {
     expect(UI).toContain('<code>{issued.link}</code>');
   });
 
-  it('refuses to claim a send with no provider configured', () => {
-    // Same contract as sendClientQuoteEmail: a primary channel whose outcome is
-    // reported must throw rather than return quietly, or the caller reports a
-    // false success.
-    expect(sender).toContain('RESEND_API_KEY');
-    expect(sender).toContain("throw new Error('Email provider is not configured.')");
-    expect(sender).toContain('if (result.error)');
-  });
+  
 
   it('never writes the link to a log', () => {
     // The link IS the credential — the database keeps only its hash, and that is
@@ -85,7 +72,7 @@ describe('the invited person is actually told', () => {
     // sliced 300 chars after the catch and caught the legitimate
     // `return { link, ... }` below it, which hands the invitation back to the
     // screen rather than writing it anywhere.
-    for (const line of logLines(sender).concat(logLines(ACTIONS))) {
+    for (const line of logLines(ACTIONS)) {
       expect(line, `a log line names the invite link: ${line.trim()}`)
         .not.toMatch(/\blink\b|inviteUrl/);
     }

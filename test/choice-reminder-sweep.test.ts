@@ -16,9 +16,10 @@ vi.mock('@/lib/sms', () => ({
 }));
 
 vi.mock('@/lib/email', () => ({
-  sendSelectionRequestEmail: vi.fn(async (input: { recipientEmail: string; count: number; overdue: boolean }) => {
+  sendSelectionRequestEmail: vi.fn(async (admin: any, input: { recipientEmail: string; count: number; overdue: boolean }) => {
     if (emailResult.throws) throw new Error(emailResult.throws);
     sentEmail.push({ to: input.recipientEmail, count: input.count, overdue: input.overdue });
+    return { id: 'evt-email-123' };
   }),
 }));
 

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { OPERATOR_TOOLS_DECLARATION, executeOperatorTool } from '@/lib/ai-operator/tools';
 import {
   recordOperatorAudit,
@@ -45,6 +45,12 @@ function createMockSupabase(overrides?: {
   workspaceEntitlements?: any;
 }): any {
   return {
+    rpc: vi.fn().mockImplementation((name, args) => {
+      if (name === 'lifecycle_recipient_suppression') {
+        return Promise.resolve({ data: args.p_recipients.map(r => ({ account_id: r.account_id, email: r.email, blocked: false })), error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    }),
     from: (table: string) => {
       const builder: any = {
         select: (_cols?: string, options?: any) => {
