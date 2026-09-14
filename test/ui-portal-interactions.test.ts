@@ -68,7 +68,7 @@ describe('Portal UI Interactions (react-test-renderer)', () => {
     it('submits form, calls onOptimisticSend and displays success status', async () => {
       let renderer: ReactTestRenderer | undefined;
       const onOptimisticSend = vi.fn();
-      mocks.sendPortalMessageAction.mockResolvedValue({ ok: true });
+      mocks.sendPortalMessageAction.mockResolvedValue({ ok: true, messageId:'message-1' });
 
       act(() => {
         renderer = create(
@@ -83,6 +83,7 @@ describe('Portal UI Interactions (react-test-renderer)', () => {
       const root = renderer!.root;
       const form = root.findByType('form');
 
+      act(()=>root.findByType('textarea').props.onChange({target:{value:'When will the crew arrive tomorrow?'}}));
       const formData = new FormData();
       formData.append('message', 'When will the crew arrive tomorrow?');
 
@@ -90,11 +91,27 @@ describe('Portal UI Interactions (react-test-renderer)', () => {
         await form.props.action(formData);
       });
 
-      expect(onOptimisticSend).toHaveBeenCalledWith('When will the crew arrive tomorrow?', null);
+      expect(onOptimisticSend).toHaveBeenCalledWith('When will the crew arrive tomorrow?', null, 'message-1');
       expect(mocks.sendPortalMessageAction).toHaveBeenCalledWith('portal-token-xyz', expect.any(FormData));
 
       const renderedText = text(root);
-      expect(renderedText).toContain('Your message was sent directly to Apex Roofing.');
+      expect(renderedText).toContain('Your message was saved.');
+    });
+
+    it('retains text and the same request ID across a lost response, then uses a new ID after success',async()=>{
+      let renderer:ReactTestRenderer|undefined;
+      const appended=vi.fn();const ids:string[]=[];
+      mocks.sendPortalMessageAction.mockImplementationOnce(async (_token:string,data:FormData)=>{ids.push(String(data.get('requestId')));throw new Error('lost response');});
+      act(()=>{renderer=create(React.createElement(PortalMessageForm,{token:'token',businessName:'Business',onOptimisticSend:appended}));});
+      const root=renderer!.root;
+      act(()=>root.findByType('textarea').props.onChange({target:{value:'Keep this message'}}));
+      await act(async()=>root.findByType('form').props.action(new FormData()));
+      expect(root.findByType('textarea').props.value).toBe('Keep this message');expect(appended).not.toHaveBeenCalled();
+      mocks.sendPortalMessageAction.mockImplementation(async(_token:string,data:FormData)=>{ids.push(String(data.get('requestId')));return {ok:true,messageId:'saved'};});
+      await act(async()=>root.findByType('form').props.action(new FormData()));
+      expect(ids[1]).toBe(ids[0]);expect(root.findByType('textarea').props.value).toBe('');expect(appended).toHaveBeenCalledTimes(1);
+      act(()=>root.findByType('textarea').props.onChange({target:{value:'A different message'}}));
+      await act(async()=>root.findByType('form').props.action(new FormData()));expect(ids[2]).not.toBe(ids[0]);
     });
 
     it('displays error message when action fails', async () => {

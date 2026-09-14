@@ -1,3 +1,4 @@
+vi.mock('@/lib/portal-message-requests',()=>({findPortalMessageReceipt:vi.fn().mockResolvedValue(null)}));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -153,6 +154,7 @@ describe('Server Actions: Customer Portal & Token Access', () => {
       mocks.submitPortalMessage.mockResolvedValue({ ok: true });
 
       const form = new FormData();
+      form.set('requestId','10000000-0000-4000-8000-000000000099');
       form.set('message', 'Hello, when are you arriving?');
 
       const res = await sendPortalMessageAction(TOKEN, form);
@@ -160,6 +162,7 @@ describe('Server Actions: Customer Portal & Token Access', () => {
       expect(mocks.submitPortalMessage).toHaveBeenCalledWith(fakeAdmin, {
         accountId: 'acc-1',
         clientId: 'cli-1',
+        requestId:'10000000-0000-4000-8000-000000000099',
         body: 'Hello, when are you arriving?',
         jobId: null,
       });

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef, useTransition } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { sendPortalMessageAction, markPortalMessagesReadAction, loadMorePortalMessagesAction } from './actions';
-import MailIcon from '@/components/MailIcon';
+import { markPortalMessagesReadAction, loadMorePortalMessagesAction } from './actions';
 import { PortalMessageForm } from './PortalMessageForm';
 import type { PortalMessage } from '@/lib/client-portal';
 
@@ -104,10 +103,11 @@ export function PortalMessageThread({ token, businessName, accountId, initialMes
     }
   };
 
-  const handleOptimisticAppend = (msg: string, jobId: string | null) => {
+  const handleOptimisticAppend = (msg: string, jobId: string | null, messageId?: string) => {
     setMessages((prev) => {
+      if(messageId && prev.some(message=>message.id===messageId)) return prev;
       return [{
-        id: 'temp-' + Date.now(),
+        id: messageId || 'temp-' + Date.now(),
         body: msg,
         createdAt: new Date().toISOString(),
         direction: 'inbound',

@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/auth';
 import { resolvePortalAccess } from '@/lib/client-portal';
+import { findPortalMessageReceipt } from '@/lib/portal-message-requests';
 import { submitPortalMessage } from '@/lib/client-portal-data';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { createJobFeedEvent } from '@/lib/job-feed';
@@ -14,8 +15,9 @@ import { updateEquipmentOnPassport, addEquipmentToPassport } from '@/lib/propert
 export async function sendPortalMessageAction(
   token: string,
   formData: FormData,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; messageId?: string }> {
   const body = String(formData.get('message') ?? '').trim();
+  const requestId = String(formData.get('requestId') ?? '');
   const jobId = (formData.get('jobId') as string | null) || null;
 
   if (!body) {
@@ -28,7 +30,15 @@ export async function sendPortalMessageAction(
     return { ok: false, message: 'Your link has expired. Please request a fresh one.' };
   }
 
-  // 10 messages per hour per portal link
+  try {
+    const saved=await findPortalMessageReceipt(admin,{accountId:access.accountId,clientId:access.clientId,requestId,body,jobId});
+    if(saved) {
+      const result=await submitPortalMessage(admin,{accountId:access.accountId,clientId:access.clientId,requestId,body,jobId});
+      revalidatePath(`/portal/view/${token}`);return result;
+    }
+  } catch(error) { return {ok:false,message:error instanceof Error?error.message:'Could not check your message.'}; }
+
+  // 10 new messages per hour per portal link; accepted retries do not consume quota.
   if (!(await checkRateLimit(admin, `portal-msg:${token}-hr`, 10, 3600))) {
     return { ok: false, message: 'You have sent too many messages recently. Please try again later.' };
   }
@@ -36,6 +46,7 @@ export async function sendPortalMessageAction(
   const result = await submitPortalMessage(admin, {
     accountId: access.accountId,
     clientId: access.clientId,
+    requestId,
     body,
     jobId,
   });
@@ -203,7 +214,8 @@ export async function loadMorePortalMessagesAction(token: string, cursorDate: st
   const clientPhone = client?.phone || null;
   const businessName = account?.business_name || 'Contractor';
 
-  const [{ data: smsRows }, { data: feedRows }] = await Promise.all([
+  const [{data:portalRows,error:portalError},{ data: smsRows }, { data: feedRows }] = await Promise.all([
+    admin.from('portal_message_requests').select('id,body,created_at,job_id').eq('account_id',access.accountId).eq('client_id',access.clientId).lt('created_at',cursorDate).order('created_at',{ascending:false}).limit(15),
     clientPhone
       ? admin
           .from('sms_messages')
@@ -227,9 +239,11 @@ export async function loadMorePortalMessagesAction(token: string, cursorDate: st
       : Promise.resolve({ data: [] }),
   ]);
 
-  const messages: any[] = [];
+  if(portalError) throw new Error('Could not load portal message history');
+  const messages: any[] = (portalRows ?? []).map(row=>({id:row.id,body:row.body,createdAt:row.created_at,jobId:row.job_id,direction:'inbound',sender:'You',channel:'portal_note',mediaUrls:[]}));
   if (smsRows) {
     for (const r of smsRows) {
+      if(messages.some(message=>message.id===r.id)) continue;
       messages.push({
         id: r.id,
         body: r.body as string,
@@ -243,6 +257,7 @@ export async function loadMorePortalMessagesAction(token: string, cursorDate: st
   }
   if (feedRows) {
     for (const r of feedRows) {
+      if(messages.some(message=>message.id===r.id)) continue;
       messages.push({
         id: r.id,
         body: r.body as string,

@@ -13,8 +13,8 @@ beforeEach(() => {
   });
 });
 
-function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; rejectFinish?: boolean; messaging?: boolean; jobless?: boolean; quickStop?: boolean; paymentRefund?: boolean; connect?: boolean; dispute?: boolean; recurring?: boolean } = {}) {
-  const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', source_type: options.recurring ? 'recurring_failure' : options.dispute ? 'payment_dispute' : options.connect ? 'account_connect' : options.paymentRefund ? 'payment_refund' : options.quickStop ? 'quick_stop' : options.messaging ? 'messaging_registration_event' : 'job_feed', event_kind: 'client_question', source_payload: { title: 'Question', body: 'Help', job_id: options.jobless ? undefined : 'job-1', recipient_email: 'application@example.test', business_name: 'Application Business' }, attempted_at: '2026-09-14T12:00:00Z' };
+function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; rejectFinish?: boolean; messaging?: boolean; jobless?: boolean; quickStop?: boolean; paymentRefund?: boolean; connect?: boolean; dispute?: boolean; recurring?: boolean; portal?: boolean } = {}) {
+  const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', source_type: options.portal ? 'portal_message' : options.recurring ? 'recurring_failure' : options.dispute ? 'payment_dispute' : options.connect ? 'account_connect' : options.paymentRefund ? 'payment_refund' : options.quickStop ? 'quick_stop' : options.messaging ? 'messaging_registration_event' : 'job_feed', event_kind: 'client_question', source_payload: { client_id: 'client-1', title: 'Question', body: 'Help', job_id: options.jobless ? undefined : 'job-1', recipient_email: 'application@example.test', business_name: 'Application Business' }, attempted_at: '2026-09-14T12:00:00Z' };
   let state = 'pending';
   const rpc = vi.fn(async (name: string, input: Record<string, unknown>) => {
     if (name === 'claim_owner_event_notices') {
@@ -120,4 +120,11 @@ it('opens payments for a dispute notice even without a job', async () => {
 it('opens recurring plans for a saved recurring failure', async () => {
   const db=fixture({recurring:true});await runOwnerEventNotices(db.client);
   expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ctaLabel:'Review recurring payments',ctaUrl:expect.stringContaining('/dashboard/recurring')}));
+});
+
+it('links a jobless portal message to its saved client and sends once',async()=>{
+  const db=fixture({portal:true,jobless:true});
+  await runOwnerEventNotices(db.client);await runOwnerEventNotices(db.client);
+  expect(mocks.send).toHaveBeenCalledTimes(1);
+  expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ctaLabel:'View client',ctaUrl:expect.stringContaining('/dashboard/clients/client-1')}));
 });

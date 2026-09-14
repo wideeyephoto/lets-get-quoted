@@ -1,3 +1,4 @@
+vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: vi.fn().mockResolvedValue({}) }));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -104,6 +105,7 @@ function createMockSupabase(overrides: {
   payments?: any[];
   plans?: any[];
   sms?: any[];
+  portal?: any[];
 } = {}) {
   const clients = overrides.clients ?? [
     {
@@ -195,7 +197,9 @@ function createMockSupabase(overrides: {
   ];
 
   return {
+    rpc: vi.fn().mockResolvedValue({ data: { message_id: 'message-1', job_id: 'job-1', replayed: false }, error: null }),
     from: vi.fn((table: string) => {
+      if(table==='portal_message_requests') {const q:any={select:()=>q,eq:()=>q,order:()=>q,limit:async()=>({data:overrides.portal??[],error:null}),maybeSingle:async()=>({data:null,error:null})};return q;}
       if (table === 'clients') {
         const query: any = {
           select: vi.fn(() => query),
@@ -450,6 +454,14 @@ describe('Client Portal Data Engine (src/lib/client-portal-data.ts)', () => {
   });
 
   describe('loadPortal', () => {
+    it('loads a jobless saved message once even when its inbox copy is present', async () => {
+      const row={id:'saved-message',body:'Hello',created_at:'2026-09-14T12:00:00Z',direction:'inbound'};
+      const db=createMockSupabase({jobs:[],portal:[row],sms:[row]});
+      const payload=await loadPortal(db as any,TEST_ACCOUNT_ID,TEST_CLIENT_ID);
+      expect(payload?.messages.filter(message=>message.id==='saved-message')).toEqual([
+        expect.objectContaining({body:'Hello',channel:'portal_note',sender:'You'})
+      ]);
+    });
     it('returns null if client does not exist', async () => {
       mockSupabase = createMockSupabase({ clients: [] });
       const payload = await loadPortal(mockSupabase as any, TEST_ACCOUNT_ID, 'non-existent-client');
@@ -496,40 +508,25 @@ describe('Client Portal Data Engine (src/lib/client-portal-data.ts)', () => {
   describe('submitPortalMessage', () => {
     it('fails if message body is empty', async () => {
       const res = await submitPortalMessage(mockSupabase as any, {
+        requestId: '10000000-0000-4000-8000-000000000099',
         accountId: TEST_ACCOUNT_ID,
         clientId: TEST_CLIENT_ID,
         body: '   ',
       });
-      expect(res).toEqual({ ok: false, message: 'Please enter a message.' });
+      expect(res).toEqual({ ok: false, message: 'Enter a message of up to 4,000 characters.' });
     });
 
     it('logs note to job feed, records SMS, and triggers contractor alerts', async () => {
       const res = await submitPortalMessage(mockSupabase as any, {
+        requestId: '10000000-0000-4000-8000-000000000099',
         accountId: TEST_ACCOUNT_ID,
         clientId: TEST_CLIENT_ID,
         body: 'Can we install the outdoor condenser on the north side?',
         jobId: 'job-1',
       });
 
-      expect(res).toEqual({ ok: true });
-      expect(mocks.createJobFeedEvent).toHaveBeenCalledWith(
-        expect.anything(),
-        TEST_ACCOUNT_ID,
-        'job-1',
-        expect.objectContaining({
-          kind: 'portal_note',
-          body: 'Can we install the outdoor condenser on the north side?',
-          visibility: 'client',
-          author: 'Client',
-        })
-      );
-      expect(mocks.sendContractorAlertEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accountId: TEST_ACCOUNT_ID,
-          recipientEmail: 'contractor@apex.com',
-          subject: 'New portal note from Sarah Connor',
-        })
-      );
+      expect(res).toEqual({ok:true,messageId:'message-1'});
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('submit_portal_message_request',expect.objectContaining({p_body:'Can we install the outdoor condenser on the north side?',p_job_id:'job-1',p_request_id:'10000000-0000-4000-8000-000000000099'}));
       expect(mocks.sendOwnerPortalMessageAlertSms).toHaveBeenCalledWith(
         expect.objectContaining({
           accountId: TEST_ACCOUNT_ID,

@@ -1,20 +1,21 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { sendPortalMessageAction } from './actions';
-import { trackPortalEvent } from '@/lib/analytics';
 import MailIcon from '@/components/MailIcon';
 
 type Props = {
   token: string;
   businessName: string;
   jobs?: Array<{ id: string; ref: string | null; scope: string | null }>;
-  onOptimisticSend?: (msg: string, jobId: string | null) => void;
+  onOptimisticSend?: (msg: string, jobId: string | null, messageId?: string) => void;
 };
 
 export function PortalMessageForm({ token, businessName, jobs = [], onOptimisticSend }: Props) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const requestId=useRef<string | null>(null);
+  const [body,setBody]=useState('');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
 
   return (
@@ -26,19 +27,20 @@ export function PortalMessageForm({ token, businessName, jobs = [], onOptimistic
             formData.set('jobId', selectedJobId);
           }
           
-          if (onOptimisticSend) {
-            const body = String(formData.get('message') || '').trim();
-            if (body) {
-              onOptimisticSend(body, selectedJobId || null);
+          requestId.current ??= crypto.randomUUID();
+          formData.set('requestId',requestId.current);
+          formData.set('message',body);
+          try {
+            const res = await sendPortalMessageAction(token, formData);
+            if (res.ok) {
+              onOptimisticSend?.(body.trim(),selectedJobId||null,res.messageId);
+              setStatus({type:'success',text:'Your message was saved.'});
+              setBody('');requestId.current=null;
+            } else {
+              setStatus({type:'error',text:res.message||'Could not save your message. Please try again.'});
             }
-          }
-          const res = await sendPortalMessageAction(token, formData);
-          if (res.ok) {
-            setStatus({ type: 'success', text: `Your message was sent directly to ${businessName}.` });
-            const form = document.getElementById('portal-msg-form') as HTMLFormElement | null;
-            form?.reset();
-          } else {
-            setStatus({ type: 'error', text: res.message || 'Failed to send message. Please try again.' });
+          } catch {
+            setStatus({type:'error',text:'We could not confirm the save. Retry the same message.'});
           }
         });
       }}
@@ -55,6 +57,7 @@ export function PortalMessageForm({ token, businessName, jobs = [], onOptimistic
             Regarding Project (Optional)
           </label>
           <select
+            disabled={isPending}
             id="portal-job-select"
             value={selectedJobId}
             onChange={(e) => setSelectedJobId(e.target.value)}
@@ -86,8 +89,12 @@ export function PortalMessageForm({ token, businessName, jobs = [], onOptimistic
           Message {businessName}
         </label>
         <textarea
+          disabled={isPending}
           id="portal-msg-input"
           name="message"
+          value={body}
+          onChange={event=>setBody(event.target.value)}
+          maxLength={4000}
           rows={3}
           required
           placeholder={`Have a question about a quote, project, warranty or schedule? Write to ${businessName} here...`}
@@ -104,6 +111,7 @@ export function PortalMessageForm({ token, businessName, jobs = [], onOptimistic
         />
       </div>
 
+      {status?.type==='error' ? <button type="button" disabled={isPending} onClick={()=>{requestId.current=null;setStatus(null);}}>Start a new message</button> : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
         <button
           type="submit"

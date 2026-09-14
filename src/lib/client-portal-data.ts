@@ -17,8 +17,8 @@ import { toClientWarranties, type ClientWarranty } from '@/lib/warranties';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 import { invoicePayState, paymentsForInvoice, type InvoicePayment } from '@/lib/invoice-pay';
 import { parseQuoteItems } from '@/lib/jobs';
-import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { findPortalMessageReceipt, portalMessagePayloadHash } from '@/lib/portal-message-requests';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { getMemberBenefitsSummary, type MemberBenefitsSummary, DEFAULT_BENEFITS } from '@/lib/membership-tiers';
 import { listPropertyPassports } from '@/lib/property-passport-data';
@@ -505,7 +505,8 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
 
   // Conversation & Messaging History
   const messages: PortalMessage[] = [];
-  const [{ data: smsRows }, { data: feedRows }] = await Promise.all([
+  const [{ data: portalRows, error: portalError }, { data: smsRows }, { data: feedRows }] = await Promise.all([
+    admin.from('portal_message_requests').select('id,body,created_at').eq('account_id',accountId).eq('client_id',clientId).order('created_at',{ascending:false}).limit(50),
     clientPhone
       ? runSmsInboxVisibleQuery((includeVisibilityFilter) => {
           let query = admin
@@ -529,7 +530,10 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
       : Promise.resolve({ data: [] }),
   ]);
 
+  if(portalError) throw new Error('Could not load portal message history');
+  for(const row of portalRows ?? []) messages.push({id:row.id,body:row.body,createdAt:row.created_at,direction:'inbound',sender:'You',channel:'portal_note'});
   for (const row of smsRows ?? []) {
+    if(messages.some(message=>message.id===row.id)) continue;
     const isClient = row.direction === 'inbound';
     messages.push({
       id: row.id as string,
@@ -543,6 +547,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
   }
 
   for (const row of feedRows ?? []) {
+    if(messages.some(message=>message.id===row.id)) continue;
     const isClientAuthor = (row.author as string | null) === 'Client';
     messages.push({
       id: row.id as string,
@@ -735,106 +740,39 @@ export async function submitPortalMessage(
   input: {
     accountId: string;
     clientId: string;
+    requestId: string;
     body: string;
     jobId?: string | null;
   },
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; messageId?: string }> {
   const body = input.body.trim();
-  if (!body) return { ok: false, message: 'Please enter a message.' };
-
-  const [{ data: client }, { data: account }, { data: site }] = await Promise.all([
-    admin.from('clients').select('name, phone, email').eq('account_id', input.accountId).eq('id', input.clientId).maybeSingle(),
-    admin.from('accounts').select('business_name, alert_phone, high_value_sms_enabled').eq('id', input.accountId).maybeSingle(),
-    admin.from('sites').select('company_name').eq('account_id', input.accountId).maybeSingle(),
-  ]);
-
-  const clientName = (client?.name as string) || 'Customer';
-  const businessName = (site?.company_name as string) || (account?.business_name as string) || 'Contractor';
-  const normalizedClientPhone = client?.phone ? normalizeUsPhone(client.phone) || client.phone : null;
-
-  // If a job ID is provided, record to job_feed. If omitted, attach to client's latest job if found.
-  let targetJobId = input.jobId;
-  if (!targetJobId) {
-    const { data: recentJob } = await admin
-      .from('jobs')
-      .select('id')
-      .eq('account_id', input.accountId)
-      .eq('client_id', input.clientId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (recentJob?.id) {
-      targetJobId = recentJob.id;
-    }
-  }
-
-  if (targetJobId) {
-    try {
-      await createJobFeedEvent(admin, input.accountId, targetJobId, {
-        kind: 'portal_note',
-        title: `Portal note from ${clientName}`,
-        body,
-        visibility: 'client',
-        author: 'Client',
-      });
-    } catch (err) {
-      console.error('Failed to write job feed event from portal message:', err);
-    }
-  } else {
-    // If no job found, fallback to client_feed
-    try {
-      await admin.from('client_feed').insert({
-        account_id: input.accountId,
-        client_id: input.clientId,
-        kind: 'portal_note',
-        title: `Portal note from ${clientName}`,
-        body,
-        author: 'Client',
-      });
-    } catch (err) {
-      console.error('Failed to write client feed event from portal message:', err);
-    }
-  }
-
-  // If client phone exists, log inbound SMS message
-  if (normalizedClientPhone) {
-    try {
-      await admin.from('sms_messages').insert({
-        account_id: input.accountId,
-        phone_number: normalizedClientPhone,
-        direction: 'inbound',
-        body,
-      });
-    } catch (err) {
-      console.error('Failed to log inbound message from portal:', err);
-    }
-  }
-
-  // Notify contractor via alert email
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, input.accountId);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId: input.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: `New portal note from ${clientName}`,
-        heading: `Note from ${clientName}`,
-        bodyLines: [
-          `"${body}"`,
-          ...(client?.phone ? [`Phone: ${client.phone}`] : []),
-          ...(client?.email ? [`Email: ${client.email}`] : []),
-        ],
-        ctaLabel: targetJobId ? 'View Job' : 'View Client',
-        ctaUrl: targetJobId
-          ? `${APP_ORIGIN}/dashboard/jobs/${targetJobId}`
-          : `${APP_ORIGIN}/dashboard/clients/${input.clientId}`,
-        tone: 'info',
-      });
+    const previous = await findPortalMessageReceipt(admin,input);
+    if (previous) {
+      try { await runOwnerEventNotices(admin,{sourceId:previous.id,accountId:input.accountId}); } catch { /* Saved for background pickup. */ }
+      return {ok:true,messageId:previous.id};
     }
-  } catch (err) {
-    console.error('Failed to send contractor alert for portal message:', err);
-  }
+  } catch (error) { return {ok:false,message:error instanceof Error ? error.message : 'Could not check your message.'}; }
+  const [{data:client,error:clientError},{data:account,error:accountError},{data:site,error:siteError}] = await Promise.all([
+    admin.from('clients').select('name,phone,email').eq('account_id',input.accountId).eq('id',input.clientId).maybeSingle(),
+    admin.from('accounts').select('business_name,alert_phone,high_value_sms_enabled').eq('id',input.accountId).maybeSingle(),
+    admin.from('sites').select('company_name').eq('account_id',input.accountId).maybeSingle(),
+  ]);
+  if(clientError || accountError || siteError || !client) return {ok:false,message:'Could not load your message details. Please try again.'};
+  const clientName=(client.name as string)||'Customer';
+  const businessName=(site?.company_name as string)||(account?.business_name as string)||'Contractor';
+  const normalizedClientPhone=client.phone ? normalizeUsPhone(client.phone)||client.phone : null;
+  const saved=await admin.rpc('submit_portal_message_request',{
+    p_account_id:input.accountId,p_client_id:input.clientId,p_request_id:input.requestId,
+    p_payload_hash:portalMessagePayloadHash(input),p_body:body,p_job_id:input.jobId||null,
+    p_raw_phone:client.phone||null,p_phone:normalizedClientPhone,
+  });
+  if(saved.error || !saved.data?.message_id) return {ok:false,message:'Could not save your message. Retry the same message, or start a new one if you changed it.'};
+  const savedId: string = saved.data.message_id;
+  const targetJobId: string | null = saved.data.job_id;
+  try { await runOwnerEventNotices(admin,{sourceId:savedId,accountId:input.accountId}); }
+  catch { console.error('Portal message notice remains saved for pickup'); }
+  if(saved.data.replayed) return {ok:true,messageId:savedId};
 
   // Notify contractor via alert SMS if configured
   if (account?.alert_phone && account?.high_value_sms_enabled !== false) {
@@ -852,14 +790,14 @@ export async function submitPortalMessage(
         customerName: clientName,
         messagePreview: body,
         dashboardUrl,
-        idempotencyKey: `owner-portal-msg:${input.accountId}:${input.clientId}:${Date.now()}`,
+        idempotencyKey: `owner-portal-msg:v1:${savedId}`,
       });
     } catch (err) {
       console.error('Failed to send contractor SMS alert for portal message:', err);
     }
   }
 
-  return { ok: true };
+  return { ok: true, messageId:savedId };
 }
 
 /** Owner-facing: links this client currently holds, so they can be revoked. */

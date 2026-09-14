@@ -1,3 +1,4 @@
+vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: vi.fn().mockResolvedValue({}) }));
 import { describe, expect, it, vi } from 'vitest';
 import { ownerPortalMessageAlertText } from '@/lib/sms-templates';
 import * as smsModule from '@/lib/sms';
@@ -81,6 +82,7 @@ describe('Owner Portal Message Alert SMS', () => {
       };
 
       const mockAdmin = {
+        rpc: vi.fn().mockResolvedValue({data:{message_id:'message-1',job_id:'job-123',replayed:false},error:null}),
         from: (table: string) => {
           const query = makeQueryChain(table);
           return {
@@ -111,6 +113,7 @@ describe('Owner Portal Message Alert SMS', () => {
       } as any;
 
       const result = await submitPortalMessage(mockAdmin, {
+        requestId: '10000000-0000-4000-8000-000000000099',
         accountId: 'acc-1',
         clientId: 'client-1',
         body: 'Can you find me?',
@@ -118,17 +121,8 @@ describe('Owner Portal Message Alert SMS', () => {
 
       expect(result.ok).toBe(true);
 
-      // Inbound SMS message should be saved with normalized E.164 phone
-      expect(insertedSmsMessages).toHaveLength(1);
-      expect(insertedSmsMessages[0].phone_number).toBe('+12485550625');
-      expect(insertedSmsMessages[0].body).toBe('Can you find me?');
-      expect(insertedSmsMessages[0].direction).toBe('inbound');
+      expect(mockAdmin.rpc).toHaveBeenCalledWith('submit_portal_message_request',expect.objectContaining({p_phone:'+12485550625',p_body:'Can you find me?',p_request_id:'10000000-0000-4000-8000-000000000099'}));
 
-      // Job feed event was created
-      expect(insertedJobEvents).toHaveLength(1);
-      expect(insertedJobEvents[0].job_id).toBe('job-123');
-
-      // sendOwnerPortalMessageAlertSms was dispatched to alert_phone
       expect(sendSmsSpy).toHaveBeenCalledTimes(1);
       expect(sendSmsSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -183,6 +177,7 @@ describe('Owner Portal Message Alert SMS', () => {
       };
 
       const mockAdmin = {
+        rpc: vi.fn().mockResolvedValue({data:{message_id:'message-1',job_id:'job-123',replayed:false},error:null}),
         from: (table: string) => {
           const query = makeQueryChain(table);
           return {
@@ -198,6 +193,7 @@ describe('Owner Portal Message Alert SMS', () => {
       } as any;
 
       await submitPortalMessage(mockAdmin, {
+        requestId: '10000000-0000-4000-8000-000000000099',
         accountId: 'acc-1',
         clientId: 'client-1',
         body: 'Hello',

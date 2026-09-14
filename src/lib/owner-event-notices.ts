@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { getAccountOwnerEmail, sendOwnerEventNoticeEmail } from '@/lib/email';
 
-type Notice = { id: string; account_id: string; source_id: string; source_type?: string; event_kind: string; source_payload: { title: string | null; body: string; job_id?: string; recipient_email?: string; business_name?: string; application_id?: string }; attempted_at: string };
+type Notice = { id: string; account_id: string; source_id: string; source_type?: string; event_kind: string; source_payload: { title: string | null; body: string; job_id?: string; client_id?: string; recipient_email?: string; business_name?: string; application_id?: string }; attempted_at: string };
 
 /** One attempt per committed source event. Uncertain outcomes require review. */
 export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sourceId: string; accountId: string }) {
@@ -38,8 +38,8 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
         accountId: notice.account_id,
         subject: notice.source_payload.title || 'New customer request',
         heading: notice.source_payload.title || 'New customer request',
-        bodyLines: [notice.source_payload.body], ctaLabel: notice.source_type === 'recurring_failure' ? 'Review recurring payments' : notice.source_type === 'account_connect' ? 'Review payment setup' : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? 'View payments' : notice.source_type === 'quick_stop' ? 'View Quick Stops' : messaging ? 'Open messaging dashboard' : notice.source_payload.job_id ? 'Open the job' : 'Open dashboard',
-        ctaUrl: notice.source_type === 'recurring_failure' ? `${APP_ORIGIN}/dashboard/recurring` : notice.source_type === 'account_connect' ? `${APP_ORIGIN}/dashboard/settings` : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? `${APP_ORIGIN}/dashboard/payments` : notice.source_type === 'quick_stop' ? `${APP_ORIGIN}/dashboard/quick-stops` : messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : notice.source_payload.job_id ? `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}` : `${APP_ORIGIN}/dashboard`, tone: 'info',
+        bodyLines: [notice.source_payload.body], ctaLabel: notice.source_type === 'recurring_failure' ? 'Review recurring payments' : notice.source_type === 'account_connect' ? 'Review payment setup' : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? 'View payments' : notice.source_type === 'quick_stop' ? 'View Quick Stops' : messaging ? 'Open messaging dashboard' : notice.source_payload.job_id ? 'Open the job' : notice.source_type === 'portal_message' ? 'View client' : 'Open dashboard',
+        ctaUrl: notice.source_type === 'recurring_failure' ? `${APP_ORIGIN}/dashboard/recurring` : notice.source_type === 'account_connect' ? `${APP_ORIGIN}/dashboard/settings` : ['payment_refund','payment_dispute'].includes(notice.source_type ?? '') ? `${APP_ORIGIN}/dashboard/payments` : notice.source_type === 'quick_stop' ? `${APP_ORIGIN}/dashboard/quick-stops` : messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : notice.source_payload.job_id ? `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}` : notice.source_type === 'portal_message' && notice.source_payload.client_id ? `${APP_ORIGIN}/dashboard/clients/${notice.source_payload.client_id}` : `${APP_ORIGIN}/dashboard`, tone: 'info',
       });
     } catch (error) {
       failure = error instanceof Error && ['owner_email_missing','owner_brand_unavailable','notice_prepare_failed'].includes(error.message)
