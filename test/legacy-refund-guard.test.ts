@@ -381,6 +381,19 @@ describe('legacy refund charge-model boundary', () => {
     await expect(refundPayment(client,'acct_workspace','pay_legacy_guard',25)).rejects.toThrow('completion could not be confirmed');
     expect(updates).toEqual([]);
   });
+  it('binds a saved cancellation attempt to an exact amount and provider key',async()=>{
+    mocks.createRefund.mockResolvedValueOnce({id:'re_attempt',status:'succeeded',amount:10000,currency:'usd',payment_intent:'pi_legacy_guard'});
+    const {client}=paymentClient({...legacyPayment,charge_model:'destination'});
+    const checkpoint=vi.fn();const id='14b2d1c1-a31d-4416-bf4b-1ab0486d79bc';
+    await refundPayment(client,'acct_workspace','pay_legacy_guard',100,{id,paymentIntent:'pi_legacy_guard',paymentAmountCents:10000,alreadyRefundedCents:0,requestedCents:10000,onProviderRefund:checkpoint});
+    expect(mocks.createRefund).toHaveBeenCalledWith(expect.objectContaining({amount:10000,metadata:expect.objectContaining({lgq_quick_stop_refund_attempt_id:id})}),{idempotencyKey:'quick_stop_cancellation_refund_v1_'+id});
+    expect(checkpoint).toHaveBeenCalledTimes(1);
+  });
+  it('rejects a saved attempt after the payment baseline changes before contacting Stripe',async()=>{
+    const {client}=paymentClient({...legacyPayment,charge_model:'destination',refunded_amount:10});
+    await expect(refundPayment(client,'acct_workspace','pay_legacy_guard',25,{id:'14b2d1c1-a31d-4416-bf4b-1ab0486d79bc',paymentIntent:'pi_legacy_guard',paymentAmountCents:10000,alreadyRefundedCents:0,requestedCents:2500,onProviderRefund:vi.fn()})).rejects.toThrow('no longer matches');
+    expect(mocks.createRefund).not.toHaveBeenCalled();
+  });
   it('accepts a matching full refund with an expanded payment intent',async()=>{
     mocks.createRefund.mockResolvedValueOnce({id:'re_full',status:'succeeded',amount:10000,currency:'usd',payment_intent:{id:'pi_legacy_guard'}});
     const {client,updates}=paymentClient({...legacyPayment,charge_model:'destination'});

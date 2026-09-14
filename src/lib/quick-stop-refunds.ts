@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { refundPayment } from '@/lib/payments';
+import { executeQuickStopCancellationRefund } from '@/lib/quick-stop-cancellation-refund-attempts';
 import { getQuickStopRequest, logQuickStopEvent, type QuickStopRequest } from '@/lib/quick-stop-requests';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { sendQuickStopStatusSms } from '@/lib/sms';
@@ -105,7 +105,7 @@ export async function resolveQuickStopCancellation(
 
   const nowIso = new Date().toISOString();
   const status = opts.kind === 'no_show' ? 'no_show_confirmed' : opts.kind === 'contractor_cancel' ? 'contractor_canceled' : 'customer_canceled';
-  const patch: Record<string, unknown> = { status, refund_cents: 0, cancel_reason: opts.reason ?? null, updated_at: nowIso };
+  const patch: Record<string, unknown> = { status, refund_cents: 0, cancellation_refund_requested_cents: intendedRefundCents, cancel_reason: opts.reason ?? null, updated_at: nowIso };
   if (opts.kind === 'no_show') {
     patch.no_show_confirmed_at = nowIso;
     patch.no_show_reported_at = req.no_show_reported_at ?? nowIso;
@@ -116,7 +116,7 @@ export async function resolveQuickStopCancellation(
   // Claim the terminal transition FIRST — only the winner moves money, so two
   // concurrent resolutions (customer-cancel racing admin-resolve, or a double
   // submit) can't both issue a refund.
-  const { data: claimed } = await admin
+  const { data: claimed, error: cancellationError } = await admin
     .from('extra_stop_requests')
     .update(patch)
     .eq('account_id', accountId)
@@ -124,6 +124,7 @@ export async function resolveQuickStopCancellation(
     .eq('status', req.status)
     .select('id')
     .maybeSingle();
+  if (cancellationError) throw new Error('Cancellation could not be saved. Please try again.');
   if (!claimed) return { pct: refundPct, refundCents: 0 }; // already resolved by a concurrent path
 
   // Record completed cents only after the provider result is confirmed.
@@ -132,10 +133,7 @@ export async function resolveQuickStopCancellation(
   let refundUnconfirmed = false;
   if (intendedRefundCents > 0 && req.payment_id) {
     try {
-      await refundPayment(admin, accountId, req.payment_id, centsToDollars(intendedRefundCents));
-      const { error } = await admin.from('extra_stop_requests').update({ refund_cents: intendedRefundCents }).eq('id', requestId).eq('account_id', accountId);
-      if (error) throw error;
-      refundCents = intendedRefundCents;
+      refundCents = await executeQuickStopCancellationRefund(admin, accountId, requestId);
     } catch (error) {
       console.error('Quick Stop refund failed:', error instanceof Error ? error.message : error);
       refundUnconfirmed = true;

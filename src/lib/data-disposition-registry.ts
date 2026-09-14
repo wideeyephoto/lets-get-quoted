@@ -106,6 +106,12 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+  quick_stop_cancellation_refund_attempts: {
+    tableName: 'quick_stop_cancellation_refund_attempts', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'retain_immutable', portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'stripe',
+  },
   review_feedback_requests: {
     tableName: 'review_feedback_requests', relationship: 'direct_account_id', primaryKeyColumn: 'id',
     localAction: 'delete', portability: 'internal_system',

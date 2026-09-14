@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { validClientRequestId } from '@/lib/client-owner-requests';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { createAdminClient } from '@/lib/auth';
 import { resolveFeeBasisCents } from '@/lib/billing/fee-basis';
@@ -795,6 +796,7 @@ export async function refundPayment(
   accountId: string,
   paymentId: string,
   amountDollars?: number,
+  attempt?: {id:string;paymentAmountCents:number;paymentIntent:string;alreadyRefundedCents:number;requestedCents:number;onProviderRefund:(refund:Stripe.Refund)=>Promise<void>},
 ): Promise<{ amount: number; isFull: boolean; refundedTotal: number }> {
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
 
@@ -837,6 +839,10 @@ export async function refundPayment(
   if (requestedCents > remainingCents) {
     throw new Error(`You can refund at most ${formatMoneyCents(remainingCents)} on this payment.`);
   }
+  if (attempt && (!validClientRequestId(attempt.id) || attempt.paymentIntent !== payment.stripe_payment_intent
+    || attempt.paymentAmountCents !== totalCents || attempt.alreadyRefundedCents !== alreadyCents || attempt.requestedCents !== requestedCents)) {
+    throw new Error('Saved refund attempt no longer matches this payment. Review the payment before retrying.');
+  }
   const isFull = requestedCents >= remainingCents;
 
   const stripe = getStripeClient();
@@ -876,16 +882,19 @@ export async function refundPayment(
     const refund = await stripe.refunds.create(
       {
         payment_intent: payment.stripe_payment_intent,
-        ...(isFull ? {} : { amount: requestedCents }),
+        ...(!attempt && isFull ? {} : { amount: requestedCents }),
         reverse_transfer: true,
         refund_application_fee: true,
         metadata: {
           payment_id: paymentId,
           reason: 'Refunded by contractor',
+          ...(attempt ? {lgq_quick_stop_refund_attempt_id:attempt.id} : {}),
         },
       },
-      { idempotencyKey: `refund_${paymentId}_${alreadyCents}_${requestedCents}` },
+      { idempotencyKey: attempt ? `quick_stop_cancellation_refund_v1_${attempt.id}` : `refund_${paymentId}_${alreadyCents}_${requestedCents}` },
     );
+
+    if (attempt) await attempt.onProviderRefund(refund);
 
     // A successful HTTP response can describe pending, failed or action-required
     // money movement. Only a matching completed refund may advance accounting
