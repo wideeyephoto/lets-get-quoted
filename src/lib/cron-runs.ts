@@ -164,21 +164,31 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
     }
   }
   const detail = breakdown.length > 0 ? ` (${breakdown.join(', ')})` : '';
+  const errorDetail = typeof summary.last_error === 'string' && summary.last_error.trim().length > 0
+    ? ` [${summary.last_error.trim()}]`
+    : typeof summary.error_message === 'string' && summary.error_message.trim().length > 0
+      ? ` [${summary.error_message.trim()}]`
+      : typeof summary.claim_error === 'string' && summary.claim_error.trim().length > 0
+        ? ` [${summary.claim_error.trim()}]`
+        : '';
 
   if (typeof summary.failed === 'number' && summary.failed > 0) {
     const candidateInfo = typeof summary.candidates === 'number'
       ? ` (${summary.failed}/${summary.candidates} candidates failed)`
       : ` (${summary.failed} items failed)`;
-    return `${job} reported logical failures${candidateInfo}${detail}`.slice(0, 2000);
+    return `${job} reported logical failures${candidateInfo}${detail}${errorDetail}`.slice(0, 2000);
   }
   if (typeof summary.failures === 'number' && summary.failures > 0) {
-    return `${job} reported logical failures (${summary.failures} failure(s))${detail}`.slice(0, 2000);
+    return `${job} reported logical failures (${summary.failures} failure(s))${detail}${errorDetail}`.slice(0, 2000);
   }
   if (typeof summary.error_count === 'number' && summary.error_count > 0) {
-    return `${job} reported logical failures (${summary.error_count} error(s))${detail}`.slice(0, 2000);
+    return `${job} reported logical failures (${summary.error_count} error(s))${detail}${errorDetail}`.slice(0, 2000);
   }
   if (breakdown.length > 0) {
-    return `${job} reported logical failures${detail}`.slice(0, 2000);
+    return `${job} reported logical failures${detail}${errorDetail}`.slice(0, 2000);
+  }
+  if (errorDetail) {
+    return `${job} failed: ${errorDetail.slice(2, -1)}`.slice(0, 2000);
   }
   return `${job} reported failed work: ${JSON.stringify(summary)}`.slice(0, 2000);
 }

@@ -80,6 +80,34 @@ export const PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE = 10;
 export const DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE = 10;
 export const LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE = 10;
 
+/**
+ * Classifies uncaught billing worker infrastructure errors into safe category tokens.
+ * Crucial invariant: never return raw message strings that could leak PII, API keys,
+ * or customer data into HTTP responses or cron_runs telemetry.
+ */
+export function classifyBillingWorkerError(err: unknown): string | null {
+  if (!err) return null;
+  const msg = err instanceof Error ? err.message : String(err);
+  if (/504|gateway timeout|gateway_timeout/i.test(msg)) return 'gateway_timeout';
+  if (/502|bad gateway|bad_gateway/i.test(msg)) return 'bad_gateway';
+  if (/503|service unavailable|service_unavailable/i.test(msg)) return 'service_unavailable';
+  if (/statement timeout|query_canceled|57014/i.test(msg)) return 'statement_timeout';
+  if (/abort|timeout|ETIMEDOUT|ESOCKETTIMEDOUT/i.test(msg)) return 'timeout';
+  if (/connection|ECONNRESET|ECONNREFUSED/i.test(msg)) return 'connection_error';
+  if (/deadlock|40P01/i.test(msg)) return 'deadlock';
+  if (/serialization|40001/i.test(msg)) return 'serialization_failure';
+  if (/lock_not_available|55P03/i.test(msg)) return 'lock_not_available';
+  if (typeof (err as { rpcCode?: unknown })?.rpcCode === 'string') {
+    const code = (err as { rpcCode: string }).rpcCode.trim();
+    if (/^[a-z0-9_-]+$/i.test(code)) return `rpc_${code.toLowerCase()}`;
+  }
+  if (typeof (err as { code?: unknown })?.code === 'string') {
+    const code = (err as { code: string }).code.trim();
+    if (/^[a-z0-9_-]+$/i.test(code)) return code.toLowerCase();
+  }
+  return null;
+}
+
 type ServerEnvironment = Readonly<Record<string, string | undefined>>;
 
 export function stripeSubscriptionProjectionWorkerEnabled(
@@ -149,6 +177,7 @@ export type StripeSubscriptionProjectionCronSummary = Readonly<{
   worker_errors: number;
   claim_errors: number;
   failures: number;
+  last_error?: string;
 }>;
 
 /** Collapse event/workspace/provider identifiers before cron_runs sees them. */
@@ -201,7 +230,7 @@ export function summarizeStripeSubscriptionProjectionBatch(
 
   const claimErrors = result.status === 'claim_failed' ? 1 : 0;
   const failures = retryableFailures + terminalFailures + workerErrors + claimErrors;
-  return Object.freeze({
+  const summary: Record<string, unknown> = {
     requested: result.requestedBatchSize,
     claimed: result.claimedCount,
     processed,
@@ -214,7 +243,11 @@ export function summarizeStripeSubscriptionProjectionBatch(
     worker_errors: workerErrors,
     claim_errors: claimErrors,
     failures,
-  });
+  };
+  if (result.status === 'claim_failed') {
+    summary.last_error = result.errorCode || 'claim_failed';
+  }
+  return Object.freeze(summary) as StripeSubscriptionProjectionCronSummary;
 }
 
 export type PaidPlanAllowanceResetCronSummary = Readonly<{
@@ -308,6 +341,7 @@ export type ConnectedPaymentProjectionCronSummary = Readonly<{
   worker_errors: number;
   claim_errors: number;
   failures: number;
+  last_error?: string;
 }>;
 
 /** Collapse payment/workspace/provider identifiers before cron_runs sees them. */
@@ -353,7 +387,7 @@ export function summarizeConnectedPaymentProjectionBatch(
   const workerErrors = itemWorkerErrors + topLevelWorkerErrors;
   const claimErrors = result.status === 'claim_failed' ? 1 : 0;
   const failures = retryableFailures + terminalFailures + workerErrors + claimErrors;
-  return Object.freeze({
+  const summary: Record<string, unknown> = {
     requested: result.requestedBatchSize,
     selected: result.selectedCount,
     claimed: result.claimedCount,
@@ -368,7 +402,11 @@ export function summarizeConnectedPaymentProjectionBatch(
     worker_errors: workerErrors,
     claim_errors: claimErrors,
     failures,
-  });
+  };
+  if (result.status === 'claim_failed') {
+    summary.last_error = result.errorCode || 'claim_failed';
+  }
+  return Object.freeze(summary) as ConnectedPaymentProjectionCronSummary;
 }
 
 export async function runConnectedPaymentProjectionCronBatch(): Promise<
@@ -379,10 +417,9 @@ ConnectedPaymentProjectionCronSummary
       STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
     );
     return summarizeConnectedPaymentProjectionBatch(result);
-  } catch {
-    // Initialization/configuration exceptions are reduced to one count. Never
-    // let a provider, payment, event, or database error string reach cron_runs.
-    return summarizeConnectedPaymentProjectionBatch({
+  } catch (err) {
+    const errorCode = classifyBillingWorkerError(err);
+    const summary = summarizeConnectedPaymentProjectionBatch({
       status: 'completed',
       requestedBatchSize: STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
       selectedCount: 0,
@@ -390,6 +427,7 @@ ConnectedPaymentProjectionCronSummary
       results: [],
       errorCode: null,
     }, 1);
+    return Object.freeze(errorCode ? { ...summary, last_error: errorCode } : summary);
   }
 }
 
@@ -409,6 +447,7 @@ export type TopUpProjectionCronSummary = Readonly<{
   worker_errors: number;
   claim_errors: number;
   failures: number;
+  last_error?: string;
 }>;
 
 /**
@@ -486,7 +525,7 @@ export function summarizeTopUpProjectionBatch(
   const workerErrors = itemWorkerErrors + topLevelWorkerErrors;
   const claimErrors = result.status === 'claim_failed' ? 1 : 0;
   const failures = retryableFailures + terminalFailures + workerErrors + claimErrors;
-  return Object.freeze({
+  const summary: Record<string, unknown> = {
     requested: result.requestedBatchSize,
     selected: result.selectedCount,
     claimed: result.claimedCount,
@@ -502,17 +541,20 @@ export function summarizeTopUpProjectionBatch(
     worker_errors: workerErrors,
     claim_errors: claimErrors,
     failures,
-  });
+  };
+  if (result.status === 'claim_failed') {
+    summary.last_error = result.errorCode || 'claim_failed';
+  }
+  return Object.freeze(summary) as TopUpProjectionCronSummary;
 }
 
 export async function runTopUpProjectionCronBatch(): Promise<TopUpProjectionCronSummary> {
   try {
     const result = await runTopUpProjectionBatch(STRIPE_TOP_UP_PROJECTION_BATCH_SIZE);
     return summarizeTopUpProjectionBatch(result);
-  } catch {
-    // Initialization/configuration exceptions are reduced to one count. Never
-    // let a provider, workspace, event, or database error string reach cron_runs.
-    return summarizeTopUpProjectionBatch({
+  } catch (err) {
+    const errorCode = classifyBillingWorkerError(err);
+    const summary = summarizeTopUpProjectionBatch({
       status: 'completed',
       requestedBatchSize: STRIPE_TOP_UP_PROJECTION_BATCH_SIZE,
       selectedCount: 0,
@@ -520,6 +562,7 @@ export async function runTopUpProjectionCronBatch(): Promise<TopUpProjectionCron
       results: [],
       errorCode: null,
     }, 1);
+    return Object.freeze(errorCode ? { ...summary, last_error: errorCode } : summary);
   }
 }
 
@@ -551,6 +594,7 @@ export type DirectPaymentSettlementCronSummary = Readonly<{
   sms_pending: number;
   worker_errors: number;
   failures: number;
+  last_error?: string;
 }>;
 
 /** Collapse every task/payment/workspace/provider identifier to fixed counters. */
@@ -645,14 +689,14 @@ DirectPaymentSettlementCronSummary
       result,
       DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
     );
-  } catch {
-    // Never let exception text reach the cron response or cron_runs. Worker/RPC
-    // failures are monitored as one count-only logical failure instead.
-    return summarizeDirectPaymentSettlementBatch(
+  } catch (err) {
+    const errorCode = classifyBillingWorkerError(err);
+    const summary = summarizeDirectPaymentSettlementBatch(
       { claimedCount: 0, outcomes: [] },
       DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
       1,
     );
+    return Object.freeze(errorCode ? { ...summary, last_error: errorCode } : summary);
   }
 }
 
@@ -666,6 +710,7 @@ export type LegacyQuickStopLateRefundCronSummary = Readonly<{
   terminal_failures: number;
   worker_errors: number;
   failures: number;
+  last_error?: string;
 }>;
 
 /** Collapse every task/payment/request/provider identifier to fixed counters. */
@@ -726,15 +771,14 @@ LegacyQuickStopLateRefundCronSummary
       result,
       LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
     );
-  } catch {
-    // Stripe configuration, claim, and persistence exceptions are reduced to a
-    // single count so neither cron_runs nor the HTTP response receives IDs or
-    // provider/database details.
-    return summarizeLegacyQuickStopLateRefundBatch(
+  } catch (err) {
+    const errorCode = classifyBillingWorkerError(err);
+    const summary = summarizeLegacyQuickStopLateRefundBatch(
       { claimedCount: 0, outcomes: [] },
       LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
       1,
     );
+    return Object.freeze(errorCode ? { ...summary, last_error: errorCode } : summary);
   }
 }
 

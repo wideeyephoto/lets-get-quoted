@@ -884,3 +884,25 @@ describe('billing worker route source contracts', () => {
     expect(source).not.toContain('request.text');
   });
 });
+
+describe('classifyBillingWorkerError', () => {
+  it('classifies gateway timeouts, network timeouts, and database errors', async () => {
+    const { classifyBillingWorkerError } = await import('@/lib/billing/billing-worker-cron');
+    expect(classifyBillingWorkerError(new Error('504 Gateway Time-out'))).toBe('gateway_timeout');
+    expect(classifyBillingWorkerError(new Error('Gateway Timeout'))).toBe('gateway_timeout');
+    expect(classifyBillingWorkerError(new Error('502 Bad Gateway'))).toBe('bad_gateway');
+    expect(classifyBillingWorkerError(new Error('503 Service Unavailable'))).toBe('service_unavailable');
+    expect(classifyBillingWorkerError(new Error('The operation was aborted due to timeout'))).toBe('timeout');
+    expect(classifyBillingWorkerError(new Error('canceling statement due to statement timeout (57014)'))).toBe('statement_timeout');
+    expect(classifyBillingWorkerError({ rpcCode: '42883' })).toBe('rpc_42883');
+    expect(classifyBillingWorkerError({ code: 'ECONNRESET' })).toBe('econnreset');
+  });
+
+  it('redacts unclassified error messages to prevent PII leakage', async () => {
+    const { classifyBillingWorkerError } = await import('@/lib/billing/billing-worker-cron');
+    expect(classifyBillingWorkerError(new Error('sk_test_secret / cus_123 / customer@example.com'))).toBeNull();
+    expect(classifyBillingWorkerError(new Error('inject database dependencies'))).toBeNull();
+    expect(classifyBillingWorkerError(null)).toBeNull();
+  });
+});
+

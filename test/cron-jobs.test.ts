@@ -278,4 +278,28 @@ describe('extracting logical failure reason from cron summaries', () => {
       })
     ).toBe('halo-pacing reported logical failures (2 failure(s)) (pauseFailures=2)');
   });
+
+  it('appends sanitized last_error and claim_error into breakdown while preserving reported logical failures', async () => {
+    const { extractLogicalFailureReason } = await import('@/lib/cron-runs');
+    expect(
+      extractLogicalFailureReason('top-up-projection', {
+        requested: 10,
+        claimed: 0,
+        failures: 1,
+        claim_errors: 1,
+        last_error: 'projection_worker_claim_error',
+      })
+    ).toBe('top-up-projection reported logical failures (1 failure(s)) (claim_errors=1) [projection_worker_claim_error]');
+
+    expect(
+      extractLogicalFailureReason('direct-payment-settlement', {
+        requested: 10,
+        claimed: 0,
+        failures: 1,
+        worker_errors: 1,
+        last_error: 'gateway_timeout',
+      })
+    ).toBe('direct-payment-settlement reported logical failures (1 failure(s)) (worker_errors=1) [gateway_timeout]');
+  });
 });
+
