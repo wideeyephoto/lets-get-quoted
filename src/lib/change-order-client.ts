@@ -8,12 +8,9 @@
 import { createHash } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
-import { formatMoney } from '@/lib/jobs';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { respondToChangeOrder } from '@/lib/change-orders-data';
-import { loadBusinessName } from '@/lib/business-name';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -110,31 +107,7 @@ export async function respondAsClient(
   // Tell the contractor immediately. A crew may be standing on site waiting to
   // know whether to carry on, and finding out tomorrow costs a day.
   try {
-    const [ownerEmail, businessName] = await Promise.all([
-      getAccountOwnerEmail(admin, access.accountId),
-      loadBusinessName(admin, access.accountId),
-    ]);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId: access.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: approved ? `Change order approved — ${formatMoney(order.amount)}` : 'Change order declined',
-        heading: approved ? `${order.signatureName} approved “${order.title}”` : `${order.signatureName} declined “${order.title}”`,
-        bodyLines: [
-          `${formatMoney(order.amount)} — ${order.title}`,
-          approved
-            ? 'Your crew can go ahead with this work.'
-            : order.declineReason
-              ? `They said: ${order.declineReason}`
-              : 'They gave no reason.',
-          approved ? '' : 'The write-up and photos stay on the job, so there is a record that they were told.',
-        ].filter(Boolean),
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
-        tone: approved ? 'info' : 'warning',
-      });
-    }
+    await runOwnerEventNotices(admin, { sourceId: order.id, accountId: access.accountId });
   } catch (error) {
     console.error('Change order owner alert failed:', error instanceof Error ? error.message : error);
   }

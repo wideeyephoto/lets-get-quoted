@@ -135,3 +135,27 @@ checks, full type checking, lint, registry checks and clean local security advis
 Founder/staff submission alerts remain a separate, unmigrated family under step 7.
 Legacy messaging email helper exports remain for compatibility but have no production
 callers after this migration. Hosted acceptance and canary evidence remain open.
+
+## Change-order decisions
+
+Apply 20260914181805_change_order_owner_notices.sql after draining legacy
+change-order response actions. The source is the change-order row and its single
+sent-to-approved/declined transition. The decision and notice commit together;
+source type/order UUID/decision identify the message. There is no backfill.
+
+The trigger requires the same account/job/order identity and a response timestamp
+and signature. It is a private SECURITY DEFINER trigger because an authorized
+parent row update must be able to append to the private queue without granting
+customers queue access. Parent UPDATE authorization remains governed by RLS.
+It has an empty search path and no public execute privilege.
+
+The saved title, amount, signature, decline reason, job and response timestamp
+must still match before claim/preparation. Timestamp comparison uses epoch values
+so a database session timezone change does not invalidate a legitimate decision.
+Deletion or changed evidence cancels pending delivery. Immediate dispatch uses
+the exact account/order, and errors leave the saved decision successful.
+
+Verification: 50 application tests, 107 PostgreSQL checks, full type checking,
+lint and clean local security advisor. Customer-facing change-order delivery,
+job-total reconciliation and remaining owner families are separate workstreams.
+Hosted release and canary acceptance remain open.

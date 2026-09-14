@@ -20,6 +20,8 @@ The complete agreed work, commit progress and push gate are maintained in the
 
 - [x] **Local messaging owner notices:** Submission, review and activation use saved event notices, application contact/revision checks and duplicate protection. Verification: 85 application tests, 103 email database checks, 45 real provisioning checks, type checking, lint, registry checks and clean local security advisor. Hosted rollout must drain legacy inline senders; release acceptance remains open. See the ten-step execution record.
 
+- [x] **Local change-order decision owner alerts:** Owner notices commit with approved/declined decisions; concurrent/repeated responses produce one event and changed/deleted decisions cancel pending sends. Verification: 50 application tests, 107 database checks, type checking, lint and clean local security advisor. Legacy response actions must be drained at rollout; hosted acceptance stays open.
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.

@@ -157,3 +157,9 @@ Production-specific inputs needed before M5/M6: environment identity, internal r
 - **T16/T17/T19:** Submission, review and activation events atomically enqueue owner notices. Application revision/contact and current review status fence stale sends. Identical review decisions and repeated activation checks stay silent; changed notes and new transitions retain distinct identities.
 - **Verification:** 85 application tests, 103 combined email PostgreSQL checks, 45 real provisioning PostgreSQL checks, full type checking, lint and 10 registry tests passed. The local security advisor reported no issues. The provisioning suite applies the owner migrations and exercises source availability with production service privileges.
 - **Remaining:** Other owner alerts/confirmations and leads remain in step 4. Staff/founder alerts remain in step 7. Legacy inline producers must be drained before the messaging trigger is deployed. Hosted delivery, release and canary requirements remain open.
+
+### Twenty-ninth-pass implementation — change-order decision notices
+
+- **T16/T17/T19:** A sent-to-approved/declined transition now commits its owner notice atomically. Existing one-winner response guards prevent repeated decisions; saved job, title, amount, signature, reason and response time bind the source before sending. Changed/deleted decisions cancel pending notices.
+- **Verification:** 50 application tests, 107 PostgreSQL checks, full type checking, lint and clean local security advisor passed. Database checks include concurrent responses, replay, invalid-source rollback, timezone changes and obsolete decisions. Immediate pickup failure preserves the saved customer response.
+- **Remaining:** Drain legacy response actions before deploying this trigger. This migration covers owner decision alerts; customer change-order delivery and other owner families retain their separate requirements. No hosted rollout or canary evidence.
