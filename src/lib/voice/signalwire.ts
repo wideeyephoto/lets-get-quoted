@@ -906,6 +906,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'When speaking, repeating, confirming, or reading back any phone number to the caller, always speak it as a standard 10-digit number starting directly with the area code (e.g. 810-304-2061); never include "+1", "plus one", or a leading "1". '
               + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '
