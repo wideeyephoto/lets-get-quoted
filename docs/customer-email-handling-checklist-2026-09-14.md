@@ -233,6 +233,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** [Dated local evidence](evidence/customer-email-domain-callbacks-2026-09-14.md): 75 application tests and 33 PostgreSQL checks passed, including callback/worker races, provider-ID conflicts, out-of-order evidence, private grants and operator closeout preservation. Type checking, changed-file lint and 10 sender-registry tests passed; the local security advisor found no issues.
 - **Prelaunch tracking:** Updated [the official prelaunch list](../LAUNCH_CHECKLIST.md) with this local evidence and explicit open deployment, hosted acceptance, provider scope/capacity, retention, remaining-family and canary gates. No live changes or new canary evidence were collected.
 
+### Twenty-second-pass implementation — durable website connection notices
+
+- **T16/T17/T19:** Website connection and owner-notice creation now commit atomically. One-time claims retain failed or uncertain notifications after the site is connected; changed site/domain bindings stop obsolete messages. The sender requires a notice ID and real provider acceptance ID. Open reviews/backlog stay visible on later reconciler runs, including provisioning-credential loss.
+- **Verification:** [Dated local evidence](evidence/website-domain-notices-2026-09-14.md): 54 application tests and 42 combined PostgreSQL checks passed; type checking, lint and 10 sender-registry tests passed. The local security advisor reported no issues. The existing CI database check now includes this family.
+- **Remaining/prelaunch:** Updated [the official prelaunch list](../LAUNCH_CHECKLIST.md). Website notices still need immutable payload snapshots, provider scope/idempotency binding and signed callback repair. Delivery closeout currently requires operator evidence. No hosted migration, email, deployment, schedule change or enrollment expansion occurred.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

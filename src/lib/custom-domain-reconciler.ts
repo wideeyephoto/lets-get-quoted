@@ -1,11 +1,10 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { APP_ORIGIN } from '@/lib/app-origin';
 import { verifyDomain } from '@/lib/domains';
 import { isVercelDomainProvisioningConfigured, listProjectDomains } from '@/lib/vercel-domains';
 import { revalidatePublicSiteCache } from '@/lib/cached-sites';
-import { getAccountOwnerEmail, sendCustomDomainConnectedEmail } from '@/lib/email';
+import { runWebsiteDomainConnectionNotices } from '@/lib/website-domain-connection-notices';
 
 /**
  * The wait between "DNS is right" and "the certificate exists".
@@ -63,6 +62,9 @@ export type CustomDomainReconcileSummary = {
   connected: number;
   stillPending: number;
   ownersNotified: number;
+  notificationReviews: number;
+  notificationBacklog: number;
+  notificationFailures: Array<{ noticeId: string; accountId: string; code: string }>;
   vanishedMidRun: number;
   /** Bindings on the project with no site row behind them. Reported, never deleted. */
   orphanedAtProject: number;
@@ -79,6 +81,9 @@ function emptySummary(): CustomDomainReconcileSummary {
     connected: 0,
     stillPending: 0,
     ownersNotified: 0,
+    notificationReviews: 0,
+    notificationBacklog: 0,
+    notificationFailures: [],
     vanishedMidRun: 0,
     orphanedAtProject: 0,
     errors: 0,
@@ -95,45 +100,25 @@ function isPlatformOwnedDomain(name: string): boolean {
   return name === root || name.endsWith(`.${root}`) || name.endsWith('.vercel.app');
 }
 
-async function notifyOwner(admin: SupabaseClient, row: ReconcileRow): Promise<boolean> {
-  const recipientEmail = await getAccountOwnerEmail(admin, row.account_id);
-  if (!recipientEmail) {
-    // Counted as an error by the caller. Connecting a domain and telling nobody
-    // leaves the contractor still waiting for a thing that already happened.
-    console.error(
-      `[custom-domain-reconcile] no owner email for account ${row.account_id}; ${row.custom_domain} connected unannounced`,
-    );
-    return false;
-  }
-
-  await sendCustomDomainConnectedEmail({
-    recipientEmail,
-    businessName: row.company_name?.trim() || 'your business',
-    domain: row.custom_domain,
-    accountId: row.account_id,
-    siteUrl: `https://${row.custom_domain}`,
-    settingsUrl: `${APP_ORIGIN}/dashboard/sites`,
-  });
-  return true;
-}
-
 export async function runCustomDomainReconcile(
   client?: SupabaseClient,
 ): Promise<CustomDomainReconcileSummary> {
   const summary = emptySummary();
+  const admin = client ?? createAdminClient();
 
   if (!isVercelDomainProvisioningConfigured()) {
     // Without the credentials `verifyDomain` can neither attach nor read
     // anything and reports every row unconfigured. Say that, rather than
     // recording a run that checked nothing and calling it a success.
+    const notices = await runWebsiteDomainConnectionNotices(admin);
     return {
       ...summary,
-      skipped: true,
+      ...notices,
+      ...(notices.errors === 0 && notices.ownersNotified === 0 ? { skipped: true as const } : {}),
       reason: 'VERCEL_AUTH_TOKEN/VERCEL_PROJECT_ID are not configured',
     };
   }
 
-  const admin = client ?? createAdminClient();
   const since = new Date(Date.now() - PENDING_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await admin
@@ -167,9 +152,10 @@ export async function runCustomDomainReconcile(
       // The same guard the interactive action uses: tie the write to the row
       // AND the domain, so a check that started before the owner changed or
       // disconnected the domain cannot stamp the replacement as verified.
+      const verifiedAt = new Date().toISOString();
       const { data: updated, error: updateError } = await admin
         .from('sites')
-        .update({ custom_domain_verified_at: new Date().toISOString() })
+        .update({ custom_domain_verified_at: verifiedAt, custom_domain_notice_requested_at: verifiedAt })
         .eq('id', row.id)
         .eq('account_id', row.account_id)
         .eq('custom_domain', row.custom_domain)
@@ -188,16 +174,6 @@ export async function runCustomDomainReconcile(
       // serving the not-found it was cached with while it was unverified.
       revalidatePublicSiteCache({ subdomain: row.subdomain, customDomain: row.custom_domain });
 
-      try {
-        if (await notifyOwner(admin, row)) summary.ownersNotified += 1;
-        else summary.errors += 1;
-      } catch (notifyError) {
-        summary.errors += 1;
-        console.error(
-          `[custom-domain-reconcile] failed to notify owner for ${row.custom_domain}:`,
-          notifyError instanceof Error ? notifyError.message : notifyError,
-        );
-      }
     } catch (rowError) {
       summary.errors += 1;
       console.error(
@@ -240,5 +216,6 @@ export async function runCustomDomainReconcile(
     );
   }
 
-  return summary;
+  const notices = await runWebsiteDomainConnectionNotices(admin);
+  return { ...summary, ...notices, errors: summary.errors + notices.errors };
 }

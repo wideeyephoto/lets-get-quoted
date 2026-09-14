@@ -114,6 +114,7 @@ try {
   passed('account cleanup stays scoped and preserves another workspace notice');
   await (await import('./verify-domain-failure-snapshot-checks.mjs')).verifyDomainFailureSnapshots(db, other, passed);
   await (await import('./verify-domain-failure-callback-checks.mjs')).verifyDomainFailureCallbacks(db, other, passed);
+  await (await import('./verify-website-domain-notice-checks.mjs')).verifyWebsiteDomainNotices(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

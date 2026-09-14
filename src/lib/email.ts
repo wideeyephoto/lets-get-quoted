@@ -1340,24 +1340,28 @@ export async function sendSendingDomainFailedEmail(input: {
 }
 
 /**
- * Sent once, on the transition from pending to connected — the stamp itself is
- * the dedupe, because a row can only be promoted once. The reconciler is the
- * only caller: an owner who clicks "Check connection" and watches it succeed
- * has already been told by the page in front of them.
+ * The reconciler records a durable notice alongside the connection stamp.
+ * Its notice worker attempts the message once and retains uncertain outcomes.
+ * Interactive verification does not request a notification.
  */
 export async function sendCustomDomainConnectedEmail(input: {
+  noticeId: string;
   recipientEmail: string;
   businessName: string;
   domain: string;
   accountId: string;
   siteUrl: string;
   settingsUrl: string;
-}): Promise<void> {
+}): Promise<string> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
   const brand = await brandFor(input);
+  const tags = defaultTags('custom_domain_connected', brand, input.accountId);
+  if (typeof input.noticeId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.noticeId)) {
+    throw new Error('Website connection notice identity could not be verified.');
+  }
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
@@ -1376,13 +1380,15 @@ export async function sendCustomDomainConnectedEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Manage this domain any time in <a href="${escapeHtml(input.settingsUrl)}" style="color:#6b7280">your website settings</a>.</p>`,
     }),
     reply_to: 'hello@letsgetquoted.com',
-    tags: defaultTags('custom_domain_connected', brand, input.accountId),
+    tags: [...tags, { name: 'website_domain_notice_id', value: input.noticeId }],
   });
 
   if (result.error) {
     console.error('Failed to send custom-domain connected email:', result.error);
     throw new Error(result.error.message);
   }
+  if (!result.data?.id) throw new Error('Email provider returned no message ID.');
+  return result.data.id;
 }
 
 export async function sendDailyDigestEmail(input: {
