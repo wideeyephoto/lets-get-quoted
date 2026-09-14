@@ -115,56 +115,28 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
           <button
             type="button"
             onClick={() => setFilterStatus('all')}
-            className={`${styles.filterButton || styles.btn} ${filterStatus === 'all' ? styles.btnPrimary : styles.btnSecondary}`}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className={`${styles.filterButton} ${filterStatus === 'all' ? styles.btnPrimary : styles.btnSecondary}`}
           >
             All ({posts.length})
           </button>
           <button
             type="button"
             onClick={() => setFilterStatus('published')}
-            className={`${styles.filterButton || styles.btn} ${filterStatus === 'published' ? styles.btnPrimary : styles.btnSecondary}`}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className={`${styles.filterButton} ${filterStatus === 'published' ? styles.btnPrimary : styles.btnSecondary}`}
           >
             Published ({posts.filter((p) => p.status === 'published').length})
           </button>
           <button
             type="button"
             onClick={() => setFilterStatus('scheduled')}
-            className={`${styles.filterButton || styles.btn} ${filterStatus === 'scheduled' ? styles.btnPrimary : styles.btnSecondary}`}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className={`${styles.filterButton} ${filterStatus === 'scheduled' ? styles.btnPrimary : styles.btnSecondary}`}
           >
             Scheduled ({posts.filter((p) => p.status === 'scheduled').length})
           </button>
           <button
             type="button"
             onClick={() => setFilterStatus('draft')}
-            className={`${styles.filterButton || styles.btn} ${filterStatus === 'draft' ? styles.btnPrimary : styles.btnSecondary}`}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+            className={`${styles.filterButton} ${filterStatus === 'draft' ? styles.btnPrimary : styles.btnSecondary}`}
           >
             Drafts ({posts.filter((p) => p.status === 'draft').length})
           </button>
@@ -176,34 +148,14 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search articles..."
-            style={{
-              padding: '7px 12px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '6px',
-              color: '#fff',
-              fontSize: '13px',
-              outline: 'none',
-              minWidth: '220px',
-            }}
+            className={styles.compactInput}
+            style={{ minWidth: '220px' }}
           />
           <button
             type="button"
             onClick={handleBatchQueue}
             disabled={isPending}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '7px 14px',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '13px',
-              background: 'rgba(167, 139, 250, 0.15)',
-              border: '1px solid rgba(167, 139, 250, 0.35)',
-              color: '#c4b5fd',
-              cursor: isPending ? 'wait' : 'pointer',
-            }}
+            className={styles.btnSecondary}
             title="Auto-schedule all drafts and scheduled posts sequentially every 3 days"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -217,18 +169,6 @@ export default function AdminBlogClient({ posts: initialPosts }: AdminBlogClient
           <Link
             href="/admin/blog/new"
             className={styles.btnPrimary}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '7px 16px',
-              borderRadius: '6px',
-              fontWeight: 600,
-              fontSize: '13px',
-              textDecoration: 'none',
-              background: '#ff7137',
-              color: '#fff',
-            }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19" />
