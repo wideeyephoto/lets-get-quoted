@@ -28,6 +28,9 @@ try {
   const snapshotMigration = readFileSync(join(root, 'migrations/20260914170327_email_domain_failure_snapshots.sql'), 'utf8');
   assert.ok(readFileSync(join(root, 'schema.sql'), 'utf8').replace(/\r\n/g, '\n').includes(snapshotMigration.replace(/\r\n/g, '\n').trim()));
   await db.query(snapshotMigration);
+  const callbackMigration = readFileSync(join(root, 'migrations/20260914171033_email_domain_failure_callbacks.sql'), 'utf8');
+  assert.ok(readFileSync(join(root, 'schema.sql'), 'utf8').replace(/\r\n/g, '\n').includes(callbackMigration.replace(/\r\n/g, '\n').trim()));
+  await db.query(callbackMigration);
   await db.query('grant select,insert,update,delete on accounts,email_sending_domains to service_role');
   passed('actual migrations apply to PostgreSQL 17');
 
@@ -110,6 +113,7 @@ try {
   assert.equal((await db.query('select count(*)::int n from email_domain_failure_notices where account_id=$1',[accountB.id])).rows[0].n,1);
   passed('account cleanup stays scoped and preserves another workspace notice');
   await (await import('./verify-domain-failure-snapshot-checks.mjs')).verifyDomainFailureSnapshots(db, other, passed);
+  await (await import('./verify-domain-failure-callback-checks.mjs')).verifyDomainFailureCallbacks(db, other, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

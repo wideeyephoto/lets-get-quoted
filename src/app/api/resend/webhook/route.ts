@@ -153,6 +153,36 @@ export async function POST(request: Request) {
     const { kind, accountId } = resendTags(event.data.tags);
     const recipient = resendRecipient(event.data.to);
 
+    const domainNoticeId = resendTagValue(event.data.tags, 'domain_failure_notice_id');
+    if (domainNoticeId) {
+      const boundRecipient = operationalSingleRecipient(event.data.to);
+      if (kind !== 'sending_domain_failed' || !accountId || !boundRecipient
+        || !unambiguousDomainNoticeTags(event.data.tags)
+        || resendTagValue(event.data.tags, 'delivery_scope')
+        || (event.data.cc && (!Array.isArray(event.data.cc) || event.data.cc.length))
+        || (event.data.bcc && (!Array.isArray(event.data.bcc) || event.data.bcc.length))) {
+        throw new Error('Domain failure callback has an invalid binding');
+      }
+      // Validate against the immutable snapshot before changing delivery history
+      // or suppression. The signed tag alone is insufficient evidence.
+      const { data: result, error: confirmError } = await admin.rpc('confirm_email_domain_failure_notice', {
+        p_id: domainNoticeId, p_account_id: accountId, p_recipient: boundRecipient, p_provider_id: providerId,
+        p_status: status, p_occurred_at: event.created_at ?? new Date().toISOString(),
+        p_event_id: request.headers.get('svix-id'),
+      });
+      if (!confirmError && (result === 'missing' || result === 'unprepared')) {
+        const { error: quarantineError } = await admin.from('webhook_failures').insert({
+          source: 'resend', event_type: event.type, reference_id: providerId,
+          error_message: 'DOMAIN_NOTICE_QUARANTINE: missing notice or snapshot; review legacy sending, deletion or environment routing.',
+          payload_excerpt: JSON.stringify({ notice_id: domainNoticeId, account_id: accountId, provider_id: providerId,
+            svix_id: request.headers.get('svix-id'), binding_state: result }),
+        });
+        if (quarantineError) throw new Error('Could not retain domain failure callback quarantine');
+        return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
+      }
+      if (confirmError || result !== 'confirmed') throw new Error('Could not reconcile domain failure callback');
+    }
+
     // Upsert keyed by provider_id. Resend is at-least-once and explicitly does
     // not guarantee delivery order, so the database trigger installed with
     // this projector rejects an older/lower lifecycle state in one step. Doing
@@ -288,6 +318,15 @@ function operationalSingleRecipient(value: unknown): string | null {
   if (!Array.isArray(values) || values.length !== 1 || typeof values[0] !== 'string'
     || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(values[0])) return null;
   return values[0].toLowerCase();
+}
+
+function unambiguousDomainNoticeTags(tags: unknown): boolean {
+  return ['kind', 'account_id', 'domain_failure_notice_id'].every(name => {
+    const values = Array.isArray(tags)
+      ? tags.filter(entry => entry && typeof entry === 'object' && entry.name === name).map(entry => entry.value)
+      : tags && typeof tags === 'object' ? [(tags as Record<string, unknown>)[name]] : [];
+    return values.length === 1 && typeof values[0] === 'string' && values[0] === resendTagValue(tags, name);
+  });
 }
 
 /**

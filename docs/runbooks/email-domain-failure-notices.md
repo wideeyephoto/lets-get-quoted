@@ -24,16 +24,30 @@ authorizing a retry. Current recipient blocks are checked again after persistenc
 Domain disconnection retains the snapshot; existing account deletion cascades it.
 Retention approval and any longer-lived deduplication requirement remain open.
 
-This step does not add signed callback acceptance repair or automatic retries.
-Older already-attempted incidents are not backfilled or rearmed, and the callback
-tag alone is not trusted to recover a missing provider ID.
+The callback migration adds signed acceptance repair for prepared notices. The
+handler requires a single recipient and unambiguous notice/workspace/kind tags,
+then matches the saved snapshot before writing delivery history or suppression.
+The tag alone is insufficient. A missing notice or snapshot is quarantined in
+`webhook_failures` with identifiers only (HTTP 202); a failed quarantine write or
+conflicting binding returns HTTP 500 for provider retry and operational review.
+Older already-attempted incidents are not backfilled or rearmed.
+
+`callback_status`, `callback_at` and `callback_event_id` retain the bound evidence.
+Status precedence is sent, delayed, delivered, failed, bounced, suppressed,
+complained. A weaker status cannot replace stronger evidence even if it arrives
+later; an equal status only advances provenance with a later occurrence time.
+Delivered evidence resolves the incident; negative evidence requires manual review.
+An explicit operator closeout is preserved while subsequent evidence and applicable
+recipient suppression are still recorded. No callback sends another message.
 
 The worker claims each pending notice once. An expired sending claim or any failed
 or uncertain submission becomes `manual_review`; it is never blindly resent.
-Successful submission is `accepted`, and a matching account's signed callback in
-`email_events` resolves it only after delivery. Negative delivery outcomes or
-unconfirmed delivery older than 30 minutes become incidents when the worker next
-checks them. The worker is daily, so this is not a promise of detection within
+Successful submission is `accepted`. For prepared notices, bound callbacks resolve
+delivery or record negative outcomes directly, including after a lost send response.
+Worker completion cannot overwrite a callback that already won. Legacy notices
+without snapshots retain their existing `email_events` observation path.
+Unconfirmed delivery older than 30 minutes becomes an incident when the worker next
+checks it. The worker is daily, so this is not a promise of detection within
 30 minutes. An unsent notice is cancelled if its domain recovers, is disabled, or
 is disconnected before claiming.
 
@@ -47,7 +61,8 @@ Read-only inspection with the service role:
 
 ```sql
 select id, account_id, domain_id, domain, state, created_at, attempted_at,
-       provider_id, accepted_at, last_error, resolved_at, resolved_by, resolution
+       provider_id, accepted_at, callback_status, callback_at, callback_event_id,
+       last_error, resolved_at, resolved_by, resolution
 from public.email_domain_failure_notices
 where state in ('pending','sending','accepted','manual_review')
 order by created_at;
@@ -73,7 +88,8 @@ record resolution solely to turn the worker green.
 
 For the snapshot release, apply
 `20260914170327_email_domain_failure_snapshots.sql` after the original notice
-migration and before deploying the updated sender. Without that RPC the sender
+migration, then `20260914171033_email_domain_failure_callbacks.sql`, before deploying
+the updated sender and webhook. Without the required RPCs the sender
 fails closed and records an incident instead of submitting. Drain old workers
 before cutover: old application versions do not save snapshots. Keep the additive
 schema on rollback and review any incomplete incidents; do not reset them to pending.
@@ -107,3 +123,11 @@ claims, domain changes after claiming, failed persistence and late recipient
 blocks. CI runs `npm run test:pg17:domain-failure-notices`; request-boundary tests
 use the installed SDK with offline HTTP responses. The database guards use
 [Postgres triggers](https://supabase.com/docs/guides/database/postgres/triggers).
+
+Callback checks additionally cover both arrival orders against worker completion,
+late timeouts, duplicate/out-of-order statuses, conflicting provider IDs, missing
+snapshots, quarantines, suppression failures and preservation of operator closeout.
+Provider workspace/region, hosted receipt, approved retention and any future retry
+policy remain separate release gates. Keep the [official prelaunch list](../../LAUNCH_CHECKLIST.md)
+and [customer email checklist](../customer-email-handling-checklist-2026-09-14.md)
+updated as those gates gain evidence.

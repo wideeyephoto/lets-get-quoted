@@ -227,6 +227,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 60 selected application and data-disposition tests and 24 PostgreSQL checks passed; the local security advisor found no issues. Type checking, changed-file lint and 10 sender-registry tests passed. Added the database checks to CI and recorded snapshot cleanup in the data-disposition registry. The migration is prepared locally only.
 - **Remaining:** Signed callback acceptance repair, verified provider workspace/region, retention approval and bounded recovery. No retries, live emails, deployment or hosted migration were enabled. See the [notice runbook](runbooks/email-domain-failure-notices.md).
 
+### Twenty-first-pass implementation — signed domain notice recovery
+
+- **T16/T17/T19:** Signed callbacks now bind to the saved notice/workspace/recipient before delivery history or suppression changes. They repair lost acceptance without resending, preserve stronger negative outcomes and cannot be overwritten by delayed worker completion. Missing or unprepared notice callbacks are retained for review; failed quarantine writes remain retryable.
+- **Verification:** [Dated local evidence](evidence/customer-email-domain-callbacks-2026-09-14.md): 75 application tests and 33 PostgreSQL checks passed, including callback/worker races, provider-ID conflicts, out-of-order evidence, private grants and operator closeout preservation. Type checking, changed-file lint and 10 sender-registry tests passed; the local security advisor found no issues.
+- **Prelaunch tracking:** Updated [the official prelaunch list](../LAUNCH_CHECKLIST.md) with this local evidence and explicit open deployment, hosted acceptance, provider scope/capacity, retention, remaining-family and canary gates. No live changes or new canary evidence were collected.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

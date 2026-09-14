@@ -28,6 +28,14 @@ async function saveNotice(admin: SupabaseClient, id: string, state: string, patc
   if (result.error || result.data?.length !== 1) throw new Error('Could not persist domain notice outcome');
 }
 
+async function finishNotice(admin: SupabaseClient, notice: Notice, providerId: string | null, error: string | null) {
+  const result = await admin.rpc('finish_email_domain_failure_notice', {
+    p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at,
+    p_provider_id: providerId, p_error: error,
+  });
+  if (result.error || result.data !== true) throw new Error('Could not persist domain notice outcome');
+}
+
 /** Each notice is attempted once. A rejected/uncertain send remains an incident
  * across later domain checks, recovery and disconnection until explicitly reviewed.
  * Provider acceptance is followed through the existing signed webhook ledger. */
@@ -62,16 +70,12 @@ export async function runEmailDomainFailureNotices(admin: SupabaseClient): Promi
       });
     } catch (error) {
       const known = error instanceof Error && ['owner_email_missing', 'owner_brand_unavailable', 'snapshot_prepare_failed'].includes(error.message);
-      await saveNotice(admin, notice.id, 'sending', {
-        state: 'manual_review', last_error: known ? (error as Error).message : 'send_failed_or_outcome_unknown',
-      });
+      await finishNotice(admin, notice, null, known ? (error as Error).message : 'send_failed_or_outcome_unknown');
       continue;
     }
     // Keep the sending lease if this persistence fails. Its expiry requires
     // review, so a successful provider submission cannot become a duplicate.
-    await saveNotice(admin, notice.id, 'sending', {
-      state: 'accepted', provider_id: providerId, accepted_at: new Date().toISOString(),
-    });
+    await finishNotice(admin, notice, providerId, null);
     summary.ownersNotified += 1; // submission accepted; delivery is checked below
   }
 
@@ -79,6 +83,9 @@ export async function runEmailDomainFailureNotices(admin: SupabaseClient): Promi
     .select('id, account_id, provider_id, accepted_at').eq('state', 'accepted').order('accepted_at').limit(10);
   if (accepted.error) throw new Error('Could not read accepted domain notices');
   for (const notice of (accepted.data ?? []) as Notice[]) {
+    const reviewed = await admin.rpc('review_email_domain_failure_notice', { p_id: notice.id, p_account_id: notice.account_id });
+    if (reviewed.error || typeof reviewed.data !== 'boolean') throw new Error('Could not verify domain notice delivery');
+    if (reviewed.data) continue; // Bound callbacks own prepared-notice delivery state.
     const event = await admin.from('email_events').select('status, account_id')
       .eq('provider_id', notice.provider_id).maybeSingle();
     if (event.error) throw new Error('Could not verify domain notice delivery');

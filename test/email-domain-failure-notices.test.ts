@@ -10,8 +10,18 @@ function database(options: { saveAcceptedFails?: boolean; eventReadFails?: boole
     reason: 'Required DNS record missing', state: 'pending', provider_id: null, accepted_at: null, attempted_at: '2026-09-14T12:00:00Z',
   }];
   const events: Record<string, Record<string, unknown>> = {};
-  const rpc = vi.fn(async (name: string) => {
+  const rpc = vi.fn(async (name: string, params?: Record<string, unknown>) => {
     if (name === 'prepare_email_domain_failure_snapshot') return { data: !options.snapshotDenied, error: options.snapshotFails ? { message: 'unavailable' } : null };
+    if (name === 'review_email_domain_failure_notice') return { data: false, error: null };
+    if (name === 'finish_email_domain_failure_notice') {
+      if (options.saveAcceptedFails && params?.p_provider_id) return { data: false, error: { message: 'unavailable' } };
+      const row = notices.find(n => n.id === params?.p_id && n.account_id === params?.p_account_id);
+      if (!row) return { data: false, error: null };
+      if (row.provider_id) return { data: !params?.p_provider_id || row.provider_id === params.p_provider_id, error: null };
+      Object.assign(row, params?.p_provider_id ? { state: 'accepted', provider_id: params.p_provider_id, accepted_at: new Date().toISOString() }
+        : { state: 'manual_review', last_error: params?.p_error });
+      return { data: true, error: null };
+    }
     for (const row of notices) if (row.state === 'sending' && row.expired) {
       row.state = 'manual_review'; row.last_error = 'send_outcome_unknown';
     }
@@ -55,6 +65,17 @@ beforeEach(() => { vi.clearAllMocks(); send.mockImplementation(async input => {
 }); owner.mockResolvedValue('owner@example.com'); });
 
 describe('Durable domain failure notices', () => {
+  it.each([false, true])('preserves a callback that wins before the send returns (timeout=%s)', async timeout => {
+    const db = database();
+    send.mockImplementationOnce(async input => {
+      await input.prepareIntent({ payload: { to: input.recipientEmail }, providerFingerprint: 'a'.repeat(64), idempotencyKey: 'key' });
+      Object.assign(db.notices[0], { provider_id: 'provider-1', state: 'resolved', resolved_by: 'signed_provider_webhook' });
+      if (timeout) throw new Error('timeout');
+      return 'provider-1';
+    });
+    await expect(runEmailDomainFailureNotices(db.client)).resolves.toMatchObject({ errors: 0 });
+    expect(db.notices[0].state).toBe('resolved'); expect(send).toHaveBeenCalledTimes(1);
+  });
   it.each([{ snapshotFails: true }, { snapshotDenied: true }])('retains failed snapshot preparation for review without retrying', async options => {
     const db = database(options);
     await runEmailDomainFailureNotices(db.client);

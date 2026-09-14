@@ -1,5 +1,11 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Customer email reliability update — 2026-09-14
+
+- [x] **Local domain failure notice protection:** Each incident now has a stable submission identity and immutable message snapshot. Signed callbacks must match the saved workspace and single recipient before repairing acceptance. Callback/worker races and out-of-order negative outcomes are covered. [Dated local evidence](docs/evidence/customer-email-domain-callbacks-2026-09-14.md): 75 application tests, 33 PostgreSQL checks, type checking, lint and the security advisor. See the [notice runbook](docs/runbooks/email-domain-failure-notices.md) and [customer email checklist](docs/customer-email-handling-checklist-2026-09-14.md). This checks off implementation and local verification only.
+- [ ] **Deploy and accept the prepared email changes:** Apply reviewed migrations before their senders, drain older workers, and retain real callback, receiver, suppression and failure-recovery evidence in the intended environment. Domain notice retries remain disabled; callback repair does not send another email.
+- [ ] **Complete remaining email launch gates:** Verify provider workspace/region and capacity, reconcile historical/unknown sends, approve retention and bounded recovery, and finish durable identities for restoration/other owner notices and remaining email families. Follow the [M1–M6 rollout plan](docs/customer-email-implementation-plan-2026-09-14.md). General domain enrollment remains gated by the existing canary criteria; no fresh scheduled-run or receiver evidence was collected in this update.
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.
@@ -978,6 +984,11 @@ This update records the checks actually completed for [PR #25](https://github.co
 ---
 
 ## 4. Transactional Email & Deliverability (Resend)
+
+Current local implementation and outstanding release gates are tracked in the
+[September 14 customer email checklist](docs/customer-email-handling-checklist-2026-09-14.md)
+and [rollout plan](docs/customer-email-implementation-plan-2026-09-14.md).
+Historical production checks below do not validate the new migrations or remaining sender families.
 
 - [x] **Resend Sending-Domain DNS Readiness**: verified 2026-08-31; Resend reports its DKIM, SPF/MAIL-FROM records ready. Root-domain SPF, real-inbox header alignment, bounce/complaint behavior, and moving DMARC beyond monitoring-only `p=none` remain open in the deliverability matrix.
 - [x] **API Key**: `RESEND_API_KEY` is present in Vercel Production (verified 2026-08-31), and production requests reach Resend without an authentication error.
