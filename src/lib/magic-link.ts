@@ -57,3 +57,4 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
     throw new Error(`Failed to queue magic link email: ${insertError.message}`);
   }
 }
+// Emails are sent from hello@letsgetquoted.com via the platform event notice worker.

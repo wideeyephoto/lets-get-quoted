@@ -20,7 +20,7 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc,
   from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }),
 }) }));
 
-const fakeAdmin = { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression, maybeSingle: async () => ({ data: null, error: null }) }) }) }) } as any;
+const emailFakeAdmin = { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression, maybeSingle: async () => ({ data: null, error: null }) }) }) }) } as any;
 
 vi.mock('@/lib/email-brand', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/email-brand')>();
@@ -49,7 +49,7 @@ import {
 } from '@/lib/email';
 
 describe('Email Engine & Notification System (lib/email)', () => {
-  let { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any: any;
+  let fakeAdmin: any;
 
   const createFluentBuilder = (dataResult: any = null, error: any = null) => {
     const builder: any = {
@@ -69,9 +69,18 @@ describe('Email Engine & Notification System (lib/email)', () => {
     process.env.RESEND_API_KEY = 're_test_key_123';
     mocks.send.mockResolvedValue({ data: { id: 'msg_123' }, error: null });
     mocks.suppression.mockResolvedValue({ data: [], error: null });
-    mocks.rpc.mockImplementation(async (name: string, args: any) => ({ data: name === 'claim_document_email_send'
-      ? { action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'document/intent/primary',
-        payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString() } : true, error: null }));
+    mocks.rpc.mockImplementation(async (name: string, args: any) => {
+      if (name === 'claim_document_email_send' || name === 'claim_customer_email_send') {
+        return {
+          data: {
+            action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'test/intent/primary',
+            payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString()
+          },
+          error: null
+        };
+      }
+      return { data: true, error: null };
+    });
     mocks.loadEmailBrand.mockResolvedValue({
       businessName: 'Ace Contracting',
       accent: '#0284c7',
@@ -84,7 +93,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
   describe('getAccountOwnerEmail', () => {
     it('returns reply_to_email from accounts if configured', async () => {
-      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
+      fakeAdmin = {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createFluentBuilder({ reply_to_email: 'custom-reply@contractor.com' });
@@ -93,12 +102,12 @@ describe('Email Engine & Notification System (lib/email)', () => {
         }),
       };
 
-      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-1');
+      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-1');
       expect(email).toBe('custom-reply@contractor.com');
     });
 
     it('falls back to owner user in memberships and auth.users if reply_to_email is unset', async () => {
-      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
+      fakeAdmin = {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createFluentBuilder({ reply_to_email: null });
@@ -118,16 +127,16 @@ describe('Email Engine & Notification System (lib/email)', () => {
         },
       };
 
-      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-1');
+      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-1');
       expect(email).toBe('owner-auth@contractor.com');
     });
 
     it('returns null if account does not exist or has no owner', async () => {
-      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
+      fakeAdmin = {
         from: vi.fn(() => createFluentBuilder(null)),
       };
 
-      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-nonexistent');
+      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-nonexistent');
       expect(email).toBeNull();
     });
   });
@@ -182,13 +191,13 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('sendAppointmentReminderEmail', () => {
     it('stops a locally blocked recipient before calling the real shared transport', async () => {
       mocks.suppression.mockResolvedValue({ data: [{ reason: 'hard_bounce' }], error: null });
-      await expect(sendAppointmentReminderEmail(fakeAdmin, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
+      await expect(sendAppointmentReminderEmail(emailFakeAdmin, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
         businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null, jobId: 'job-1', idempotencyKey: 'test-idem-1',
       })).rejects.toThrow('blocked');
       expect(mocks.send).not.toHaveBeenCalled();
     });
     it('dispatches reminder with appointment date, time window, and address', async () => {
-      await sendAppointmentReminderEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, { accountId: 'acc-1',
+      await sendAppointmentReminderEmail(emailFakeAdmin, { accountId: 'acc-1',
         recipientEmail: 'client@contractorclient.test',
         businessName: 'Ace Contracting',
         clientName: 'Bob Miller',
@@ -357,7 +366,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
   describe('Campaign Marketing & Delivery Helpers', () => {
     it('sendCampaignEmail delivers marketing email with CAN-SPAM footer and unsubscribe link', async () => {
-      const mockAdmin = {} as any; // Mock admin for test
+      const mockAdmin = emailFakeAdmin; // Mock admin for test
       await sendCampaignEmail(mockAdmin, {
         accountId: 'acc-1',
         recipientEmail: 'homeowner@example.com',

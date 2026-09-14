@@ -174,6 +174,8 @@ export async function sendSelectionRequest(
         overdue: Boolean(options.overdue),
         url,
         accountId,
+        jobId,
+        idempotencyKey: `selection-request:${jobId}:${token}`,
       });
       channel = 'email';
     }

@@ -4,10 +4,10 @@ import type { CreateEmailOptions, Resend } from 'resend';
 import { sendPlatformTransactionalEmail } from '@/lib/platform-transactional-email';
 import { sendWithDomainFallback } from '@/lib/email-domain-fallback';
 
-const mocks=vi.hoisted(()=>({send:vi.fn(),lookup:vi.fn(),generateLink:vi.fn()}));
+const mocks=vi.hoisted(()=>({send:vi.fn(),lookup:vi.fn(),generateLink:vi.fn(),insert:vi.fn()}));
 vi.mock('resend',()=>({Resend:vi.fn().mockImplementation(()=>({emails:{send:mocks.send}}))}));
 vi.mock('@/lib/auth',()=>({createAdminClient:()=>({
-  from:()=>({select:()=>({eq:()=>({maybeSingle:mocks.lookup})})}),
+  from:()=>({select:()=>({eq:()=>({maybeSingle:mocks.lookup})}),insert:mocks.insert}),
   auth:{admin:{generateLink:mocks.generateLink}},
 })}));
 const payload:CreateEmailOptions={from:'hello@letsgetquoted.com',to:'Owner <OWNER@example.com>',subject:'Sign in',html:'Link',tags:[{name:'kind',value:'magic_link'}]};
@@ -88,27 +88,19 @@ describe('staff, contact and support paths use platform scope',()=>{
   });
 });
 describe('owner login uses the platform gate',()=>{
-  it('keeps the configured callback and safe next path while allowing marketing opt-outs',async()=>{
+  it('queues magic link to platform_event_notices',async()=>{
     const {sendMagicLinkEmail}=await import('@/lib/magic-link');
-    mocks.lookup.mockResolvedValue({data:{email:'owner@example.com',reason:'one_click_unsubscribe'},error:null});
+    mocks.generateLink.mockResolvedValue({data:{properties:{hashed_token:'saved-token'}},error:null});
+    mocks.insert.mockResolvedValue({error:null});
     await sendMagicLinkEmail('owner@example.com','https://untrusted.example/');
-    const message=mocks.send.mock.calls[0][0];
-    expect(message.html).toContain('/auth/magic-link-callback?token_hash=saved-token');
-    expect(message.html).not.toContain('untrusted.example');
-    expect(message.html).toContain('60 minutes');
+    expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
+      event_family: 'auth_link',
+      payload: expect.objectContaining({ to: 'owner@example.com' })
+    }));
   });
-  it('observes a block recorded while the login token was being generated',async()=>{
+  it('throws if insert fails',async()=>{
     const {sendMagicLinkEmail}=await import('@/lib/magic-link');
-    mocks.generateLink.mockImplementation(async()=>{
-      mocks.lookup.mockResolvedValue({data:{email:'owner@example.com',reason:'hard_bounce'},error:null});
-      return {data:{properties:{hashed_token:'saved-token'}},error:null};
-    });
-    await expect(sendMagicLinkEmail('owner@example.com')).rejects.toThrow('blocked');
-    expect(mocks.send).not.toHaveBeenCalled();
-  });
-  it('does not report success without provider acceptance',async()=>{
-    const {sendMagicLinkEmail}=await import('@/lib/magic-link');
-    mocks.send.mockResolvedValue({data:null,error:null});
-    await expect(sendMagicLinkEmail('owner@example.com')).rejects.toThrow('acceptance was not confirmed');
+    mocks.insert.mockResolvedValue({error: {message: 'insert failed'}});
+    await expect(sendMagicLinkEmail('owner@example.com')).rejects.toThrow('queue magic link email');
   });
 });

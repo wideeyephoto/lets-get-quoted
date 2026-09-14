@@ -412,7 +412,7 @@ export async function sendTestEmailAction(formData: FormData) {
   if (!to) throw new Error('No email on file to send a test to. Add a customer reply email in Settings.');
 
   const { businessName, mailingAddress } = await resolveSenderIdentity(supabase, accountId);
-  await sendCampaignEmail(createAdminClient(), { recipientEmail: to, businessName, subject: `[Test] ${subject}`, body, accountId, mailingAddress });
+  await sendCampaignEmail(createAdminClient(), { recipientEmail: to, businessName, subject: `[Test] ${subject}`, body, accountId, mailingAddress, idempotencyKey: `test-${Date.now()}` });
 
   revalidatePath('/dashboard/marketing');
   revalidatePath('/dashboard/marketing/campaigns');
