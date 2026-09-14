@@ -369,7 +369,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Maine',
     fips: '23',
     licensingBoard: 'Maine Uniform Building and Energy Code Board (MUBEC)',
-    licensingUrl: 'https://www.maine.gov/dacf/php/mubec',
+    licensingUrl: 'https://www.maine.gov/dps/fmo/building-codes',
     codes: {
       building: { name: '2021 Maine Uniform Building and Energy Code (2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
