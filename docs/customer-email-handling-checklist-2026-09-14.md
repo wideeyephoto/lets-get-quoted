@@ -125,6 +125,8 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 
 ### Next work and live gates
 
+Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). Start with automatic recovery for the existing ledgers.
+
 1. **T16/T17:** Deploy and verify the prepared lifecycle and quote/invoice ledgers and recovery monitor after reconciling uncertain historical sends. Implement bounded retry scheduling and durable identities for the remaining audited email families/owner notifications. Explicit unchanged-document resends and atomic creation/payment remain separate work. Migrations must precede enabling the new senders.
 2. **T12/T19:** Extend delivery-block enforcement to independent and untagged transports using the appropriate recipient scope; verify provider-region scope and reconcile historical evidence before claiming application-wide enforcement.
 3. **T03:** Run the repaired read-only runner in the intended hosted environment after review of environment identity. No live recipient preview has been fetched in this pass.
