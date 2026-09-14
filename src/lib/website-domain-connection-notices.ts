@@ -24,6 +24,14 @@ export async function runWebsiteDomainConnectionNotices(admin: SupabaseClient) {
       if (prepared.error || prepared.data !== true) throw new Error('notice_prepare_failed');
       providerId = await sendCustomDomainConnectedEmail({
         noticeId: notice.id,
+        prepareIntent: async snapshot => {
+          const saved = await admin.rpc('prepare_website_domain_notice_snapshot', {
+            p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at,
+            p_payload: snapshot.payload, p_provider_fingerprint: snapshot.providerFingerprint,
+            p_idempotency_key: snapshot.idempotencyKey,
+          });
+          if (saved.error || saved.data !== true) throw new Error('notice_prepare_failed');
+        },
         recipientEmail: recipient, businessName: site.data.company_name?.trim() || 'your business',
         domain: notice.domain, accountId: notice.account_id,
         siteUrl: `https://${notice.domain}`, settingsUrl: `${APP_ORIGIN}/dashboard/sites`,

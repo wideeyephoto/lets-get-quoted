@@ -239,6 +239,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** [Dated local evidence](evidence/website-domain-notices-2026-09-14.md): 54 application tests and 42 combined PostgreSQL checks passed; type checking, lint and 10 sender-registry tests passed. The local security advisor reported no issues. The existing CI database check now includes this family.
 - **Remaining/prelaunch:** Updated [the official prelaunch list](../LAUNCH_CHECKLIST.md). Website notices still need immutable payload snapshots, provider scope/idempotency binding and signed callback repair. Delivery closeout currently requires operator evidence. No hosted migration, email, deployment, schedule change or enrollment expansion occurred.
 
+### Twenty-third-pass implementation — website snapshots and provider keys
+
+- **T16/T17:** Website notices now save exact rendered content and the actual sending credential fingerprint before submission, with a stable per-notice provider key. Snapshot insertion binds the previously saved recipient and current connection event, permits one winner, and rejects mutation and obsolete claims. The current recipient policy is checked again after saving.
+- **Verification:** 47 selected application tests and 48 PostgreSQL checks passed; changed-file lint, ten sender-registry tests and the local security advisor passed. See the [ten-step execution record](customer-email-ten-step-execution-2026-09-14.md), which preserves the full authorized objective through hosted acceptance, canary review and final push.
+- **Next:** Signed website callback recovery; provider workspace/region and receiver proof remain hosted gates. This pass made no live changes.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

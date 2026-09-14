@@ -2,8 +2,13 @@
 
 ## Customer email reliability update — 2026-09-14
 
+The complete agreed work, commit progress and push gate are maintained in the
+[ten-step execution record](docs/customer-email-ten-step-execution-2026-09-14.md).
+
+- [x] **Local website-notice snapshots and provider keys:** Immutable rendered messages, exact saved recipient/event binding, credential fingerprints and stable provider keys now precede submission. [Local evidence](docs/customer-email-ten-step-execution-2026-09-14.md): 47 application tests and 48 combined PostgreSQL checks, with a clean local security advisor. This is not hosted acceptance.
+
 - [x] **Local website connection notice durability:** The connection stamp and owner notice now commit together. One worker claims the notice; failed/uncertain submissions remain visible after the site is connected. Provider acceptance requires an ID and is distinct from receipt. [Dated evidence](docs/evidence/website-domain-notices-2026-09-14.md): 54 application tests and 42 combined PostgreSQL checks; see the [runbook](docs/runbooks/website-domain-connection-notices.md).
-- [ ] **Finish website notice delivery recovery before hosted acceptance:** Add immutable message snapshots, provider scope/idempotency binding and signed callback repair. Until then, accepted notices require reviewed receiver evidence and become manual review after the observation deadline. Apply the prepared migration before its worker; no live rollout or automatic retry is included.
+- [ ] **Finish website notice delivery recovery before hosted acceptance:** Add signed callback repair and verify actual provider workspace/region. Until then, accepted notices require reviewed receiver evidence and become manual review after the observation deadline. Apply the prepared migrations before their worker; no live rollout or automatic retry is included.
 
 - [x] **Local domain failure notice protection:** Each incident now has a stable submission identity and immutable message snapshot. Signed callbacks must match the saved workspace and single recipient before repairing acceptance. Callback/worker races and out-of-order negative outcomes are covered. [Dated local evidence](docs/evidence/customer-email-domain-callbacks-2026-09-14.md): 75 application tests, 33 PostgreSQL checks, type checking, lint and the security advisor. See the [notice runbook](docs/runbooks/email-domain-failure-notices.md) and [customer email checklist](docs/customer-email-handling-checklist-2026-09-14.md). This checks off implementation and local verification only.
 - [ ] **Deploy and accept the prepared email changes:** Apply reviewed migrations before their senders, drain older workers, and retain real callback, receiver, suppression and failure-recovery evidence in the intended environment. Domain notice retries remain disabled; callback repair does not send another email.

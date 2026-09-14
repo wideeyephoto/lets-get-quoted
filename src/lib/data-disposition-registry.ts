@@ -100,6 +100,14 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
   },
 
   // Saved domain notice content follows the parent incident's account cleanup.
+  website_domain_notice_snapshots: {
+    tableName: 'website_domain_notice_snapshots', relationship: 'fk_chain', primaryKeyColumn: 'notice_id',
+    fkPath: ['notice_id', 'website_domain_connection_notices.account_id'], localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+
+  // Saved domain notice content follows the parent incident's account cleanup.
   email_domain_failure_snapshots: {
     tableName: 'email_domain_failure_snapshots',
     relationship: 'fk_chain',

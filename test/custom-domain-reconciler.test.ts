@@ -81,7 +81,7 @@ const stillProvisioning = {
  * Records every filter and patch the worker applies, and can make a row vanish
  * mid-run the way a concurrent disconnect would.
  */
-function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[]; prepareFails?: boolean; finishFails?: boolean } = {}) {
+function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[]; prepareFails?: boolean; snapshotFails?: boolean; finishFails?: boolean } = {}) {
   const updates: Array<{ patch: Record<string, unknown>; filters: Record<string, unknown>; nullFilters: string[] }> = [];
   const selects: Array<{ cols: string; nullFilters: string[]; notNull: string[] }> = [];
   const notices: Array<Record<string, any>> = [];
@@ -93,6 +93,7 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[]
       return { data: pending.map(n => ({ ...n })), error: null };
     }
     const n = notices.find(n => n.id === params.p_id);
+    if (name === 'prepare_website_domain_notice_snapshot') return { data: !opts.snapshotFails, error: null };
     if (name === 'prepare_website_domain_connection_notice') {
       if (opts.prepareFails) return { data: false, error: null };
       if (n) n.recipient = params.p_recipient;
@@ -169,10 +170,25 @@ beforeEach(() => {
   isConfigured.mockReturnValue(true);
   listProjectDomains.mockResolvedValue([]);
   getAccountOwnerEmail.mockResolvedValue('owner@example.com');
-  sendCustomDomainConnectedEmail.mockResolvedValue('provider-1');
+  sendCustomDomainConnectedEmail.mockImplementation(async (...args: unknown[]) => {
+    await (args[0] as { prepareIntent: (snapshot: unknown) => Promise<void> }).prepareIntent({
+      payload: { html: 'saved content' }, providerFingerprint: 'a'.repeat(64), idempotencyKey: 'saved-key',
+    });
+    return 'provider-1';
+  });
 });
 
 describe('Custom domain certificate reconciler', () => {
+  it('retains failed snapshot persistence and passes the exact claimed identity to preparation', async () => {
+    verifyDomain.mockResolvedValue(connected); const db = makeDb([pendingRow()], { snapshotFails: true });
+    expect((await runCustomDomainReconcile(db.client)).notificationReviews).toBe(1);
+    expect(db.notices[0].last_error).toBe('notice_prepare_failed');
+    expect(db.rpc).toHaveBeenCalledWith('prepare_website_domain_notice_snapshot', expect.objectContaining({
+      p_id: 'notice-site-1', p_account_id: 'acct-1', p_attempted_at: db.notices[0].attempted_at,
+      p_provider_fingerprint: 'a'.repeat(64), p_idempotency_key: 'saved-key', p_payload: { html: 'saved content' },
+    }));
+    await runCustomDomainReconcile(db.client); expect(sendCustomDomainConnectedEmail).toHaveBeenCalledTimes(1);
+  });
   it('retains a failed notification on later runs even though the site is already connected', async () => {
     verifyDomain.mockResolvedValue(connected); sendCustomDomainConnectedEmail.mockRejectedValueOnce(new Error('timeout'));
     const db = makeDb([pendingRow()]);

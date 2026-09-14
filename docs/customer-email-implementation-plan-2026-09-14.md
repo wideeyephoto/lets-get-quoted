@@ -2,6 +2,8 @@
 
 Prepared September 14, 2026, from local baseline `d06a65468`. This plan covers the remaining work in [T01–T20](customer-email-handling-checklist-2026-09-14.md). It does not deploy code, schedule a live worker or send email.
 
+Execution scope subsequently authorized: complete the [ten agreed steps](customer-email-ten-step-execution-2026-09-14.md), commit verified changes along the way, and push when finished. The hosted release and controlled canary are part of that objective and must be proved with current evidence; writing this plan alone does not perform them.
+
 ## Outcome and current position
 
 Every intended email should have a clear recipient policy, a durable identity, bounded recovery and an accurate outcome. Operators should be able to distinguish an overdue send, uncertain acceptance and an actual delivery failure without creating a duplicate.
@@ -66,7 +68,7 @@ Local domain failure progress: submissions require the existing incident UUID, s
 
 Implement a reusable notice ledger and worker contract for remaining business events, while retaining the existing lifecycle/document ledgers. Use database uniqueness, immutable payload snapshots, atomic leases, acceptance records and provider-scope checks. Avoid a simultaneous rewrite of all transports.
 
-Website connection owner notices now have atomic source-event creation, one-time claiming, a saved recipient and provider acceptance ID, persistent review/backlog reporting and evidence-backed operator closeout. This existing notification is distinct from sending-domain restoration. Its immutable message snapshots, provider scope/idempotency binding and signed callback repair remain the next family-specific steps. See the [website notice runbook](runbooks/website-domain-connection-notices.md) and [local evidence](evidence/website-domain-notices-2026-09-14.md). No new restoration email was introduced.
+Website connection owner notices now have atomic source-event creation, one-time claiming, immutable message snapshots, credential fingerprints/provider keys, a saved recipient and acceptance ID, persistent review/backlog reporting and evidence-backed operator closeout. This existing notification is distinct from sending-domain restoration. Signed callback repair is next; actual provider workspace/region and receiver evidence remain hosted gates. See the [website notice runbook](runbooks/website-domain-connection-notices.md) and [execution record](customer-email-ten-step-execution-2026-09-14.md). No new restoration email was introduced.
 
 | Order | Family | Intended identity and recovery rule |
 | --- | --- | --- |

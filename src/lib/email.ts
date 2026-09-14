@@ -67,15 +67,15 @@ import { sendPlatformTransactionalEmail } from './platform-transactional-email';
  * branch. Preview should not hold a live sending credential.
  */
 let resendClient: Resend | null = null;
-export type DomainFailureEmailSnapshot = {
+export type DurableOwnerEmailSnapshot = {
   payload: Parameters<Resend['emails']['send']>[0];
   providerFingerprint: string;
   idempotencyKey: string;
 };
-type PrepareDomainFailureEmail = (snapshot: DomainFailureEmailSnapshot) => Promise<void>;
+type PrepareOwnerEmail = (snapshot: DurableOwnerEmailSnapshot) => Promise<void>;
 const resend = {
   emails: {
-    send: (payload: Parameters<Resend['emails']['send']>[0], options?: Parameters<Resend['emails']['send']>[1] & { idempotencyKey?: string; prepareIntent?: PrepareDomainFailureEmail }) => {
+    send: (payload: Parameters<Resend['emails']['send']>[0], options?: Parameters<Resend['emails']['send']>[1] & { idempotencyKey?: string; prepareIntent?: PrepareOwnerEmail }) => {
       if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
       const client = resendClient;
       return sendWithDomainFallback(async (payload, requestOptions) => {
@@ -88,7 +88,7 @@ const resend = {
           // SDK v3 has no typed idempotency option. Submit the already rendered
           // payload with an explicit header, without mutating shared headers.
           if (payload.react) throw new Error('Idempotent email requires rendered content.');
-          if (!options.prepareIntent || !client.key) throw new Error('Domain failure snapshot preparation is required.');
+          if (!options.prepareIntent || !client.key) throw new Error('Email snapshot preparation is required.');
           const body = JSON.stringify(payload);
           await options.prepareIntent({
             payload: JSON.parse(body),
@@ -1288,7 +1288,7 @@ export function renderDailyDigestEmailHtml(input: {
  */
 export async function sendSendingDomainFailedEmail(input: {
   noticeId: string;
-  prepareIntent: PrepareDomainFailureEmail;
+  prepareIntent: PrepareOwnerEmail;
   recipientEmail: string;
   businessName: string;
   domain: string;
@@ -1346,6 +1346,7 @@ export async function sendSendingDomainFailedEmail(input: {
  */
 export async function sendCustomDomainConnectedEmail(input: {
   noticeId: string;
+  prepareIntent: PrepareOwnerEmail;
   recipientEmail: string;
   businessName: string;
   domain: string;
@@ -1381,7 +1382,7 @@ export async function sendCustomDomainConnectedEmail(input: {
     }),
     reply_to: 'hello@letsgetquoted.com',
     tags: [...tags, { name: 'website_domain_notice_id', value: input.noticeId }],
-  });
+  }, { idempotencyKey: `website-domain-connected:v1:${input.noticeId}`, prepareIntent: input.prepareIntent });
 
   if (result.error) {
     console.error('Failed to send custom-domain connected email:', result.error);

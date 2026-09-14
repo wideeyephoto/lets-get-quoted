@@ -28,6 +28,15 @@ after thirty minutes, when the worker next runs. Until signed callback recovery
 is added for this family, even a delivered provider event requires evidence-backed
 operator closeout of that notice. The callback does not currently resolve it.
 
+The snapshot migration now additionally requires an immutable saved message before
+submission. `website_domain_notice_snapshots` contains the exact rendered payload,
+the SHA-256 fingerprint of the actual SDK credential and the stable
+`website-domain-connected:v1:<notice UUID>` provider key. The credential itself is
+not stored. Only one preparation wins; later calls cannot change the recipient,
+message, event identity, fingerprint or key. Recipient policy is checked again
+after saving. A credential fingerprint does not establish the provider's workspace
+or region; those remain part of hosted acceptance.
+
 Unsent notices are cancelled when the site is removed, the domain changes or the
 verification stamp is cleared/replaced. A genuinely new connection can create a
 new notice. Site deletion retains incident evidence; account deletion cascades it
@@ -60,18 +69,20 @@ evidence, and never submits email or erases its original failure code.
 
 ## Release gates
 
-Apply `20260914171633_website_domain_connection_notices.sql` before deploying the
+Apply `20260914171633_website_domain_connection_notices.sql`, then
+`20260914173129_website_domain_notice_snapshots.sql`, before deploying the
 updated reconciler and sender. The migration requires the existing `sites` and
 `accounts` tables. Drain older reconciler invocations during cutover and retain
 the additive schema on rollback. Assign outstanding notices for review if rolling
 back to a worker that does not process the queue.
 
-This is the initial durable-event and acceptance step. Immutable rendered-message
-snapshots, provider credential/scope binding and idempotency headers, signed
-callback acceptance/delivery repair, approved retention and any automatic retry
-contract remain open. Local checks do not satisfy hosted receiver or canary gates.
+Durable events, immutable message snapshots, credential fingerprints and provider
+idempotency headers are implemented locally. Signed callback acceptance/delivery
+repair, verified provider workspace/region, approved retention and any automatic
+retry contract remain open. Local checks do not satisfy hosted receiver or canary gates.
 No schedule, enrollment or live recipient change accompanies this local work.
 
 Verification: [dated local evidence](../evidence/website-domain-notices-2026-09-14.md).
+Later snapshot/key evidence: [ten-step execution record](../customer-email-ten-step-execution-2026-09-14.md).
 Track next steps in [the rollout plan](../customer-email-implementation-plan-2026-09-14.md)
 and [the official prelaunch list](../../LAUNCH_CHECKLIST.md).
