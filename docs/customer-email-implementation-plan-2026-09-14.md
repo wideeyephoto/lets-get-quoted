@@ -68,7 +68,7 @@ Local domain failure progress: submissions require the existing incident UUID, s
 
 Implement a reusable notice ledger and worker contract for remaining business events, while retaining the existing lifecycle/document ledgers. Use database uniqueness, immutable payload snapshots, atomic leases, acceptance records and provider-scope checks. Avoid a simultaneous rewrite of all transports.
 
-Website connection owner notices now have atomic source-event creation, one-time claiming, immutable message snapshots, credential fingerprints/provider keys, a saved recipient and acceptance ID, persistent review/backlog reporting and evidence-backed operator closeout. This existing notification is distinct from sending-domain restoration. Signed callback repair is next; actual provider workspace/region and receiver evidence remain hosted gates. See the [website notice runbook](runbooks/website-domain-connection-notices.md) and [execution record](customer-email-ten-step-execution-2026-09-14.md). No new restoration email was introduced.
+Website connection owner notices now have atomic source-event creation, one-time claiming, immutable message snapshots, credential fingerprints/provider keys, a saved recipient and acceptance ID, persistent review/backlog reporting and evidence-backed operator closeout. This existing notification is distinct from sending-domain restoration. Signed callback repair is locally verified; actual provider workspace/region and receiver evidence remain hosted gates. See the [website notice runbook](runbooks/website-domain-connection-notices.md) and [execution record](customer-email-ten-step-execution-2026-09-14.md). No new restoration email was introduced.
 
 | Order | Family | Intended identity and recovery rule |
 | --- | --- | --- |
@@ -127,3 +127,9 @@ Checklist: T01, T02, T20; preserve existing go-live I04/J04/J05 requirements.
 Completed locally: a disabled-by-default recovery worker for the two existing ledgers; final workspace checks for crew/theme/merchandise sends; complete shared suppression scans; platform campaign preference storage and unsubscribe flow; bounded lifecycle recipient checks; and platform transactional gates for login, reports, support and staff messages. Next finish the provider-scope/history and external-sender inventory, then continue durable identities and capacity work. M2 remains open until its inventory/evidence requirements are met. Keep scheduling/enabling in the hosted environment within M5 acceptance.
 
 Production-specific inputs needed before M5/M6: environment identity, internal recipient addresses, cohort IDs, current provider capacity, responder and backup. Local implementation can proceed before those inputs are finalized.
+
+### Twenty-fourth-pass implementation — signed website callback recovery
+
+- **T16/T17/T19:** Signed website callbacks now bind saved notice/workspace/recipient/provider evidence before delivery history or suppression. Early delivery repairs missing acceptance without resending; delayed completion cannot erase stronger outcomes. Unknown or unprepared callbacks are quarantined for review.
+- **Verification:** 97 application tests and 57 PostgreSQL checks passed, plus changed-file lint, full type checking and a clean local security advisor. See the [ten-step execution record](customer-email-ten-step-execution-2026-09-14.md).
+- **Remaining:** Continue remaining domain/owner notice coverage and restoration behavior, then scheduled and other message families. Hosted acceptance and canary gates remain open; no live change occurred.

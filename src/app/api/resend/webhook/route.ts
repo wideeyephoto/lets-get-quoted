@@ -153,19 +153,23 @@ export async function POST(request: Request) {
     const { kind, accountId } = resendTags(event.data.tags);
     const recipient = resendRecipient(event.data.to);
 
-    const domainNoticeId = resendTagValue(event.data.tags, 'domain_failure_notice_id');
+    const failureNoticeId = resendTagValue(event.data.tags, 'domain_failure_notice_id');
+    const websiteNoticeId = resendTagValue(event.data.tags, 'website_domain_notice_id');
+    if (failureNoticeId && websiteNoticeId) throw new Error('Callback has conflicting notice families');
+    const domainNoticeId = failureNoticeId || websiteNoticeId;
+    const noticeTag = websiteNoticeId ? 'website_domain_notice_id' : 'domain_failure_notice_id';
     if (domainNoticeId) {
       const boundRecipient = operationalSingleRecipient(event.data.to);
-      if (kind !== 'sending_domain_failed' || !accountId || !boundRecipient
-        || !unambiguousDomainNoticeTags(event.data.tags)
+      if (kind !== (websiteNoticeId ? 'custom_domain_connected' : 'sending_domain_failed') || !accountId || !boundRecipient
+        || !unambiguousDomainNoticeTags(event.data.tags, noticeTag)
         || resendTagValue(event.data.tags, 'delivery_scope')
         || (event.data.cc && (!Array.isArray(event.data.cc) || event.data.cc.length))
         || (event.data.bcc && (!Array.isArray(event.data.bcc) || event.data.bcc.length))) {
-        throw new Error('Domain failure callback has an invalid binding');
+        throw new Error('Domain notice callback has an invalid binding');
       }
       // Validate against the immutable snapshot before changing delivery history
       // or suppression. The signed tag alone is insufficient evidence.
-      const { data: result, error: confirmError } = await admin.rpc('confirm_email_domain_failure_notice', {
+      const { data: result, error: confirmError } = await admin.rpc(websiteNoticeId ? 'confirm_website_domain_connection_notice' : 'confirm_email_domain_failure_notice', {
         p_id: domainNoticeId, p_account_id: accountId, p_recipient: boundRecipient, p_provider_id: providerId,
         p_status: status, p_occurred_at: event.created_at ?? new Date().toISOString(),
         p_event_id: request.headers.get('svix-id'),
@@ -177,10 +181,10 @@ export async function POST(request: Request) {
           payload_excerpt: JSON.stringify({ notice_id: domainNoticeId, account_id: accountId, provider_id: providerId,
             svix_id: request.headers.get('svix-id'), binding_state: result }),
         });
-        if (quarantineError) throw new Error('Could not retain domain failure callback quarantine');
+        if (quarantineError) throw new Error('Could not retain domain notice callback quarantine');
         return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
       }
-      if (confirmError || result !== 'confirmed') throw new Error('Could not reconcile domain failure callback');
+      if (confirmError || result !== 'confirmed') throw new Error('Could not reconcile domain notice callback');
     }
 
     // Upsert keyed by provider_id. Resend is at-least-once and explicitly does
@@ -320,8 +324,8 @@ function operationalSingleRecipient(value: unknown): string | null {
   return values[0].toLowerCase();
 }
 
-function unambiguousDomainNoticeTags(tags: unknown): boolean {
-  return ['kind', 'account_id', 'domain_failure_notice_id'].every(name => {
+function unambiguousDomainNoticeTags(tags: unknown, noticeTag: string): boolean {
+  return ['kind', 'account_id', noticeTag].every(name => {
     const values = Array.isArray(tags)
       ? tags.filter(entry => entry && typeof entry === 'object' && entry.name === name).map(entry => entry.value)
       : tags && typeof tags === 'object' ? [(tags as Record<string, unknown>)[name]] : [];

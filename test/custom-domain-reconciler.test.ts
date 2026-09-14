@@ -100,6 +100,7 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[]
       return { data: true, error: null };
     }
     if (name === 'finish_website_domain_connection_notice') {
+      if (n?.provider_id) return { data: params.p_provider_id === null || n.provider_id === params.p_provider_id, error: null };
       if (opts.finishFails && params.p_provider_id) return { data: false, error: { message: 'unavailable' } };
       if (n) Object.assign(n, params.p_provider_id ? { state: 'accepted', provider_id: params.p_provider_id }
         : { state: 'manual_review', last_error: params.p_error });
@@ -375,5 +376,23 @@ describe('Custom domain certificate reconciler', () => {
 
       expect(summary.orphanedAtProject).toBe(0);
     });
+  });
+});
+
+ describe('Website callback and worker ordering', () => {
+  it.each(['acknowledgement', 'timeout'])('preserves early delivery after a late %s without resending', async outcome => {
+    verifyDomain.mockResolvedValue(connected);
+    const db = makeDb([pendingRow()]);
+    sendCustomDomainConnectedEmail.mockImplementationOnce(async (...args: unknown[]) => {
+      const input = args[0] as { prepareIntent: (snapshot: unknown) => Promise<void> };
+      await input.prepareIntent({ payload: { html: 'saved' }, providerFingerprint: 'a'.repeat(64), idempotencyKey: 'saved-key' });
+      Object.assign(db.notices[0], { provider_id: 'provider-1', state: 'resolved', callback_status: 'delivered' });
+      if (outcome === 'timeout') throw new Error('timeout');
+      return 'provider-1';
+    });
+    await runCustomDomainReconcile(db.client);
+    await runCustomDomainReconcile(db.client);
+    expect(db.notices[0]).toMatchObject({ state: 'resolved', provider_id: 'provider-1', callback_status: 'delivered' });
+    expect(sendCustomDomainConnectedEmail).toHaveBeenCalledTimes(1);
   });
 });

@@ -254,3 +254,9 @@ Execution order, acceptance criteria and milestone dependencies are in the [impl
 3. **T03:** Run the repaired read-only runner in the intended hosted environment after review of environment identity. No live recipient preview has been fetched in this pass.
 4. **T01:** The repository canary record, last updated September 11, says Day 1 started September 11. Current scheduled runs were not re-read here; resolve the pasted list's differing date using actual retained run evidence. Keep enrollment closed until all live gates pass.
 5. **T02/T04/T05/T07–T11/T13/T14/T18/T20:** Retain or collect the required live capacity, receiver, recovery, tenant and operational evidence. Local green tests do not complete those gates.
+
+### Twenty-fourth-pass implementation — signed website callback recovery
+
+- **T16/T17/T19:** Signed website callbacks now bind saved notice/workspace/recipient/provider evidence before delivery history or suppression. Early delivery repairs missing acceptance without resending; delayed completion cannot erase stronger outcomes. Unknown or unprepared callbacks are quarantined for review.
+- **Verification:** 97 application tests and 57 PostgreSQL checks passed, plus changed-file lint, full type checking and a clean local security advisor. See the [ten-step execution record](customer-email-ten-step-execution-2026-09-14.md).
+- **Remaining:** Continue remaining domain/owner notice coverage and restoration behavior, then scheduled and other message families. Hosted acceptance and canary gates remain open; no live change occurred.

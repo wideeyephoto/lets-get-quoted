@@ -9,7 +9,7 @@ controlled canary require actual environment and receiver evidence.
 | --- | --- | --- | --- |
 | 1 | Complete website-notice snapshots | Implemented locally; verification below | Immutable recipient/content/link/sender snapshots before submission; failure and mutation tests |
 | 2 | Provider identity and deduplication keys | Implemented locally; verification below | Saved credential fingerprint and stable per-notice key; actual request-boundary proof; hosted scope verified in step 9 |
-| 3 | Signed website callback recovery | Next | Saved binding checks, lost-acceptance repair, monotonic outcomes and callback/worker race tests without resend |
+| 3 | Signed website callback recovery | Implemented locally; verification below | Saved binding checks, lost-acceptance repair, monotonic outcomes and callback/worker race tests without resend |
 | 4 | Remaining domain/owner notices | Open | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
 | 5 | Appointment/booking/selection reminders | Open | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
 | 6 | Campaign/review/rebook messages | Open | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
@@ -41,3 +41,22 @@ Observed local verification:
 The request-boundary tests use the installed SDK with offline HTTP responses,
 and compare saved content to the submitted body and actual idempotency header.
 Hosted scope, receiver delivery and canary results remain unverified for this change.
+
+## September 14 — website signed callback recovery
+
+Steps 1–2 committed as 84ccbad1f. Step 3 adds migration
+20260914173622_website_domain_notice_callbacks.sql and signed webhook binding.
+Callbacks match the saved notice, workspace, single recipient and provider ID
+before event history or suppression changes. Early callbacks repair acceptance;
+late acknowledgements/timeouts cannot overwrite them. Stronger negative evidence
+wins out of order. Explicit operator closeout survives while evidence is retained.
+Missing/unprepared notices are quarantined without assigning recipient effects.
+No callback triggers another send.
+
+Verification: **97 application tests**, **57/57 actual PostgreSQL 17 checks**,
+changed-file lint and full application/test type checking passed. The local
+Supabase security advisor reported **No issues found**. PostgreSQL checks cover
+concurrent callback/completion, provider collisions, tenant/recipient mismatch,
+expired observation, immutable snapshots and operator closeout. Worker tests
+cover early delivery followed by acknowledgement or timeout and a second run.
+Hosted acceptance and canary evidence remain open. Step 4 is next.

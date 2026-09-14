@@ -86,3 +86,20 @@ Verification: [dated local evidence](../evidence/website-domain-notices-2026-09-
 Later snapshot/key evidence: [ten-step execution record](../customer-email-ten-step-execution-2026-09-14.md).
 Track next steps in [the rollout plan](../customer-email-implementation-plan-2026-09-14.md)
 and [the official prelaunch list](../../LAUNCH_CHECKLIST.md).
+
+## Signed callback recovery
+
+Apply 20260914173622_website_domain_notice_callbacks.sql after the snapshot
+migration and before the updated webhook handler. The callback must match the
+saved notice, account, single recipient and provider ID. Missing or unprepared
+notice callbacks produce a private DOMAIN_NOTICE_QUARANTINE record; investigate
+legacy sending, deletion or environment routing. Failed quarantine writes remain
+retryable. Conflicts cannot assign delivery history or suppression.
+
+Delivery closes the notice using signed_provider_webhook. Negative outcomes
+return it to manual review; lower or duplicate events cannot erase stronger
+evidence. Operator closeout remains intact while later callback evidence is
+recorded. A late worker response or timeout preserves the callback result.
+Callbacks never submit email. The acceptance deadline still applies when no
+final delivery evidence arrives. Local proof is in the ten-step execution record;
+hosted receipt has not yet been verified for this release.
