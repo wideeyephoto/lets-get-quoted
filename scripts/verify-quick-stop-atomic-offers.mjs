@@ -81,6 +81,7 @@ try {
   const timeMigration = readFileSync('migrations/20260914132825_quick_stop_atomic_sweep.sql', 'utf8');
   await db.query(timeMigration.slice(timeMigration.indexOf('create or replace function public.quick_stop_window_instant'), timeMigration.indexOf('create or replace function public.sweep_quick_stop_requests')));
   await db.query(readFileSync('migrations/20260914132439_quick_stop_atomic_offer.sql', 'utf8'));
+  await db.query(readFileSync('migrations/20260914132411_quick_stop_refund_recovery.sql', 'utf8'));
   await db.query(readFileSync('migrations/20260914133059_quick_stop_lifecycle_guard.sql', 'utf8'));
   const account = randomUUID();
   const anotherAccount = randomUUID();
