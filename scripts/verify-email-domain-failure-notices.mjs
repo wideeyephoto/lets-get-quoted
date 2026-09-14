@@ -146,6 +146,7 @@ try {
   await (await import('./verify-quote-option-owner-notices.mjs')).verifyQuoteOptionNotices(db, other, root, passed);
   await (await import('./verify-quote-option-request-receipts.mjs')).verifyQuoteOptionRequests(db, other, root, passed);
   await (await import('./verify-margin-owner-notices.mjs')).verifyMarginNotices(db, other, root, passed);
+  await (await import('./verify-margin-evaluation-requests.mjs')).verifyMarginEvaluationRequests(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

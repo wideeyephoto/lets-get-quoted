@@ -1,5 +1,6 @@
+vi.mock('@/lib/margin-evaluation-queue',()=>({runMarginEvaluations:mocks.margins}));
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), run: vi.fn(), finish: vi.fn() }));
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), run: vi.fn(), finish: vi.fn(), margins: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: mocks.admin }));
 vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: mocks.run }));
 import { GET } from '@/app/api/cron/owner-event-notices/route';
@@ -13,6 +14,7 @@ beforeEach(() => {
     insert: () => ({ select: () => ({ maybeSingle: async () => ({ data: { id: 'run-1' }, error: null }) }) }),
     update: (patch: unknown) => { mocks.finish(patch); return { eq: async () => ({ error: null }) }; },
   }) });
+  mocks.margins.mockResolvedValue({marginEvaluations:0,marginEvaluationFailures:0});
   mocks.run.mockResolvedValue({ ownersNotified: 1, errors: 0 });
 });
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
@@ -39,4 +41,9 @@ it('runs the bounded worker only when enabled and records its failures as unheal
   mocks.run.mockResolvedValueOnce({ ownersNotified: 0, errors: 2, notificationBacklog: 2 });
   expect((await GET(request())).status).toBe(500);
   expect(mocks.finish).toHaveBeenLastCalledWith(expect.objectContaining({ ok: false }));
+});
+
+it('continues owner pickup and reports unhealthy when margin evaluation cannot start',async()=>{
+  vi.stubEnv('LGQ_OWNER_EVENT_NOTICES_ENABLED','true');mocks.margins.mockRejectedValueOnce(new Error('database unavailable'));
+  expect((await GET(request())).status).toBe(500);expect(mocks.run).toHaveBeenCalled();
 });

@@ -6,6 +6,7 @@ import {runOwnerEventNotices} from '@/lib/owner-event-notices';
 
 export interface MarginAlertEvaluation {
   triggered: boolean;
+  evaluationFailed?: boolean;
   reason?: 'below_floor' | 'running_loss';
   marginPct: number;
   floorPct: number;
@@ -33,6 +34,7 @@ export async function evaluateAndTriggerMarginAlert(
   accountId: string,
   jobId: string,
   newlyAddedCost?: Pick<Cost, 'description' | 'amount' | 'type'> | null,
+  options: {dispatchOwner?:boolean} = {},
 ): Promise<MarginAlertEvaluation> {
   try {
     const admin = createAdminClient();
@@ -102,7 +104,7 @@ export async function evaluateAndTriggerMarginAlert(
     const feedEventCreated=true;
     const noticeSaved=saved.data.notice_saved===true;
     let emailSent=false;
-    if(noticeSaved){
+    if(noticeSaved && options.dispatchOwner!==false){
       try{const result=await runOwnerEventNotices(admin,{sourceId:saved.data.feed_id,accountId});emailSent=result.ownersNotified>0;}
       catch{console.error('Margin owner notice remains saved for pickup');}
     }
@@ -122,6 +124,6 @@ export async function evaluateAndTriggerMarginAlert(
     };
   } catch (error) {
     console.error('Error in evaluateAndTriggerMarginAlert:', error);
-    return { triggered: false, marginPct: 0, floorPct: 0, profit: 0, totalCost: 0, revenue: 0 };
+    return { triggered: false, evaluationFailed:true, marginPct: 0, floorPct: 0, profit: 0, totalCost: 0, revenue: 0 };
   }
 }

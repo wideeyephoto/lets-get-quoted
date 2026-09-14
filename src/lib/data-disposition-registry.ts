@@ -112,6 +112,12 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+  margin_evaluation_requests: {
+    tableName: 'margin_evaluation_requests', relationship: 'direct_account_id', primaryKeyColumn: 'job_id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
   quick_stop_request_receipts: {
     tableName: 'quick_stop_request_receipts', relationship: 'direct_account_id', primaryKeyColumn: 'id',
     localAction: 'delete', portability: 'internal_system',
