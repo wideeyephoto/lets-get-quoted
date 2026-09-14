@@ -22,8 +22,12 @@ Recipient precedence remains `ONCALL_PRIMARY_EMAIL`, then `FOUNDER_ALERT_EMAIL`,
 
 ## Remaining evidence and recovery
 
-Queued-alert callbacks continue to update receipt evidence by provider ID. Existing saved payloads do not gain platform scope tags; this change does not retroactively promote their callback failures into platform suppression. Historical/provider evidence reconciliation and future callback policy remain open. Do not alter saved payloads to add tags under an existing idempotency key.
+Queued-alert callbacks continue to update receipt evidence by provider ID. The subsequent callback pass also checks otherwise unscoped delivery-block events against the operational ledger's unique provider ID. Only an exact match to the saved single recipient, with no extra recipients or tenant tag in the saved payload, establishes platform scope. Complaints, provider suppressions and permanent bounces then use existing atomic platform reason-promotion rules. Transient/undetermined bounces do not create blocks. Lookup or suppression-write failures return a retryable webhook error; mismatched bindings remain errors requiring review.
+
+Existing saved payloads gain no tags or replacement keys. A callback arriving before its provider ID is saved, an emergency notification without a ledger row, or an unknown provider ID does not establish scope; the event remains recorded without inferred platform suppression. This race and historical/provider evidence reconciliation remain open. Do not alter saved payloads to add tags under an existing idempotency key.
 
 Review blocked or mismatched deliveries using the existing send reference, destination configuration and provider evidence. Reconcile uncertain acceptance before changing configuration or creating another notification. A healthy scan state is not proof of successful notification: inspect `failed`, manual-review records and actual responder receipt.
 
 Validation: 4 files / 57 tests passed, including 25 new recipient-policy cases, existing outage independence, accepted-send bookkeeping failures, lease recovery, cron error handling and SMS paging. Full application/test type checking passed. Lint has no errors and two existing unused-variable warnings. Registry transport signatures still match. Hosted database/provider/receiver acceptance was not performed.
+
+Subsequent callback validation: 4 files / 97 tests passed, including 13 new signed-callback cases for exact binding, recipient mismatch, extra recipients, tenant-scope rejection, unavailable reads, failed writes, unknown/early IDs and transient bounces. Full application/test type checking and changed-file lint passed. No schema, saved payload, provider permission or hosted change was made.

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   upsert: vi.fn(),
   rpc: vi.fn(),
   intentLookup: vi.fn(),
+  operationalLookup: vi.fn(),
   quarantine: vi.fn(),
   suppressEmail: vi.fn(),
   logWebhookFailure: vi.fn(),
@@ -79,12 +80,14 @@ beforeEach(() => {
   mocks.upsert.mockResolvedValue({ error: null });
   mocks.rpc.mockResolvedValue({ data: true, error: null });
   mocks.intentLookup.mockResolvedValue({ data: { id: 'existing-intent' }, error: null });
+  mocks.operationalLookup.mockResolvedValue({ data: null, error: null });
   mocks.quarantine.mockResolvedValue({ error: null });
   mocks.suppressEmail.mockResolvedValue(true);
   mocks.logWebhookFailure.mockResolvedValue(undefined);
   mocks.createAdminClient.mockReturnValue({
     rpc: mocks.rpc,
     from: vi.fn((table: string) => {
+      if (table === 'operational_alert_deliveries') return { select: () => ({ eq: () => ({ maybeSingle: mocks.operationalLookup }) }) };
       if (table === 'document_email_sends') return { select: () => ({ eq: () => ({ maybeSingle: mocks.intentLookup }) }) };
       if (table === 'webhook_failures') return { insert: mocks.quarantine };
       if (table !== 'email_events') throw new Error(`Unexpected table ${table}`);
@@ -314,5 +317,52 @@ describe('Resend webhook database ordering guard', () => {
     expect(migration).toContain('v_new_rank < v_old_rank');
     expect(migration).toContain('v_new_rank = v_old_rank and new.status is distinct from old.status');
     expect(migration).toContain('return old;');
+  });
+});
+
+describe('operational callback recipient binding', () => {
+  const providerId = 'ops-provider-id';
+  function bound(payload: unknown = { to: [RECIPIENT] }) {
+    mocks.operationalLookup.mockResolvedValue({ data: { provider_id: providerId, payload }, error: null });
+  }
+  it.each([
+    ['email.complained', {}, 'complaint'],
+    ['email.suppressed', {}, 'provider_suppressed'],
+    ['email.bounced', { bounce: { type: 'Permanent' } }, 'hard_bounce'],
+  ])('binds signed untagged %s to the saved provider ID and recipient', async (type, extra, reason) => {
+    bound();
+    const response = await POST(signedRequest(type as string, { email_id: providerId, to: [RECIPIENT], ...extra as object }));
+    expect(response.status).toBe(200);
+    expect(mocks.suppressEmail).toHaveBeenCalledWith(expect.anything(), 'platform', RECIPIENT, reason);
+  });
+  it.each([{ to: ['other@example.com'] }, { to: [RECIPIENT], bcc: ['hidden@example.com'] },
+    { to: [RECIPIENT], tags: [{ name: 'account_id', value: ACCOUNT_ID }] }])('refuses mismatched or tenant-scoped saved payloads', async payload => {
+    bound(payload);
+    expect((await POST(signedRequest('email.complained', { email_id: providerId, to: [RECIPIENT] }))).status).toBe(500);
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+    expect(mocks.logWebhookFailure).toHaveBeenCalled();
+  });
+  it('refuses multiple callback recipients rather than using only the first', async () => {
+    bound();
+    expect((await POST(signedRequest('email.complained', { email_id: providerId, to: [RECIPIENT, 'other@example.com'] }))).status).toBe(500);
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+  it.each([{ data: null, error: { message: 'offline' } }, { data: undefined, error: null }])('returns retryable failure when binding cannot be read', async result => {
+    mocks.operationalLookup.mockResolvedValue(result);
+    expect((await POST(signedRequest('email.complained', { email_id: providerId, to: [RECIPIENT] }))).status).toBe(500);
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+  it('does not infer scope from an unknown or not-yet-recorded provider ID', async () => {
+    expect((await POST(signedRequest('email.complained', { email_id: providerId, to: [RECIPIENT] }))).status).toBe(200);
+    expect(mocks.upsert).toHaveBeenCalled();
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+  it('retries failed suppression persistence after a successful binding', async () => {
+    bound(); mocks.suppressEmail.mockResolvedValue(false);
+    expect((await POST(signedRequest('email.complained', { email_id: providerId, to: [RECIPIENT] }))).status).toBe(500);
+  });
+  it.each(['Transient', 'Undetermined'])('does not promote %s bounces or inspect the operations ledger', async type => {
+    expect((await POST(signedRequest('email.bounced', { email_id: providerId, to: [RECIPIENT], bounce: { type } }))).status).toBe(200);
+    expect(mocks.operationalLookup).not.toHaveBeenCalled(); expect(mocks.suppressEmail).not.toHaveBeenCalled();
   });
 });

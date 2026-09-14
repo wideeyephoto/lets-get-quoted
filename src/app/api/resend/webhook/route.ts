@@ -237,8 +237,12 @@ export async function POST(request: Request) {
     // So a hard-bouncing address stayed on the list and was re-sent to on every
     // campaign, forever, and the only thing between a contractor's list and a
     // mailbox-provider reputation hit was a syntactic placeholder check.
-    await maybeSuppress(admin, { status, accountId: kind === 'platform_campaign' || kind === 'platform_campaign_test'
-      || resendTagValue(event.data.tags, 'delivery_scope') === 'platform_transactional' ? 'platform' : accountId,
+    let suppressionScope = kind === 'platform_campaign' || kind === 'platform_campaign_test'
+      || resendTagValue(event.data.tags, 'delivery_scope') === 'platform_transactional' ? 'platform' : accountId;
+    if (!suppressionScope && suppressionReasonFor({ status, bounceType: event.data.bounce?.type })) {
+      suppressionScope = await operationalCallbackScope(admin, providerId, event.data.to);
+    }
+    await maybeSuppress(admin, { status, accountId: suppressionScope,
       recipient, bounce: event.data.bounce ?? null });
   } catch (err) {
     console.error(`Resend webhook handler threw for event ${event.type}:`, err);
@@ -252,6 +256,29 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+/** Bind legacy untagged operations callbacks to an accepted, saved destination. */
+async function operationalCallbackScope(admin: ReturnType<typeof createAdminClient>, providerId: string, to: unknown): Promise<'platform' | null> {
+  const { data, error } = await admin.from('operational_alert_deliveries').select('provider_id, payload')
+    .eq('provider_id', providerId).maybeSingle();
+  if (error || data === undefined) throw new Error('Operational callback binding could not be checked');
+  if (!data) return null; // Unknown/early callbacks cannot establish platform scope.
+  const saved = data.payload;
+  const single = (value: unknown): string | null => {
+    const values = typeof value === 'string' ? [value] : value;
+    if (!Array.isArray(values) || values.length !== 1 || typeof values[0] !== 'string'
+      || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(values[0])) return null;
+    return values[0].toLowerCase();
+  };
+  const recipient = single(to);
+  if (data.provider_id !== providerId || !recipient || recipient !== single(saved?.to)
+    || (saved?.cc && (!Array.isArray(saved.cc) || saved.cc.length))
+    || (saved?.bcc && (!Array.isArray(saved.bcc) || saved.bcc.length))
+    || resendTagValue(saved?.tags, 'account_id')) {
+    throw new Error('Operational callback recipient binding does not match');
+  }
+  return 'platform';
 }
 
 /**

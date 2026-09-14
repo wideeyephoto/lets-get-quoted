@@ -197,6 +197,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 4 files / 57 tests, full type checking and registry checks passed. Lint has zero errors and two existing warnings. No live sends, migration or hosted changes. See the [operations policy](runbooks/operational-email-recipient-policy.md).
 - **Remaining:** Operational callback/history reconciliation, provider scope/capacity, external transports, independent responder receipt and durable remaining email families.
 
+### Sixteenth-pass implementation — bound operational callbacks
+
+- **T12/T18/T19:** Signed, otherwise unscoped callback failures now use the unique operational ledger provider ID plus exact saved single recipient to establish platform scope. Valid complaints, suppressions and permanent bounces persist delivery blocks. Mismatches, unavailable reads and failed writes remain errors; tenant or extra-recipient payloads cannot be reassigned.
+- **Verification:** 4 files / 97 tests passed, including 13 new signed-callback cases; full type checking and changed-file lint passed. No schema, saved-message/key or live changes occurred.
+- **Remaining:** Early callbacks before acceptance bookkeeping, emergency messages without ledger rows, historical/provider evidence and hosted acceptance. See the [operational callback policy](runbooks/operational-email-recipient-policy.md).
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.
