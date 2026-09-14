@@ -290,6 +290,15 @@
   color: #ffffff;
   line-height: 1.1;
 }
+.statValueGood {
+  color: var(--good, #34d399) !important;
+}
+.statValueWarn {
+  color: var(--warn, #fbbf24) !important;
+}
+.statValueBad {
+  color: var(--bad, #f87171) !important;
+}
 .statLabel {
   font-size: 0.8rem;
   font-weight: 600;
