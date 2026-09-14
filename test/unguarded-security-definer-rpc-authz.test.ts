@@ -61,7 +61,44 @@ describe('F1: unguarded SECURITY DEFINER RPC authorization', () => {
       /grant execute on function public\.record_tenant_audit_event_atomic\([^)]*\)\s*to authenticated, service_role;/,
     );
   });
+
+  const schemaPath = resolve(process.cwd(), 'schema.sql');
+  const schemaSql = existsSync(schemaPath)
+    ? readFileSync(schemaPath, 'utf8').replace(/\r\n/g, '\n').toLowerCase()
+    : '';
+
+  it('schema.sql mirrors the remediation: soft_delete revoked, restore revoked, record_tenant_audit_event guarded', () => {
+    expect(existsSync(schemaPath)).toBe(true);
+
+    // soft_delete_entity_atomic revoked from public, anon, authenticated
+    expect(schemaSql).toMatch(
+      /revoke execute on function public\.soft_delete_entity_atomic\([^)]*\)\s*from public, anon, authenticated;/,
+    );
+    expect(schemaSql).toMatch(
+      /grant execute on function public\.soft_delete_entity_atomic\([^)]*\)\s*to service_role;/,
+    );
+
+    // restore_entity_atomic revoked from public, anon, authenticated
+    expect(schemaSql).toMatch(
+      /revoke execute on function public\.restore_entity_atomic\([^)]*\)\s*from public, anon, authenticated;/,
+    );
+    expect(schemaSql).toMatch(
+      /grant execute on function public\.restore_entity_atomic\([^)]*\)\s*to service_role;/,
+    );
+
+    // record_tenant_audit_event_atomic has internal is_member check and proper grants
+    expect(schemaSql).toContain('create or replace function public.record_tenant_audit_event_atomic');
+    expect(schemaSql).toContain("if auth.role() = 'authenticated' and not public.is_member(p_account_id) then");
+    expect(schemaSql).toMatch(/raise exception 'record_tenant_audit_event_forbidden'/);
+    expect(schemaSql).toMatch(
+      /revoke execute on function public\.record_tenant_audit_event_atomic\([^)]*\)\s*from public, anon;/,
+    );
+    expect(schemaSql).toMatch(
+      /grant execute on function public\.record_tenant_audit_event_atomic\([^)]*\)\s*to authenticated, service_role;/,
+    );
+  });
 });
+
 
 // ---------------------------------------------------------------------------
 // RECOMMENDED runtime invariant (add to the pg17-backed suite). Any future

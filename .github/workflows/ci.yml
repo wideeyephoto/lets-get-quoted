@@ -43,6 +43,9 @@ jobs:
       - name: Account closure domain database checks
         run: npm run test:pg17:closure-domains
 
+      - name: Runtime function ACL and SECURITY DEFINER RPC security on PostgreSQL 17
+        run: npm run test:pg17:function-acl
+
       - name: SEO tests
         run: npm run test:seo
 

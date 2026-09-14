@@ -125,7 +125,7 @@ export default async function SettingsPage({
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.auth.getUserIdentities(),
-    supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone').eq('id', accountId).single(),
+    supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone, license_type, state_employer_number, fein').eq('id', accountId).single(),
     supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
     supabase.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', accountId).in('status', ['requested', 'processing']),
     pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
@@ -860,7 +860,16 @@ export default async function SettingsPage({
                 saveAction={updateInsuranceAction}
                 removeAction={removeInsuranceAction}
               />
-              <ContractorLicensingSection />
+              <ContractorLicensingSection
+                initialCompliance={{
+                  licenseType: (account as any)?.license_type || '',
+                  stateEmployerNumber: (account as any)?.state_employer_number || '',
+                  hasFein: Boolean((account as any)?.fein),
+                  maskedFein: (account as any)?.fein
+                    ? `••-•••${((account as any).fein as string).replace(/[^\d]/g, '').slice(-4)}`
+                    : '',
+                }}
+              />
               <FieldFormsSettingsSection templates={formTemplates} />
             </>
           ),
