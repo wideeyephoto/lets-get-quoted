@@ -184,7 +184,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Florida',
     fips: '12',
     licensingBoard: 'Florida Department of Business and Professional Regulation (DBPR / CILB)',
-    licensingUrl: 'https://www.myfloridalicense.com/DBPR',
+    licensingUrl: 'https://www.myfloridalicense.com/DBPR/construction-industry/',
     codes: {
       building: { name: 'Florida Building Code (FBC 8th Edition - Residential)', edition: '2023', model: 'FBC' },
       electrical: { name: '2020/2023 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
