@@ -295,7 +295,7 @@ Invariants:
     const maxTurns = getMaxToolTurns(query);
     for (let turn = 0; turn < maxTurns; turn++) {
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
         contents: formattedContents,
         config: {
           systemInstruction,
