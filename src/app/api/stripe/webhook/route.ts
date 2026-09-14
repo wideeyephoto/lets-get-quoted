@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { resolveLegacyRefundEvidence } from '@/lib/billing/legacy-refund-evidence';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
@@ -987,10 +989,12 @@ async function dispatchStripeEvent(
         (payment.status === 'paid' || payment.status === 'refunded') &&
         toCents(refundedTotal) > toCents(Number(payment.refunded_amount) || 0)
       ) {
+        const refundNoticeEventId = randomUUID();
         let transition = admin
           .from('payments')
           .update({
             refunded_amount: refundedTotal,
+            refund_notice_event_id: refundNoticeEventId,
             status: isFull ? 'refunded' : 'paid',
             // This branch only runs on NEW progress, so stamping the time here
             // dates the refund that just happened rather than re-dating an old
@@ -1024,6 +1028,11 @@ async function dispatchStripeEvent(
           .maybeSingle();
         if (transitionError) throw transitionError;
         if (transitioned) {
+          try {
+            await runOwnerEventNotices(admin,{sourceId:refundNoticeEventId,accountId:payment.account_id});
+          } catch (error) {
+            console.error('Refund owner notice pickup failed:', error instanceof Error ? error.message : error);
+          }
           // Only a full refund voids the linked invoice and texts the homeowner
           // (the refund SMS states the full amount, so it's wrong for a partial).
           if (isFull && transitioned.invoice_id) {

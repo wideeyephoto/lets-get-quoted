@@ -340,3 +340,11 @@ The legacy route now handles charge.refunded plus refund.created, refund.updated
 Writes fence the saved account, payment intent, amount and rail. Owner outcome notices and durable recovery of side effects are still outstanding. The existing mock webhook script's fabricated charge must now be rejected; it is not a substitute for real provider refund acceptance.
 
 Provider reference: [Stripe refund pagination](https://docs.stripe.com/api/refunds/list).
+
+### Recorded refund owner notices
+
+Apply 20260914185901_payment_refund_owner_notices.sql before deploying the refund writers. The new payments.refund_notice_event_id column is rotated only by the two provider-verified accounting paths. Its trigger rejects invalid source transitions and commits the private owner notice alongside the payment update. No historical refund is backfilled, and an unchanged marker does not turn an unrelated payment edit into a new notice.
+
+The immutable notice records the refund increment, cumulative refunded total, payment amount and payment intent. Source checks require the same account, payment identity and amount, a compatible paid/refunded state and a total at least as large as the saved event. A later partial refund preserves prior history; a deleted or changed source stops pending delivery. The notice opens the payments dashboard and describes recorded accounting rather than claiming bank receipt.
+
+Immediate pickup failure leaves the committed notice for the existing owner-event worker. Verify background pickup configuration, signed callbacks and real owner receipt during hosted acceptance. This does not yet save refund attempts before money submission or recover interrupted invoice/customer-message side effects.

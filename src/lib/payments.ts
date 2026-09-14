@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { createAdminClient } from '@/lib/auth';
 import { resolveFeeBasisCents } from '@/lib/billing/fee-basis';
 import { getWorkspaceFeeRate, resolvePaymentFeeRate } from '@/lib/billing/workspace-fee-rate';
@@ -899,6 +901,7 @@ export async function refundPayment(
     console.log(`Refund created: ${refund.id} for payment ${paymentId} (${isFull ? 'full' : 'partial'} ${formatMoneyCents(requestedCents)})`);
 
     const refundedTotal = fromCents(alreadyCents + requestedCents);
+    const refundNoticeEventId = randomUUID();
 
     // Compare-and-set: only advance the row if refunded_amount is still what we read
     // (and it's still 'paid'). A concurrent refund/webhook that already advanced it
@@ -907,6 +910,7 @@ export async function refundPayment(
       .from('payments')
       .update({
         refunded_amount: refundedTotal,
+        refund_notice_event_id: refundNoticeEventId,
         status: isFull ? 'refunded' : 'paid',
         // Refund reporting dates off this, never off paid_at.
         refunded_at: new Date().toISOString(),
@@ -933,6 +937,11 @@ export async function refundPayment(
     // Side effects run only for the winning write, so a concurrent path can't
     // double-void the invoice or double-text the homeowner.
     if (claimed) {
+      try {
+        await runOwnerEventNotices(createAdminClient(), {sourceId:refundNoticeEventId,accountId});
+      } catch (error) {
+        console.error('Refund owner notice pickup failed:', error instanceof Error ? error.message : error);
+      }
       // Only a FULL refund voids the linked invoice — a partial refund leaves it standing.
       if (isFull && payment.invoice?.id) {
         await supabase.from('invoices').update({ status: 'void' }).eq('id', payment.invoice.id);

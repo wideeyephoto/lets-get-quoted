@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getStripeClient: vi.fn(),
+  ownerNotice: vi.fn(),
   createRefund: vi.fn(),
   listRefunds: vi.fn(),
   retrieveCharge: vi.fn(),
@@ -14,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   createPaymentFeedEvent: vi.fn(),
   logWebhookFailure: vi.fn(),
 }));
+
+vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:mocks.ownerNotice}));
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: () => mocks.admin,
@@ -61,7 +64,7 @@ const legacyPayment = {
   invoice: null,
 };
 
-function paymentClient(row: Record<string, unknown>) {
+function paymentClient(row: Record<string, unknown>, claim = false) {
   const updates: Record<string, unknown>[] = [];
   const filters: Array<[string, unknown]> = [];
   const update = {
@@ -71,7 +74,7 @@ function paymentClient(row: Record<string, unknown>) {
     }),
     is: vi.fn(() => update),
     select: vi.fn(() => update),
-    maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+    maybeSingle: vi.fn(async () => ({ data: claim ? {id:row.id} : null, error: null })),
   };
   const table = {
     select: vi.fn((columns: string) => {
@@ -509,6 +512,17 @@ describe('legacy refund charge-model boundary', () => {
     const db=statefulWebhookAdmin('destination');mocks.admin=db.admin;mocks.event={...chargeRefundedEvent(5000),account:'acct_connected'};
     expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);expect(db.updates).toEqual([]);expect(mocks.retrieveCharge).not.toHaveBeenCalled();
   });
+  it('dispatches the synchronous refund marker only after its accounting write wins',async()=>{
+    const {client,updates}=paymentClient({...legacyPayment,charge_model:'destination'},true);
+    await refundPayment(client,'acct_workspace','pay_legacy_guard',25);
+    expect(updates[0].refund_notice_event_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(mocks.ownerNotice).toHaveBeenCalledWith(mocks.admin,{accountId:'acct_workspace',sourceId:updates[0].refund_notice_event_id});
+  });
+  it('preserves a completed refund when immediate owner notice pickup fails',async()=>{
+    const {client}=paymentClient({...legacyPayment,charge_model:'destination'},true);
+    mocks.ownerNotice.mockRejectedValueOnce(new Error('Pickup unavailable'));
+    await expect(refundPayment(client,'acct_workspace','pay_legacy_guard',25)).resolves.toMatchObject({amount:25,refundedTotal:25});
+  });
   it('keeps explicit destination charge.refunded reconciliation on the legacy path', async () => {
     const db = statefulWebhookAdmin('destination');
     mocks.admin = db.admin;
@@ -519,6 +533,7 @@ describe('legacy refund charge-model boundary', () => {
     expect(response.status).toBe(200);
     expect(db.state).toMatchObject({ refunded_amount: 25, status: 'paid' });
     expect(db.chargeModelFilters).toEqual(['destination']);
+    expect(mocks.ownerNotice).toHaveBeenCalledWith(db.admin,{accountId:'acct_workspace',sourceId:db.updates[0].refund_notice_event_id});
     expect(db.bindingFilters).toEqual(expect.arrayContaining([['account_id','acct_workspace'],['stripe_payment_intent','pi_webhook_guard'],['amount',50]]));
     expect(db.monotonicFilters).toEqual(['refunded_amount.is.null,refunded_amount.lt.25']);
     expect(mocks.createPaymentFeedEvent).toHaveBeenCalledTimes(1);

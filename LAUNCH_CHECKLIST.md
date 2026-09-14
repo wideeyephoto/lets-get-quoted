@@ -40,7 +40,8 @@ The complete agreed work, commit progress and push gate are maintained in the
 - [x] **Local synchronous refund confirmation guard:** Require matching succeeded provider evidence before payment completion writes; cancellation texts describe uncertainty and never treat intended cents as completed. 61 application tests, full type checking and changed-file lint passed.
 - [x] **Local legacy refund webhook evidence:** Refetch and validate charge ownership, paginate succeeded refunds, handle later refund-status events and reject uncertain evidence before completion writes. 93 application tests, full type checking and lint passed.
 - [ ] **Refund webhook hosted subscription:** Verify refund.created, refund.updated and refund.failed are subscribed on the legacy platform endpoint before rollout.
-- [ ] **Durable refund outcome notifications:** Save refund attempts, queue late outcome owner notices and recover interrupted side effects. Hosted provider/receiver evidence and operator recovery remain open.
+- [x] **Local durable refund owner notices:** Verified accounting and a saved owner notice commit together; repeated/concurrent writes produce one notice and later partial refunds get distinct records. 76 application tests, 130 database checks, full type checking, lint and clean local security advisor passed.
+- [ ] **Durable refund attempts and side-effect recovery:** Save the attempt before provider submission and recover interrupted invoice/customer-message updates. Hosted provider/receiver evidence and operator recovery remain open.
 - [ ] **Quick Stop receipt hosted acceptance:** Verify deployment, receiver delivery, receipt retention and interrupted-upload cleanup; authoritative refund outcomes remain open.
 
 ## Workstream Updates (2026-09-12)
