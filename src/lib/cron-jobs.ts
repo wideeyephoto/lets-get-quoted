@@ -53,6 +53,10 @@ export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [];
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'email-recovery', label: 'Email recovery', schedule: '*/5 * * * *', importance: 'customer',
+    consequence: 'Eligible saved emails can miss their retry window; uncertain sends require operator review. Sending is disabled until explicitly enabled.',
+  },
+  {
     job: 'ops-metrics-snapshot',
     label: 'Daily operational metrics snapshot',
     schedule: '0 6 * * *',

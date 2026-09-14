@@ -182,6 +182,7 @@ try {
   await db.query('delete from accounts where id=$1', [account]);
   assert.equal((await db.query('select count(*)::int n from document_email_sends')).rows[0].n, 0);
   passed('invoice acceptance is durable and document/account cleanup cascades correctly');
+  await (await import('./verify-email-recovery-worker-checks.mjs')).verifyRecoveryWorker(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

@@ -2,6 +2,8 @@
 
 Local implementation and audit, September 14, 2026. No hosted migration, deployment, customer email or rollout change was performed. This extends T12, T16, T17, T19 and T20; it does not complete their live acceptance gates.
 
+Subsequent local work added the disabled-by-default [recovery worker](email-recovery-worker.md) for the two existing ledgers. The inventory and verification below describe the monitoring pass; consult the worker runbook for the updated retry capability and its remaining hosted gates.
+
 ## Shared delivery policy
 
 The account-tagged transport in `src/lib/email.ts` now checks `email_suppression` immediately before every provider request, including a platform fallback. It normalizes and deduplicates To, Cc and Bcc recipients, rejects header injection, scopes the query to the tagged workspace and refuses to send if the check fails. If any recipient is blocked, the whole request stops.

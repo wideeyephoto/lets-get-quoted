@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/cron/email-recovery", "schedule": "*/5 * * * *" },
     {
       "path": "/api/cron/operational-alerts",
       "schedule": "*/5 * * * *"

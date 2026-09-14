@@ -1,0 +1,123 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+export async function verifyRecoveryWorker(db, other, root, passed) {
+  await db.query('reset role');
+  await db.query(`alter table accounts add column connect_onboarded boolean default false;
+    create table account_events(account_id uuid,kind text,meta jsonb,created_at timestamptz default now());
+    create function owner_emails_for_accounts(ids uuid[]) returns table(account_id uuid,email text)
+      language sql stable security invoker set search_path='' as $$select id,'owner@example.com'::text from public.accounts where id=any(ids)$$;
+    revoke all on function owner_emails_for_accounts(uuid[]) from public,anon,authenticated;
+    grant execute on function owner_emails_for_accounts(uuid[]) to service_role;
+    grant select on account_events to service_role;
+    alter table account_events enable row level security;`);
+  await db.query(readFileSync(join(root,'migrations/20260914133327_contractor_lifecycle_send_ledger.sql'),'utf8'));
+  const migration = readFileSync(join(root,'migrations/20260914150046_email_recovery_worker.sql'),'utf8');
+  assert.ok(readFileSync(join(root,'schema.sql'),'utf8').replace(/\r\n/g,'\n').includes(migration.replace(/\r\n/g,'\n').trim()));
+  await db.query(migration);
+  for (const role of ['anon','authenticated']) {
+    await db.query(`set role ${role}`);
+    await assert.rejects(db.query('select * from email_recovery_control'),/permission denied/);
+    await assert.rejects(db.query('select * from due_email_recovery_work()'),/permission denied/);
+    await assert.rejects(db.query('select begin_email_recovery_run()'),/permission denied/);
+    await db.query('reset role');
+  }
+  const routines = (await db.query(`select p.oid::regprocedure::text signature,p.prosecdef,p.proconfig
+    from pg_proc p where p.pronamespace='public'::regnamespace and
+    (p.proname like '%email_recovery%' or p.proname='validate_email_recovery_submission')`)).rows;
+  for (const p of routines) {
+    assert.equal(p.prosecdef,false); assert.ok(p.proconfig.some(s=>s.startsWith('search_path=')));
+    for (const role of ['anon','authenticated']) assert.equal((await db.query('select has_function_privilege($1,$2,\'execute\') ok',[role,p.signature])).rows[0].ok,false);
+  }
+  passed('recovery migration/schema parity, private control and all recovery RPC permissions');
+  await db.query('set role service_role');
+  const rpc = async (name,args=[]) => (await db.query(`select ${name}(${args.map((_,i)=>'$'+(i+1)).join(',')}) result`,args)).rows[0].result;
+  assert.equal(await rpc('begin_email_recovery_run'),null);
+  await db.query('update email_recovery_control set enabled=true');
+  assert.equal(await rpc('begin_email_recovery_run'),null);
+  const account = (await db.query('insert into accounts default values returning id')).rows[0].id;
+  await db.query('update email_recovery_control set account_ids=array[$1]::uuid[]',[account]);
+  const scope='a'.repeat(64);
+  const message={from:'Builder <quotes@builder.example>',to:'client@example.com',subject:'Saved',html:'saved-link',tags:[]};
+  const make = async () => {
+    const j=(await db.query('insert into jobs(account_id) values($1) returning *',[account])).rows[0];
+    const c=await rpc('claim_document_email_send',[account,j.id,null,j.document_email_revision,null,message,scope]);
+    await rpc('finish_document_email_send',[c.id,account,c.token,null,'timeout']);
+    await db.query("update document_email_sends set next_retry_at=now()-interval '1 minute' where id=$1",[c.id]);
+    return { j,c };
+  };
+  const first=await make();
+  const before=(await db.query('select row_to_json(s) state from document_email_sends s where id=$1',[first.c.id])).rows[0].state;
+  const preview=(await db.query('select * from due_email_recovery_work()')).rows;
+  assert.equal(preview.length,1); assert.equal(preview[0].work,'resume'); assert.ok(!JSON.stringify(preview).includes('saved-link'));
+  assert.deepEqual((await db.query('select row_to_json(s) state from document_email_sends s where id=$1',[first.c.id])).rows[0].state,before);
+  const tokens=await Promise.all([rpc('begin_email_recovery_run'),other.query('select begin_email_recovery_run() result').then(r=>r.rows[0].result)]);
+  assert.equal(tokens.filter(Boolean).length,1); const run=tokens.find(Boolean);
+  passed('disabled and empty-cohort gates, read-only preview and overlapping-run exclusion');
+  const resume=async c=>rpc('claim_email_recovery_send',['document',c.id,run,scope]);
+  const live=await resume(first.c);
+  assert.equal(live.id,first.c.id); assert.equal(live.key,first.c.key); assert.deepEqual(live.payload,first.c.payload);
+  assert.equal((await resume(first.c)).action,'busy');
+  assert.equal(await rpc('finish_document_email_send',[first.c.id,account,first.c.token,'stale-provider',null]),false);
+  assert.equal(await rpc('validate_email_recovery_submission',['document',live.id,live.token,run]),true);
+  await db.query("insert into email_suppression values($1,'client@example.com','complaint')",[account]);
+  assert.equal(await rpc('validate_email_recovery_submission',['document',live.id,live.token,run]),false);
+  await db.query('delete from email_suppression');
+  await db.query('update email_recovery_control set enabled=false');
+  assert.equal(await rpc('validate_email_recovery_submission',['document',live.id,live.token,run]),false);
+  await db.query('update email_recovery_control set enabled=true');
+  passed('saved identity recovery, stale-worker fencing and suppression/pause checks after claim');
+  const finish=async (c,id=null,name='application_error',seconds=null)=>rpc('finish_email_recovery_send',['document',c.id,account,c.token,id,'controlled failure',name,seconds,run]);
+  assert.equal(await finish(live,null,'daily_quota_exceeded',7200),true);
+  assert.equal(await rpc('email_recovery_can_submit',[run,account]),false);
+  assert.ok((await db.query("select next_retry_at>now()+interval '119 minutes' ok from document_email_sends where id=$1",[live.id])).rows[0].ok);
+  assert.equal((await db.query('select enabled from email_recovery_control')).rows[0].enabled,false);
+  await db.query('update email_recovery_control set cooldown_until=null,enabled=true');
+  const terminal=await make(); const terminalLive=await resume(terminal.c); await finish(terminalLive,null,'validation_error');
+  assert.equal((await db.query('select state from document_email_sends where id=$1',[terminal.c.id])).rows[0].state,'manual_review');
+  passed('quota cooldown preserves retry-after and terminal rejection stops automatic recovery');
+  const changed=await make(); await db.query("update jobs set client_email='changed@example.com' where id=$1",[changed.j.id]);
+  assert.equal((await resume(changed.c)).action,'blocked');
+  assert.equal((await db.query('select state from document_email_sends where id=$1',[changed.c.id])).rows[0].state,'manual_review');
+  const expired=await make(); await db.query("update document_email_sends set first_attempt_at=now()-interval '24 hours' where id=$1",[expired.c.id]);
+  assert.equal((await resume(expired.c)).action,'review');
+  const rotated=await make(); assert.equal((await rpc('claim_email_recovery_send',['document',rotated.c.id,run,'b'.repeat(64)])).action,'review');
+  passed('changed recipients, expired windows and changed provider credentials cannot rearm sends');
+  const fallback=await make(); const fl=await resume(fallback.c);
+  const savedFallback=await rpc('fallback_document_email_send',[fl.id,account,fl.token,'validation_error','The builder.example domain is not verified.']);
+  assert.equal(savedFallback.phase,'fallback');
+  await finish(savedFallback);
+  await db.query("update document_email_sends set next_retry_at=now()-interval '1 minute' where id=$1",[fl.id]);
+  const resumedFallback=await resume(fl); assert.equal(resumedFallback.phase,'fallback'); assert.deepEqual(resumedFallback.payload,savedFallback.payload);
+  await finish(resumedFallback,'recovered-fallback');
+  passed('interrupted platform fallback resumes only its persisted phase and key');
+  const invoiceJob=(await db.query('insert into jobs(account_id) values($1) returning *',[account])).rows[0];
+  const inv=(await db.query('insert into invoices(account_id,job_id) values($1,$2) returning *',[account,invoiceJob.id])).rows[0];
+  const accepted=await rpc('claim_document_email_send',[account,invoiceJob.id,inv.id,invoiceJob.document_email_revision,inv.document_email_revision,message,scope]);
+  await rpc('finish_document_email_send',[accepted.id,account,accepted.token,'already-accepted',null]);
+  assert.equal(await rpc('reconcile_email_recovery_acceptance',[accepted.id,run]),true);
+  assert.equal(await rpc('reconcile_email_recovery_acceptance',[accepted.id,run]),false);
+  await db.query("update invoices set status='paid' where id=$1",[inv.id]);
+  assert.equal(await rpc('reconcile_email_recovery_acceptance',[accepted.id,run]),false);
+  assert.equal((await db.query('select status from invoices where id=$1',[inv.id])).rows[0].status,'paid');
+  await db.query("update invoices set status='draft',total=200 where id=$1",[inv.id]);
+  assert.equal(await rpc('reconcile_email_recovery_acceptance',[accepted.id,run]),false);
+  assert.equal((await db.query('select status from invoices where id=$1',[inv.id])).rows[0].status,'draft');
+  passed('lost invoice bookkeeping repairs once without resending or overwriting paid state');
+  const lc=await rpc('claim_contractor_lifecycle_send',[account,'welcome_day0',{...message,to:'owner@example.com'},scope]);
+  await rpc('finish_contractor_lifecycle_send',[lc.id,account,lc.token,null,'timeout']);
+  await db.query("update contractor_lifecycle_sends set next_retry_at=now()-interval '1 minute' where id=$1",[lc.id]);
+  const ll=await rpc('claim_email_recovery_send',['lifecycle',lc.id,run,scope]);
+  assert.equal(ll.key,lc.key); assert.deepEqual(ll.payload,lc.payload);
+  assert.equal(await rpc('validate_email_recovery_submission',['lifecycle',ll.id,ll.token,run]),true);
+  await db.query('update accounts set suspended_at=now() where id=$1',[account]);
+  assert.equal(await rpc('validate_email_recovery_submission',['lifecycle',ll.id,ll.token,run]),false);
+  await db.query('update accounts set suspended_at=null where id=$1',[account]);
+  await rpc('end_email_recovery_run',[run]);
+  const nextRun=await rpc('begin_email_recovery_run'); assert.ok(nextRun);
+  await rpc('end_email_recovery_run',[run]);
+  assert.equal(await rpc('email_recovery_can_submit',[nextRun,account]),true);
+  await rpc('end_email_recovery_run',[nextRun]);
+  passed('lifecycle snapshot recovery, suspended-account stop and fenced run release');
+}

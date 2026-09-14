@@ -25,14 +25,16 @@ Build and verify M1 first, then M2 and M3 in small changes by email family. M4 f
 
 Checklist: T03, T16, T17, T19, T20.
 
-- [ ] Add a separate authenticated recovery worker, with a proposed five-minute schedule, disabled by default and bounded by batch size, concurrency and execution time. Keep the existing operational scanner read-only.
-- [ ] Query due `retry_wait` records and recoverable expired leases directly from both ledgers. Do not use the dashboard's delayed attention queue as the retry eligibility source.
-- [ ] Refactor the existing send helpers to resume a saved intent by ID through their atomic claim/fencing rules. Reuse exact saved content, links, attachments, provider scope, phase and key. Never rerender a replacement payload during recovery.
-- [ ] Recheck current account, owner/recipient, document revision, suppression and send holds before submission. Stop obsolete lifecycle nudges and changed/deleted document sends. Respect existing backoff, the three-attempt maximum and the fixed original 23-hour cutoff.
-- [ ] Classify provider failures explicitly. Stop terminal recipient/configuration failures; defer eligible transient failures; honor retry timing where supplied. Do not burn the whole retry budget during known quota exhaustion. Preserve uncertainty after an ambiguous submission.
+Local worker implementation completed September 14; see the [worker runbook](runbooks/email-recovery-worker.md) for verified limits, cohort/enablement controls and evidence. Hosted scheduling/receipt and operational acceptance remain in M5. Cross-application capacity reservation and additional email families remain outside this worker's scope.
+
+- [x] Add a separate authenticated recovery worker, with a proposed five-minute schedule, disabled by default and bounded by batch size, concurrency and execution time. Keep the existing operational scanner read-only.
+- [x] Query due `retry_wait` records and recoverable expired leases directly from both ledgers. Do not use the dashboard's delayed attention queue as the retry eligibility source.
+- [x] Refactor the existing send helpers to resume a saved intent by ID through their atomic claim/fencing rules. Reuse exact saved content, links, attachments, provider scope, phase and key. Never rerender a replacement payload during recovery.
+- [x] Recheck current account, owner/recipient, document revision, suppression and send holds before submission. Stop obsolete lifecycle nudges and changed/deleted document sends. Respect existing backoff, the three-attempt maximum and the fixed original 23-hour cutoff.
+- [x] Classify provider failures explicitly. Stop terminal recipient/configuration failures; defer eligible transient failures; honor retry timing where supplied. Do not burn the whole retry budget during known quota exhaustion. Preserve uncertainty after an ambiguous submission.
 - [ ] Give transactional recovery priority over marketing. Add provider-aware request pacing and bounded deferral; verify actual quotas before choosing production budgets.
-- [ ] Reconcile accepted sends with their required business-state updates without submitting again. Cover a crash after acceptance but before invoice/status bookkeeping; fence any repair against the saved revision. Best-effort activity logs must not become duplicate-send triggers.
-- [ ] Add a read-only preview with due/deferred/review counts, worker run reporting and a tested pause control. Expired, exhausted or mismatched records remain visible for review.
+- [x] Reconcile accepted sends with their required business-state updates without submitting again. Cover a crash after acceptance but before invoice/status bookkeeping; fence any repair against the saved revision. Best-effort activity logs must not become duplicate-send triggers.
+- [x] Add a read-only preview with due/deferred/review counts, worker run reporting and a tested pause control. Expired, exhausted or mismatched records remain visible for review.
 
 Acceptance: simultaneous workers, crash before/after provider submission, timeout after acceptance, callback/worker races, saved fallback recovery, changed credentials, changed recipient/document, suppression, paused account, 429/5xx/quota handling and cutoff boundaries all behave correctly. Preview makes zero provider requests and zero mutations. A stopped worker produces an actionable stale-run signal.
 
@@ -109,6 +111,6 @@ Checklist: T01, T02, T20; preserve existing go-live I04/J04/J05 requirements.
 
 ## First implementation slice
 
-Begin with M1: add a disabled-by-default recovery worker for the two existing ledgers, including saved-intent resume, bounded due selection, preview and pause behavior. Deliver it as one reviewable change with database concurrency checks, provider-failure fixtures and CI coverage. Keep scheduling/enabling in the hosted environment within M5 acceptance.
+Completed locally: a disabled-by-default recovery worker for the two existing ledgers, including saved-intent resume, bounded due selection, preview, pause behavior, database concurrency checks, provider-failure fixtures and CI coverage. Next implement M2's policies for independent senders and complete the outstanding capacity review. Keep scheduling/enabling in the hosted environment within M5 acceptance.
 
 Production-specific inputs needed before M5/M6: environment identity, internal recipient addresses, cohort IDs, current provider capacity, responder and backup. Local implementation can proceed before those inputs are finalized.

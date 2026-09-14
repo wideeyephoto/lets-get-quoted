@@ -123,11 +123,19 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** Final selection: **45 regression files / 510 tests passed**. **14 actual PostgreSQL 17 checks passed** with no local security-advisor issues. Full app/test typecheck passed; lint has zero errors and three unchanged warnings verified against the previous commit. Isolated browser preview checked the actual component's populated, empty and unavailable states.
 - Migration prepared at `migrations/20260914142641_email_send_recovery_monitoring.sql`, mirrored in `schema.sql`; operational database checks added to CI. No hosted migration, deployment or customer email performed.
 
-### Next work and live gates
+### Fifth-pass implementation — automatic recovery
 
-Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). Start with automatic recovery for the existing ledgers.
+- **T16/T17:** Added an opt-in, cohort-limited recovery worker for the existing lifecycle/document ledgers, with a shared run lease, bounded sequential processing, saved-payload execution, provider pacing, Retry-After handling and terminal/uncertain outcomes. Confirmed quota/access problems hold recovery instead of repeatedly spending retry attempts.
+- **T12/T18:** Recheck account, recipient, suppression, source revisions and lease/window eligibility immediately before each provider request, including saved fallback. Changed or expired work cannot mint another send identity.
+- **T19:** Repair an accepted, unchanged draft invoice's status without resending; preserve paid/void and edited invoices. Preview reads only due-work metadata and makes no provider, ledger or heartbeat writes.
+- **Verification:** 46 selected regression files / 491 tests passed, followed by 18 passing focused tests including one new fallback case (492 distinct regressions). Both standalone dry-run tests and 22 PostgreSQL 17 checks passed. Disposable local security advisor reported no issues. Full app/test typecheck and changed-file lint passed. See the [worker runbook](runbooks/email-recovery-worker.md).
+- Migration `20260914150046_email_recovery_worker.sql` and a five-minute schedule are prepared locally. Environment and database defaults disable sending; an explicit cohort is required. No hosted migration, deployment, enablement or real email was performed.
 
-1. **T16/T17:** Deploy and verify the prepared lifecycle and quote/invoice ledgers and recovery monitor after reconciling uncertain historical sends. Implement bounded retry scheduling and durable identities for the remaining audited email families/owner notifications. Explicit unchanged-document resends and atomic creation/payment remain separate work. Migrations must precede enabling the new senders.
+### Next work and live gates (updated)
+
+Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.
+
+1. **T16/T17:** Deploy and verify the prepared lifecycle and quote/invoice ledgers, recovery monitor and opt-in worker after reconciling uncertain historical sends. Verify hosted capacity and bounded recovery before enabling the cohort. Add durable identities for the remaining audited email families/owner notifications. Explicit unchanged-document resends and atomic creation/payment remain separate work. Migrations must precede enabling the new senders.
 2. **T12/T19:** Extend delivery-block enforcement to independent and untagged transports using the appropriate recipient scope; verify provider-region scope and reconcile historical evidence before claiming application-wide enforcement.
 3. **T03:** Run the repaired read-only runner in the intended hosted environment after review of environment identity. No live recipient preview has been fetched in this pass.
 4. **T01:** The repository canary record, last updated September 11, says Day 1 started September 11. Current scheduled runs were not re-read here; resolve the pasted list's differing date using actual retained run evidence. Keep enrollment closed until all live gates pass.

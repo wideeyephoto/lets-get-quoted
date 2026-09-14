@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash } from 'node:crypto';
-import type { CreateEmailOptions, Resend } from 'resend';
+import type { CreateEmailOptions } from 'resend';
+import { assertRecoveryMaySubmit, finishEmailAttempt, type EmailProvider, type SavedEmailClaim, type EmailAttemptResult, type RecoveryExecution } from './email-recovery-execution';
 
 type LifecycleEvent = { account_id: string; meta: unknown };
-type SendResult = { data: { id: string } | null; error: { message: string } | null; skipped?: string };
+type SendResult = EmailAttemptResult & { skipped?: string };
 
 // The activity feed remains useful for historical sends, but new sends are
 // authoritative in the ledger even when best-effort feed writes fail.
@@ -22,7 +23,7 @@ export async function loadLifecycleSendHistory(admin: SupabaseClient, accountIds
 
 export async function sendLifecycleMessage(
   admin: SupabaseClient,
-  resend: Resend,
+  resend: EmailProvider,
   message: CreateEmailOptions,
   accountId: string,
   stepId: string,
@@ -33,6 +34,10 @@ export async function sendLifecycleMessage(
     p_provider_scope: createHash('sha256').update(resend.key).digest('hex'),
   });
   if (error || !claim) throw new Error('Lifecycle send claim unavailable; no email submitted.');
+  return executeLifecycleEmailClaim(admin, resend, accountId, claim);
+}
+
+export async function executeLifecycleEmailClaim(admin: SupabaseClient, resend: EmailProvider, accountId: string, claim: SavedEmailClaim, recovery?: RecoveryExecution): Promise<SendResult> {
   if (['already_sent', 'busy', 'blocked'].includes(claim.action)) {
     return { data: null, error: null, skipped: claim.reason || claim.action };
   }
@@ -46,6 +51,7 @@ export async function sendLifecycleMessage(
 
   let result: SendResult;
   try {
+    await assertRecoveryMaySubmit(admin, accountId, recovery);
     if (Date.now() >= Date.parse(claim.retry_before)) throw new Error('Lifecycle retry window expired before submission');
     // Use the persisted snapshot even if templates or the business name changed.
     // SDK v3 exposes fetchRequest for the provider idempotency HTTP header.
@@ -60,10 +66,7 @@ export async function sendLifecycleMessage(
   }
 
   const providerId = result.error ? null : result.data?.id || null;
-  const { data: finished, error: finishError } = await admin.rpc('finish_contractor_lifecycle_send', {
-    p_id: claim.id, p_account_id: accountId, p_token: claim.token,
-    p_provider_id: providerId, p_error: result.error?.message || (providerId ? null : 'Provider did not confirm an email ID'),
-  });
+  const { data: finished, error: finishError } = await finishEmailAttempt(admin, 'lifecycle', claim, accountId, result, recovery);
   if (finishError || finished !== true) {
     throw new Error(`Lifecycle send outcome requires reconciliation: ${claim.id}`);
   }
