@@ -1,6 +1,6 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 const mocks=vi.hoisted(()=>({send:vi.fn(),query:vi.fn(),eq:vi.fn()}));
-vi.mock('resend',()=>({Resend:class{emails={send:mocks.send};fetchRequest(_path:string,options:{body:string;headers:Record<string,string>}){return mocks.send(JSON.parse(options.body),{idempotencyKey:options.headers['Idempotency-Key']});}}}));
+vi.mock('resend',()=>({Resend:class{key='synthetic';emails={send:mocks.send};fetchRequest(_path:string,options:{body:string;headers:Record<string,string>}){return mocks.send(JSON.parse(options.body),{idempotencyKey:options.headers['Idempotency-Key']});}}}));
 vi.mock('@/lib/auth',()=>({createAdminClient:()=>({from:()=>({select:()=>({eq:(...args:unknown[])=>{mocks.eq(...args);return {in:mocks.query,maybeSingle:async()=>({data:null,error:null})};}})})})}));
 vi.mock('@/lib/email-brand',async importOriginal=>({...await importOriginal<typeof import('@/lib/email-brand')>(),loadEmailBrand:async()=>{throw new Error('Use fallback brand');}}));
 import * as email from '@/lib/email';
@@ -8,7 +8,7 @@ const senders=[email.sendOfficeInvitationEmail,email.sendQuoteFollowupEmail,emai
  email.sendAppointmentReminderEmail,email.sendChoiceReminderTestEmail,email.sendBookingConfirmationEmail,
  email.sendClientPortalLinkEmail,email.sendCardUpdateEmail,email.sendCardSetupEmail,
  email.sendSendingDomainFailedEmail,email.sendCustomDomainConnectedEmail];
-const input={noticeId:'11111111-1111-4111-8111-111111111111',recipientEmail:'client@recipient.test',businessName:'Builder',clientName:'Client',url:'https://example.com',address:null,jobRef:'JOB-1',
+const input={prepareIntent:async()=>{},noticeId:'11111111-1111-4111-8111-111111111111',recipientEmail:'client@recipient.test',businessName:'Builder',clientName:'Client',url:'https://example.com',address:null,jobRef:'JOB-1',
  inviteUrl:'https://example.com/invite',linkUrl:'https://example.com/portal',whenLabel:'Monday',count:1,
  message:'Choose an option',domain:'builder.example',settingsUrl:'https://example.com/settings',siteUrl:'https://builder.example',planTitle:'Plan'};
 beforeEach(()=>{vi.clearAllMocks();process.env.RESEND_API_KEY='synthetic';mocks.send.mockResolvedValue({data:{id:'accepted'},error:null});mocks.query.mockResolvedValue({data:[],error:null});});

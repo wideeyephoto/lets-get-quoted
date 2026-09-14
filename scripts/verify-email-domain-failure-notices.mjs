@@ -20,11 +20,14 @@ try {
   other = pg.getPgClient('domain_notices'); await other.connect();
   await db.query(`create role anon; create role authenticated; create role service_role bypassrls;
     create table accounts(id uuid primary key default gen_random_uuid());
-    create function public.office_can(uuid,text) returns boolean language sql as 'select false';
+    create function public.office_can(uuid,text) returns boolean language sql set search_path = '' as 'select false';
     grant usage on schema public to anon,authenticated,service_role;`);
   await db.query(readFileSync(join(root, 'migrations/20260907180000_email_sending_domains.sql'), 'utf8'));
   await db.query(readFileSync(join(root, 'migrations/20260909210950_email_sending_domain_account_limit.sql'), 'utf8'));
   await db.query(readFileSync(join(root, 'migrations/20260910120000_email_domain_failure_notices.sql'), 'utf8'));
+  const snapshotMigration = readFileSync(join(root, 'migrations/20260914170327_email_domain_failure_snapshots.sql'), 'utf8');
+  assert.ok(readFileSync(join(root, 'schema.sql'), 'utf8').replace(/\r\n/g, '\n').includes(snapshotMigration.replace(/\r\n/g, '\n').trim()));
+  await db.query(snapshotMigration);
   await db.query('grant select,insert,update,delete on accounts,email_sending_domains to service_role');
   passed('actual migrations apply to PostgreSQL 17');
 
@@ -106,6 +109,13 @@ try {
   assert.equal((await db.query('select count(*)::int n from email_domain_failure_notices where account_id=$1',[accountA.id])).rows[0].n,0);
   assert.equal((await db.query('select count(*)::int n from email_domain_failure_notices where account_id=$1',[accountB.id])).rows[0].n,1);
   passed('account cleanup stays scoped and preserves another workspace notice');
+  await (await import('./verify-domain-failure-snapshot-checks.mjs')).verifyDomainFailureSnapshots(db, other, passed);
+  if (process.env.LGQ_SUPABASE_CLI) {
+    await db.query('reset role');
+    console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',
+      'postgresql://postgres:postgres@127.0.0.1:54419/domain_notices?sslmode=disable','--type','security','--level','warn','--fail-on','none'],
+    { windowsHide: true,encoding: 'utf8',timeout: 30000 }));
+  }
   console.log(`${checks}/${checks} checks passed`);
 } finally {
   if (other) await other.end(); if (db) await db.end();

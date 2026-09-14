@@ -4,13 +4,14 @@ import { runEmailDomainFailureNotices } from '@/lib/email-domain-failure-notices
 const { send, owner } = vi.hoisted(() => ({ send: vi.fn(), owner: vi.fn() }));
 vi.mock('@/lib/email', () => ({ sendSendingDomainFailedEmail: send, getAccountOwnerEmail: owner }));
 
-function database(options: { saveAcceptedFails?: boolean; eventReadFails?: boolean; pending?: number } = {}) {
+function database(options: { saveAcceptedFails?: boolean; eventReadFails?: boolean; pending?: number; snapshotFails?: boolean; snapshotDenied?: boolean } = {}) {
   const notices: Array<Record<string, any>> = [{
     id: 'notice-1', account_id: 'account-1', domain_id: 'domain-1', domain: 'contractor.example',
-    reason: 'Required DNS record missing', state: 'pending', provider_id: null, accepted_at: null,
+    reason: 'Required DNS record missing', state: 'pending', provider_id: null, accepted_at: null, attempted_at: '2026-09-14T12:00:00Z',
   }];
   const events: Record<string, Record<string, unknown>> = {};
-  const rpc = vi.fn(async () => {
+  const rpc = vi.fn(async (name: string) => {
+    if (name === 'prepare_email_domain_failure_snapshot') return { data: !options.snapshotDenied, error: options.snapshotFails ? { message: 'unavailable' } : null };
     for (const row of notices) if (row.state === 'sending' && row.expired) {
       row.state = 'manual_review'; row.last_error = 'send_outcome_unknown';
     }
@@ -48,9 +49,23 @@ function database(options: { saveAcceptedFails?: boolean; eventReadFails?: boole
   return { client: { rpc, from } as never, notices, events, rpc };
 }
 
-beforeEach(() => { vi.clearAllMocks(); send.mockResolvedValue('provider-1'); owner.mockResolvedValue('owner@example.com'); });
+beforeEach(() => { vi.clearAllMocks(); send.mockImplementation(async input => {
+  await input.prepareIntent({ payload: { to: input.recipientEmail }, providerFingerprint: 'a'.repeat(64), idempotencyKey: `domain-failure:v1:${input.noticeId}` });
+  return 'provider-1';
+}); owner.mockResolvedValue('owner@example.com'); });
 
 describe('Durable domain failure notices', () => {
+  it.each([{ snapshotFails: true }, { snapshotDenied: true }])('retains failed snapshot preparation for review without retrying', async options => {
+    const db = database(options);
+    await runEmailDomainFailureNotices(db.client);
+    await runEmailDomainFailureNotices(db.client);
+    expect(db.notices[0].last_error).toBe('snapshot_prepare_failed');
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(db.rpc).toHaveBeenCalledWith('prepare_email_domain_failure_snapshot', {
+      p_id: 'notice-1', p_account_id: 'account-1', p_attempted_at: '2026-09-14T12:00:00Z',
+      p_payload: { to: 'owner@example.com' }, p_provider_fingerprint: 'a'.repeat(64), p_idempotency_key: 'domain-failure:v1:notice-1',
+    });
+  });
   it('retains a rejected notification across the next run without another send', async () => {
     const db = database(); send.mockRejectedValue(new Error('provider rejected'));
     const first = await runEmailDomainFailureNotices(db.client);

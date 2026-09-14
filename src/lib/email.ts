@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceHtml } from '@/emails/InvoiceEmail';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
@@ -66,9 +67,15 @@ import { sendPlatformTransactionalEmail } from './platform-transactional-email';
  * branch. Preview should not hold a live sending credential.
  */
 let resendClient: Resend | null = null;
+export type DomainFailureEmailSnapshot = {
+  payload: Parameters<Resend['emails']['send']>[0];
+  providerFingerprint: string;
+  idempotencyKey: string;
+};
+type PrepareDomainFailureEmail = (snapshot: DomainFailureEmailSnapshot) => Promise<void>;
 const resend = {
   emails: {
-    send: (payload: Parameters<Resend['emails']['send']>[0], options?: Parameters<Resend['emails']['send']>[1] & { idempotencyKey?: string }) => {
+    send: (payload: Parameters<Resend['emails']['send']>[0], options?: Parameters<Resend['emails']['send']>[1] & { idempotencyKey?: string; prepareIntent?: PrepareDomainFailureEmail }) => {
       if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
       const client = resendClient;
       return sendWithDomainFallback(async (payload, requestOptions) => {
@@ -81,10 +88,20 @@ const resend = {
           // SDK v3 has no typed idempotency option. Submit the already rendered
           // payload with an explicit header, without mutating shared headers.
           if (payload.react) throw new Error('Idempotent email requires rendered content.');
+          if (!options.prepareIntent || !client.key) throw new Error('Domain failure snapshot preparation is required.');
+          const body = JSON.stringify(payload);
+          await options.prepareIntent({
+            payload: JSON.parse(body),
+            providerFingerprint: createHash('sha256').update(client.key).digest('hex'),
+            idempotencyKey: options.idempotencyKey,
+          });
+          // Persistence can take time. Apply the recipient gate again to the
+          // exact saved message immediately before its one allowed submission.
+          await assertEmailSendAllowed(createAdminClient(), JSON.parse(body));
           return client.fetchRequest<{ id: string }>('/emails', {
             method: 'POST',
             headers: { Authorization: `Bearer ${client.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': options.idempotencyKey },
-            body: JSON.stringify(payload),
+            body,
           });
         }
         return client.emails.send(payload, requestOptions);
@@ -1271,6 +1288,7 @@ export function renderDailyDigestEmailHtml(input: {
  */
 export async function sendSendingDomainFailedEmail(input: {
   noticeId: string;
+  prepareIntent: PrepareDomainFailureEmail;
   recipientEmail: string;
   businessName: string;
   domain: string;
@@ -1311,7 +1329,7 @@ export async function sendSendingDomainFailedEmail(input: {
     }),
     reply_to: 'hello@letsgetquoted.com',
     tags: [...tags, { name: 'domain_failure_notice_id', value: input.noticeId }],
-  }, { idempotencyKey: `domain-failure:v1:${input.noticeId}` });
+  }, { idempotencyKey: `domain-failure:v1:${input.noticeId}`, prepareIntent: input.prepareIntent });
 
   if (result.error) {
     console.error('Failed to send sending-domain failure email:', result.error);

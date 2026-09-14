@@ -221,6 +221,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 50 selected application tests and 10 registry tests passed, including an offline request-boundary check using the installed SDK; type checking and changed-file lint passed. No migration, hosted change or email was run.
 - **Remaining:** Save immutable message snapshots and provider scope, reconcile signed callbacks with acceptance, and define bounded recovery before enabling retries. Domain restoration and other owner notice families remain open. The provider key alone does not establish permanent deduplication or delivery.
 
+### Twentieth-pass implementation — immutable domain failure snapshots
+
+- **T16/T17:** Added private saved messages tied to existing failure incidents and the actual sending credential fingerprint. Only one current, exact-workspace preparation wins; duplicate preparation, stale claims, changed domain eligibility and altered payload bindings cannot authorize submission. Failed saves stop sending, and recipient blocks are checked again after saving.
+- **Verification:** 60 selected application and data-disposition tests and 24 PostgreSQL checks passed; the local security advisor found no issues. Type checking, changed-file lint and 10 sender-registry tests passed. Added the database checks to CI and recorded snapshot cleanup in the data-disposition registry. The migration is prepared locally only.
+- **Remaining:** Signed callback acceptance repair, verified provider workspace/region, retention approval and bounded recovery. No retries, live emails, deployment or hosted migration were enabled. See the [notice runbook](runbooks/email-domain-failure-notices.md).
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

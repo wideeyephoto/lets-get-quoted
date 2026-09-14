@@ -6,6 +6,28 @@ record a notice. `email_domain_failure_notices` stores the account, domain, fail
 connection reason, attempted send, provider ID, and reviewed outcome. Browser roles
 cannot read or modify this internal evidence.
 
+The prepared snapshot migration adds `email_domain_failure_snapshots`, keyed by
+the existing incident UUID. Before provider submission the worker saves the exact
+rendered message (including recipient, sender, subject, links and tracking tags),
+the stable `domain-failure:v1:<notice UUID>` key and a SHA-256 fingerprint of the
+credential used by the actual SDK client. The credential itself is never saved.
+This fingerprint identifies the credential; provider workspace/region inventory
+is still required before claiming verified provider scope.
+
+Preparation requires the exact workspace and current sending claim, within its
+five-minute lease, with the domain still failed or pending. The database permits
+one snapshot, rejects replacement even with identical content, and prevents
+changes to the prepared incident's identity. Only the successful first preparation
+permits submission. A rejected or uncertain save becomes `snapshot_prepare_failed`
+for manual review; a crash after saving leaves the snapshot as evidence without
+authorizing a retry. Current recipient blocks are checked again after persistence.
+Domain disconnection retains the snapshot; existing account deletion cascades it.
+Retention approval and any longer-lived deduplication requirement remain open.
+
+This step does not add signed callback acceptance repair or automatic retries.
+Older already-attempted incidents are not backfilled or rearmed, and the callback
+tag alone is not trusted to recover a missing provider ID.
+
 The worker claims each pending notice once. An expired sending claim or any failed
 or uncertain submission becomes `manual_review`; it is never blindly resent.
 Successful submission is `accepted`, and a matching account's signed callback in
@@ -49,6 +71,13 @@ record resolution solely to turn the worker green.
 
 ## Release and rollback
 
+For the snapshot release, apply
+`20260914170327_email_domain_failure_snapshots.sql` after the original notice
+migration and before deploying the updated sender. Without that RPC the sender
+fails closed and records an incident instead of submitting. Drain old workers
+before cutover: old application versions do not save snapshots. Keep the additive
+schema on rollback and review any incomplete incidents; do not reset them to pending.
+
 Apply `20260910120000_email_domain_failure_notices.sql` before the application
 release. The new request timestamp makes the trigger inactive for legacy worker
 updates, which still use the inline sender. Existing failed domains are not
@@ -71,3 +100,10 @@ deletion cancellation, repeated breakages, and scoped account deletion.
 `test/email-domain-failure-notices.test.ts` injects transport and persistence faults
 without sending mail. These checks support F07; live incident escalation and
 recipient recovery still need their own hosted evidence.
+
+The snapshot checks additionally cover immutable content and credential binding,
+one winning concurrent preparation, invalid message/tag/recipient sets, expired
+claims, domain changes after claiming, failed persistence and late recipient
+blocks. CI runs `npm run test:pg17:domain-failure-notices`; request-boundary tests
+use the installed SDK with offline HTTP responses. The database guards use
+[Postgres triggers](https://supabase.com/docs/guides/database/postgres/triggers).

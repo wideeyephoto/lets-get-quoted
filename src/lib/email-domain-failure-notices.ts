@@ -11,6 +11,7 @@ type Notice = {
   reason: string | null;
   provider_id: string | null;
   accepted_at: string | null;
+  attempted_at: string;
 };
 
 export type DomainNoticeSummary = {
@@ -44,6 +45,14 @@ export async function runEmailDomainFailureNotices(admin: SupabaseClient): Promi
       if (site.error) throw new Error('owner_brand_unavailable');
       providerId = await sendSendingDomainFailedEmail({
         noticeId: notice.id,
+        prepareIntent: async snapshot => {
+          const saved = await admin.rpc('prepare_email_domain_failure_snapshot', {
+            p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at,
+            p_payload: snapshot.payload, p_provider_fingerprint: snapshot.providerFingerprint,
+            p_idempotency_key: snapshot.idempotencyKey,
+          });
+          if (saved.error || saved.data !== true) throw new Error('snapshot_prepare_failed');
+        },
         recipientEmail,
         businessName: (site.data?.company_name as string | null)?.trim() || 'your business',
         domain: notice.domain,
@@ -52,7 +61,7 @@ export async function runEmailDomainFailureNotices(admin: SupabaseClient): Promi
         settingsUrl: `${APP_ORIGIN}/dashboard/settings#email-domain`,
       });
     } catch (error) {
-      const known = error instanceof Error && ['owner_email_missing', 'owner_brand_unavailable'].includes(error.message);
+      const known = error instanceof Error && ['owner_email_missing', 'owner_brand_unavailable', 'snapshot_prepare_failed'].includes(error.message);
       await saveNotice(admin, notice.id, 'sending', {
         state: 'manual_review', last_error: known ? (error as Error).message : 'send_failed_or_outcome_unknown',
       });

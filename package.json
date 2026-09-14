@@ -72,6 +72,7 @@
     "test:pg17:plan-change": "node scripts/verify-plan-change-projection-patch.mjs",
     "test:pg17:cancel-to-flex": "node scripts/verify-cancelled-returns-to-flex.mjs",
     "test:pg17:email-sending-domains": "node scripts/verify-email-sending-domains.mjs",
+    "test:pg17:domain-failure-notices": "node scripts/verify-email-domain-failure-notices.mjs",
     "test:pg17:lifecycle-email": "node scripts/verify-contractor-lifecycle-sends.mjs",
     "test:pg17:document-email": "node scripts/verify-document-email-sends.mjs",
     "test:pg17:operational-alerts": "node scripts/verify-operational-alerts.mjs",

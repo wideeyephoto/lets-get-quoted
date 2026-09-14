@@ -46,6 +46,9 @@ jobs:
       - name: Lifecycle email ledger database checks
         run: npm run test:pg17:lifecycle-email
 
+      - name: Domain failure notice and snapshot database checks
+        run: npm run test:pg17:domain-failure-notices
+
       - name: Read-only lifecycle preview checks
         run: npm run test:email-dry-run
 
