@@ -102,6 +102,12 @@
         "20260914210500_platform_event_notices.sql",
         "20260914210600_stream_1_owner_triggers.sql"
       ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_12",
+      "files": [
+        "20260914223000_customer_email_recovery_integration.sql"
+      ]
     }
   ],
   "followups": [

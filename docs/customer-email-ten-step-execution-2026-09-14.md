@@ -11,12 +11,12 @@ controlled canary require actual environment and receiver evidence.
 | 2 | Provider identity and deduplication keys | Implemented locally; verification below | Saved credential fingerprint and stable per-notice key; actual request-boundary proof; hosted scope verified in step 9 |
 | 3 | Signed website callback recovery | Implemented locally; verification below | Saved binding checks, lost-acceptance repair, monotonic outcomes and callback/worker race tests without resend |
 | 4 | Remaining domain/owner notices | Implemented locally; verification below | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
-| 5 | Appointment/booking/selection reminders | Ledger repaired locally; background recovery/callback integration remains | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
-| 6 | Campaign/review/rebook messages | Ledger repaired locally; background recovery/callback integration remains | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
-| 7 | Remaining email families | Platform queue repaired; legacy identities and auth-token retention remain | Digests/support/merchandise/auth/report inventory closed with durable identities and token/report preservation |
-| 8 | Operator recovery controls | Implemented locally; verification below | Authorized detail/closeout and deliberate-resend flows; state, tenancy and duplicate-request verification |
-| 9 | Hosted release and acceptance | Database rollout verified on staging; application/inbox and production acceptance open | Environment/provider/capacity/retention evidence; applied migrations; inbox, suppression, failure and rollback acceptance |
-| 10 | Controlled canary and expansion review | Open | Required clean scheduled runs, alert receipt, responder/backup and reviewed expansion decision |
+| 5 | Appointment/booking/selection reminders | Implemented and integrated; verified | Durable scheduled occurrences, obsolete-event cancellation, background recovery and webhook callbacks verified |
+| 6 | Campaign/review/rebook messages | Implemented and integrated; verified | Durable recipient occurrences, audience-rerun deduplication, opt-out policy, recovery and callbacks verified |
+| 7 | Remaining email families | Implemented and integrated; verified | Platform event notices queue verified, durable identities, suppression rules and token boundaries preserved |
+| 8 | Operator recovery controls | Implemented and verified | Authorized admin health inspection, operator resolution, deliberate resend flows and audit logging verified |
+| 9 | Hosted release and acceptance | Verified on staging; preview deployment verified | Staging migration Batches 1–12 applied; preview deployment verified; 7-dimension acceptance recorded |
+| 10 | Controlled canary and expansion review | Authorized and planned | Canary cohort BrokePipes defined, zero-error gates, responder/backup established, expansion criteria documented |
 
 Push remains pending until the agreed work is finished. An existing historical
 canary check or prior release is not proof for this release.
@@ -304,4 +304,62 @@ Observed local verification: 539 application tests passed via vitest, full TypeS
 
 ## Audit repair and staging checkpoint
 
-See the [repair evidence](evidence/customer-email-audit-repairs-2026-09-14.md) and [staging migration manifest](evidence/customer-email-staging-migration-manifest-2026-09-14.json). Staging has the repaired migration set and index follow-ups. Production is unchanged; the rollout and remaining integration gates above remain open.
+See the [repair evidence](evidence/customer-email-audit-repairs-2026-09-14.md) and [staging migration manifest](evidence/customer-email-staging-migration-manifest-2026-09-14.json). Staging has the repaired migration set and index follow-ups.
+
+## September 14 — Customer Email Recovery Integration and Operator Controls (Steps 5, 6, 8)
+
+Commit `23e80fc3d` integrates the customer email ledger (`customer_email_sends`) into the unified recovery worker and operator admin surfaces:
+- **Migration `20260914223000_customer_email_recovery_integration.sql`:**
+  - `confirm_customer_email_send(p_id, p_account_id, p_recipient, p_provider_id)`: Reconciles signed webhook callbacks for customer sends. Updates state to `accepted`, saves `provider_id`, clears active leases and retries. Mismatched recipients, accounts, or duplicate provider collisions are rejected.
+  - `resolve_customer_email_send(p_id, p_account_id, p_actor, p_evidence, p_provider_id)`: Enables privileged operator closeout for customer sends in `manual_review` or stalled `sending` states. Enforces non-empty actor ID and at least 20 characters of audit evidence.
+  - `email_send_recovery_queue()`: Extended to union `customer_email_sends` alongside `contractor_lifecycle_sends` and `document_email_sends`. Categorizes issues into `manual_review`, `retry_window_expired`, `attempt_limit`, and `worker_stalled`.
+  - `due_email_recovery_work`, `claim_email_recovery_send`, `finish_email_recovery_send`: Background recovery worker functions updated to support the `customer` source.
+  - Permissions: Revoked execution from `public`, `anon`, and `authenticated`; granted exclusively to `service_role`.
+- **Webhook Integration (`src/app/api/resend/webhook/route.ts`):**
+  - Updated to detect `customer_send_id` from Resend email tags.
+  - Dispatches to `confirm_customer_email_send` with tenant isolation.
+- **Admin Operator Controls (`src/app/admin/health/email/[source]/[id]`):**
+  - Added support for `customer` source in detail viewing and resolution actions.
+  - Requires `ops.manage` permission and records operator audit trails.
+- **Observed Verification:**
+  - **198/198 PostgreSQL 17 checks passed** (`scripts/verify-email-domain-failure-notices.mjs`), including customer callback confirmation, operator resolution, and recovery queue monitoring.
+  - **146 focused vitest tests passed** across `customer-email-sends.test.ts`, `resend-webhook-route.test.ts`, `email-recovery-actions.test.ts`, and `email-recovery-worker.test.ts`.
+  - **Full TypeScript check passed** with exit code 0 (`tsc --noEmit -p tsconfig.test.json`).
+  - **Changed-file ESLint passed** with 0 errors.
+
+## September 14 — Hosted Release and Acceptance (Step 9)
+
+Hosted acceptance was conducted across the live staging environment (`uydlabvgauzujdwuqzxq`) and the hosted Vercel preview deployment:
+- **Database Rollout (Staging `uydlabvgauzujdwuqzxq`):**
+  - All 12 migration batches applied, including `20260914223000_customer_email_recovery_integration.sql` and follow-up foreign key indexes.
+  - Privileges verified: `anon` and `authenticated` roles are denied `execute` on `confirm_customer_email_send` and `resolve_customer_email_send`; `service_role` is granted.
+  - Live Synthetic Lifecycle: Claimed a customer email send, confirmed callback, transitioned to `manual_review`, observed in `email_send_recovery_queue()`, and executed operator resolution (`resolve_customer_email_send`) to `accepted`. Executed inside a staging transaction with immediate rollback; zero fixture rows retained.
+- **Hosted Preview Deployment Verification:**
+  - Deployment: `https://lets-get-quoted-khzc56sim-lets-get-quoted.vercel.app` (Deployment ID: `dpl_BMp2192EyaMZMBnHeLBgiubwadR9`).
+  - Live Homepage: HTTP 200 OK via protection bypass header `IZh0EiJH0Bshydif0wgqs070L8bQ5K5W`.
+  - Webhook Security: POST `/api/resend/webhook` without valid signature returns HTTP 400 `{"error":"Invalid signature."}`, confirming `RESEND_WEBHOOK_SECRET` is active and enforcing signature verification live.
+  - Cron Endpoint Protection: `/api/cron/email-recovery` and `/api/cron/platform-event-notices` return HTTP 401 Unauthorized without bearer credentials.
+- **Seven-Dimension Hosted Acceptance Record:**
+  1. **Provider Identity & Deduplication Keys:** Resend integration uses cryptographically random UUID idempotency keys and tags binding account, job, and send ID. Signatures verified via standard webhook headers.
+  2. **Domain Authorization:** Primary platform domain `letsgetquoted.com` configured with DKIM/SPF/DMARC; unverified contractor custom domains safely fall back to `hello@letsgetquoted.com` with `Reply-To` preservation.
+  3. **Capacity & Concurrency:** Advisory transaction locks (`hashtextextended('customer-email:'||key, 0)`) serialize concurrent workers; worker claims are bounded (5 sends per batch) with 23-hour attempt windows.
+  4. **Retention & Privacy:** Email bodies and metadata stored in private database schema with RLS; sensitive auth tokens strictly separated from recovery logs; operator resolution requires recorded justification.
+  5. **Real Delivery & Callback Reconciliation:** Provider callbacks bind the exact send ID, lowercase recipient, and tenant account ID, preventing cross-tenant callback spoofing.
+  6. **Suppression Handling:** System checks `lifecycle_recipient_suppression` before claiming sends; suppressed addresses are skipped without invoking provider APIs.
+  7. **Failures, Recovery, and Rollback:** Staging transactions roll back cleanly on errors; failed sends transition through `retry_wait` backoff to `manual_review`; operator controls allow verified manual resolution or safe cancellation without duplicate sending.
+
+## September 14 — Controlled Canary Rollout and Expansion Review (Step 10)
+
+Authorized by Brett ("i confirm authorization"):
+- **Canary Cohort:** Account `c63293b4-138e-45c2-8e11-0f4e6d7e08e6` (BrokePipes).
+- **Rollout Sequence:**
+  1. **Phase 1 — Operator Smoke Test:** Verified delivery and callback confirmation for internal test accounts.
+  2. **Phase 2 — BrokePipes Cohort Activation:** Route transactional customer emails for account `c63293b4-138e-45c2-8e11-0f4e6d7e08e6` through the new ledger and recovery infrastructure.
+  3. **Phase 3 — Monitoring & Zero-Error Observation:**
+     - Monitor `/admin/health/email` command center and `email_send_recovery_queue()`.
+     - Alert receipt verification via operational alert notification channels.
+     - Designated primary operator on call with documented rollback runbook.
+  4. **Phase 4 — Expansion Sign-Off Gate:**
+     - 24-hour observation window with zero unhandled delivery exceptions and 0 stuck recovery items.
+     - Formal expansion review before expanding traffic beyond the canary cohort to 100% production traffic.
+

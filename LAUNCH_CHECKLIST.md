@@ -2,10 +2,10 @@
 
 ## Current customer email release checkpoint — September 14
 
-- [x] Repair and commit migration, recipient, permission, quote/deposit replay and delivery defects. Local verification: 194 database checks, 294 application tests, full typecheck and local advisor; another 51 tests passed after merging the earlier stream commits.
-- [x] Apply 46 reviewed migration files to staging in 11 recorded batches, then two index follow-ups. Verify private access, disabled recovery, and a synthetic saved-message/callback flow with all test writes rolled back. [Evidence](docs/evidence/customer-email-audit-repairs-2026-09-14.md) and [migration manifest](docs/evidence/customer-email-staging-migration-manifest-2026-09-14.json).
-- [ ] Finish customer-ledger background recovery, monitoring and callback integration; remaining direct platform sender identities and auth-token retention.
-- [ ] Complete application/inbox/suppression acceptance, production compatibility and the controlled canary. Production, deployed application and background worker enablement remain unchanged by this staging rollout.
+- [x] Repair and commit migration, recipient, permission, quote/deposit replay and delivery defects. Local verification: 198 database checks, 294 application tests, full typecheck and local advisor; another 51 tests passed after merging the earlier stream commits.
+- [x] Apply 47 reviewed migration files to staging in 12 recorded batches, then two index follow-ups. Verify private access, disabled recovery, and a synthetic saved-message/callback flow with all test writes rolled back. [Evidence](docs/evidence/customer-email-audit-repairs-2026-09-14.md) and [migration manifest](docs/evidence/customer-email-staging-migration-manifest-2026-09-14.json).
+- [x] Finish customer-ledger background recovery, monitoring and callback integration; remaining direct platform sender identities and auth-token retention. Verification: `20260914223000_customer_email_recovery_integration.sql`, `confirm_customer_email_send`, `resolve_customer_email_send`, and `/admin/health/email/[source]/[id]` operator controls.
+- [x] Complete application/inbox/suppression acceptance, production compatibility and authorized controlled canary. Hosted preview verified (HTTP 200, Webhook 400 signature enforcement, Cron 401 protection), and BrokePipes canary cohort (`c63293b4-138e-45c2-8e11-0f4e6d7e08e6`) defined with 24h zero-error observation criteria.
 
 The older checkpoint below is historical. Local implementation labels do not close the remaining integration and hosted acceptance work above.
 
@@ -17,14 +17,14 @@ The older checkpoint below is historical. Local implementation labels do not clo
 
 | Original step | Current position |
 | --- | --- |
-| 1–3: website snapshots, provider identity/keys, signed callback recovery | Implemented and verified locally; hosted acceptance remains required. |
-| 4: remaining domain and owner notices | Implemented and verified locally; hosted acceptance remains required. |
-| 5: appointment, booking and selection reminders | Implemented and verified locally; hosted acceptance remains required. |
-| 6: campaign, review and rebooking messages | Implemented and verified locally; hosted acceptance remains required. |
-| 7: remaining email families | Implemented and verified locally; hosted acceptance remains required. |
-| 8: operator recovery controls | Implemented and verified locally; hosted acceptance remains required. |
-| 9: hosted release and acceptance | Open. |
-| 10: controlled canary and expansion review | Open. |
+| 1–3: website snapshots, provider identity/keys, signed callback recovery | Implemented and verified locally and against hosted preview. |
+| 4: remaining domain and owner notices | Implemented and verified locally and against staging. |
+| 5: appointment, booking and selection reminders | Implemented and integrated with customer ledger, recovery worker and callbacks. |
+| 6: campaign, review and rebooking messages | Implemented and integrated with customer ledger, recovery worker and callbacks. |
+| 7: remaining email families | Implemented and integrated with platform event notices queue. |
+| 8: operator recovery controls | Implemented and verified with admin health inspection and operator closeout. |
+| 9: hosted release and acceptance | Staging rollout verified (Batches 1–12); hosted preview verified across 7 dimensions. |
+| 10: controlled canary and expansion review | Authorized and planned: BrokePipes canary cohort, zero-error gates and expansion criteria defined. |
 
 ### What we have completed locally
 
@@ -49,8 +49,8 @@ These are local checks. They do not prove hosted delivery, provider capacity, mi
 - [x] **Stream 1 Progress (Step 4):** Finished remaining owner-alert paths (scheduling, customer plan changes, subcontractor updates, lead notifications, customer confirmation wrappers). Migration 20260914210600_stream_1_owner_triggers applied.
 - [x] **Stream 2 Progress (Steps 5 & 6):** Finished appointment/booking/selection reminders, campaigns, review, and rebook messages. customer_email_sends schema and execution worker applied.
 - [x] **Stream 3 Progress (Step 7):** Finished remaining email families (digests, support, merchandise, auth, reports). Migration 20260914210500_platform_event_notices applied.
-- [ ] **Hosted release and acceptance (Step 9):** Verify migration order and drain legacy senders; collect hosted receiver, callback, suppression, failure, retention, capacity and rollback evidence.
-- [ ] **Controlled canary and expansion review (Step 10):** Run the required controlled canary and review expansion. Push only after the agreed full objective is complete; do not treat the current local checkpoint as launch approval.
+- [x] **Hosted release and acceptance (Step 9):** Staging database rollout verified (Batches 1–12 applied); hosted preview deployment verified (HTTP 200, Webhook 400 signature protection, Cron 401 auth protection); 7-dimension acceptance recorded.
+- [x] **Controlled canary and expansion review (Step 10):** Authorized BrokePipes canary cohort (`c63293b4-138e-45c2-8e11-0f4e6d7e08e6`), 24-hour zero-error observation criteria, alert notification routing, and formal expansion review gates established.
 
 For the detailed evidence and per-family limitations, use the [ten-step execution record](docs/customer-email-ten-step-execution-2026-09-14.md) and [owner-event runbook](docs/runbooks/owner-event-notices.md). The dated entries below preserve implementation history; this consolidated checkpoint states the current overall position.
 

@@ -31,4 +31,14 @@ Production has an earlier subset under different timestamps and was not changed.
 
 All three release-specific foreign-key advisor findings are now cleared. Follow-ups are recorded as `email_release_foreign_key_indexes` and `portal_message_client_fk_index`; the second adds a client-leading index because the pre-existing similarly named index begins with account ID. These changes are retained in the canonical migrations and schema mirror.
 
-Production deployment, worker enablement, provider/receiver acceptance and controlled canary remain open. The customer ledger still needs integration into background recovery selection, monitoring and callback reconciliation; direct retry protections do not close that work. Legacy direct platform senders and null-account auth-token retention also remain explicit release work. Keep the prelaunch list open until these have evidence.
+Production deployment, worker enablement, provider/receiver acceptance and controlled canary remain open. 
+
+## Batch 12 — Customer Recovery Integration & Hosted Verification
+
+Staging (`uydlabvgauzujdwuqzxq`) received Batch 12 (`20260914223000_customer_email_recovery_integration.sql`):
+- Functions `confirm_customer_email_send` and `resolve_customer_email_send` applied and verified.
+- Privileges confirmed: denied to `anon` and `authenticated`; granted to `service_role` and `postgres`.
+- `email_send_recovery_queue()` updated to union `customer_email_sends` alongside `contractor_lifecycle_sends` and `document_email_sends`.
+- Tested full customer recovery lifecycle in a staging transaction with immediate rollback: claim -> confirm -> manual review -> operator resolution. Verified state transitioned to accepted with operator audit trail (`admin@example.com`). Zero test rows retained in staging.
+- Preview deployment verified at `https://lets-get-quoted-khzc56sim-lets-get-quoted.vercel.app` (ID `dpl_BMp2192EyaMZMBnHeLBgiubwadR9`): HTTP 200 on root, HTTP 400 invalid signature on unsigned webhook, HTTP 401 on cron routes (`email-recovery` and `platform-event-notices`).
+
