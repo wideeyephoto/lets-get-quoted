@@ -85,6 +85,7 @@ describe.each([
         clientSecret: 'mock-secret',
         refreshToken: 'mock-reftok',
         customerId: '2285671544',
+        conversionActionId: '987654321',
       });
 
       expect(report.success).toBe(false);
@@ -126,6 +127,7 @@ describe.each([
         clientSecret: 'mock-secret',
         refreshToken: 'mock-reftok',
         customerId: '2285671544',
+        conversionActionId: '987654321',
       });
 
       expect(report.success).toBe(false);
@@ -138,7 +140,7 @@ describe.each([
   });
 
   describe('5. Allowlisted HTTP 200 Response Handling', () => {
-    it('marks allowlisted as true even when partialFailureError is present for synthetic data', async () => {
+    it('distinguishes legacy CLI reachability from strict server validation on partial failure', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ access_token: 'mock-token' }), { status: 200 })
@@ -161,12 +163,14 @@ describe.each([
         clientSecret: 'mock-secret',
         refreshToken: 'mock-reftok',
         customerId: '2285671544',
+        conversionActionId: '987654321',
       });
 
-      expect(report.success).toBe(true);
-      expect(report.allowlisted).toBe(true);
+      expect(report.success).toBe(_name === 'CLI');
+      expect(report.allowlisted).toBe(_name === 'CLI');
       expect(fetchSpy.mock.calls[1][1]?.headers).not.toHaveProperty('developer-token');
-      expect(report.steps[2].note).toContain('HTTP 200 received');
+      if (_name === 'CLI') expect(report.steps[2].note).toContain('HTTP 200 received');
+      else expect(report.error).toContain('Conversion validation failed');
       expect(report.steps[2].note).toContain('This click ID is not recognized');
 
       fetchSpy.mockRestore();
