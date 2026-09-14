@@ -7,6 +7,7 @@ import { getCredentialsForAuthority } from './credentials-vault';
 import type { PermitWorkContext, AttestedField, PermitReadiness, CodeReference } from './types';
 import { safeSignaturePath } from '../signature';
 import { buildScopeProfile } from './scope-profiles';
+import { STATE_CODE_REGISTRY } from './state-code-registry';
 
 export type { AttestedField, PermitReadiness };
 
@@ -71,6 +72,7 @@ export type UniversalPermitApplicationData = {
     signatureDate: string;
     section23aNotice: string;
     section23aNoticeTitle?: string;
+    stateJurisdictionNotice?: string;
   };
   readiness: PermitReadiness;
 };
@@ -259,13 +261,26 @@ export async function compilePermitApplication(
 
   const scopeProfile = buildScopeProfile(work, jurisdiction, streetAddress, job.scope || undefined);
 
+  const stateKey = (parsedAddress.state || jurisdiction.state || 'MI').toUpperCase();
+  const stateProfile = STATE_CODE_REGISTRY[stateKey];
+  const rawStateName = stateProfile?.stateName || parsedAddress.state || 'Michigan';
+  const stateName = rawStateName.startsWith('State of') || rawStateName.startsWith('Commonwealth of')
+    ? rawStateName
+    : `State of ${rawStateName}`;
+  const section23aNoticeTitle =
+    stateProfile?.certificationNoticeTitle || 'Contractor Licensure & Compliance Notice';
+  const section23aNotice =
+    stateProfile?.certificationNotice ||
+    `All work performed under this permit must comply with all applicable state and local building codes and licensing regulations of the ${stateName}. Unlicensed contracting or conspiring to circumvent licensure requirements is prohibited and subject to civil penalties.`;
+  const stateJurisdictionNotice = `I hereby certify that the proposed work is authorized by the owner of record and that I have been authorized by the owner to make this application as his/her authorized agent, and we agree to conform to all applicable laws of the ${stateName} and the local ordinances of ${jurisdiction.authorityName}. All statements made in this application are true to the best of my knowledge.`;
+
   return {
     authority: {
       id: jurisdiction.authorityId,
       name: jurisdiction.authorityName,
       agencyName: jurisdiction.agencyName,
       department: jurisdiction.agencyName || jurisdiction.authorityName || 'Building Department',
-      contactPhone: undefined,
+      contactPhone: (jurisdiction as any).contactPhone || (jurisdiction as any).phone || undefined,
     },
     applicant: {
       type: 'contractor',
@@ -319,8 +334,9 @@ export async function compilePermitApplication(
     certification: {
       applicantSignatureText: `${companyName} by Authorized Agent`,
       signatureDate: new Date().toISOString().split('T')[0],
-      section23aNotice:
-        'Section 23a of the state construction code act of 1972, 1972 PA 230, MCL 125.1523a, prohibits a person from conspiring to circumvent the licensing requirements of this state relating to persons who are to perform work on a residential building or a residential structure. Violators of section 23a are subjected to civil fines.',
+      section23aNotice,
+      section23aNoticeTitle,
+      stateJurisdictionNotice,
     },
     readiness,
   };
@@ -581,10 +597,11 @@ export function generatePermitApplicationHtml(
     <div class="section-title">IV. Applicant Certification &amp; Compliance</div>
     <div class="section-body">
       <p class="notice">
+        <strong>${data.certification.section23aNoticeTitle || 'Statutory Compliance Notice'}:</strong><br />
         ${data.certification.section23aNotice}
       </p>
       <p class="notice">
-        I hereby certify that the proposed work is authorized by the owner of record and that I have been authorized by the owner to make this application as his/her authorized agent, and we agree to conform to all applicable laws of the State of Michigan and the local ordinances of ${data.authority.name}. All statements made in this application are true to the best of my knowledge.
+        ${data.certification.stateJurisdictionNotice || `I hereby certify that the proposed work is authorized by the owner of record and that I have been authorized by the owner to make this application as his/her authorized agent, and we agree to conform to all applicable laws of the State of ${data.property.state || 'Michigan'} and the local ordinances of ${data.authority.name}. All statements made in this application are true to the best of my knowledge.`}
       </p>
 
       <div class="signature-row">

@@ -170,7 +170,7 @@ function getAttestedText(
       doc.font('Helvetica-Bold')
         .fontSize(8)
         .fillColor('#b91c1c')
-        .text('MICHIGAN PUBLIC ACT 230 § 23a STATUTORY DISCLOSURE NOTICE:', PAGE_MARGIN + 8, noticeBoxY + 6);
+        .text(((data.certification.section23aNoticeTitle || 'STATUTORY DISCLOSURE NOTICE').toUpperCase()) + ':', PAGE_MARGIN + 8, noticeBoxY + 6);
 
       doc.font('Helvetica')
         .fontSize(7.2)
@@ -189,7 +189,8 @@ function getAttestedText(
       const sigY = doc.y + 8;
 
       doc.font('Helvetica').fontSize(8).fillColor('#475569').text(
-        'I hereby certify that the proposed work is authorized by the owner of record and that I have been authorized by the owner to make this application as his/her authorized agent, and we agree to conform to all applicable laws of the State of Michigan and local ordinances.',
+        data.certification.stateJurisdictionNotice ||
+          `I hereby certify that the proposed work is authorized by the owner of record and that I have been authorized by the owner to make this application as his/her authorized agent, and we agree to conform to all applicable laws of the State of ${data.property.state || 'Michigan'} and local ordinances.`,
         PAGE_MARGIN + 6,
         sigY,
         { width: contentWidth - 12 },

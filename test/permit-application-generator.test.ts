@@ -233,4 +233,76 @@ describe('Permit Application Pre-fill Generator', () => {
     expect(html).toContain('Application for Residential Building Permit');
     expect(html).toContain('Verify scope with jurisdiction');
   });
+
+  it('de-Michigan-izes certification notice and statutory citations for out-of-state jurisdictions', async () => {
+    const { getJob } = await import('@/lib/jobs');
+    vi.mocked(getJob).mockResolvedValueOnce({
+      id: 'job-ohio',
+      account_id: mockAccountId,
+      client_name: 'Buckeye Resident',
+      address: '100 N High St, Columbus, OH 43215',
+      scope: 'Replace asphalt shingle roof on detached garage',
+      quoted_amount: 5400,
+    } as any);
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const data = await compilePermitApplication(mockSupabase, mockAccountId, 'job-ohio');
+    expect(data.property.state).toBe('OH');
+    expect(data.certification.section23aNoticeTitle).toBe('Contractor Licensure & Compliance Notice');
+    expect(data.certification.section23aNotice).not.toContain('MCL 125.1523a');
+    expect(data.certification.section23aNotice).not.toContain('1972 PA 230');
+    expect(data.certification.section23aNotice).toContain('State of Ohio');
+    expect(data.certification.stateJurisdictionNotice).toContain('State of Ohio');
+    expect(data.certification.stateJurisdictionNotice).not.toContain('State of Michigan');
+
+    const html = generatePermitApplicationHtml(data);
+    expect(html).toContain('Contractor Licensure & Compliance Notice');
+    expect(html).toContain('State of Ohio');
+    expect(html).not.toContain('MCL 125.1523a');
+    expect(html).not.toContain('1972 PA 230');
+  });
+
+  it('preserves Michigan Section 23a statutory notice for Michigan jobs', async () => {
+    const { getJob } = await import('@/lib/jobs');
+    vi.mocked(getJob).mockResolvedValueOnce({
+      id: 'job-mi',
+      account_id: mockAccountId,
+      client_name: 'Wolverine Resident',
+      address: '211 S Williams St, Royal Oak, MI 48067',
+      scope: 'Replace asphalt shingle roof',
+      quoted_amount: 8000,
+    } as any);
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const data = await compilePermitApplication(mockSupabase, mockAccountId, 'job-mi');
+    expect(data.property.state).toBe('MI');
+    expect(data.certification.section23aNoticeTitle).toBe('Michigan Public Act 230 § 23a Statutory Notice');
+    expect(data.certification.section23aNotice).toContain('MCL 125.1523a');
+    expect(data.certification.section23aNotice).toContain('1972 PA 230');
+    expect(data.certification.stateJurisdictionNotice).toContain('State of Michigan');
+
+    const html = generatePermitApplicationHtml(data);
+    expect(html).toContain('Michigan Public Act 230 § 23a Statutory Notice');
+    expect(html).toContain('MCL 125.1523a');
+  });
 });

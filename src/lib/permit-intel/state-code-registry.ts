@@ -22,6 +22,8 @@ export type StateCodeProfile = {
   specialRules: string[];
   basePermitFee: number;
   estAverageFee: number;
+  certificationNoticeTitle?: string;
+  certificationNotice?: string;
 };
 
 /**
@@ -435,6 +437,9 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     specialRules: ['pa_230_section_23a_statutory_notice', 'ice_barrier_24_inch_past_wall_line', 'two_roof_layers_max'],
     basePermitFee: 85,
     estAverageFee: 125,
+    certificationNoticeTitle: 'Michigan Public Act 230 § 23a Statutory Notice',
+    certificationNotice:
+      'Section 23a of the state construction code act of 1972, 1972 PA 230, MCL 125.1523a, prohibits a person from conspiring to circumvent the licensing requirements of this state relating to persons who are to perform work on a residential building or a residential structure. Violators of section 23a are subjected to civil fines.',
   },
   MN: {
     stateCode: 'MN',
