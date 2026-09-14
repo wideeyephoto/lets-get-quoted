@@ -17,12 +17,18 @@ export async function verifyEmailIntegrationRepairs(db,other,root,passed) {
  alter table warranties add column if not exists title text,add column if not exists service_interval_months integer,add column if not exists next_service_due date,add column if not exists service_reminded_at timestamptz;
  create table if not exists subcontractor_requests(id uuid primary key,account_id uuid);
  create table if not exists subcontractor_offers(id uuid primary key,account_id uuid,request_id uuid);
- grant select,insert,update,delete on leads,invoices,invoice_items,client_feed,subcontractor_requests,subcontractor_offers,email_suppression to service_role;
+ create table if not exists operational_alert_deliveries(id uuid primary key default gen_random_uuid());
+ create table if not exists operational_alert_findings(source_key text primary key, delivery_id uuid);
+ grant select,insert,update,delete on leads,invoices,invoice_items,client_feed,subcontractor_requests,subcontractor_offers,email_suppression,operational_alert_deliveries,operational_alert_findings to service_role;
  alter table email_suppression enable row level security;
- alter table leads enable row level security;alter table invoices enable row level security;alter table invoice_items enable row level security;alter table client_feed enable row level security;alter table subcontractor_requests enable row level security;alter table subcontractor_offers enable row level security;`);
- const doc=readFileSync(join(root,'migrations/20260914135714_document_email_send_ledger.sql'),'utf8');
- await db.query(doc.slice(doc.indexOf('create table public.document_email_sends')));
- for(const f of readdirSync(join(root,'migrations')).filter(f=>/^2026091420[2354]|^20260914210/.test(f)).sort()) {
+ alter table leads enable row level security;alter table invoices enable row level security;alter table invoice_items enable row level security;alter table client_feed enable row level security;alter table subcontractor_requests enable row level security;alter table subcontractor_offers enable row level security;alter table operational_alert_deliveries enable row level security;alter table operational_alert_findings enable row level security;`);
+  const lcDoc=readFileSync(join(root,'migrations/20260914133327_contractor_lifecycle_send_ledger.sql'),'utf8');
+  await db.query(lcDoc.slice(lcDoc.indexOf('create table public.contractor_lifecycle_sends')));
+  const doc=readFileSync(join(root,'migrations/20260914135714_document_email_send_ledger.sql'),'utf8');
+  await db.query(doc.slice(doc.indexOf('create table public.document_email_sends')));
+  const recDoc=readFileSync(join(root,'migrations/20260914150046_email_recovery_worker.sql'),'utf8');
+  await db.query(recDoc.slice(recDoc.indexOf('create table public.email_recovery_control')));
+ for(const f of readdirSync(join(root,'migrations')).filter(f=>/^2026091420[2354]|^20260914210|^2026091422/.test(f)).sort()) {
   const sql=readFileSync(join(root,'migrations',f),'utf8');assert.ok(readFileSync(join(root,'schema.sql'),'utf8').includes(sql.trim()));
   await db.query(sql);passed('repaired migration applies: '+f);
  }
@@ -88,10 +94,29 @@ export async function verifyEmailIntegrationRepairs(db,other,root,passed) {
  assert.equal((await db.query('select prepare_platform_event_notice_snapshot($1,$2,$3,$4,$5) ok',[platform,notice.attempted_at,message,'a'.repeat(64),'platform-event:v1:'+platform])).rows[0].ok,true);
  assert.equal((await db.query("select confirm_platform_event_notice($1,$2,$3,'delivered',now(),'callback-id') result",[platform,message.to,'platform-provider'])).rows[0].result,'confirmed');
  assert.equal((await db.query('select state from platform_event_notices where id=$1',[platform])).rows[0].state,'resolved');
- passed('platform messages bind their saved payload and reconcile delivery before the send response returns');
- for(const role of ['anon','authenticated']) {
-  assert.equal((await db.query("select has_function_privilege($1,'submit_document_email_resend(uuid,uuid,text,text,text)','execute') ok",[role])).rows[0].ok,false);
-  assert.equal((await db.query("select has_table_privilege($1,'customer_email_sends','insert') ok",[role])).rows[0].ok,false);
- }
- passed('new private send tables and resend operations remain unavailable to public roles');
+  passed('platform messages bind their saved payload and reconcile delivery before the send response returns');
+  const custSend = (await claim(db, 'callback-test', 'appointment_reminder', job)).rows[0].r;
+  assert.equal((await db.query("select confirm_customer_email_send($1,$2,$3,'provider-cust-callback') r", [custSend.id, account, 'audit@example.test'])).rows[0].r, true);
+  const custConfirmed = (await db.query('select state,provider_id from customer_email_sends where id=$1', [custSend.id])).rows[0];
+  assert.equal(custConfirmed.state, 'accepted');
+  assert.equal(custConfirmed.provider_id, 'provider-cust-callback');
+
+  const custResolve = (await claim(db, 'resolve-test', 'appointment_reminder', job)).rows[0].r;
+  await db.query("update customer_email_sends set state='manual_review',last_error='provider_timeout' where id=$1", [custResolve.id]);
+  const inQueue = (await db.query('select * from email_send_recovery_queue() where send_id=$1', [custResolve.id])).rows;
+  assert.equal(inQueue.length, 1);
+  assert.equal(inQueue[0].source, 'customer');
+  assert.equal(inQueue[0].reason, 'manual_review');
+  assert.equal((await db.query("select resolve_customer_email_send($1,$2,'operator@example.test','Verified recipient phone call and delivered notice directly','provider-manual-closeout') r", [custResolve.id, account])).rows[0].r, true);
+  const custResolved = (await db.query('select state,provider_id,resolved_by from customer_email_sends where id=$1', [custResolve.id])).rows[0];
+  assert.equal(custResolved.state, 'accepted');
+  assert.equal(custResolved.resolved_by, 'operator@example.test');
+  passed('customer callback reconciliation, operator resolution, and recovery queue monitoring behave correctly');
+  for(const role of ['anon','authenticated']) {
+   assert.equal((await db.query("select has_function_privilege($1,'submit_document_email_resend(uuid,uuid,text,text,text)','execute') ok",[role])).rows[0].ok,false);
+   assert.equal((await db.query("select has_function_privilege($1,'confirm_customer_email_send(uuid,uuid,text,text)','execute') ok",[role])).rows[0].ok,false);
+   assert.equal((await db.query("select has_function_privilege($1,'resolve_customer_email_send(uuid,uuid,text,text,text)','execute') ok",[role])).rows[0].ok,false);
+   assert.equal((await db.query("select has_table_privilege($1,'customer_email_sends','insert') ok",[role])).rows[0].ok,false);
+  }
+  passed('new private send tables and resend operations remain unavailable to public roles');
 }

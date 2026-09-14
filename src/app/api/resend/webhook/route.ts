@@ -290,6 +290,32 @@ export async function POST(request: Request) {
       if (confirmError || confirmed !== true) throw new Error('Could not reconcile document send callback');
     }
 
+    const customerSendId = resendTagValue(event.data.tags, 'customer_send_id');
+    if (customerSendId) {
+      if (!accountId || !recipient) throw new Error('Customer callback is missing its workspace or recipient');
+      const { data: confirmed, error: confirmError } = await admin.rpc('confirm_customer_email_send', {
+        p_id: customerSendId, p_account_id: accountId, p_recipient: recipient, p_provider_id: providerId,
+      });
+      if (!confirmError && confirmed === false) {
+        const { data: intent, error: intentError } = await admin.from('customer_email_sends')
+          .select('id').eq('id', customerSendId).maybeSingle();
+        if (intentError) throw new Error('Could not inspect missing customer send');
+        if (!intent) {
+          const { error: quarantineError } = await admin.from('webhook_failures').insert({
+            source: 'resend', event_type: event.type, reference_id: providerId,
+            error_message: 'CUSTOMER_SEND_QUARANTINE: customer send is absent; check deletion or environment routing.',
+            payload_excerpt: JSON.stringify({ customer_send_id: customerSendId, account_id: accountId,
+              provider_id: providerId, svix_id: request.headers.get('svix-id') }),
+          });
+          if (quarantineError) throw new Error('Could not retain missing customer send callback');
+          await maybeSuppress(admin, { status, accountId, recipient, bounce: event.data.bounce ?? null });
+          return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
+        }
+      }
+      if (confirmError || confirmed !== true) throw new Error('Could not reconcile customer send callback');
+    }
+
+
     // Recording the bounce was never the point — not sending again was.
     //
     // Until now this handler wrote email_events and stopped there, and

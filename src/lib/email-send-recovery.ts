@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type EmailSendRecoveryRow = {
-  source: 'lifecycle' | 'document'; send_id: string; account_id: string; kind: string;
+  source: 'lifecycle' | 'document' | 'customer'; send_id: string; account_id: string; kind: string;
   state: string; phase: string; attempts: number; first_attempt_at: string; retry_before: string;
   reason: 'manual_review' | 'retry_window_expired' | 'attempt_limit' | 'worker_stalled' | 'retry_overdue';
 };

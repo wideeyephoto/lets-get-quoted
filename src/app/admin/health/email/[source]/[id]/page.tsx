@@ -11,12 +11,12 @@ export default async function EmailSendRecoveryDetail(props: { params: Promise<{
   const params = await props.params;
   const { staff } = await requireAdmin();
   const canManage = staffCan(staff, 'ops.manage');
-  if (params.source !== 'lifecycle' && params.source !== 'document') {
+  if (params.source !== 'lifecycle' && params.source !== 'document' && params.source !== 'customer') {
     notFound();
   }
 
   const admin = createAdminClient();
-  const table = params.source === 'lifecycle' ? 'contractor_lifecycle_sends' : 'document_email_sends';
+  const table = params.source === 'lifecycle' ? 'contractor_lifecycle_sends' : params.source === 'customer' ? 'customer_email_sends' : 'document_email_sends';
   const { data, error } = await admin.from(table).select('*').eq('id', params.id).single();
 
   if (error || !data) {

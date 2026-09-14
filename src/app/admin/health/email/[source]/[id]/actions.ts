@@ -17,8 +17,8 @@ export async function resolveEmailSend(source: string, id: string, formData: For
     throw new Error('Evidence is required');
   }
 
-  if (!['lifecycle', 'document'].includes(source)) throw new Error('Invalid email source');
-  const table = source === 'lifecycle' ? 'contractor_lifecycle_sends' : 'document_email_sends';
+  if (!['lifecycle', 'document', 'customer'].includes(source)) throw new Error('Invalid email source');
+  const table = source === 'lifecycle' ? 'contractor_lifecycle_sends' : source === 'customer' ? 'customer_email_sends' : 'document_email_sends';
   const { data: sendData } = await admin.from(table).select('account_id').eq('id', id).single();
   
   if (!sendData) {
@@ -28,6 +28,14 @@ export async function resolveEmailSend(source: string, id: string, formData: For
   let result;
   if (source === 'lifecycle') {
     result = await admin.rpc('resolve_contractor_lifecycle_send', {
+      p_id: id,
+      p_account_id: sendData.account_id,
+      p_actor: session.adminEmail,
+      p_evidence: evidence,
+      p_provider_id: providerId || null
+    });
+  } else if (source === 'customer') {
+    result = await admin.rpc('resolve_customer_email_send', {
       p_id: id,
       p_account_id: sendData.account_id,
       p_actor: session.adminEmail,

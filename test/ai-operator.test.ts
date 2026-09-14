@@ -47,7 +47,7 @@ function createMockSupabase(overrides?: {
   return {
     rpc: vi.fn().mockImplementation((name, args) => {
       if (name === 'lifecycle_recipient_suppression') {
-        return Promise.resolve({ data: args.p_recipients.map(r => ({ account_id: r.account_id, email: r.email, blocked: false })), error: null });
+        return Promise.resolve({ data: args.p_recipients.map((r: any) => ({ account_id: r.account_id, email: r.email, blocked: false })), error: null });
       }
       return Promise.resolve({ data: null, error: null });
     }),
