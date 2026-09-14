@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-14T17:51:00.042Z",
+  "baseUrl": "https://app.letsgetquoted.com",
+  "httpStatus": 200,
+  "ok": true,
+  "mode": "read-only",
+  "upstreamStatus": 200,
+  "developerTokenHeaderSent": false,
+  "accessibleAccountCount": 2,
+  "managerAccountAccessible": true
+}

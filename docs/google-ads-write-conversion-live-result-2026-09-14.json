@@ -1,0 +1,120 @@
+{
+  "checkedAt": "2026-09-14T17:51:05.125Z",
+  "httpStatus": 207,
+  "ok": false,
+  "timestamp": "2026-09-14T17:51:05.474Z",
+  "writePath": {
+    "timestamp": "2026-09-14T17:51:00.859Z",
+    "apiVersion": "v25",
+    "mode": "live",
+    "mccCustomerId": "***-***-7203",
+    "servingCustomerId": "***-***-1544",
+    "steps": [
+      {
+        "step": 1,
+        "name": "OAuth Refresh Grant",
+        "status": "PASS",
+        "note": "Successfully refreshed OAuth 2.0 access token (HTTP 200)"
+      },
+      {
+        "step": 2,
+        "name": "Customer Discovery",
+        "status": "PASS",
+        "note": "Identified target advertiser: ***-***-1544 (from 2 accessible accounts)"
+      },
+      {
+        "step": 3,
+        "name": "Customer Account Info",
+        "status": "PASS",
+        "note": "Confirmed account (timeZone: America/New_York, currency: USD, testAccount: false) (2 actions: Sign-up [#7727670194], Job Won (Offline) [#7752658766]) | Billing: APPROVED [#8543915872]"
+      },
+      {
+        "step": 4,
+        "name": "Campaign Budget Mutate",
+        "status": "PASS",
+        "resourceName": "customers/2285671544/campaignBudgets/15871507184",
+        "note": "Successfully created Campaign Budget on Google Ads API v25 (HTTP 200)"
+      },
+      {
+        "step": 5,
+        "name": "Paused Campaign Creation",
+        "status": "PASS",
+        "resourceName": "customers/2285671544/campaigns/24251013287",
+        "campaignId": "24251013287",
+        "note": "Successfully created PAUSED campaign on Google Ads API v25 (HTTP 200)"
+      },
+      {
+        "step": 6,
+        "name": "Campaign Status Toggle & Teardown",
+        "status": "PASS",
+        "note": "Verified PAUSED status update and successful campaign and budget removal responses."
+      }
+    ],
+    "success": true,
+    "error": null,
+    "conversionActions": [
+      {
+        "id": "7727670194",
+        "name": "Sign-up",
+        "type": "WEBPAGE",
+        "status": "ENABLED"
+      },
+      {
+        "id": "7752658766",
+        "name": "Job Won (Offline)",
+        "type": "UPLOAD_CLICKS",
+        "status": "ENABLED"
+      }
+    ],
+    "billingSetups": [
+      {
+        "status": "APPROVED"
+      }
+    ],
+    "wonJobConversionActionId": "7752658766"
+  },
+  "offlineConversions": {
+    "timestamp": "2026-09-14T17:51:05.174Z",
+    "apiVersion": "v25",
+    "mode": "live",
+    "servingCustomerId": "***-***-1544",
+    "allowlisted": false,
+    "validationOnly": true,
+    "conversionRecorded": false,
+    "requiresDataManagerApi": false,
+    "steps": [
+      {
+        "step": 1,
+        "name": "OAuth Refresh Grant",
+        "status": "PASS",
+        "note": "Successfully refreshed OAuth 2.0 token (HTTP 200)"
+      },
+      {
+        "step": 2,
+        "name": "Payload Construction",
+        "status": "PASS",
+        "note": "Target customer: ***-***-1544, action: 7752658766"
+      },
+      {
+        "step": 3,
+        "name": "Conversion validation",
+        "status": "FAIL",
+        "note": "Conversion validation failed: New integrations for uploading click conversions should use the Data Manager API. Usage of ConversionUploadService.UploadClickConversions is limited to existing users. Please see https://developers.google.com/data-manager/api/devguides/events/google-ads/offline for more information., at conversions[0]"
+      }
+    ],
+    "success": false,
+    "error": "Conversion validation failed: New integrations for uploading click conversions should use the Data Manager API. Usage of ConversionUploadService.UploadClickConversions is limited to existing users. Please see https://developers.google.com/data-manager/api/devguides/events/google-ads/offline for more information., at conversions[0]"
+  },
+  "billingStatus": "APPROVED",
+  "managedAdsCheckoutEnabled": "true",
+  "deploymentId": "dpl_55Ktz8TMDVWjNeXczWTg5RjrVz6i",
+  "commit": "eebbcabab7fdef3b35534ff88fbb8a232a50b939",
+  "baseUrl": "https://app.letsgetquoted.com",
+  "assessment": {
+    "campaignWritesPassed": true,
+    "cleanupPassed": true,
+    "offlineConversionsBlocked": true,
+    "requiresDataManagerMigration": true,
+    "conversionRecorded": false
+  }
+}
