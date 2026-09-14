@@ -168,15 +168,45 @@ export async function POST(request: Request) {
       // Only authenticated, scoped, admitted calls reach this projection. It
       // cannot affect settlement or immutable replay comparisons.
       try {
-        const timingData = {
-          providerCallId: receipt.providerCallId,
-          ...signalWireTimingSummary(payload),
-        };
-        console.info('voice_provider_timing', timingData);
-        await admin.from('voice_provider_timing').insert(timingData);
+        const timing = signalWireTimingSummary(payload);
+        // Look up account_id from the admission that already exists (admitted
+        // is true here, so the row is guaranteed present). voice_calls may not
+        // exist yet if settlement is still running, so treat it as optional.
+        const [{ data: admissionRows }, { data: callRows }] = await Promise.all([
+          admin
+            .from('voice_call_admissions')
+            .select('account_id')
+            .eq('provider_call_id', receipt.providerCallId)
+            .limit(1),
+          admin
+            .from('voice_calls')
+            .select('id')
+            .eq('provider', 'signalwire')
+            .eq('provider_call_id', receipt.providerCallId)
+            .limit(1),
+        ]);
+        const accountId: string | undefined = admissionRows?.[0]?.account_id;
+        const voiceCallId: string | undefined = callRows?.[0]?.id;
+        if (accountId) {
+          const timingRow = {
+            account_id: accountId,
+            ...(voiceCallId ? { voice_call_id: voiceCallId } : {}),
+            provider_call_id: receipt.providerCallId,
+            timing_schema: timing.schema,
+            available: timing.available,
+            source: timing.source,
+            inspected_turns: timing.inspectedTurns,
+            truncated: timing.truncated,
+            samples: timing.samples,
+            speech_to_first_audio_ms: timing.speechToFirstAudioMs,
+            generations: timing.generations,
+          };
+          console.info('voice_call_timings', timingRow);
+          await admin.from('voice_call_timings').insert(timingRow);
+        }
       } catch (error) {
         // Optional diagnostics must never prevent usage settlement or recovery.
-        console.error('Failed to persist voice_provider_timing', error);
+        console.error('Failed to persist voice_call_timings', error);
       }
     }
 
