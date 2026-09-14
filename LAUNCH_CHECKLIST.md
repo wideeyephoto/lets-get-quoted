@@ -1,5 +1,49 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Customer email progress summary — break checkpoint, 2026-09-14
+
+**Paused at Brett's request after commit `0cb013dc2`. All implementation work completed so far is committed locally. This workstream has not been pushed, deployed or enabled in the hosted environment. The full ten-step objective remains unfinished.**
+
+### Where the ten-step plan stands
+
+| Original step | Current position |
+| --- | --- |
+| 1–3: website snapshots, provider identity/keys, signed callback recovery | Implemented and verified locally; hosted acceptance remains required. |
+| 4: remaining domain and owner notices | Substantial local progress; still in progress. |
+| 5: appointment, booking and selection reminders | Open. |
+| 6: campaign, review and rebooking messages | Open. |
+| 7: remaining email families | Open. |
+| 8: operator recovery controls | Open. |
+| 9: hosted release and acceptance | Open. |
+| 10: controlled canary and expansion review | Open. |
+
+### What we have completed locally
+
+- [x] **Shared email reliability foundation:** Saved event identities, immutable message/recipient/provider snapshots, one-attempt dispatch, signed callback recovery and retained uncertain outcomes. Website connection, domain failure and restoration notices use these protections.
+- [x] **Customer requests and owner alerts:** Migrated questions/follow-ups, messaging application events, change-order decisions, warranty claims, private feedback and Quick Stop lifecycle notices. The migrated request forms have retry receipts where recorded in the detailed execution history; this does not imply every form is covered.
+- [x] **Payment-related owner notices:** Added verified refund/dispute evidence, saved Quick Stop refund attempts and late-outcome reconciliation, connected-account setup notices and recurring-payment failure notices. Broader payment recovery requirements remain open below.
+- [x] **Portal messages:** Message storage, optional job/inbox copies and owner notice commit together. Retry IDs prevent duplicate submissions; messages without jobs or phone numbers remain readable; failed saves preserve entered text. Commit `7374c1156`.
+- [x] **Quote changes:** Failed financial checks stop changes; quote items/total, history and owner notice save together. Stable request IDs and displayed quote versions prevent delayed retries from replacing newer choices. Commits `f44054f4c`, `eb67ccb9e`, `a39679d04`. Quote-approval owner notices were also migrated in `423605fe6`.
+- [x] **Margin warnings and recovery:** Durable notices use a serialized four-hour cooldown and respect a 0% floor. Cost changes atomically queue versioned evaluation work; expired/failed workers can recover without clearing newer edits. Commits `05acfd761` and `0cb013dc2`.
+- [x] **Tracking:** Updated this prelaunch list, the ten-step execution record, implementation plan, handling checklist and owner-event runbook after verified batches.
+
+### Verification and its limits
+
+The latest combined local PostgreSQL run passed **179/179 checks** against actual migrations in a disposable database. The latest recovery batch passed **23 selected application tests**, full application/test type checking, changed-file lint, sender-registry checks and the local security advisor. Earlier batches have their own recorded test results; overlapping counts must not be added into a claimed full-suite total.
+
+These are local checks. They do not prove hosted delivery, provider capacity, migration rollout, suppression behavior in production or a clean canary for this release. No live customer email, charge or refund was performed during these recent implementation batches.
+
+### Remaining work and resume point
+
+- [ ] **Next code task: warranty service reminders.** Inspection found that the sweep stamps reminders before email submission, which can lose a reminder after interruption, and competing sweeps need a saved occurrence/claim. Inspection only; no warranty-sweep changes have been made at this checkpoint.
+- [ ] Finish remaining owner-alert paths, including scheduling, customer plan changes, subcontractor updates, lead notifications and customer confirmation wrappers; reconcile the full source inventory before closing step 4.
+- [ ] Finish quote acceptance/signature/job/deposit recovery and review concurrent payment/plan/cost writer ordering. Complete remaining refund/charge uncertainty and interrupted customer-message follow-ups.
+- [ ] Complete scheduled reminders, campaigns and remaining email families, then operator detail/closeout and deliberate-resend controls.
+- [ ] Verify migration order and drain legacy senders; collect hosted receiver, callback, suppression, failure, retention, capacity and rollback evidence.
+- [ ] Run the required controlled canary and review expansion. Push only after the agreed full objective is complete; do not treat the current local checkpoint as launch approval.
+
+For the detailed evidence and per-family limitations, use the [ten-step execution record](docs/customer-email-ten-step-execution-2026-09-14.md) and [owner-event runbook](docs/runbooks/owner-event-notices.md). The dated entries below preserve implementation history; this consolidated checkpoint states the current overall position.
+
 ## Customer email reliability update — 2026-09-14
 
 The complete agreed work, commit progress and push gate are maintained in the
