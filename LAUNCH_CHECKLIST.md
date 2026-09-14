@@ -31,6 +31,8 @@ The complete agreed work, commit progress and push gate are maintained in the
 
 - [x] **Local Quick Stop confirmation owner notices:** Confirmation and notice commit together with a same-account paid-payment check; changed/canceled/refunded sources stop pending email. Checks: 19 application tests, 118 database checks, type checking, lint and clean local security advisor. Hosted payment acceptance and refund/cancellation notices remain open.
 
+- [x] **Local Quick Stop cancellation owner notices:** Cancellation/no-show notices commit with the transition and terminal retries cannot reopen refund execution. Copy requires refund-status verification. Checks: 26 application tests, 120 database checks, type checking, lint and clean local security advisor. Authoritative refund-outcome notices and hosted acceptance remain open.
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.

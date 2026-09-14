@@ -1,12 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { refundPayment } from '@/lib/payments';
 import { getQuickStopRequest, logQuickStopEvent, type QuickStopRequest } from '@/lib/quick-stop-requests';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { sendQuickStopStatusSms } from '@/lib/sms';
-import { centsToDollars, quickStopNoShowLock } from '@/lib/quick-stop';
+import { centsToDollars, quickStopNoShowLock, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
 import { logAdminAction, systemActor, type AuditActor } from '@/lib/admin';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 // Cancellation refund tiers (percent of the Quick Stop fee). These are the spec
 // defaults; kept as one constant so they're trivial to make per-account editable
@@ -89,6 +88,8 @@ export async function resolveQuickStopCancellation(
 ): Promise<{ pct: number; refundCents: number }> {
   const req = await getQuickStopRequest(admin, accountId, requestId);
   if (!req) throw new Error('Request not found.');
+  // A replay must not reopen the refund path after its terminal transition.
+  if (QUICK_STOP_TERMINAL_STATUSES.includes(req.status)) return { pct: 0, refundCents: req.refund_cents ?? 0 };
 
   const tiers = await loadRefundTiers(admin, accountId);
   const refundPct =
@@ -194,24 +195,7 @@ export async function resolveQuickStopCancellation(
     });
   }
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName: 'Let’s Get Quoted',
-        subject: opts.kind === 'no_show' ? 'Quick Stop no-show recorded' : 'Quick Stop canceled',
-        heading: opts.kind === 'no_show' ? 'A no-show was recorded' : 'A Quick Stop was canceled',
-        bodyLines: [
-          `${req.client_name}: ${status.replace(/_/g, ' ')}.`,
-          `${refundLabel}`,
-          opts.reason ? `Reason: ${opts.reason}` : 'No reason given.',
-        ],
-        ctaLabel: 'View Quick Stops',
-        ctaUrl: `${APP_ORIGIN}/dashboard/quick-stops`,
-        tone: 'warning',
-      });
-    }
+    await runOwnerEventNotices(admin, { sourceId: requestId, accountId });
   } catch (error) {
     console.error('Quick Stop cancel owner email failed:', error instanceof Error ? error.message : error);
   }

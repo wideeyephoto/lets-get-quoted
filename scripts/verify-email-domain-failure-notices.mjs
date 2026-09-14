@@ -131,6 +131,7 @@ try {
   await (await import('./verify-private-feedback-requests.mjs')).verifyPrivateFeedback(db, other, root, passed);
   await (await import('./verify-review-link-feedback.mjs')).verifyReviewLinkFeedback(db, other, root, passed);
   await (await import('./verify-quick-stop-owner-notices.mjs')).verifyQuickStopNotices(db, other, root, passed);
+  await (await import('./verify-quick-stop-cancellation-notices.mjs')).verifyQuickStopCancellations(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

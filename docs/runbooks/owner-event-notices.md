@@ -261,3 +261,22 @@ Verification: 19 application tests, 118 PostgreSQL checks, type checking, lint
 and clean local security advisor. Refund/cancellation messages remain open:
 intended refund cents written before a provider result cannot serve as proof
 that money was refunded. Hosted payment and receiver acceptance remain open.
+
+## Quick Stop cancellation and no-show notices
+
+Drain legacy cancellation email producers before applying
+20260914183419_quick_stop_cancellation_notices.sql and deploying its caller.
+The status transition saves one notice for the Quick Stop, separately from its
+confirmation notice. Saved customer/reason/cancellation timestamps bind delivery.
+Later refunded/disputed status retains the historical cancellation notice.
+
+Terminal requests return before refund side effects, and the database rejects
+changing a terminal outcome into a different cancellation. Competing requests
+still use the existing compare-and-set winner. The notice does not embed intended
+refund cents, because those are recorded before the provider result. It tells the
+owner to check payment details for refund status. This is not a refund-completion
+notice or a migration of the customer refund SMS.
+
+Verification: 26 application tests, 120 PostgreSQL checks, full type checking,
+lint and clean local security advisor. Actual refund-outcome notification and
+hosted financial/receiver acceptance remain open.
