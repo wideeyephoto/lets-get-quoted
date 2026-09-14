@@ -711,7 +711,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Pennsylvania',
     fips: '42',
     licensingBoard: 'Pennsylvania Office of Attorney General (HIC Registration) / Dept of Labor & Industry (UCC)',
-    licensingUrl: 'https://www.attorneygeneral.gov/protect-yourself/home-improvement-contractor',
+    licensingUrl: 'https://hic.attorneygeneral.gov/',
     codes: {
       building: { name: 'Pennsylvania Uniform Construction Code (UCC / 2018/2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
