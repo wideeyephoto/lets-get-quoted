@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { parsePaymentAmount, paymentAmountError } from '@/lib/money-input';
 import { headers } from 'next/headers';
-import { requireOfficeContext } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { getJob } from '@/lib/jobs';
 import {
@@ -113,10 +113,10 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
           const amountStr = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
           const deliveryStr = delivered ? `Texted to ${homeownerPhone}.` : 'Not delivered — there was no mobile or email on file for them, so nothing was sent.';
 
-          await supabase.from('owner_event_notices').insert({
+          const { error: noticeError } = await createAdminClient().from('owner_event_notices').insert({
             account_id: accountId,
             source_type: 'job',
-            source_id: jobId,
+            source_id: payment.id,
             event_kind: 'transactional_confirmation',
             source_payload: {
               title: delivered
@@ -133,6 +133,7 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
               recipient_email: user.email,
             }
           });
+          if (noticeError) throw noticeError;
         }
     }
   } catch (err) {

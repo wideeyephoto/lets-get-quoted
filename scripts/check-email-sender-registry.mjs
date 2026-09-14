@@ -5,7 +5,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const wrappers = new Set(['sendAccountScopedEmail', 'sendPlatformTransactionalEmail', 'preparePlatformTransactionalEmail', 'sendDocumentEmail']);
+const wrappers = new Set(['sendAccountScopedEmail', 'sendPlatformTransactionalEmail', 'preparePlatformTransactionalEmail', 'sendDurablePlatformEmail', 'sendDocumentEmail']);
 const providers = /^(resend|nodemailer|@sendgrid\/mail|mailgun.js|@aws-sdk\/client-ses(?:v2)?)$/;
 const providerUrl = /^https?:\/\/(?:api\.resend\.com|api\.sendgrid\.com|api(?:\.eu)?\.mailgun\.net)(?:\/|$)/;
 export function inspectTransportSource(text, filename = 'source.ts') {

@@ -12,9 +12,15 @@ begin
   select * into n from public.owner_event_notices where id=n.id and account_id=n.account_id;
   if not found then return false; end if;
   if n.source_type='system_sweep' and n.event_kind='warranty_service_due' then
-    perform 1 from public.warranties w where w.account_id=n.account_id and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid) for share;
+    perform 1 from public.warranties w where w.account_id=n.account_id
+      and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid)
+      and w.service_reminded_at is not null and w.service_interval_months>0
+      and w.next_service_due<=current_date+21 for share;
     return found;
   end if;
+  if n.source_type='portal_message' and n.event_kind='portal_message_received' then
+    perform 1 from public.portal_message_requests r where r.id=n.source_id and r.account_id=n.account_id
+      and r.client_id::text=n.source_payload->>'client_id' and r.body=n.source_payload->>'body'
       and r.job_id::text is not distinct from n.source_payload->>'job_id' for share;
     return found;
   end if;
@@ -166,18 +172,23 @@ returns uuid language plpgsql security invoker set search_path='' as $$
 declare
   v_notice_id uuid;
   v_source_id uuid := gen_random_uuid();
+  v_ids uuid[];
+  v_body text;
 begin
-  if array_length(p_warranty_ids, 1) = 0 then return null; end if;
-
-  update public.warranties
-  set service_reminded_at = clock_timestamp()
-  where account_id = p_account_id
-    and id = any(p_warranty_ids)
-    and service_reminded_at is null;
+  if coalesce(cardinality(p_warranty_ids),0)=0 then return null; end if;
+  -- Derive the message from only the rows this transaction successfully claims.
+  with claimed as (
+    update public.warranties set service_reminded_at=clock_timestamp()
+      where account_id=p_account_id and id=any(p_warranty_ids) and service_reminded_at is null
+        and service_interval_months>0 and next_service_due<=current_date+21
+      returning id,title,next_service_due
+  ) select array_agg(id order by id),string_agg(title||' — service due '||next_service_due::text,E'\n' order by id)
+    into v_ids,v_body from claimed;
+  if coalesce(cardinality(v_ids),0)=0 then return null; end if;
 
   insert into public.owner_event_notices(account_id, source_type, source_id, event_kind, source_payload)
     values(p_account_id, 'system_sweep', v_source_id, 'warranty_service_due',
-      jsonb_build_object('title', p_title, 'body', p_body, 'warranty_ids', to_jsonb(p_warranty_ids)))
+      jsonb_build_object('title', cardinality(v_ids)||' warranties due a service', 'body', v_body, 'warranty_ids', to_jsonb(v_ids)))
     returning id into v_notice_id;
     
   return v_notice_id;

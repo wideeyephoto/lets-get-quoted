@@ -141,7 +141,7 @@ async function deliverRebookInvite(
       url: bookingUrl,
       accountId,
       mailingAddress,
-      jobId: '00000000-0000-0000-0000-000000000000', // no job in this context
+      jobId: null,
       idempotencyKey: `rebook:${client.id}:${new Date().toISOString().slice(0, 10)}:email`,
     });
     channel = 'email';

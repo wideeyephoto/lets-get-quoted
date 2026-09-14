@@ -1,6 +1,5 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { APP_ORIGIN } from '@/lib/app-origin';
 import { sendPlatformEventNoticeEmail } from '@/lib/email';
 
 type Notice = {
@@ -21,6 +20,10 @@ export async function runPlatformEventNotices(admin: SupabaseClient, source?: { 
     let providerId: string | null = null;
     let failure: string | null = null;
     try {
+      if (notice.event_family === 'auth_link' && notice.payload.verifyUrl
+        && (!Number.isFinite(Date.parse(notice.payload.expiresAt)) || Date.parse(notice.payload.expiresAt) <= Date.now())) {
+        throw new Error('auth_link_expired');
+      }
       const recipient = notice.payload.to?.trim().toLowerCase();
       if (!recipient) throw new Error('owner_email_missing');
       
@@ -45,7 +48,7 @@ export async function runPlatformEventNotices(admin: SupabaseClient, source?: { 
         payload: notice.payload,
       });
     } catch (error) {
-      failure = error instanceof Error && ['owner_email_missing','owner_brand_unavailable','notice_prepare_failed'].includes(error.message)
+      failure = error instanceof Error && ['owner_email_missing','owner_brand_unavailable','notice_prepare_failed','auth_link_expired'].includes(error.message)
         ? error.message : 'send_failed_or_outcome_unknown';
     }
     const saved = await admin.rpc('finish_platform_event_notice', {

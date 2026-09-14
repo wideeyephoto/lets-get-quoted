@@ -1804,3 +1804,9 @@ The following **12 pages** have not been touched in over 3 weeks. Each surface h
 | `/site/[subdomain]/privacy` | `src/app/site/[subdomain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/terms` | `src/app/site/[subdomain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/videos` | `src/app/site/[subdomain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+# Customer email audit repair checkpoint — September 14
+
+- [x] Repair malformed migrations, tenant/recipient guards, operator permissions, quote/deposit replay, notice identities and platform snapshot delivery. [Repair evidence](docs/evidence/customer-email-audit-repairs-2026-09-14.md): 194 database checks and 294 application tests, typecheck and local advisor passed.
+- [ ] Apply and verify the reviewed staging migration set, including missing earlier email foundations. Earlier entries saying migrations were "applied" describe local work unless accompanied by hosted evidence.
+- [ ] Complete customer-ledger background recovery, monitoring and callback integration; remaining direct platform sender identities and auth-token retention.
+- [ ] Complete production migration/deployment compatibility, provider/inbox/suppression acceptance and controlled canary before launch or worker enablement.

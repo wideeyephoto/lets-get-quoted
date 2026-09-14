@@ -127,7 +127,7 @@ async function notifyOwnerOfMarketplaceLead(
     const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
 
     try {
-      await admin.from('owner_event_notices').insert({
+      const { error: noticeError } = await admin.from('owner_event_notices').insert({
         account_id: accountId,
         source_type: 'lead',
         source_id: lead.id,
@@ -139,6 +139,7 @@ async function notifyOwnerOfMarketplaceLead(
           estimate: lead.triage?.estimate ?? null,
         }
       });
+      if (noticeError && noticeError.code !== '23505') throw noticeError;
     } catch (dbErr) {
       console.error('Failed to enqueue owner event notice for lead:', dbErr);
     }

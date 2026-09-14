@@ -1,13 +1,15 @@
-import { notFound, redirect } from 'next/navigation';
+import { randomUUID } from 'node:crypto';
+import { staffCan } from '@/lib/staff';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { loadEmailSendRecovery, type EmailSendRecoveryRow } from '@/lib/email-send-recovery';
 import { createAdminClient } from '@/lib/supabase-admin';
 import styles from '../../../../admin.module.css';
 import { resolveEmailSend, resendDocumentEmail } from './actions';
 
 export default async function EmailSendRecoveryDetail({ params }: { params: { source: string; id: string } }) {
-  await requireAdmin();
+  const { staff } = await requireAdmin();
+  const canManage = staffCan(staff, 'ops.manage');
   if (params.source !== 'lifecycle' && params.source !== 'document') {
     notFound();
   }
@@ -48,7 +50,7 @@ export default async function EmailSendRecoveryDetail({ params }: { params: { so
         </div>
         <p className={styles.muted}>Payloads are redacted for privacy.</p>
         
-        {data.state !== 'accepted' && data.state !== 'cancelled' && (
+        {canManage && data.state !== 'accepted' && data.state !== 'cancelled' && (
           <form action={handleResolve}>
             <h3>Evidence-backed Closeout</h3>
             <label>
@@ -64,8 +66,9 @@ export default async function EmailSendRecoveryDetail({ params }: { params: { so
             <button type="submit">Resolve</button>
           </form>
         )}
-        {(params.source === 'document' && (data.state === 'accepted' || data.state === 'cancelled')) && (
+        {(canManage && params.source === 'document' && (data.state === 'accepted' || data.state === 'cancelled')) && (
           <form action={handleResend}>
+            <input type="hidden" name="request_id" value={randomUUID()} />
             <h3>Deliberate Resend</h3>
             <p>Resend this unchanged document. A new tracked send will be created.</p>
             <button type="submit">Resend</button>

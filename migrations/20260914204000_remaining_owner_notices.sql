@@ -1,4 +1,19 @@
-﻿alter table public.owner_event_notices drop constraint owner_event_notices_event_kind_check;
+-- Older hosted databases have no persisted client_feed table.
+create table if not exists public.client_feed (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  client_id uuid not null references public.clients(id) on delete cascade,
+  kind text not null, title text not null, body text, author text,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default clock_timestamp()
+);
+alter table public.client_feed enable row level security;
+revoke all on public.client_feed from public,anon,authenticated;
+grant select,insert,update,delete on public.client_feed to service_role;
+create index if not exists client_feed_account_idx on public.client_feed(account_id);
+create index if not exists client_feed_client_idx on public.client_feed(client_id);
+
+alter table public.owner_event_notices drop constraint owner_event_notices_event_kind_check;
 alter table public.owner_event_notices add constraint owner_event_notices_event_kind_check check(event_kind in (
   'client_question','client_followup','rebook_requested','messaging_submitted','messaging_action_required',
   'messaging_approved','messaging_rejected','messaging_active','change_order_approved','change_order_declined',
@@ -18,36 +33,41 @@ alter table public.owner_event_notices add constraint owner_event_notices_source
 
 -- Modify owner_event_source_available to handle new sources
 create or replace function public.owner_event_source_available(n public.owner_event_notices)
-returns boolean language plpgsql security definer set search_path='' as 
+returns boolean language plpgsql security definer set search_path='' as $$
 begin
+  -- Existing messaging tables intentionally grant service_role SELECT only.
+  -- This service-only function exposes a boolean and row locks, never mutation.
+  -- Reload the persisted notice so supplied composite fields cannot choose a source.
   select * into n from public.owner_event_notices where id=n.id and account_id=n.account_id;
   if not found then return false; end if;
-
   if n.source_type='system_sweep' and n.event_kind='warranty_service_due' then
-    perform 1 from public.warranties w where w.account_id=n.account_id and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid) for share;
+    perform 1 from public.warranties w where w.account_id=n.account_id
+      and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid)
+      and w.service_reminded_at is not null and w.service_interval_months>0
+      and w.next_service_due<=current_date+21 for share;
     return found;
   end if;
-  
   if n.source_type='client_feed' then
     perform 1 from public.client_feed f where f.id=n.source_id and f.account_id=n.account_id and f.kind=n.event_kind for share;
     return found;
   end if;
-
   if n.source_type='dispatch_offer' then
-    perform 1 from public.dispatch_offers o join public.dispatch_requests r on r.id=o.request_id 
-      where o.id=n.source_id and o.account_id=n.account_id for share of o,r;
+    perform 1 from public.subcontractor_offers o join public.subcontractor_requests r on r.id=o.request_id and r.account_id=o.account_id
+      where o.id=(n.source_payload->>'offer_id')::uuid and o.account_id=n.account_id for share of o,r;
     return found;
   end if;
-
   if n.source_type='lead' then
     perform 1 from public.leads l where l.id=n.source_id and l.account_id=n.account_id for share;
     return found;
   end if;
-
   if n.source_type='job' then
-    perform 1 from public.jobs j where j.id=n.source_id and j.account_id=n.account_id for share;
+    perform 1 from public.payments p join public.jobs j on j.id=p.job_id and j.account_id=p.account_id
+      where p.id=n.source_id and p.account_id=n.account_id and p.job_id::text=n.source_payload->>'job_id' for share of p,j;
     return found;
   end if;
+  if n.source_type='portal_message' and n.event_kind='portal_message_received' then
+    perform 1 from public.portal_message_requests r where r.id=n.source_id and r.account_id=n.account_id
+      and r.client_id::text=n.source_payload->>'client_id' and r.body=n.source_payload->>'body'
       and r.job_id::text is not distinct from n.source_payload->>'job_id' for share;
     return found;
   end if;
@@ -201,12 +221,12 @@ create trigger record_owner_event_notice after insert on public.job_feed
 
 drop trigger if exists record_client_feed_owner_notice on public.client_feed;
 create or replace function public.record_client_feed_owner_notice() returns trigger
-language plpgsql security invoker set search_path='' as 
+language plpgsql security invoker set search_path='' as $$
 begin
   insert into public.owner_event_notices(account_id,source_type,source_id,event_kind,source_payload)
     values(new.account_id,'client_feed',new.id,new.kind,jsonb_build_object('title',new.title,'body',coalesce(new.body,''),'client_id',new.client_id));
   return new;
-end ;
+end $$;
 revoke all on function public.record_client_feed_owner_notice() from public,anon,authenticated;
 create trigger record_client_feed_owner_notice after insert on public.client_feed
   for each row when (new.kind in ('customer_plan_change') and new.meta->>'owner_email_notice'='v1') execute function public.record_client_feed_owner_notice();

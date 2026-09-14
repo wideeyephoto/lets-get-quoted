@@ -1,8 +1,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateEmailOptions, Resend } from 'resend';
+import { createHash } from 'node:crypto';
 
 const DELIVERY_BLOCKS = new Set(['hard_bounce', 'complaint', 'provider_suppressed']);
 const MARKETING_ONLY = new Set(['unsubscribe_link', 'one_click_unsubscribe']);
+
+/** Save the exact platform message before its single, bounded submission. */
+export async function sendDurablePlatformEmail(admin: SupabaseClient, client: Pick<Resend, 'key' | 'fetchRequest'>,
+  payload: CreateEmailOptions, idempotencyKey: string,
+  prepare: (snapshot: { payload: CreateEmailOptions; providerFingerprint: string; idempotencyKey: string }) => Promise<void>) {
+  if (!client.key || payload.react) throw new Error('Rendered platform email and provider configuration are required.');
+  const message = await preparePlatformTransactionalEmail(admin, payload);
+  const body = JSON.stringify(message);
+  await prepare({ payload: JSON.parse(body), providerFingerprint: createHash('sha256').update(client.key).digest('hex'), idempotencyKey });
+  await preparePlatformTransactionalEmail(admin, JSON.parse(body));
+  return client.fetchRequest<{ id: string }>('/emails', {
+    method: 'POST', headers: { Authorization: `Bearer ${client.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+    body, signal: AbortSignal.timeout(30_000),
+  });
+}
 
 /** Explicit platform recipients, never an inferred tenant or marketing scope. */
 export async function sendPlatformTransactionalEmail(admin: SupabaseClient, client: Pick<Resend, 'emails'>, payload: CreateEmailOptions,

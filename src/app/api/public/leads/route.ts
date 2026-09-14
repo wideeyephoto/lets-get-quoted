@@ -50,7 +50,7 @@ async function notifyOwner(
     const estimate = lead.triage?.estimate ?? null;
 
     try {
-      await admin.from('owner_event_notices').insert({
+      const { error: noticeError } = await admin.from('owner_event_notices').insert({
         account_id: site.account_id,
         source_type: 'lead',
         source_id: lead.id,
@@ -62,6 +62,7 @@ async function notifyOwner(
           estimate,
         }
       });
+      if (noticeError && noticeError.code !== '23505') throw noticeError;
     } catch (dbErr) {
       console.error('Failed to enqueue owner event notice for lead:', dbErr);
     }

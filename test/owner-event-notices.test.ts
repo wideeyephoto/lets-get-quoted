@@ -45,7 +45,7 @@ function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; r
 it('saves the normalized owner and exact message under its claimed event before acceptance', async () => {
   const db = fixture();
   expect((await runOwnerEventNotices(db.client)).ownersNotified).toBe(1);
-  expect(db.rpc).toHaveBeenCalledWith('prepare_owner_event_notice', expect.objectContaining({ p_id: 'notice-1', p_account_id: 'account-1', p_recipient: 'application@example.test' }));
+  expect(db.rpc).toHaveBeenCalledWith('prepare_owner_event_notice', expect.objectContaining({ p_id: 'notice-1', p_account_id: 'account-1', p_recipient: 'owner@example.test' }));
   expect(db.rpc).toHaveBeenCalledWith('prepare_owner_event_notice_snapshot', expect.objectContaining({ p_payload: { to: 'owner@example.test' }, p_idempotency_key: 'saved-key' }));
   expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ ctaUrl: expect.stringContaining('/dashboard/jobs/job-1'), bodyLines: ['Help'] }));
   await runOwnerEventNotices(db.client);

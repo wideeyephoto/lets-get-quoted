@@ -15,7 +15,7 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
     let failure: string | null = null;
     try {
       const messaging = notice.source_type === 'messaging_registration_event';
-      const customRecipient = notice.source_payload.recipient_email?.trim().toLowerCase();
+      const customRecipient = (messaging || notice.event_kind === 'transactional_confirmation') ? notice.source_payload.recipient_email?.trim().toLowerCase() : undefined;
       const recipient = customRecipient || (await getAccountOwnerEmail(admin, notice.account_id))?.trim().toLowerCase();
       if (!recipient) throw new Error('owner_email_missing');
       const site = messaging ? { data: { company_name: notice.source_payload.business_name }, error: null }
@@ -35,7 +35,7 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
       };
 
       if (notice.event_kind === 'lead_notification') {
-        const { data: lead } = await admin.from('leads').select('*').eq('id', notice.source_id).single();
+        const { data: lead } = await admin.from('leads').select('*').eq('id', notice.source_id).eq('account_id', notice.account_id).single();
         if (!lead) throw new Error('lead_not_found');
         providerId = await sendLeadNotificationEmail({
           noticeId: notice.id,

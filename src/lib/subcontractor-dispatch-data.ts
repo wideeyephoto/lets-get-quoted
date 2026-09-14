@@ -14,6 +14,7 @@
 // there is no session: the bearer of a signed token is the authorisation, and
 // the token is scoped to exactly one offer.
 
+import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
@@ -1369,17 +1370,24 @@ async function notifyOwner(
       `${request.workDescription} — ${formatPay(request.payAmount, request.payKind)} — ${scheduleLabel(request) || 'no date set'}.`,
     ].join('\n\n');
 
-    await admin.from('owner_event_notices').insert({
+    const { data: response, error: responseError } = await admin.from('subcontractor_offers')
+      .select('updated_at,responded_at').eq('id', offerId).eq('account_id', accountId).single();
+    if (responseError || !response) throw new Error('Subcontractor response identity unavailable');
+    const hash = createHash('sha256').update(JSON.stringify([offerId, kind, response.updated_at, response.responded_at, detail ?? null])).digest('hex');
+    const eventId = `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;
+    const { error: noticeError } = await admin.from('owner_event_notices').insert({
       account_id: accountId,
       source_type: 'dispatch_offer',
-      source_id: offerId,
+      source_id: eventId,
       event_kind: 'subcontractor_alert',
       source_payload: {
         title: heading,
         body: bodyText,
-        request_id: request.id
+        request_id: request.id,
+        offer_id: offerId,
       }
     });
+    if (noticeError && noticeError.code !== '23505') throw noticeError;
   } catch (error) {
     console.error('Owner dispatch alert failed:', error instanceof Error ? error.message : error);
   }

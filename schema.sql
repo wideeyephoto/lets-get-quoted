@@ -38907,8 +38907,6 @@ create table public.contractor_lifecycle_sends (
   lease_until timestamptz,
   next_retry_at timestamptz,
   provider_id text unique,
-    resend_of_id uuid references public.document_email_sends(id) on delete cascade,
-    resend_idempotency_key text unique,
   accepted_at timestamptz,
   last_error text,
   resolved_by text,
@@ -39158,7 +39156,7 @@ create table public.document_email_sends (
   resolved_by text,
   resolution text,
   resolved_at timestamptz,
-  
+  unique(account_id,kind,document_id,revision),
   check((kind='invoice' and invoice_id is not null and invoice_id=document_id) or (kind='client_quote' and invoice_id is null and job_id=document_id)),
   check(state<>'sending' or (lease_token is not null and lease_until is not null)),
   check(state<>'accepted' or (provider_id is not null and accepted_at is not null)),
@@ -39167,8 +39165,7 @@ create table public.document_email_sends (
 alter table public.document_email_sends enable row level security;
 revoke all on public.document_email_sends from public,anon,authenticated;
 grant select,insert,update,delete on public.document_email_sends to service_role;
-create unique index document_email_sends_primary_idx on public.document_email_sends(account_id,kind,document_id,revision) where resend_of_id is null;
-  create index document_email_sends_job_idx on public.document_email_sends(job_id);
+create index document_email_sends_job_idx on public.document_email_sends(job_id);
 create index document_email_sends_invoice_idx on public.document_email_sends(invoice_id) where invoice_id is not null;
 create index document_email_sends_attention_idx on public.document_email_sends(state,first_attempt_at)
   where state in ('sending','retry_wait','manual_review');
@@ -43503,42 +43500,7 @@ end $$;
 revoke all on function public.finish_margin_evaluation(uuid,uuid,uuid,uuid,boolean) from public,anon,authenticated;
 grant execute on function public.finish_margin_evaluation(uuid,uuid,uuid,uuid,boolean) to service_role;
 notify pgrst,'reload schema';
-  create function public.submit_document_email_resend(
-    p_original_send_id uuid,
-    p_account_id uuid,
-    p_actor text,
-    p_idempotency_key text
-  ) returns uuid language plpgsql security invoker set search_path = '' as \$\$
-  declare
-    v_original public.document_email_sends;
-    v_existing_resend_id uuid;
-    v_new_resend_id uuid;
-  begin
-    select * into v_original from public.document_email_sends where id = p_original_send_id and account_id = p_account_id;
-    if not found then
-      raise exception 'Original send not found';
-    end if;
-  
-    if v_original.state not in ('accepted', 'cancelled') then
-      raise exception 'Original send must be resolved before resending';
-    end if;
-  
-    select id into v_existing_resend_id from public.document_email_sends where resend_idempotency_key = p_idempotency_key;
-    if found then
-      return v_existing_resend_id;
-    end if;
-  
-    insert into public.document_email_sends(
-      account_id, job_id, invoice_id, kind, document_id, revision, recipient, payload, fallback_payload, provider_scope, state, phase, resend_of_id, resend_idempotency_key
-    ) values (
-      v_original.account_id, v_original.job_id, v_original.invoice_id, v_original.kind, v_original.document_id, v_original.revision, v_original.recipient, v_original.payload, v_original.fallback_payload, v_original.provider_scope, 'sending', v_original.phase, p_original_send_id, p_idempotency_key
-    ) returning id into v_new_resend_id;
-  
-    return v_new_resend_id;
-  end;
-  \$\$;
-  revoke all on function public.submit_document_email_resend(uuid,uuid,text,text) from public,anon,authenticated;
-  grant execute on function public.submit_document_email_resend(uuid,uuid,text,text) to service_role;
+
 create table public.quote_approval_request_receipts (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete cascade,
@@ -43574,6 +43536,7 @@ declare
   j public.jobs;
   event_id uuid := gen_random_uuid();
   v_promoted boolean := false;
+  v_existing public.job_feed;
 begin
   if p_request_id is null or p_payload_hash is null or p_payload_hash !~ '^[a-f0-9]{64}$' then raise exception 'Invalid approval request'; end if;
   perform pg_advisory_xact_lock(hashtextextended('quote-approval:'||p_account_id::text||':'||p_request_id::text,0));
@@ -43585,7 +43548,14 @@ begin
   end if;
 
   select * into j from public.jobs where id=p_job_id and account_id=p_account_id for update;
-  if not found then raise exception 'Quote unavailable'; end if;
+  if not found or (to_jsonb(j)->>'deleted_at') is not null then raise exception 'Quote unavailable'; end if;
+  if p_total is null or p_total<0 or p_total::text in ('NaN','Infinity','-Infinity') then raise exception 'Invalid quote total'; end if;
+  select * into v_existing from public.job_feed where account_id=p_account_id and source_table='jobs' and source_id=p_job_id and kind='quote_approved';
+  if found then
+    if v_existing.amount is distinct from p_total or (p_items is not null and j.quote_items is distinct from p_items) then raise exception 'Quote was already accepted with different terms'; end if;
+    insert into public.quote_approval_request_receipts(account_id,job_id,request_id,payload_hash,quoted_amount,event_id) values(p_account_id,p_job_id,p_request_id,p_payload_hash,p_total,v_existing.id);
+    return jsonb_build_object('event_id',v_existing.id,'replayed',true,'promoted',false,'leadWon',false);
+  end if;
   if jsonb_build_object('quote_items',j.quote_items,'quoted_amount',j.quoted_amount) is distinct from p_expected then
     raise exception 'Quote changed; refresh before approving';
   end if;
@@ -43604,6 +43574,8 @@ begin
     v_promoted := true;
   end if;
 
+  update public.leads set status='won' where account_id=p_account_id and converted_job=p_job_id and status<>'won';
+
   insert into public.job_feed(id,account_id,job_id,kind,title,body,visibility,amount,author,source_table,source_id,published_at,meta)
     values(event_id,p_account_id,p_job_id,'quote_approved',p_title,p_body,'client',p_total,'Client','jobs',p_job_id,clock_timestamp(),jsonb_build_object('owner_email_notice','quote_approval_v1','acceptance_source','client_link'));
 
@@ -43615,6 +43587,42 @@ end $$;
 revoke all on function public.save_client_quote_approval(uuid,uuid,uuid,text,jsonb,jsonb,numeric,text,text,text,text,text) from public,anon,authenticated;
 grant execute on function public.save_client_quote_approval(uuid,uuid,uuid,text,jsonb,jsonb,numeric,text,text,text,text,text) to service_role;
 notify pgrst,'reload schema';
+
+-- Serialize automatic deposits and their invoice setup across acceptance replays.
+create function public.ensure_quote_approval_deposit(p_account_id uuid,p_job_id uuid,p_quote_amount numeric,p_phone text,p_sms_consent boolean)
+returns uuid language plpgsql security invoker set search_path='' as $$
+declare j public.jobs; a public.accounts; i public.invoices; p public.payments; amount numeric; invoice_id uuid; invoice_ref text; discount numeric;
+begin
+ select * into j from public.jobs where id=p_job_id and account_id=p_account_id for update;
+ if not found then raise exception 'Job unavailable'; end if;
+ select * into p from public.payments where job_id=p_job_id and account_id=p_account_id and kind='deposit' order by created_at,id limit 1;
+ if found then return p.id; end if;
+ if j.quoted_amount is distinct from p_quote_amount then raise exception 'Accepted quote changed; review deposit'; end if;
+ select * into a from public.accounts where id=p_account_id for share;
+ if not a.deposit_on_approval or a.deposit_percent is null or a.deposit_percent<=0 or a.deposit_percent>100 then return null; end if;
+ amount:=round(p_quote_amount*a.deposit_percent/100,2);
+ if amount<=0 then return null; end if;
+ select * into i from public.invoices where account_id=p_account_id and job_id=p_job_id and status<>'void' order by total desc,created_at desc,id limit 1 for update;
+ if not found then
+   perform pg_advisory_xact_lock(hashtextextended(p_account_id::text,20260914202500));
+   select 'INV-'||(coalesce(max(substring(ref from '^INV-([0-9]+)$')::numeric),2000)+1)::text into invoice_ref from public.invoices where account_id=p_account_id;
+   discount:=greatest(coalesce((to_jsonb(j)->>'reschedule_discount_percent')::numeric,0),0);
+   insert into public.invoices(account_id,job_id,ref,status,total,discount_percent)
+     values(p_account_id,p_job_id,invoice_ref,'draft',round(p_quote_amount*(1-discount/100),2),discount) returning * into i;
+   insert into public.invoice_items(invoice_id,description,amount,sort_order) values(i.id,'Quoted job total',p_quote_amount,0);
+ elsif i.total<=0 then
+   insert into public.invoice_items(invoice_id,description,amount,sort_order) values(i.id,'Quoted job total',p_quote_amount,0);
+   update public.invoices set total=round(p_quote_amount*(1-coalesce(i.discount_percent,0)/100)*(1+coalesce(i.tax_rate,0)/100),2) where id=i.id;
+ end if;
+ insert into public.payments(account_id,job_id,invoice_id,kind,label,amount,status,homeowner_phone,sms_consent,sms_consent_at)
+ values(p_account_id,p_job_id,i.id,'deposit','Deposit ('||a.deposit_percent::text||'% of quote)',amount,'requested',p_phone,coalesce(p_sms_consent,false),case when p_sms_consent then clock_timestamp() else null end) returning id into invoice_id;
+ return invoice_id;
+end $$;
+revoke all on function public.ensure_quote_approval_deposit(uuid,uuid,numeric,text,boolean) from public,anon,authenticated;
+grant execute on function public.ensure_quote_approval_deposit(uuid,uuid,numeric,text,boolean) to service_role;
+notify pgrst,'reload schema';
+
+
 alter table public.owner_event_notices drop constraint owner_event_notices_source_type_check;
 alter table public.owner_event_notices add constraint owner_event_notices_source_type_check check(source_type in ('job_feed','messaging_registration_event','change_order','warranty_claim','review_feedback_request','quick_stop','payment_refund','account_connect','payment_dispute','recurring_failure','portal_message','system_sweep'));
 alter table public.owner_event_notices drop constraint owner_event_notices_event_kind_check;
@@ -43629,9 +43637,15 @@ begin
   select * into n from public.owner_event_notices where id=n.id and account_id=n.account_id;
   if not found then return false; end if;
   if n.source_type='system_sweep' and n.event_kind='warranty_service_due' then
-    perform 1 from public.warranties w where w.account_id=n.account_id and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid) for share;
+    perform 1 from public.warranties w where w.account_id=n.account_id
+      and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid)
+      and w.service_reminded_at is not null and w.service_interval_months>0
+      and w.next_service_due<=current_date+21 for share;
     return found;
   end if;
+  if n.source_type='portal_message' and n.event_kind='portal_message_received' then
+    perform 1 from public.portal_message_requests r where r.id=n.source_id and r.account_id=n.account_id
+      and r.client_id::text=n.source_payload->>'client_id' and r.body=n.source_payload->>'body'
       and r.job_id::text is not distinct from n.source_payload->>'job_id' for share;
     return found;
   end if;
@@ -43783,18 +43797,23 @@ returns uuid language plpgsql security invoker set search_path='' as $$
 declare
   v_notice_id uuid;
   v_source_id uuid := gen_random_uuid();
+  v_ids uuid[];
+  v_body text;
 begin
-  if array_length(p_warranty_ids, 1) = 0 then return null; end if;
-
-  update public.warranties
-  set service_reminded_at = clock_timestamp()
-  where account_id = p_account_id
-    and id = any(p_warranty_ids)
-    and service_reminded_at is null;
+  if coalesce(cardinality(p_warranty_ids),0)=0 then return null; end if;
+  -- Derive the message from only the rows this transaction successfully claims.
+  with claimed as (
+    update public.warranties set service_reminded_at=clock_timestamp()
+      where account_id=p_account_id and id=any(p_warranty_ids) and service_reminded_at is null
+        and service_interval_months>0 and next_service_due<=current_date+21
+      returning id,title,next_service_due
+  ) select array_agg(id order by id),string_agg(title||' — service due '||next_service_due::text,E'\n' order by id)
+    into v_ids,v_body from claimed;
+  if coalesce(cardinality(v_ids),0)=0 then return null; end if;
 
   insert into public.owner_event_notices(account_id, source_type, source_id, event_kind, source_payload)
     values(p_account_id, 'system_sweep', v_source_id, 'warranty_service_due',
-      jsonb_build_object('title', p_title, 'body', p_body, 'warranty_ids', to_jsonb(p_warranty_ids)))
+      jsonb_build_object('title', cardinality(v_ids)||' warranties due a service', 'body', v_body, 'warranty_ids', to_jsonb(v_ids)))
     returning id into v_notice_id;
     
   return v_notice_id;
@@ -43802,58 +43821,364 @@ end $$;
 revoke all on function public.record_warranty_service_reminders(uuid, uuid[], text, text) from public,anon,authenticated;
 grant execute on function public.record_warranty_service_reminders(uuid, uuid[], text, text) to service_role;
 notify pgrst,'reload schema';
--- 20260914203132_operator_recovery_controls.sql
 
--- Drop the implicit unique constraint to allow resends
-alter table public.document_email_sends 
-  drop constraint document_email_sends_account_id_kind_document_id_revi_key;
 
--- Add resend tracking columns
-alter table public.document_email_sends 
-  add column resend_of_id uuid references public.document_email_sends(id) on delete cascade,
+alter table public.document_email_sends drop constraint document_email_sends_account_id_kind_document_id_revision_key;
+alter table public.document_email_sends add column resend_of_id uuid references public.document_email_sends(id) on delete cascade,
   add column resend_idempotency_key text unique;
-
--- Recreate the unique constraint for primary sends only
-create unique index document_email_sends_primary_idx on public.document_email_sends(account_id, kind, document_id, revision) where resend_of_id is null;
-
--- Add a function for deliberate resend
-create function public.submit_document_email_resend(
-  p_original_send_id uuid,
-  p_account_id uuid,
-  p_actor text,
-  p_idempotency_key text
-) returns uuid language plpgsql security invoker set search_path = '' as \$\$
+create index document_email_sends_resend_of_idx on public.document_email_sends(resend_of_id);
+create unique index document_email_sends_primary_idx on public.document_email_sends(account_id,kind,document_id,revision) where resend_of_id is null;
+create or replace function public.claim_document_email_send(
+  p_account_id uuid,p_job_id uuid,p_invoice_id uuid,p_job_revision uuid,p_invoice_revision uuid,
+  p_payload jsonb,p_provider_scope text
+) returns jsonb language plpgsql security invoker set search_path='' as $$
 declare
-  v_original public.document_email_sends;
-  v_existing_resend_id uuid;
-  v_new_resend_id uuid;
+  v_job public.jobs;
+  v_invoice public.invoices;
+  v_row public.document_email_sends;
+  v_kind text := case when p_invoice_id is null then 'client_quote' else 'invoice' end;
+  v_document uuid := coalesce(p_invoice_id,p_job_id);
+  v_revision text;
+  v_to text := lower(btrim(p_payload->>'to'));
+  v_id uuid := gen_random_uuid();
+  v_token uuid := gen_random_uuid();
+  v_now timestamptz;
 begin
-  select * into v_original from public.document_email_sends where id = p_original_send_id and account_id = p_account_id;
-  if not found then
-    raise exception 'Original send not found';
+  if p_job_revision is null or jsonb_typeof(p_payload->'to') is distinct from 'string'
+    or coalesce(v_to,'')='' or jsonb_typeof(p_payload->'tags') is distinct from 'array'
+    or p_provider_scope is null or p_provider_scope !~ '^[a-f0-9]{64}$' then raise exception 'Invalid document email intent'; end if;
+  -- Serialize document claims and reject cross-workspace or stale source data.
+  select * into v_job from public.jobs where id=p_job_id and account_id=p_account_id and deleted_at is null for update;
+  if not found then return jsonb_build_object('action','blocked','reason','document_unavailable'); end if;
+  if not exists(select 1 from public.accounts where id=p_account_id and suspended_at is null and test_marker is null) then
+    return jsonb_build_object('action','blocked','reason','account_ineligible'); end if;
+  if v_job.document_email_revision<>p_job_revision or lower(btrim(v_job.client_email)) is distinct from v_to then
+    return jsonb_build_object('action','blocked','reason','document_or_recipient_changed'); end if;
+  v_revision := p_job_revision::text;
+  if p_invoice_id is not null then
+    select * into v_invoice from public.invoices where id=p_invoice_id and account_id=p_account_id and job_id=p_job_id for update;
+    if not found or p_invoice_revision is null or v_invoice.document_email_revision<>p_invoice_revision then
+      return jsonb_build_object('action','blocked','reason','invoice_changed_or_unavailable'); end if;
+    if v_invoice.status in ('paid','void') then return jsonb_build_object('action','blocked','reason','invoice_closed'); end if;
+    v_revision := v_revision||'/'||p_invoice_revision::text;
   end if;
-
-  if v_original.state not in ('accepted', 'cancelled') then
-    raise exception 'Original send must be resolved before resending';
-  end if;
-
-  select id into v_existing_resend_id from public.document_email_sends where resend_idempotency_key = p_idempotency_key;
+  -- Marketing opt-outs do not block these requested transactional documents.
+  if exists(select 1 from public.email_suppression where account_id=p_account_id and lower(email)=v_to
+    and reason in ('hard_bounce','complaint','provider_suppressed')) then
+    return jsonb_build_object('action','blocked','reason','recipient_delivery_block'); end if;
+  v_now := clock_timestamp();
+  update public.document_email_sends set state='manual_review',last_error='retry_window_expired'
+    where account_id=p_account_id and kind=v_kind and document_id=v_document
+      and state in ('sending','retry_wait') and first_attempt_at+interval '23 hours'<=v_now;
+  select * into v_row from public.document_email_sends where account_id=p_account_id
+    and kind=v_kind and document_id=v_document and revision=v_revision and resend_of_id is null for update;
   if found then
-    return v_existing_resend_id;
+    if v_row.state='accepted' then return jsonb_build_object('action','already_sent','provider_id',v_row.provider_id); end if;
+    if v_row.state in ('manual_review','cancelled') then return jsonb_build_object('action','review','id',v_row.id,'reason',v_row.state); end if;
+    if v_row.provider_scope<>p_provider_scope then
+      update public.document_email_sends set state='manual_review',last_error='provider_credential_changed' where id=v_row.id;
+      return jsonb_build_object('action','review','id',v_row.id,'reason','provider_credential_changed'); end if;
+    if v_row.state='sending' and v_row.lease_until>v_now or v_row.next_retry_at>v_now then
+      return jsonb_build_object('action','busy','reason','send_in_progress_or_backoff'); end if;
+    if v_row.attempts>=3 then
+      update public.document_email_sends set state='manual_review',last_error='attempt_limit' where id=v_row.id;
+      return jsonb_build_object('action','review','id',v_row.id,'reason','attempt_limit'); end if;
+    update public.document_email_sends set state='sending',attempts=attempts+1,lease_token=v_token,
+      lease_until=v_now+interval '5 minutes',next_retry_at=null where id=v_row.id returning * into v_row;
+  else
+    -- Editing a document cannot sidestep an unresolved provider outcome.
+    if exists(select 1 from public.document_email_sends where account_id=p_account_id and kind=v_kind
+      and document_id=v_document and state in ('sending','retry_wait','manual_review')) then
+      return jsonb_build_object('action','review','reason','previous_revision_unresolved'); end if;
+    insert into public.document_email_sends(id,account_id,job_id,invoice_id,kind,document_id,revision,recipient,payload,
+      provider_scope,state,first_attempt_at,lease_token,lease_until)
+    values(v_id,p_account_id,p_job_id,p_invoice_id,v_kind,v_document,v_revision,v_to,
+      jsonb_set(p_payload,'{tags}',coalesce((select jsonb_agg(tag) from jsonb_array_elements(p_payload->'tags') tag
+        where tag->>'name' not in ('document_send_id','send_phase','account_id','kind')),'[]'::jsonb)||jsonb_build_array(
+          jsonb_build_object('name','kind','value',v_kind),jsonb_build_object('name','account_id','value',p_account_id::text),
+          jsonb_build_object('name','document_send_id','value',v_id::text),jsonb_build_object('name','send_phase','value','primary'))),
+      p_provider_scope,'sending',v_now,v_token,v_now+interval '5 minutes') returning * into v_row;
   end if;
+  return jsonb_build_object('action','send','id',v_row.id,'token',v_row.lease_token,'phase',v_row.phase,
+    'payload',case when v_row.phase='fallback' then v_row.fallback_payload else v_row.payload end,
+    'key','document-email/'||v_row.id::text||'/'||v_row.phase,'retry_before',v_row.first_attempt_at+interval '23 hours');
+end $$;
+revoke all on function public.claim_document_email_send(uuid,uuid,uuid,uuid,uuid,jsonb,text) from public,anon,authenticated;
+grant execute on function public.claim_document_email_send(uuid,uuid,uuid,uuid,uuid,jsonb,text) to service_role;
 
-  insert into public.document_email_sends(
-    account_id, job_id, invoice_id, kind, document_id, revision, recipient, payload, fallback_payload, provider_scope, state, phase, resend_of_id, resend_idempotency_key
-  ) values (
-    v_original.account_id, v_original.job_id, v_original.invoice_id, v_original.kind, v_original.document_id, v_original.revision, v_original.recipient, v_original.payload, v_original.fallback_payload, v_original.provider_scope, 'sending', v_original.phase, p_original_send_id, p_idempotency_key
-  ) returning id into v_new_resend_id;
+-- A deliberate resend has a stable form request identity and an independent lease/key.
+create function public.submit_document_email_resend(p_original_send_id uuid,p_account_id uuid,p_actor text,p_idempotency_key text,p_provider_scope text)
+returns jsonb language plpgsql security invoker set search_path='' as $$
+declare o public.document_email_sends; n public.document_email_sends; token uuid:=gen_random_uuid(); v_now timestamptz:=clock_timestamp();
+begin
+ if coalesce(length(btrim(p_actor)),0)<3 or p_idempotency_key is null or p_idempotency_key !~ '^[a-fA-F0-9-]{36}$' then raise exception 'Actor and request identity are required'; end if;
+ perform pg_advisory_xact_lock(hashtextextended('document-resend:'||p_account_id::text||':'||p_idempotency_key,0));
+ select * into o from public.document_email_sends where id=p_original_send_id and account_id=p_account_id for update;
+ if not found or o.state not in ('accepted','cancelled') then raise exception 'Resolve the original send before resending'; end if;
+ if o.provider_scope is distinct from p_provider_scope then raise exception 'Provider scope changed; reconcile before resending'; end if;
+ -- Revalidate the original document and recipient. A resend cannot resurrect old terms.
+ if not exists(select 1 from public.accounts a join public.jobs j on j.account_id=a.id
+   where a.id=p_account_id and a.suspended_at is null and a.test_marker is null and j.id=o.job_id and j.deleted_at is null
+     and j.document_email_revision::text=split_part(o.revision,'/',1) and lower(btrim(j.client_email))=o.recipient)
+   or (o.invoice_id is not null and not exists(select 1 from public.invoices i where i.id=o.invoice_id and i.account_id=p_account_id
+     and i.status not in ('paid','void') and i.document_email_revision::text=split_part(o.revision,'/',2))) then raise exception 'Document changed or unavailable'; end if;
+ select * into n from public.document_email_sends where resend_idempotency_key=p_idempotency_key for update;
+ if found then
+   if n.account_id<>p_account_id or n.resend_of_id<>p_original_send_id then raise exception 'Resend identity changed'; end if;
+   if n.state='accepted' then return jsonb_build_object('action','already_sent','id',n.id,'provider_id',n.provider_id); end if;
+   if n.state in ('manual_review','cancelled') or n.first_attempt_at+interval '23 hours'<=v_now or n.attempts>=3 then return jsonb_build_object('action','review','id',n.id); end if;
+   if n.lease_until>v_now or n.next_retry_at>v_now then return jsonb_build_object('action','busy','id',n.id); end if;
+   update public.document_email_sends set state='sending',lease_token=token,lease_until=v_now+interval '5 minutes',attempts=attempts+1,next_retry_at=null where id=n.id returning * into n;
+ else
+   insert into public.document_email_sends(account_id,job_id,invoice_id,kind,document_id,revision,recipient,payload,fallback_payload,provider_scope,state,phase,resend_of_id,resend_idempotency_key,lease_token,lease_until,resolved_by)
+   values(o.account_id,o.job_id,o.invoice_id,o.kind,o.document_id,o.revision,o.recipient,o.payload,o.fallback_payload,o.provider_scope,'sending',o.phase,o.id,p_idempotency_key,token,v_now+interval '5 minutes',left(p_actor,200)) returning * into n;
+   -- Callback tags must identify the new send, never repair the original row.
+   update public.document_email_sends set payload=jsonb_set(payload,'{tags}',(select jsonb_agg(case when t->>'name'='document_send_id' then jsonb_build_object('name','document_send_id','value',n.id::text) else t end) from jsonb_array_elements(payload->'tags') t)),
+     fallback_payload=case when fallback_payload is null then null else jsonb_set(fallback_payload,'{tags}',(select jsonb_agg(case when t->>'name'='document_send_id' then jsonb_build_object('name','document_send_id','value',n.id::text) else t end) from jsonb_array_elements(fallback_payload->'tags') t)) end
+   where id=n.id returning * into n;
+ end if;
+ return jsonb_build_object('action','send','id',n.id,'token',n.lease_token,'phase',n.phase,'payload',case when n.phase='fallback' then n.fallback_payload else n.payload end,
+   'key','document-email/'||n.id::text||'/'||n.phase,'retry_before',least(n.lease_until,n.first_attempt_at+interval '23 hours'));
+end $$;
+revoke all on function public.submit_document_email_resend(uuid,uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.submit_document_email_resend(uuid,uuid,text,text,text) to service_role;
+notify pgrst,'reload schema';
 
-  return v_new_resend_id;
-end;
-\$\$;
-revoke all on function public.submit_document_email_resend(uuid,uuid,text,text) from public,anon,authenticated;
-grant execute on function public.submit_document_email_resend(uuid,uuid,text,text) to service_role;
-notify pgrst, 'reload schema';
+
+-- Older hosted databases have no persisted client_feed table.
+create table if not exists public.client_feed (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  client_id uuid not null references public.clients(id) on delete cascade,
+  kind text not null, title text not null, body text, author text,
+  meta jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default clock_timestamp()
+);
+alter table public.client_feed enable row level security;
+revoke all on public.client_feed from public,anon,authenticated;
+grant select,insert,update,delete on public.client_feed to service_role;
+create index if not exists client_feed_account_idx on public.client_feed(account_id);
+create index if not exists client_feed_client_idx on public.client_feed(client_id);
+
+alter table public.owner_event_notices drop constraint owner_event_notices_event_kind_check;
+alter table public.owner_event_notices add constraint owner_event_notices_event_kind_check check(event_kind in (
+  'client_question','client_followup','rebook_requested','messaging_submitted','messaging_action_required',
+  'messaging_approved','messaging_rejected','messaging_active','change_order_approved','change_order_declined',
+  'warranty_claim','review_feedback','quick_stop_confirmed','quick_stop_cancellation','quick_stop_expired',
+  'quick_stop_requested','payment_refund_recorded','connect_transfers_inactive','payment_dispute_opened',
+  'payment_dispute_lost','recurring_payment_failed','quote_approved','portal_message_received',
+  'quote_options_changed','margin_alert','warranty_service_due',
+  'job_scheduled', 'customer_plan_change', 'subcontractor_alert', 'lead_notification', 'transactional_confirmation'
+));
+
+alter table public.owner_event_notices drop constraint owner_event_notices_source_type_check;
+alter table public.owner_event_notices add constraint owner_event_notices_source_type_check check(source_type in (
+  'job_feed','messaging_registration_event','change_order','warranty_claim','review_feedback_request','quick_stop',
+  'payment_refund','account_connect','payment_dispute','recurring_failure','portal_message','system_sweep',
+  'client_feed', 'dispatch_offer', 'lead', 'job'
+));
+
+-- Modify owner_event_source_available to handle new sources
+create or replace function public.owner_event_source_available(n public.owner_event_notices)
+returns boolean language plpgsql security definer set search_path='' as $$
+begin
+  -- Existing messaging tables intentionally grant service_role SELECT only.
+  -- This service-only function exposes a boolean and row locks, never mutation.
+  -- Reload the persisted notice so supplied composite fields cannot choose a source.
+  select * into n from public.owner_event_notices where id=n.id and account_id=n.account_id;
+  if not found then return false; end if;
+  if n.source_type='system_sweep' and n.event_kind='warranty_service_due' then
+    perform 1 from public.warranties w where w.account_id=n.account_id
+      and w.id in (select jsonb_array_elements_text(n.source_payload->'warranty_ids')::uuid)
+      and w.service_reminded_at is not null and w.service_interval_months>0
+      and w.next_service_due<=current_date+21 for share;
+    return found;
+  end if;
+  if n.source_type='client_feed' then
+    perform 1 from public.client_feed f where f.id=n.source_id and f.account_id=n.account_id and f.kind=n.event_kind for share;
+    return found;
+  end if;
+  if n.source_type='dispatch_offer' then
+    perform 1 from public.subcontractor_offers o join public.subcontractor_requests r on r.id=o.request_id and r.account_id=o.account_id
+      where o.id=(n.source_payload->>'offer_id')::uuid and o.account_id=n.account_id for share of o,r;
+    return found;
+  end if;
+  if n.source_type='lead' then
+    perform 1 from public.leads l where l.id=n.source_id and l.account_id=n.account_id for share;
+    return found;
+  end if;
+  if n.source_type='job' then
+    perform 1 from public.payments p join public.jobs j on j.id=p.job_id and j.account_id=p.account_id
+      where p.id=n.source_id and p.account_id=n.account_id and p.job_id::text=n.source_payload->>'job_id' for share of p,j;
+    return found;
+  end if;
+  if n.source_type='portal_message' and n.event_kind='portal_message_received' then
+    perform 1 from public.portal_message_requests r where r.id=n.source_id and r.account_id=n.account_id
+      and r.client_id::text=n.source_payload->>'client_id' and r.body=n.source_payload->>'body'
+      and r.job_id::text is not distinct from n.source_payload->>'job_id' for share;
+    return found;
+  end if;
+  if n.source_type='recurring_failure' and n.event_kind='recurring_payment_failed' then
+    perform 1 from public.payments p where p.id::text=n.source_payload->>'payment_id' and p.account_id=n.account_id
+      and p.status='failed' and p.dunning_failure_event_id=n.source_id
+      and p.recurring_plan_id::text=n.source_payload->>'plan_id' and p.amount=(n.source_payload->>'payment_amount')::numeric
+      and p.charge_attempts=(n.source_payload->>'charge_attempt')::integer
+      and p.dunning_state=n.source_payload->>'dunning_state' for share;
+    return found;
+  end if;
+  if n.source_type='payment_dispute' then
+    perform 1 from public.payments p where p.id::text=n.source_payload->>'payment_id' and p.account_id=n.account_id
+      and p.dispute_notice_event_id=n.source_id and p.stripe_dispute_id=n.source_payload->>'dispute_id'
+      and p.stripe_payment_intent=n.source_payload->>'payment_intent' and p.amount=(n.source_payload->>'payment_amount')::numeric
+      and (not(to_jsonb(p)?'charge_model') or to_jsonb(p)->>'charge_model'='destination')
+      and ((n.event_kind='payment_dispute_opened' and p.status='disputed' and p.dispute_status in ('needs_response','under_review'))
+        or (n.event_kind='payment_dispute_lost' and p.status='refunded' and p.dispute_status='lost')) for share;
+    return found;
+  end if;
+  if n.source_type='account_connect' and n.event_kind='connect_transfers_inactive' then
+    perform 1 from public.accounts a where a.id=n.account_id and a.connect_onboarded=false
+      and a.connect_notice_event_id=n.source_id
+      and a.stripe_connect_id=n.source_payload->>'stripe_connect_id'
+      and extract(epoch from a.connect_disabled_at)::text=n.source_payload->>'disabled_at' for share;
+    return found;
+  end if;
+  if n.source_type='payment_refund' and n.event_kind='payment_refund_recorded' then
+    perform 1 from public.payments p where p.id::text=n.source_payload->>'payment_id' and p.account_id=n.account_id
+      and p.status in ('paid','refunded')
+      and (not(to_jsonb(p)?'charge_model') or to_jsonb(p)->>'charge_model'='destination')
+      and p.stripe_payment_intent=n.source_payload->>'payment_intent'
+      and p.amount=(n.source_payload->>'payment_amount')::numeric
+      and p.refunded_amount>=(n.source_payload->>'refunded_total')::numeric for share;
+    return found;
+  end if;
+  if n.source_type='job_feed' and n.event_kind='quote_approved' then
+    perform 1 from public.job_feed f join public.jobs j on j.id=f.job_id and j.account_id=f.account_id
+      where f.id=n.source_id and f.account_id=n.account_id and f.kind='quote_approved'
+        and f.source_table='jobs' and f.source_id=f.job_id
+        and f.meta->>'owner_email_notice'='quote_approval_v1' and f.meta->>'acceptance_source'='client_link'
+        and f.job_id::text=n.source_payload->>'job_id' and f.title=n.source_payload->>'approval_title'
+        and coalesce(f.body,'')=n.source_payload->>'body'
+        and coalesce(f.amount,0)=(n.source_payload->>'quote_amount')::numeric
+        and coalesce(j.quoted_amount,0)=coalesce(f.amount,0) for share of f,j;
+    return found;
+  end if;
+  if n.source_type='job_feed' and n.event_kind='quote_options_changed' then
+    perform 1 from public.job_feed f join public.jobs j on j.id=f.job_id and j.account_id=f.account_id
+      where f.id=n.source_id and f.account_id=n.account_id and f.kind='quote_revised'
+        and f.source_table='quote_option_changes' and f.source_id=f.id
+        and f.job_id::text=n.source_payload->>'job_id'
+        and f.title=n.source_payload->>'title' and f.body=n.source_payload->>'body'
+        and f.amount=(n.source_payload->>'quote_amount')::numeric
+        and j.quoted_amount=f.amount and j.quote_items=n.source_payload->'quote_items'
+      for share of f,j;
+    return found;
+  end if;
+  if n.source_type='job_feed' and n.event_kind='margin_alert' then
+    perform 1 from public.job_feed f where f.id=n.source_id and f.account_id=n.account_id and f.kind='margin_alert'
+      and f.visibility='internal' and f.title=n.source_payload->>'title' and f.body=n.source_payload->>'body'
+      and f.job_id::text=n.source_payload->>'job_id' for share;
+    if not found then return false; end if;
+    return coalesce((public.current_margin_warning(n.account_id,(n.source_payload->>'job_id')::uuid)->>'warning')::boolean,false);
+  end if;
+  if n.source_type='job_feed' then
+    perform 1 from public.job_feed f where f.id=n.source_id and f.account_id=n.account_id and f.kind=n.event_kind for share;
+    return found;
+  end if;
+  if n.source_type='quick_stop' and n.event_kind='quick_stop_requested' then
+    perform 1 from public.extra_stop_requests q where q.id=n.source_id and q.account_id=n.account_id
+      and q.status in ('awaiting_contractor','more_information_requested') and q.response_deadline_at>clock_timestamp()
+      and q.client_name=n.source_payload->>'client_name' and coalesce(q.address,'')=coalesce(n.source_payload->>'address','')
+      and coalesce(q.ai_summary,'')=coalesce(n.source_payload->>'summary','')
+      and coalesce(q.intake->>'issue','')=coalesce(n.source_payload->>'issue','')
+      and extract(epoch from q.response_deadline_at)::text=n.source_payload->>'response_deadline' for share;
+    return found;
+  end if;
+  if n.source_type='quick_stop' and n.event_kind='quick_stop_expired' then
+    perform 1 from public.extra_stop_requests q where q.id=n.source_id and q.account_id=n.account_id and q.status='offer_expired'
+      and q.client_name=n.source_payload->>'client_name'
+      and q.payment_id::text is not distinct from n.source_payload->>'payment_id'
+      and extract(epoch from q.payment_deadline_at)::text=n.source_payload->>'payment_deadline'
+      and not exists(select 1 from public.payments p where p.id=q.payment_id and p.status in ('paid','refunded')) for share;
+    return found;
+  end if;
+  if n.source_type='quick_stop' and n.event_kind='quick_stop_cancellation' then
+    perform 1 from public.extra_stop_requests q where q.id=n.source_id and q.account_id=n.account_id
+      and q.status in ('customer_canceled','contractor_canceled','no_show_confirmed','refunded','disputed')
+      and q.client_name=n.source_payload->>'client_name'
+      and coalesce(q.cancel_reason,'')=coalesce(n.source_payload->>'cancel_reason','')
+      and extract(epoch from q.canceled_at)::text is not distinct from n.source_payload->>'canceled_at'
+      and extract(epoch from q.no_show_confirmed_at)::text is not distinct from n.source_payload->>'no_show_at' for share;
+    return found;
+  end if;
+  if n.source_type='quick_stop' then
+    perform 1 from public.extra_stop_requests q where q.id=n.source_id and q.account_id=n.account_id
+      and q.status in ('confirmed','en_route','arrived','completed')
+      and exists(select 1 from public.payments p where p.id=q.payment_id and p.account_id=q.account_id and p.status='paid')
+      and q.payment_id::text=n.source_payload->>'payment_id'
+      and extract(epoch from q.paid_at)::text=n.source_payload->>'paid_at'
+      and q.client_name=n.source_payload->>'client_name'
+      and coalesce(q.address,'')=coalesce(n.source_payload->>'address','')
+      and q.arrival_date::text is not distinct from n.source_payload->>'arrival_date'
+      and q.arrival_start::text is not distinct from n.source_payload->>'arrival_start'
+      and q.arrival_end::text is not distinct from n.source_payload->>'arrival_end' for share;
+    return found;
+  end if;
+  if n.source_type='review_feedback_request' then
+    perform 1 from public.review_feedback_requests r join public.review_invites i on i.id=r.invite_id and i.account_id=r.account_id
+      where r.id=n.source_id and r.account_id=n.account_id for share of r,i;
+    return found;
+  end if;
+  if n.source_type='warranty_claim' then
+    perform 1 from public.warranty_claims c where c.id=n.source_id and c.account_id=n.account_id
+      and c.job_id::text=n.source_payload->>'job_id'
+      and c.warranty_id::text=n.source_payload->>'warranty_id'
+      and c.description=n.source_payload->>'description'
+      and to_jsonb(c.photo_paths)=n.source_payload->'photo_paths'
+      and c.in_warranty_at_claim::text=n.source_payload->>'in_warranty'
+      and c.status in ('open','scheduled') for share;
+    return found;
+  end if;
+  if n.source_type='change_order' then
+    perform 1 from public.change_orders c where c.id=n.source_id and c.account_id=n.account_id
+      and 'change_order_'||c.status=n.event_kind
+      and c.job_id::text=n.source_payload->>'job_id'
+      and extract(epoch from c.responded_at)::text=n.source_payload->>'responded_at'
+      and c.title=n.source_payload->>'order_title'
+      and c.amount::text=n.source_payload->>'amount'
+      and c.signature_name=n.source_payload->>'signature_name'
+      and coalesce(c.decline_reason,'')=coalesce(n.source_payload->>'decline_reason','') for share;
+    return found;
+  end if;
+  perform 1 from public.messaging_registration_events e
+    join public.messaging_registration_applications a on a.id=e.application_id and a.account_id=e.account_id
+    where e.id=n.source_id and e.account_id=n.account_id and 'messaging_'||e.new_status=n.event_kind
+      and a.revision::text=n.source_payload->>'revision'
+      and lower(btrim(coalesce(nullif(a.business_email,''),a.authorized_contact_email)))=n.source_payload->>'recipient_email'
+      and (e.new_status='submitted' or (a.status=e.new_status
+        and (e.new_status not in ('action_required','rejected') or coalesce(a.status_detail,'')=coalesce(e.detail,'')))) for share of e,a;
+  return found;
+end $$;
+revoke all on function public.owner_event_source_available(public.owner_event_notices) from public,anon,authenticated;
+grant execute on function public.owner_event_source_available(public.owner_event_notices) to service_role;
+
+drop trigger if exists record_owner_event_notice on public.job_feed;
+create trigger record_owner_event_notice after insert on public.job_feed
+  for each row when (new.kind in ('client_question','client_followup','rebook_requested','job_scheduled','transactional_confirmation')
+    and new.meta->>'owner_email_notice'='v1') execute function public.record_owner_event_notice();
+
+drop trigger if exists record_client_feed_owner_notice on public.client_feed;
+create or replace function public.record_client_feed_owner_notice() returns trigger
+language plpgsql security invoker set search_path='' as $$
+begin
+  insert into public.owner_event_notices(account_id,source_type,source_id,event_kind,source_payload)
+    values(new.account_id,'client_feed',new.id,new.kind,jsonb_build_object('title',new.title,'body',coalesce(new.body,''),'client_id',new.client_id));
+  return new;
+end $$;
+revoke all on function public.record_client_feed_owner_notice() from public,anon,authenticated;
+create trigger record_client_feed_owner_notice after insert on public.client_feed
+  for each row when (new.kind in ('customer_plan_change') and new.meta->>'owner_email_notice'='v1') execute function public.record_client_feed_owner_notice();
+
+notify pgrst,'reload schema';
 
 
 -- Durable customer-facing message intents.
@@ -43890,110 +44215,102 @@ grant select, insert, update, delete on public.customer_email_sends to service_r
 create index customer_email_sends_attention_idx on public.customer_email_sends(state, first_attempt_at)
   where state in ('sending','retry_wait','manual_review');
 
-create function public.claim_customer_email_send(p_account_id uuid, p_kind text, p_idempotency_key text, p_payload jsonb, p_provider_scope text, p_job_id uuid default null)
-returns jsonb language plpgsql security invoker set search_path = '' as \$\$
-declare
-  v_row public.customer_email_sends;
-  v_recipient text := lower(btrim(p_payload->>'to'));
-  v_id uuid := gen_random_uuid();
-  v_token uuid := gen_random_uuid();
-  v_now timestamptz := clock_timestamp();
+-- Serialize each logical message before inspecting or changing its state.
+create function public.claim_customer_email_send(p_account_id uuid,p_kind text,p_idempotency_key text,p_payload jsonb,p_provider_scope text,p_job_id uuid default null)
+returns jsonb language plpgsql security invoker set search_path='' as $$
+declare r public.customer_email_sends; v_now timestamptz:=clock_timestamp(); v_token uuid:=gen_random_uuid(); v_to text:=lower(btrim(p_payload->>'to'));
 begin
-  if p_payload is null or v_recipient is null or p_provider_scope is null then
-    raise exception 'Missing required fields';
+  if nullif(btrim(p_idempotency_key),'') is null or length(p_idempotency_key)>500
+    or p_provider_scope is null or p_provider_scope !~ '^[a-f0-9]{64}$'
+    or jsonb_typeof(p_payload->'to') is distinct from 'string' or coalesce(v_to,'')=''
+    or jsonb_typeof(p_payload->'tags') is distinct from 'array'
+    or not exists(select 1 from jsonb_array_elements(p_payload->'tags') t where t->>'name'='account_id' and t->>'value'=p_account_id::text)
+    or exists(select 1 from jsonb_array_elements(p_payload->'tags') t where t->>'name'='account_id' and t->>'value' is distinct from p_account_id::text)
+    then raise exception 'Invalid customer email identity'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('customer-email:'||p_idempotency_key,0));
+  select * into r from public.customer_email_sends where idempotency_key=p_idempotency_key for update;
+  if found then
+    if r.account_id<>p_account_id or r.kind<>p_kind or r.job_id is distinct from p_job_id or r.recipient<>v_to then
+      raise exception 'Customer email identity changed'; end if;
+    if r.state='accepted' then return jsonb_build_object('action','already_sent','provider_id',r.provider_id); end if;
+    if r.state in ('manual_review','cancelled') then return jsonb_build_object('action','review'); end if;
+    if r.provider_scope<>p_provider_scope or r.first_attempt_at+interval '23 hours'<=v_now or r.attempts>=3 then
+      update public.customer_email_sends set state='manual_review',last_error='provider_scope_window_or_attempt_limit',lease_token=null,lease_until=null where id=r.id;
+      return jsonb_build_object('action','review'); end if;
+    if (r.state='sending' and r.lease_until>v_now) or r.next_retry_at>v_now then return jsonb_build_object('action','busy'); end if;
   end if;
-
-  insert into public.customer_email_sends (id, account_id, job_id, kind, recipient, payload, provider_scope, state, lease_token, lease_until, idempotency_key)
-  values (v_id, p_account_id, p_job_id, p_kind, v_recipient, p_payload, p_provider_scope, 'sending', v_token, v_now + interval '5 minutes', p_idempotency_key)
-  on conflict (idempotency_key) do update set
-    state = 'sending',
-    phase = 'primary',
-    attempts = public.customer_email_sends.attempts + 1,
-    lease_token = v_token,
-    lease_until = v_now + interval '5 minutes',
-    last_error = null,
-    next_retry_at = null
-  where public.customer_email_sends.account_id = p_account_id
-    and public.customer_email_sends.state = 'retry_wait'
-    and (public.customer_email_sends.next_retry_at is null or public.customer_email_sends.next_retry_at <= v_now)
-  returning * into v_row;
-
-  if not found then
-    select * into v_row from public.customer_email_sends where idempotency_key = p_idempotency_key and account_id = p_account_id;
-    if not found then raise exception 'Unexpected write failure'; end if;
-    if v_row.state = 'sending' and v_row.lease_until > v_now then
-      return jsonb_build_object('action', 'busy');
-    end if;
-    if v_row.state = 'accepted' then
-      return jsonb_build_object('action', 'already_sent', 'provider_id', v_row.provider_id);
-    end if;
-    if v_row.state in ('manual_review', 'cancelled') then
-      return jsonb_build_object('action', 'review');
-    end if;
-
-    update public.customer_email_sends set
-      state = 'sending',
-      phase = 'primary',
-      attempts = attempts + 1,
-      lease_token = v_token,
-      lease_until = v_now + interval '5 minutes',
-      last_error = null,
-      next_retry_at = null
-    where id = v_row.id
-    returning * into v_row;
-  end if;
-
-  return jsonb_build_object('action', 'send', 'id', v_row.id, 'token', v_row.lease_token, 'payload', v_row.payload, 'key', v_row.idempotency_key, 'phase', v_row.phase, 'retry_before', v_row.lease_until);
-end \$\$;
-revoke all on function public.claim_customer_email_send(uuid, text, text, jsonb, text, uuid) from public, anon, authenticated;
-grant execute on function public.claim_customer_email_send(uuid, text, text, jsonb, text, uuid) to service_role;
-
-create function public.fallback_customer_email_send(p_id uuid, p_account_id uuid, p_token uuid, p_error_name text default null, p_error_message text default null)
-returns jsonb language plpgsql security invoker set search_path = '' as \$\$
-declare
-  v_row public.customer_email_sends;
-  v_now timestamptz := clock_timestamp();
-begin
-  update public.customer_email_sends set
-    phase = 'fallback',
-    lease_until = v_now + interval '5 minutes'
-  where id = p_id and account_id = p_account_id and lease_token = p_token and state = 'sending'
-  returning * into v_row;
-  if not found then return null; end if;
-  return jsonb_build_object('action', 'send', 'id', v_row.id, 'token', v_row.lease_token, 'payload', coalesce(v_row.fallback_payload, v_row.payload), 'key', v_row.idempotency_key, 'phase', v_row.phase, 'retry_before', v_row.lease_until);
-end \$\$;
-revoke all on function public.fallback_customer_email_send(uuid, uuid, uuid, text, text) from public, anon, authenticated;
-grant execute on function public.fallback_customer_email_send(uuid, uuid, uuid, text, text) to service_role;
-
-create function public.finish_customer_email_send(p_id uuid, p_account_id uuid, p_token uuid, p_provider_id text, p_error text, p_source text default null, p_error_name text default null, p_retry_seconds integer default null, p_run_token text default null)
-returns boolean language plpgsql security invoker set search_path = '' as \$\$
-declare
-  v_row public.customer_email_sends;
-begin
-  select * into v_row from public.customer_email_sends where id = p_id and account_id = p_account_id and lease_token = p_token and state = 'sending' for update;
-  if not found then return false; end if;
-
-  if p_error is null and p_provider_id is not null then
-    update public.customer_email_sends set
-      state = 'accepted', provider_id = p_provider_id, accepted_at = clock_timestamp(),
-      lease_token = null, lease_until = null, next_retry_at = null
-    where id = p_id;
-  elsif v_row.attempts >= 3 then
-    update public.customer_email_sends set
-      state = 'manual_review', last_error = coalesce(p_error, 'Delivery failed'),
-      lease_token = null, lease_until = null, next_retry_at = null
-    where id = p_id;
+  if not exists(select 1 from public.accounts where id=p_account_id and suspended_at is null and test_marker is null) then
+    return jsonb_build_object('action','blocked','reason','account_ineligible'); end if;
+  if p_job_id is not null and not exists(select 1 from public.jobs where id=p_job_id and account_id=p_account_id and deleted_at is null) then
+    return jsonb_build_object('action','blocked','reason','job_unavailable'); end if;
+  if exists(select 1 from public.email_suppression where account_id=p_account_id and lower(email)=v_to
+    and (p_kind in ('campaign','review_request','rebook_invite') or reason in ('hard_bounce','complaint','provider_suppressed'))) then
+    return jsonb_build_object('action','blocked','reason','recipient_delivery_block'); end if;
+  if r.id is null then
+    insert into public.customer_email_sends(account_id,job_id,kind,recipient,payload,provider_scope,state,lease_token,lease_until,idempotency_key)
+      values(p_account_id,p_job_id,p_kind,v_to,p_payload,p_provider_scope,'sending',v_token,v_now+interval '5 minutes',p_idempotency_key) returning * into r;
   else
-    update public.customer_email_sends set
-      state = 'retry_wait', last_error = coalesce(p_error, 'Delivery failed'),
-      lease_token = null, lease_until = null, next_retry_at = clock_timestamp() + (power(3, v_row.attempts) * interval '1 minute')
-    where id = p_id;
+    update public.customer_email_sends set state='sending',attempts=attempts+1,lease_token=v_token,lease_until=v_now+interval '5 minutes',next_retry_at=null
+      where id=r.id returning * into r;
   end if;
-  return true;
-end \$\$;
-revoke all on function public.finish_customer_email_send(uuid, uuid, uuid, text, text, text, text, integer, text) from public, anon, authenticated;
-grant execute on function public.finish_customer_email_send(uuid, uuid, uuid, text, text, text, text, integer, text) to service_role;
-notify pgrst, 'reload schema';
+  return jsonb_build_object('action','send','id',r.id,'account_id',r.account_id,'token',r.lease_token,'phase',r.phase,
+    'payload',case when r.phase='fallback' then r.fallback_payload else r.payload end,
+    'key','customer-email/'||r.id::text||'/'||r.phase,'retry_before',least(r.lease_until,r.first_attempt_at+interval '23 hours'));
+end $$;
+revoke all on function public.claim_customer_email_send(uuid,text,text,jsonb,text,uuid) from public,anon,authenticated;
+grant execute on function public.claim_customer_email_send(uuid,text,text,jsonb,text,uuid) to service_role;
+create function public.fallback_customer_email_send(p_id uuid,p_account_id uuid,p_token uuid,p_error_name text,p_error_message text)
+returns jsonb language plpgsql security invoker set search_path='' as $$
+declare v_row public.customer_email_sends; v_address text; v_domain text; v_rejected text; v_from text; v_payload jsonb;
+begin
+  select * into v_row from public.customer_email_sends where id=p_id and account_id=p_account_id for update;
+  if not found or v_row.state<>'sending' or v_row.phase<>'primary' or v_row.lease_token is distinct from p_token
+    or v_row.lease_until<=clock_timestamp() or v_row.first_attempt_at+interval '23 hours'<=clock_timestamp()
+    or p_error_name is distinct from 'validation_error' then return null; end if;
+  if not exists(select 1 from public.accounts where id=p_account_id and suspended_at is null and test_marker is null)
+    or exists(select 1 from public.email_suppression where account_id=p_account_id and lower(email)=v_row.recipient
+      and (v_row.kind in ('campaign','review_request','rebook_invite') or reason in ('hard_bounce','complaint','provider_suppressed'))) then return null; end if;
+  v_from := v_row.payload->>'from';
+  v_address := coalesce(substring(v_from from '<([^<>]+)>\s*$'),btrim(v_from));
+  v_domain := lower(split_part(v_address,'@',2));
+  v_rejected := lower(substring(p_error_message from '(?i)^The\s+`?([^\s`]+)`?\s+domain is not verified\.'));
+  if coalesce(v_domain,'')='' or v_domain='letsgetquoted.com' or v_domain like '%.letsgetquoted.com'
+    or v_domain is distinct from v_rejected then return null; end if;
+  v_from := case when v_from like '%<%' then regexp_replace(v_from,'<[^<>]+>\s*$','<hello@letsgetquoted.com>') else 'hello@letsgetquoted.com' end;
+  v_payload := jsonb_set(v_row.payload,'{from}',to_jsonb(v_from));
+  v_payload := jsonb_set(v_payload,'{tags}',(select jsonb_agg(case when tag->>'name'='send_phase'
+    then jsonb_build_object('name','send_phase','value','fallback') else tag end) from jsonb_array_elements(v_payload->'tags') tag));
+  update public.customer_email_sends set phase='fallback',fallback_payload=v_payload,last_error=left(p_error_message,2000) where id=p_id;
+  return jsonb_build_object('action','send','id',v_row.id,'token',v_row.lease_token,'phase','fallback','payload',v_payload,
+    'key','customer-email/'||v_row.id::text||'/fallback','retry_before',least(v_row.lease_until,v_row.first_attempt_at+interval '23 hours'));
+end $$;
+revoke all on function public.fallback_customer_email_send(uuid,uuid,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.fallback_customer_email_send(uuid,uuid,uuid,text,text) to service_role;
+
+create function public.finish_customer_email_send(p_id uuid,p_account_id uuid,p_token uuid,p_provider_id text default null,p_error text default null,p_source text default null,p_error_name text default null,p_retry_seconds integer default null,p_run_token text default null)
+returns boolean language plpgsql security invoker set search_path='' as $$
+declare r public.customer_email_sends;
+begin
+ select * into r from public.customer_email_sends where id=p_id and account_id=p_account_id for update;
+ if not found then return false; end if;
+ if r.state='accepted' then return r.provider_id=p_provider_id; end if;
+ if r.state<>'sending' or r.lease_token is distinct from p_token then return false; end if;
+ if p_error is null and nullif(btrim(p_provider_id),'') is not null then
+  update public.customer_email_sends set state='accepted',provider_id=p_provider_id,accepted_at=clock_timestamp(),lease_token=null,lease_until=null,next_retry_at=null,last_error=null where id=p_id;
+ else
+  update public.customer_email_sends set state=case when attempts>=3 or first_attempt_at+interval '23 hours'<=clock_timestamp() then 'manual_review' else 'retry_wait' end,
+    last_error=left(coalesce(p_error,'Provider outcome unknown'),2000),lease_token=null,lease_until=null,
+    next_retry_at=clock_timestamp()+make_interval(secs=>greatest(300,least(coalesce(p_retry_seconds,300),82800))) where id=p_id;
+ end if;
+ return true;
+end $$;
+revoke all on function public.finish_customer_email_send(uuid,uuid,uuid,text,text,text,text,integer,text) from public,anon,authenticated;
+grant execute on function public.finish_customer_email_send(uuid,uuid,uuid,text,text,text,text,integer,text) to service_role;
+create index customer_email_sends_account_idx on public.customer_email_sends(account_id);
+create index customer_email_sends_job_idx on public.customer_email_sends(job_id);
+notify pgrst,'reload schema';
+
+
 -- Platform event notices (Digests, Support, Merchandise, Auth, Reports)
 create table public.platform_event_notices (
   id uuid primary key default gen_random_uuid(),
@@ -44087,6 +44404,17 @@ begin
     or length(btrim(coalesce(new.payload->>'html','')))=0
     or jsonb_typeof(new.payload->'tags') is distinct from 'array' then
     raise exception 'Invalid platform event notice message';
+  end if;
+  if (select count(*) from jsonb_array_elements(new.payload->'tags') t where t->>'name'='platform_event_notice_id' and t->>'value'=n.id::text) <> 1
+    or (select count(*) from jsonb_array_elements(new.payload->'tags') t where t->>'name'='delivery_scope' and t->>'value'='platform_transactional') <> 1
+    or (select count(*) from jsonb_array_elements(new.payload->'tags') t where t->>'name'='kind' and t->>'value'=n.event_family) <> 1
+    or exists(select 1 from jsonb_array_elements(new.payload->'tags') t where t->>'name'='account_id'
+      or (t->>'name'='platform_event_notice_id' and t->>'value' is distinct from n.id::text)
+      or (t->>'name'='delivery_scope' and t->>'value' is distinct from 'platform_transactional')
+      or (t->>'name'='kind' and t->>'value' is distinct from n.event_family))
+    or (new.payload ? 'cc' and new.payload->'cc' <> '[]'::jsonb)
+    or (new.payload ? 'bcc' and new.payload->'bcc' <> '[]'::jsonb) then
+    raise exception 'Invalid platform event notice binding';
   end if;
   new.prepared_at := clock_timestamp();
   return new;
@@ -44221,44 +44549,13 @@ revoke all on function public.resolve_platform_event_notice(uuid,text,text) from
 grant execute on function public.resolve_platform_event_notice(uuid,text,text) to service_role;
 
 notify pgrst, 'reload schema';
--- 1. Expand the existing job_feed trigger to handle the new job_feed-based owner events
+
+
+-- Keep this list aligned with the actual opted-in job-feed producers.
 drop trigger if exists record_owner_event_notice on public.job_feed;
 create trigger record_owner_event_notice after insert on public.job_feed
-  for each row when (new.kind in (
-    'client_question','client_followup','rebook_requested',
-    'job_scheduled', 'portal_plan_update', 'subcontractor_dispatched', 
-    'subcontractor_declined', 'quote_sent', 'payment_requested', 
-    'review_requested', 'invoice_sent'
-  ) and new.meta->>'owner_email_notice'='v1') 
-  execute function public.record_owner_event_notice();
-
--- 2. Create a trigger for lead notifications (or equivalent depending on lead table schema)
-create function public.record_lead_owner_event_notice() returns trigger
-language plpgsql security invoker set search_path='' as $ $
-begin
-  insert into public.owner_event_notices(account_id,source_type,source_id,event_kind,source_payload)
-    values(new.account_id,'lead',new.id,'lead_notification',jsonb_build_object(
-      'title', 'New lead: ' || coalesce(new.name, 'Project request'),
-      'body', coalesce(new.notes, ''),
-      'phone', new.phone,
-      'email', new.email
-    ));
-  return new;
-end $ $;
-revoke all on function public.record_lead_owner_event_notice() from public,anon,authenticated;
-create trigger record_lead_owner_event_notice after insert on public.leads
-  for each row when (new.meta->>'owner_email_notice'='v1')
-  execute function public.record_lead_owner_event_notice();
-create index if not exists idx_contractor_lifecycle_sends_account_id on public.contractor_lifecycle_sends(account_id);
-create index if not exists idx_contractor_lifecycle_sends_resend_of_id on public.contractor_lifecycle_sends(resend_of_id);
-create index if not exists idx_website_domain_connection_notices_site_id on public.website_domain_connection_notices(site_id);
-create index if not exists idx_email_domain_restoration_notices_domain_id on public.email_domain_restoration_notices(domain_id);
-create index if not exists idx_client_owner_request_receipts_account_id on public.client_owner_request_receipts(account_id);
-create index if not exists idx_client_owner_request_receipts_feed_id on public.client_owner_request_receipts(feed_id);
-create index if not exists idx_warranty_request_receipts_account_id on public.warranty_request_receipts(account_id);
-create index if not exists idx_quick_stop_request_receipts_account_id on public.quick_stop_request_receipts(account_id);
-create index if not exists idx_portal_message_requests_client_id on public.portal_message_requests(client_id);
-create index if not exists idx_quote_option_request_receipts_account_id on public.quote_option_request_receipts(account_id);
-create index if not exists idx_quote_approval_request_receipts_account_id on public.quote_approval_request_receipts(account_id);
-create index if not exists idx_customer_email_sends_account_id on public.customer_email_sends(account_id);
-create index if not exists idx_customer_email_sends_job_id on public.customer_email_sends(job_id);
+  for each row when (new.kind in ('client_question','client_followup','rebook_requested','review_feedback','job_scheduled','customer_plan_change','transactional_confirmation')
+    and new.meta->>'owner_email_notice'='v1') execute function public.record_owner_event_notice();
+-- Leads use their already-authorized application enqueue path. The leads table
+-- does not have a meta column and cannot host the originally proposed trigger.
+notify pgrst,'reload schema';

@@ -41,7 +41,7 @@ import { createAdminClient } from '@/lib/auth';
 import { sendDocumentEmail, type DocumentEmailReceipt } from './document-email-sends';
 import { assertEmailSendAllowed } from './email-send-policy';
 import { resendTagValue } from './resend-tags';
-import { sendPlatformTransactionalEmail } from './platform-transactional-email';
+import { sendPlatformTransactionalEmail, sendDurablePlatformEmail } from './platform-transactional-email';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -708,7 +708,7 @@ export async function sendSelectionRequestEmail(
     overdue: boolean;
     url: string;
     accountId: string;
-    jobId: string;
+    jobId?: string | null;
     idempotencyKey: string;
   }
 ): Promise<{ id: string | null }> {
@@ -728,7 +728,7 @@ export async function sendSelectionRequestEmail(
     {
       accountId: input.accountId,
       jobId: input.jobId,
-      kind: 'selection_request',
+      kind: 'selection_reminder',
       idempotencyKey: input.idempotencyKey,
     },
     {
@@ -769,7 +769,7 @@ export async function sendReviewRequestEmail(
     reviewUrl: string;
     accountId: string;
     mailingAddress: string | null;
-    jobId: string;
+    jobId?: string | null;
     idempotencyKey: string;
   }
 ): Promise<{ id: string | null }> {
@@ -839,7 +839,7 @@ export async function sendRebookInviteEmail(
     url: string;
     accountId: string;
     mailingAddress: string | null;
-    jobId: string;
+    jobId?: string | null;
     idempotencyKey: string;
   }
 ): Promise<{ id: string | null }> {
@@ -898,7 +898,7 @@ export async function sendAppointmentReminderEmail(
     address: string | null;
     jobRef: string;
     accountId: string;
-    jobId: string;
+    jobId?: string | null;
     idempotencyKey: string;
   }
 ): Promise<{ id: string | null }> {
@@ -1940,8 +1940,8 @@ export async function sendPlatformEventNoticeEmail(input: {
   let subject = input.payload.subject || 'Notice';
   let tags = input.payload.tags || [{ name: 'kind', value: input.eventFamily }];
   
-  const fromAddress = input.payload.from || `"Let's Get Quoted" <hello@letsgetquoted.com>`;
-  const replyTo = input.payload.reply_to;
+  const fromAddress = "Let's Get Quoted <hello@letsgetquoted.com>";
+  const replyTo = 'hello@letsgetquoted.com';
   
   if (input.eventFamily === 'daily_digest') {
     const brand = await brandFor({ accountId: input.accountId!, businessName: input.payload.businessName || "Let's Get Quoted" });
@@ -2008,14 +2008,15 @@ export async function sendPlatformEventNoticeEmail(input: {
     });
   }
 
-  const result = await resend.emails.send({
+  const result = await sendDurablePlatformEmail(createAdminClient(), new Resend(process.env.RESEND_API_KEY), {
     from: fromAddress,
     to: input.recipientEmail,
     subject,
     html,
     reply_to: replyTo,
-    tags: [...tags, { name: 'platform_event_notice_id', value: input.noticeId }],
-  }, { idempotencyKey: 'platform-event:v1:' + input.noticeId, prepareIntent: input.prepareIntent });
+    tags: [...tags.filter((tag: { name: string }) => !['account_id', 'delivery_scope', 'platform_event_notice_id', 'kind'].includes(tag.name)),
+      { name: 'kind', value: input.eventFamily }, { name: 'platform_event_notice_id', value: input.noticeId }],
+  }, 'platform-event:v1:' + input.noticeId, input.prepareIntent);
   
   if (result.error) throw new Error(result.error.message);
   if (!result.data?.id) throw new Error('Email provider returned no message ID.');

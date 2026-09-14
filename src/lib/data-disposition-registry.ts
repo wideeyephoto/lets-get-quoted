@@ -28,6 +28,36 @@ export interface TableDisposition {
 }
 
 export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
+  customer_email_sends: {
+    tableName: 'customer_email_sends', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+  quote_approval_request_receipts: {
+    tableName: 'quote_approval_request_receipts', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  client_feed: {
+    tableName: 'client_feed', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  platform_event_notices: {
+    tableName: 'platform_event_notices', relationship: 'direct_account_id', primaryKeyColumn: 'id',
+    localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+  platform_event_notice_snapshots: {
+    tableName: 'platform_event_notice_snapshots', relationship: 'fk_chain', primaryKeyColumn: 'notice_id',
+    fkPath: ['notice_id', 'platform_event_notices.account_id'], localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
   // Primary account tenant root
   accounts: {
     tableName: 'accounts',

@@ -8,7 +8,7 @@ export async function verifyQuickStopReceipts(db,other,root,passed){
     grant select,insert,update on clients to service_role;
     alter table extra_stop_requests add column client_id uuid,add column requested_date date,add column lat double precision,add column lng double precision,add column photo_paths jsonb,add column ai_visit_minutes int,add column ai_complexity text,add column ai_eligible boolean,add column ai_confidence double precision,add column ai_exclusions text[],add column availability jsonb;`);
   const migration=readFileSync(join(root,'migrations/20260914184145_quick_stop_request_receipts.sql'),'utf8');
-  assert.ok(readFileSync(join(root,'schema.sql'),'utf8').replace(/\r\n/g,'\n').includes(migration.trim()));
+  assert.ok(readFileSync(join(root,'schema.sql'),'utf8').replace(/\r\n/g,'\n').includes(migration.replace(/\r\n/g,'\n').trim()));
   await db.query(migration);await db.query('set role service_role');await other.query('set role service_role');
   const account=(await db.query('insert into accounts default values returning id')).rows[0].id;
   const account2=(await db.query('insert into accounts default values returning id')).rows[0].id;

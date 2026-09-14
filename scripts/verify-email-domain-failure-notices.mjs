@@ -13,7 +13,7 @@ const platform = process.platform === 'win32' ? 'windows-x64' : process.platform
 process.env.PATH = join(root, 'node_modules/@embedded-postgres', platform, 'native/bin') + (process.platform === 'win32' ? ';' : ':') + process.env.PATH;
 const { default: EmbeddedPostgres } = await import('embedded-postgres');
 const dataDir = mkdtempSync(join(os.tmpdir(), 'lgq-domain-notices-'));
-const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'postgres', password: 'postgres', port: 54419, persistent: true, onLog: () => {}, onError: () => {} });
+const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'postgres', password: 'postgres', port: 54439, persistent: true, onLog: () => {}, onError: () => {} });
 let db, other, checks = 0;
 const passed = name => { checks++; console.log(`PASS ${name}`); };
 try {
@@ -147,10 +147,11 @@ try {
   await (await import('./verify-quote-option-request-receipts.mjs')).verifyQuoteOptionRequests(db, other, root, passed);
   await (await import('./verify-margin-owner-notices.mjs')).verifyMarginNotices(db, other, root, passed);
   await (await import('./verify-margin-evaluation-requests.mjs')).verifyMarginEvaluationRequests(db, other, root, passed);
+  await (await import("./verify-email-integration-repairs.mjs")).verifyEmailIntegrationRepairs(db,other,root,passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',
-      'postgresql://postgres:postgres@127.0.0.1:54419/domain_notices?sslmode=disable','--type','security','--level','warn','--fail-on','none'],
+      'postgresql://postgres:postgres@127.0.0.1:54439/domain_notices?sslmode=disable','--type','security','--level','warn','--fail-on','none'],
     { windowsHide: true,encoding: 'utf8',timeout: 30000 }));
   }
   console.log(`${checks}/${checks} checks passed`);

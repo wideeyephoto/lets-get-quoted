@@ -405,7 +405,7 @@ export async function sendReviewReminder(
         reviewUrl: linkUrl,
         accountId,
         mailingAddress,
-        jobId: row.jobId ?? '00000000-0000-0000-0000-000000000000', // fallback if null
+        jobId: row.jobId ?? null,
         idempotencyKey: `review-reminder:${id}:${row.remindersSent + 1}:email`,
       });
       emailEventId = receipt.id;

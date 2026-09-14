@@ -157,7 +157,31 @@ export async function POST(request: Request) {
     const websiteNoticeId = resendTagValue(event.data.tags, 'website_domain_notice_id');
     const restorationNoticeId = resendTagValue(event.data.tags, 'domain_restoration_notice_id');
     const ownerNoticeId = resendTagValue(event.data.tags, 'owner_event_notice_id');
-    if ([failureNoticeId, websiteNoticeId, restorationNoticeId, ownerNoticeId].filter(Boolean).length > 1) throw new Error('Callback has conflicting notice families');
+    const platformNoticeId = resendTagValue(event.data.tags, 'platform_event_notice_id');
+    if ([failureNoticeId, websiteNoticeId, restorationNoticeId, ownerNoticeId, platformNoticeId].filter(Boolean).length > 1) throw new Error('Callback has conflicting notice families');
+    if (platformNoticeId) {
+      const boundRecipient = operationalSingleRecipient(event.data.to);
+      if (!boundRecipient || accountId || !kind
+        || !['daily_digest','support_case_staff','support_case_customer','merchandise_receipt','merchandise_alert','auth_link','public_report'].includes(kind)
+        || !unambiguousNoticeTags(event.data.tags, ['kind','delivery_scope','platform_event_notice_id'])
+        || resendTagValue(event.data.tags, 'delivery_scope') !== 'platform_transactional'
+        || (event.data.cc && (!Array.isArray(event.data.cc) || event.data.cc.length))
+        || (event.data.bcc && (!Array.isArray(event.data.bcc) || event.data.bcc.length))) throw new Error('Platform notice callback has an invalid binding');
+      const { data: result, error: confirmError } = await admin.rpc('confirm_platform_event_notice', {
+        p_id: platformNoticeId, p_recipient: boundRecipient, p_provider_id: providerId, p_status: status,
+        p_occurred_at: event.created_at ?? new Date().toISOString(), p_event_id: request.headers.get('svix-id'),
+      });
+      if (!confirmError && (result === 'missing' || result === 'unprepared')) {
+        const { error: quarantineError } = await admin.from('webhook_failures').insert({
+          source: 'resend', event_type: event.type, reference_id: providerId,
+          error_message: 'PLATFORM_NOTICE_QUARANTINE: missing notice or snapshot; review deletion or environment routing.',
+          payload_excerpt: JSON.stringify({ notice_id: platformNoticeId, provider_id: providerId, binding_state: result, svix_id: request.headers.get('svix-id') }),
+        });
+        if (quarantineError) throw new Error('Could not retain platform notice callback quarantine');
+        return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
+      }
+      if (confirmError || result !== 'confirmed') throw new Error('Could not reconcile platform notice callback');
+    }
     const domainNoticeId = failureNoticeId || websiteNoticeId || restorationNoticeId || ownerNoticeId;
     const noticeTag = ownerNoticeId ? 'owner_event_notice_id' : restorationNoticeId ? 'domain_restoration_notice_id' : websiteNoticeId ? 'website_domain_notice_id' : 'domain_failure_notice_id';
     if (domainNoticeId) {
@@ -327,7 +351,11 @@ function operationalSingleRecipient(value: unknown): string | null {
 }
 
 function unambiguousDomainNoticeTags(tags: unknown, noticeTag: string): boolean {
-  return ['kind', 'account_id', noticeTag].every(name => {
+  return unambiguousNoticeTags(tags, ['kind', 'account_id', noticeTag]);
+}
+
+function unambiguousNoticeTags(tags: unknown, names: string[]): boolean {
+  return names.every(name => {
     const values = Array.isArray(tags)
       ? tags.filter(entry => entry && typeof entry === 'object' && entry.name === name).map(entry => entry.value)
       : tags && typeof tags === 'object' ? [(tags as Record<string, unknown>)[name]] : [];

@@ -178,6 +178,7 @@
         "sendMessagingApplicationSubmittedEmail:sdk-email-submit": 1,
         "sendOfficeInvitationEmail:sdk-email-submit": 1,
         "sendOwnerEventNoticeEmail:sdk-email-submit": 1,
+        "sendPlatformEventNoticeEmail:gate:sendDurablePlatformEmail": 1,
         "sendQuoteFollowupEmail:sdk-email-submit": 1,
         "sendSendingDomainFailedEmail:sdk-email-submit": 1,
         "sendSendingDomainRestoredEmail:sdk-email-submit": 1,
@@ -199,27 +200,14 @@
         "sendOperationalEmergencyAlert:gate:sendPlatformTransactionalEmail": 1
       }
     },
-    "src/lib/magic-link.ts": {
-      "purpose": "Owner login",
-      "recipientScope": "platform transactional",
-      "transport": "SDK",
-      "suppression": "platform gate after token generation; acceptance required",
-      "remaining": "Durable request/token recovery; hosted receipt",
-      "signatures": {
-        "<module>:provider-import:resend": 1,
-        "sendMagicLinkEmail:gate:sendPlatformTransactionalEmail": 1
-      }
-    },
     "src/lib/merchandise/merchandise-emails.ts": {
       "purpose": "Customer order receipt and internal order alert",
       "recipientScope": "order workspace customer or platform staff",
-      "transport": "SDK",
+      "transport": "Platform event queue",
       "suppression": "explicit scoped gates and acceptance IDs",
-      "remaining": "Durable order event identity; hosted receipt",
+      "remaining": "Enable verified background pickup; hosted receiver evidence",
       "signatures": {
-        "<module>:provider-import:resend": 1,
-        "sendCustomerMerchandiseReceipt:gate:sendAccountScopedEmail": 1,
-        "sendStaffMerchandiseAlert:gate:sendPlatformTransactionalEmail": 1
+        "<module>:provider-import:resend": 1
       }
     },
     "src/lib/operational-monitor.mjs": {
@@ -238,11 +226,13 @@
     "src/lib/platform-transactional-email.ts": {
       "purpose": "Shared platform transactional gate",
       "recipientScope": "explicit platform recipients",
-      "transport": "SDK and prepared HTTP payload contract",
+      "transport": "SDK for legacy platform callers; persisted snapshot, provider key and bounded HTTP for platform event notices",
       "suppression": "exact To/Cc/Bcc checks; delivery blocks only; callback scope tag",
-      "remaining": "Read/submission race; historical and provider-wide evidence",
+      "remaining": "Hosted callback and receiver evidence; legacy direct callers still require durable identities",
       "signatures": {
         "<module>:provider-import:resend": 1,
+        "sendDurablePlatformEmail:gate:preparePlatformTransactionalEmail": 2,
+        "sendDurablePlatformEmail:provider-email-request": 1,
         "sendPlatformTransactionalEmail:gate:preparePlatformTransactionalEmail": 1,
         "sendPlatformTransactionalEmail:sdk-email-submit": 2
       }
@@ -278,6 +268,16 @@
       "signatures": {
         "<module>:provider-import:resend": 1,
         "submit:provider-email-request": 1
+      }
+    },
+    "src/app/admin/health/email/[source]/[id]/actions.ts": {
+      "purpose": "Explicit operator document resend",
+      "recipientScope": "Saved workspace recipient",
+      "transport": "Document ledger executor with a fresh leased intent",
+      "suppression": "Final workspace recipient gate on the exact saved message",
+      "remaining": "Hosted permission and receiver acceptance",
+      "signatures": {
+        "<module>:provider-import:resend": 1
       }
     }
   }

@@ -1,8 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
-import { Resend } from 'resend';
-import { sendPlatformTransactionalEmail } from './platform-transactional-email';
+import { createHash } from 'node:crypto';
+import { runPlatformEventNotices } from './platform-event-notices';
 import { APP_ORIGIN, safeNextPath } from '@/lib/app-origin';
-import { renderBrandedEmail, FONT_STACK } from '@/emails/brand';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const TOKEN_EXPIRY_MINUTES = 60;
@@ -42,13 +41,15 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
     to: email,
     subject: "Your sign-in link for Let's Get Quoted",
     verifyUrl: verifyUrl.toString(),
-    tokenExpiryMinutes: TOKEN_EXPIRY_MINUTES
+    tokenExpiryMinutes: TOKEN_EXPIRY_MINUTES,
+    expiresAt: new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60_000).toISOString(),
   };
+  const sourceId = 'magic-link-' + createHash('sha256').update(linkData.properties.hashed_token).digest('hex');
 
   const { error: insertError } = await admin.from('platform_event_notices').insert({
     account_id: null,
     event_family: 'auth_link',
-    source_id: 'magic-link-' + Date.now(),
+    source_id: sourceId,
     payload
   });
 
@@ -56,4 +57,6 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
     console.error('Failed to queue magic link email:', insertError);
     throw new Error(`Failed to queue magic link email: ${insertError.message}`);
   }
+  const outcome = await runPlatformEventNotices(admin, { sourceId, eventFamily: 'auth_link' });
+  if (!outcome.ownersNotified) throw new Error('The sign-in email could not be confirmed. Please request a new link.');
 }

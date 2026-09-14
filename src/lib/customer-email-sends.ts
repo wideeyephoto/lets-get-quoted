@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateEmailOptions } from 'resend';
+import { assertEmailSendAllowed } from './email-send-policy';
+import { resendTagValue } from './resend-tags';
 import { assertRecoveryMaySubmit, finishEmailAttempt, type EmailProvider, type EmailAttemptResult, type RecoveryExecution } from './email-recovery-execution';
 
 export type CustomerEmailContext = {
   accountId: string;
-  jobId?: string;
+  jobId?: string | null;
   kind: string;
   idempotencyKey: string;
 };
@@ -30,6 +32,9 @@ export async function sendCustomerEmail(
     ...attachment,
     content: Buffer.isBuffer(attachment.content) ? attachment.content.toString('base64') : attachment.content,
   })) };
+
+  if (resendTagValue(payload.tags, 'account_id') !== context.accountId) throw new Error('Email workspace could not be verified');
+  await assertEmailSendAllowed(admin, payload);
 
   const { data, error } = await admin.rpc('claim_customer_email_send', {
     p_account_id: context.accountId,
@@ -64,9 +69,11 @@ export async function executeCustomerEmailClaim(
   const submit = async (): Promise<EmailAttemptResult> => {
     try {
       await assertRecoveryMaySubmit(admin, accountId, recovery);
+      if (resendTagValue(claim.payload.tags, 'account_id') !== accountId) throw new Error('Email workspace changed');
+      await assertEmailSendAllowed(admin, claim.payload);
       if (Date.now() >= Date.parse(claim.retry_before)) throw new Error('Email retry window expired before submission');
       return await resend.fetchRequest<{ id: string }>('/emails', {
-        method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': claim.key },
+        method: 'POST', headers: { Authorization: `Bearer ${resend.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': claim.key },
         body: JSON.stringify(claim.payload), signal: AbortSignal.timeout(30_000),
       });
     } catch (cause) {

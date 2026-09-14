@@ -72,6 +72,23 @@ function taggedData(emailId: string, extra: Record<string, unknown> = {}): Event
   };
 }
 
+it('binds platform callbacks before recording delivery history', async () => {
+  mocks.rpc.mockResolvedValue({data:'confirmed',error:null});
+  const response = await POST(signedRequest('email.delivered', taggedData('platform-provider', {
+    tags:{kind:'auth_link',delivery_scope:'platform_transactional',platform_event_notice_id:'notice-id'},
+  })));
+  expect(response.status).toBe(200);
+  expect(mocks.rpc).toHaveBeenCalledWith('confirm_platform_event_notice',expect.objectContaining({p_id:'notice-id',p_provider_id:'platform-provider',p_recipient:RECIPIENT}));
+  expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.upsert.mock.invocationCallOrder[0]);
+});
+
+it('rejects conflicting platform and tenant callback scope without projecting delivery', async () => {
+  const response = await POST(signedRequest('email.delivered', taggedData('platform-provider', {
+    tags:{kind:'auth_link',delivery_scope:'platform_transactional',platform_event_notice_id:'notice-id',account_id:ACCOUNT_ID},
+  })));
+  expect(response.status).toBe(500); expect(mocks.upsert).not.toHaveBeenCalled();
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv('RESEND_WEBHOOK_SECRET', WEBHOOK_SECRET);

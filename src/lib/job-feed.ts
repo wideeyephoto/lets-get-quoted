@@ -4,8 +4,8 @@ import { createAdminClient } from '@/lib/auth';
 import { getJob, formatJobSchedule, formatMoney, parseQuoteItems, computeQuoteTotal, type QuoteItem } from '@/lib/jobs';
 import { getLeadByConvertedJob, updateLeadStatus } from '@/lib/leads';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
-import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
-import { createDepositRequest, type Payment } from '@/lib/payments';
+import { type Invoice } from '@/lib/invoices';
+import { type Payment } from '@/lib/payments';
 import { planSchedulePreview } from '@/lib/payment-plan-math';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -13,7 +13,7 @@ import { loadClientMilestones } from '@/lib/milestones-data';
 import type { MilestoneStatus } from '@/lib/milestones';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 import { toClientFeed, clientSafeText, type ClientFeedItem } from '@/lib/client-feed';
-import { safeSignaturePath, type SignatureMethod } from '@/lib/signature';
+import { safeSignaturePath } from '@/lib/signature';
 
 
 export type JobFeedVisibility = 'internal' | 'client' | 'client_financial';
@@ -675,7 +675,7 @@ export async function applyQuoteAcceptance(
 // Records approval idempotently, promotes the job out of the quote stage,
 // advances the originating lead to won, and alerts the owner (best-effort).
 import { QuoteOptionRequest } from '@/lib/quote-option-requests';
-import { quoteOptionRequestHash } from '@/lib/quote-option-requests';
+import { quoteOptionRequestHash, quoteOptionRevision } from '@/lib/quote-option-requests';
 
 export async function approveClientJobQuote(
   clientToken: string,
@@ -722,9 +722,14 @@ export async function approveClientJobQuote(
 
   let alreadyApproved = false;
   if (request) {
-    const payloadHash = quoteOptionRequestHash(jobId, selectedAddonIds, request);
+    const payloadHash = createHash('sha256').update(JSON.stringify([quoteOptionRequestHash(jobId, selectedAddonIds, request), signature, drawnPath])).digest('hex');
+    const { data: receipt, error: receiptError } = await admin.from('quote_approval_request_receipts').select('payload_hash,quoted_amount,event_id').eq('account_id',accountId).eq('request_id',request.requestId).maybeSingle();
+    if (receiptError) throw new Error('Could not check saved approval. Retry this request.');
+    if (receipt && receipt.payload_hash !== payloadHash) throw new Error('Approval request has different content. Reload before approving.');
+    if (!receipt && request.revision !== quoteOptionRevision(job.quote_items,job.quoted_amount)) throw new Error('Quote changed; refresh before approving.');
+    if (receipt) quotedAmount = Number(receipt.quoted_amount);
     const bodyText = `${job.client_name} accepted the quote${quotedAmount > 0 ? ` (${formatMoney(quotedAmount)})` : ''}.${addonNote}`;
-    const saved = await admin.rpc('save_client_quote_approval', {
+    const saved = receipt ? {data: {...receipt,replayed:true,promoted:false},error:null} : await admin.rpc('save_client_quote_approval', {
       p_account_id: accountId,
       p_job_id: jobId,
       p_request_id: request.requestId,
@@ -751,11 +756,11 @@ export async function approveClientJobQuote(
           try {
             const { triggerWonLeadOfflineConversion } = await import('@/lib/google-ads-conversion-outbox');
             await triggerWonLeadOfflineConversion(admin, accountId, { ...lead, status: 'won' }, quotedAmount);
-          } catch (e) {}
+          } catch (_error) { /* Conversion failure must not undo the accepted quote. */ }
           try {
             const { triggerWonLeadMetaCapiConversion } = await import('@/lib/meta-capi-outbox');
             await triggerWonLeadMetaCapiConversion(admin, accountId, { ...lead, status: 'won' }, quotedAmount);
-          } catch (e) {}
+          } catch (_error) { /* Conversion failure must not undo the accepted quote. */ }
         }
       }
     }
@@ -775,67 +780,23 @@ export async function approveClientJobQuote(
   }
 
   if (alreadyApproved && !request) return;
-  // If request is provided, we ALWAYS check deposit creation because deposit creation is idempotent on existingDeposit.
-  // Wait, actually, alreadyApproved means the receipt was found. We should still proceed to deposit creation to ensure it completes!
-  
-    // Deposit-on-approval: turn the approval straight into a deposit ask when the
-  // account opts in — a % of the just-finalized quote, created once and texted
-  // when the client has SMS consent (otherwise it simply shows on their
-  // dashboard). Best-effort: a deposit or SMS failure must never fail approval,
-  // and the settings read is defensive so an un-migrated DB just skips it.
+  // Deposit setup is atomic; its stable payment ID also recovers feed/SMS work.
   try {
-    const { data: depositSettings } = await admin
-      .from('accounts')
-      .select('deposit_on_approval, deposit_percent')
-      .eq('id', accountId)
-      .maybeSingle();
-    const depositPercent = Number(depositSettings?.deposit_percent);
-    if (depositSettings?.deposit_on_approval && quotedAmount > 0 && Number.isFinite(depositPercent) && depositPercent > 0) {
-      // Never stack a second deposit on a job that already has one.
-      const { data: existingDeposit } = await admin
-        .from('payments')
-        .select('id')
-        .eq('account_id', accountId)
-        .eq('job_id', jobId)
-        .eq('kind', 'deposit')
-        .limit(1)
-        .maybeSingle();
-      const depositAmount = Math.round(quotedAmount * (depositPercent / 100) * 100) / 100;
-      if (!existingDeposit && depositAmount > 0) {
-        // Ensure a primary invoice (mirrors the manual deposit flow) so the
-        // deposit links to it and the balance math stays correct.
-        const invoices = await listInvoices(admin, accountId, jobId);
-        const invoice = selectPrimaryInvoice(invoices) ?? await createInvoice(admin, accountId, jobId, 'draft');
-        if (Number(invoice.total) <= 0) {
-          await addInvoiceItem(admin, accountId, invoice.id, { description: 'Quoted job total', amount: quotedAmount });
-        }
-
-        const normalizedPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
-        let smsConsent = false;
-        if (normalizedPhone) {
-          const { data: consent } = await admin
-            .from('sms_consent')
-            .select('status')
-            .eq('account_id', accountId)
-            .eq('phone_number', normalizedPhone)
-            .maybeSingle();
-          smsConsent = consent?.status === 'opted_in';
-        }
-
-        const deposit = await createDepositRequest(admin, accountId, jobId, {
-          label: `Deposit (${depositPercent}% of quote)`,
-          amount: depositAmount,
-          kind: 'deposit',
-          invoiceId: invoice.id,
-          homeownerPhone: normalizedPhone,
-          smsConsent,
-        });
-        await createPaymentFeedEvent(admin, deposit.id, 'payment_requested');
-        if (smsConsent) await sendPaymentSmsEvent(deposit.id, 'payment_requested');
-      }
+    const normalizedPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+    let smsConsent = false;
+    if (normalizedPhone) {
+      const {data: consent,error} = await admin.from('sms_consent').select('status').eq('account_id',accountId).eq('phone_number',normalizedPhone).maybeSingle();
+      if (error) throw error;
+      smsConsent = consent?.status === 'opted_in';
+    }
+    const {data: depositId,error} = await admin.rpc('ensure_quote_approval_deposit', {p_account_id:accountId,p_job_id:jobId,p_quote_amount:quotedAmount,p_phone:normalizedPhone,p_sms_consent:smsConsent});
+    if (error) throw error;
+    if (depositId) {
+      await createPaymentFeedEvent(admin,depositId,'payment_requested');
+      if (smsConsent) await sendPaymentSmsEvent(depositId,'payment_requested');
     }
   } catch (error) {
-    console.error(`Deposit-on-approval failed for job ${jobId}:`, error instanceof Error ? error.message : error);
+    console.error('Deposit-on-approval remains pending:',error instanceof Error ? error.message : error);
   }
 
 }

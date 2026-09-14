@@ -69,7 +69,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
     process.env.RESEND_API_KEY = 're_test_key_123';
     mocks.send.mockResolvedValue({ data: { id: 'msg_123' }, error: null });
     mocks.suppression.mockResolvedValue({ data: [], error: null });
-    mocks.rpc.mockImplementation(async (name: string, args: any) => ({ data: name === 'claim_document_email_send'
+    mocks.rpc.mockImplementation(async (name: string, args: any) => ({ data: ['claim_document_email_send', 'claim_customer_email_send'].includes(name)
       ? { action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'document/intent/primary',
         payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString() } : true, error: null }));
     mocks.loadEmailBrand.mockResolvedValue({
@@ -182,17 +182,17 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('sendAppointmentReminderEmail', () => {
     it('stops a locally blocked recipient before calling the real shared transport', async () => {
       mocks.suppression.mockResolvedValue({ data: [{ reason: 'hard_bounce' }], error: null });
-      await expect(sendAppointmentReminderEmail(fakeAdmin, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
+      await expect(sendAppointmentReminderEmail(emailFakeAdmin, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
         businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null, jobId: 'job-1', idempotencyKey: 'test-idem-1',
       })).rejects.toThrow('blocked');
       expect(mocks.send).not.toHaveBeenCalled();
     });
     it('dispatches reminder with appointment date, time window, and address', async () => {
-      await sendAppointmentReminderEmail(fakeAdmin, { accountId: 'acc-1',
+      await sendAppointmentReminderEmail(emailFakeAdmin, { accountId: 'acc-1',
         recipientEmail: 'client@contractorclient.test',
         businessName: 'Ace Contracting',
         clientName: 'Bob Miller',
-        whenLabel: 'Monday, June 15, 2026 A 9:00 AM ?" 11:00 AM',
+        whenLabel: 'Monday, June 15, 2026 · 9:00 AM – 11:00 AM',
         jobRef: 'JOB-101',
         address: '742 Evergreen Terrace, Springfield',
         jobId: 'job-1', idempotencyKey: 'test-idem-2',
@@ -357,8 +357,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
   describe('Campaign Marketing & Delivery Helpers', () => {
     it('sendCampaignEmail delivers marketing email with CAN-SPAM footer and unsubscribe link', async () => {
-      const mockAdmin = {} as any; // Mock admin for test
-      await sendCampaignEmail(mockAdmin, {
+      await sendCampaignEmail(emailFakeAdmin, {
         accountId: 'acc-1',
         recipientEmail: 'homeowner@example.com',
         businessName: 'Ace Contracting',

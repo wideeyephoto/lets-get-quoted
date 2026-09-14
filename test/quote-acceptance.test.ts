@@ -91,7 +91,7 @@ describe('the acceptance is idempotent, and finishes what it started', () => {
 
   it('retries deposit creation if interrupted, relying on its own idempotency', () => {
     const approve = JOB_FEED.slice(JOB_FEED.indexOf('export async function approveClientJobQuote('));
-    expect(approve).toContain('deposit_on_approval');
+    expect(approve).toContain('ensure_quote_approval_deposit');
     expect(approve).toContain('if (alreadyApproved && !request) return;');
     expect(JOB_FEED).toContain("owner_email_notice: 'quote_approval_v1'");
   });

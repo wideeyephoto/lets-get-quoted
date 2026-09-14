@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateEmailOptions } from 'resend';
+import { assertEmailSendAllowed } from './email-send-policy';
 import { assertRecoveryMaySubmit, finishEmailAttempt, type EmailProvider, type EmailAttemptResult, type RecoveryExecution } from './email-recovery-execution';
 
 export type DocumentEmailContext = {
@@ -60,6 +61,7 @@ export async function executeDocumentEmailClaim(admin: SupabaseClient, resend: E
   const submit = async (): Promise<EmailAttemptResult> => {
     try {
       await assertRecoveryMaySubmit(admin, accountId, recovery);
+      await assertEmailSendAllowed(admin, claim.payload);
       if (Date.now() >= Date.parse(claim.retry_before)) throw new Error('Email retry window expired before submission');
       return await resend.fetchRequest<{ id: string }>('/emails', {
         method: 'POST', headers: { Authorization: `Bearer ${resend.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': claim.key },

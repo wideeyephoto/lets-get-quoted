@@ -503,7 +503,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
 
   // Owner: notified like any website lead (email + urgent SMS alert)
   try {
-    await admin.from('owner_event_notices').insert({
+    const { error: noticeError } = await admin.from('owner_event_notices').insert({
       account_id: accountId,
       source_type: 'lead',
       source_id: lead.id,
@@ -513,6 +513,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
         body: lead.message,
       }
     });
+    if (noticeError && noticeError.code !== '23505') throw noticeError;
   } catch (error) {
     console.error(`Booking owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);
   }
@@ -651,7 +652,7 @@ export async function createBookingRequestLead(
     const accountTimeZone = (accountSettings?.timezone as string | null) || null;
 
     try {
-      await admin.from('owner_event_notices').insert({
+      const { error: noticeError } = await admin.from('owner_event_notices').insert({
         account_id: accountId,
         source_type: 'lead',
         source_id: lead.id,
@@ -661,6 +662,7 @@ export async function createBookingRequestLead(
           body: lead.message,
         }
       });
+      if (noticeError && noticeError.code !== '23505') throw noticeError;
     } catch (dbErr) {}
 
     if (alertPhone) {

@@ -243,7 +243,7 @@ export async function runDailyDigests(now: Date = new Date()): Promise<DigestRun
       const { error: insertError } = await admin.from('platform_event_notices').insert({
         account_id: accountId,
         event_family: 'daily_digest',
-        source_id: todayKey,
+        source_id: `${accountId}:${todayKey}`,
         payload
       });
       if (insertError) throw insertError;
