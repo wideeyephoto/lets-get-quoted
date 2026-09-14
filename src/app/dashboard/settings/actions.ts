@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
+import { isSupportedLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, type Locale } from '@/lib/i18n';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,
@@ -1388,6 +1390,23 @@ export async function removeContractorLogoAction() {
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/sites');
   return { ok: true };
+}
+
+export async function updateLanguagePreferenceAction(locale: unknown) {
+  await requireOfficeContext('settings.write');
+  if (!isSupportedLocale(locale)) {
+    throw new Error('Unsupported language');
+  }
+
+  (await cookies()).set(LOCALE_COOKIE, locale, {
+    path: '/',
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: 'lax',
+  });
+
+  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard/settings');
+  return { ok: true, locale };
 }
 
 

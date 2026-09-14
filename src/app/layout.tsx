@@ -20,6 +20,7 @@ import {
   THEME_COOKIE_MAX_AGE,
   THEME_SYSTEM_COOKIE,
 } from '@/lib/theme';
+import { LOCALE_COOKIE, parseLocale } from '@/lib/i18n';
 /**
  * THE BASE SHEET, NOT THE WHOLE ONE.
  *
@@ -164,6 +165,10 @@ async function readServerTheme() {
   }
 
   const jar = await cookies();
+  if (!isStandaloneSite) {
+    const contractorLocale = parseLocale(jar.get(LOCALE_COOKIE)?.value);
+    if (contractorLocale) siteLanguage = contractorLocale;
+  }
   const choice = parseThemeChoice(jar.get(THEME_COOKIE)?.value) ?? 'dark';
   const systemPrefersLight = jar.get(THEME_SYSTEM_COOKIE)?.value === 'light';
   const theme = isStandaloneSite ? 'dark' : resolveTheme(choice, systemPrefersLight);

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { loadOfficeTeam } from '@/lib/office-team';
 import { loadOverageSummary } from '@/lib/billing/overage-summary';
@@ -15,7 +16,9 @@ import GoogleLocalServicesSection from './GoogleLocalServicesSection';
 import { googleLsaConnectionStatus } from '@/lib/google-lsa/connection';
 import SaveButton from '@/components/save-button';
 import ThemeToggle from '@/components/theme-toggle';
+import LanguageSettingsSection from './LanguageSettingsSection';
 import CopilotSettingsSection from './CopilotSettingsSection';
+import { LOCALE_COOKIE, parseLocale } from '@/lib/i18n';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import TradeAutocomplete from '@/components/trade-autocomplete';
 import ExportData from './ExportData';
@@ -100,6 +103,8 @@ export default async function SettingsPage({
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
+  const jar = await cookies();
+  const currentLocale = parseLocale(jar.get(LOCALE_COOKIE)?.value) ?? 'en';
 
   const [
     { data: userData },
@@ -520,7 +525,7 @@ export default async function SettingsPage({
           {
             id: 'account',
             label: 'Login & security',
-            anchors: ['appearance', 'customization', 'branding', 'nav-branding', 'copilot', 'support', 'danger-zone', 'account'],
+            anchors: ['appearance', 'language', 'customization', 'branding', 'nav-branding', 'copilot', 'support', 'danger-zone', 'account'],
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -554,6 +559,8 @@ export default async function SettingsPage({
                   </p>
                   <ThemeToggle />
                 </section>
+
+                <LanguageSettingsSection initialLocale={currentLocale} />
 
                 <CopilotSettingsSection
                   initialLogoUrl={site?.logo_url ?? null}
