@@ -885,7 +885,7 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((approvedResult.executionResult as { error: string }).error).toMatch(/no sender/i);
   });
 
-  it('executes approved sre.inspect_webhook_failure HITL actions and resolves the webhook failure', async () => {
+  it('refuses obsolete inspection approvals because inspection is not recovery', async () => {
     const action = createHitlAction({
       category: 'sre_platform',
       title: 'Inspect Webhook Failure: ai_voice (provider_status)',
@@ -902,13 +902,10 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
       ctx,
     );
 
-    expect(approvedResult.success).toBe(true);
-    expect(approvedResult.action?.status).toBe('approved');
-    expect(approvedResult.action?.resolvedBy).toBe('staff@letsgetquoted.com');
-    expect(approvedResult.executionResult).toEqual({
-      failureId: 'wh-1',
-      status: 'inspected_and_resolved',
-    });
+    expect(approvedResult.success).toBe(false);
+    expect(approvedResult.error).toContain('inspection alone cannot resolve it');
+    expect(approvedResult.action?.status).toBe('pending');
+    expect(approvedResult.executionResult).toBeUndefined();
   });
 });
 

@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { runWebhookAutoHealer } from '@/lib/ai-operator/webhook-healer';
 import { clearOperatorMemory, createHitlAction, flushOperatorWrites, listPendingHitlActions, listPendingHitlActionsAsync } from '@/lib/ai-operator/audit';
 import { executeOperatorTool } from '@/lib/ai-operator/tools';
+import { executeHitlDecision } from '@/lib/ai-operator/engine';
 
 vi.mock('@/lib/auth', () => ({ createAdminClient: () => { throw new Error('Use the supplied test client'); } }));
 
@@ -93,6 +94,17 @@ describe('Durable webhook inspections and approval queue', () => {
     expect(report).toMatchObject({ inspectionActionsLogged: 0, retiredInspectionApprovals: 0, escalatedToHitlCount: 0 });
     expect(db.fetchMock.mock.calls.every(([, init]) => init?.method === 'GET')).toBe(true);
     expect(db.rows.ai_operator_action_requests[0].status).toBe('pending');
+  });
+
+  it('cannot mark a failed webhook resolved through an obsolete inspection approval', async () => {
+    const failure = { id: 'wh-1', source: 'ai_voice', resolved_at: null };
+    const db = database([failure], [inspection('old-card')]);
+    const result = await executeHitlDecision('old-card', 'approved', 'test-admin', undefined, { supabase: db.client });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('inspection alone cannot resolve it');
+    expect(failure.resolved_at).toBeNull();
+    expect(db.rows.ai_operator_action_requests[0].status).toBe('pending');
+    expect(db.fetchMock.mock.calls.every(([, init]) => init?.method === 'GET')).toBe(true);
   });
 
   it.each(['ai_operator_logs', 'ai_operator_action_requests'])('surfaces %s persistence failures instead of reporting a healthy scan', async (table) => {

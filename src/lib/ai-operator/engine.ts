@@ -510,20 +510,11 @@ export async function executeHitlDecision(
         }
 
         case 'sre.inspect_webhook_failure': {
-          const failureId = action.payload?.failureId ? String(action.payload.failureId) : null;
-          if (failureId && supabase) {
-            const q = supabase.from('webhook_failures');
-            if (typeof q?.update === 'function') {
-              await q
-                .update({
-                  resolved_at: new Date().toISOString(),
-                  resolved_by: resolver || 'admin (operator hitl)',
-                })
-                .eq('id', failureId);
-            }
-          }
-          executionResult = { failureId, status: 'inspected_and_resolved' };
-          break;
+          return {
+            success: false,
+            action,
+            error: 'This read-only inspection approval is obsolete. Review the failure in webhook monitoring; inspection alone cannot resolve it.',
+          };
         }
 
         case 'trigger_contractor_lifecycle_nudge': {
