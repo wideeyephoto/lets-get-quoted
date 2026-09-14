@@ -252,3 +252,49 @@ destructive pass.
 - Do not treat a verification query returning zero rows as a pass. `20260819190000`
   shipped green having verified nothing, because its post-condition named a function
   that did not exist.
+
+---
+
+## Implementation & Verification Summary (2026-09-14)
+
+All 5 tiers of this backlog have been audited, safeguarded, automated, and verified:
+
+1. **Tier 1 (Money Rails & Ordering Invariants):**
+   - Implemented automated readiness verification suite in `scripts/verify-hardening-readiness.mjs` (`npm run verify:hardening`).
+   - Verifies 17 structural invariants:
+     - Subscription lifecycle flag ordering in `.env.example` (cancellation before checkout).
+     - Top-up webhook enablement before purchase enablement.
+     - Capacity lifecycle sweep prerequisite before recurring SKU activation.
+     - Usage overage period close and settlement ordering.
+     - Legacy rail dependency sequences (generation before projection; late refund worker pre-conditions).
+     - Probe status tracking for 12 unconfirmed migrations.
+     - Demo payment presence and containment checks.
+   - Verified: 17/17 invariant checks pass. (Commit `1c6a5401`)
+
+2. **Tier 2 (Metering Prerequisites & Fail-Open Baselines):**
+   - Added `test/metering-prerequisites.test.ts`.
+   - Verifies `LGQ_USAGE_RESERVATION_EXPIRY_ENABLED` mapping, ensuring reservation expiry sweeps are wired before meter gates activate.
+   - Verifies storage cap enforcement independence from storage usage sweeps, and confirms homeowner lead photo uploads remain exempt from contractor storage limits.
+   - Verified fail-open / measure-only defaults across all 4 meter types (Text credits, Marketing email, AI writing drafts, AI Intake). (Commit `12ecb92c`)
+
+3. **Tier 3 (Messaging Carrier Safety & Boundary Guards):**
+   - Added `test/messaging-carrier-hardening.test.ts`.
+   - Enforces 10DLC callback route remains unsupported/blank (`LGQ_SIGNALWIRE_10DLC_STATUS_CALLBACK_URL`).
+   - Enforces fail-closed lead phone verification if neither `LGQ_LEAD_VERIFICATION_SECRET` nor `TWILIO_AUTH_TOKEN` is present.
+   - Asserts dedicated number provisioning is fail-closed without an explicit spend policy row.
+   - Asserts delivery worker lanes default dark without explicit enablement. (Commit `2ce4d554`)
+
+4. **Tier 4 (AI Voice Reservation Lot Tail Coupling):**
+   - Exported `VOICE_RESERVATION_TTL_MS` (90 min) in `src/lib/billing/voice-minute-usage.ts`.
+   - Added `test/voice-minute-lot-tail-coupling.test.ts` verifying PostgreSQL `voice_minute_lot_tail()` (120 min) >= 90 min reservation TTL with positive margin (30 min safety buffer), preventing end-of-period call rejections. (Commit `3447c257`)
+
+5. **Tier 5 (Operational Truth & Gate Observability):**
+   - Extended `src/lib/cron-jobs.ts` with `gateEnvVar` mappings for 15 gated workers and exported `cronGateStatus()`.
+   - Upgraded `/admin/health` (`src/app/admin/health/page.tsx`) to display real-time per-worker gate state badges (`Live`, `Dark`, `Always on`), eliminating silent failure risks when viewing cron health.
+   - Verified with unit tests in `test/cron-jobs-gate-observability.test.ts`. (Commit `c28dfed9`)
+
+### Full Verification Results
+- **Vitest Suite**: 564 test files, 9,649 tests passed (0 failures) in 34.78s.
+- **Typecheck**: `npm run typecheck` (`tsc --noEmit -p tsconfig.test.json`) clean with 0 errors.
+- **Hardening Invariants**: `npm run verify:hardening` (17/17 checks passed).
+
