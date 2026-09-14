@@ -55,6 +55,16 @@ async function handleGeneratePdf(
       return NextResponse.json({ error: 'Unable to compile permit application data for this job.' }, { status: 404 });
     }
 
+    if (packetData?.readiness && !packetData.readiness.complete) {
+      return NextResponse.json(
+        {
+          error: 'Permit packet PDF export blocked: missing required attested credentials.',
+          missingFields: packetData.readiness.missing,
+        },
+        { status: 409 },
+      );
+    }
+
     const validSig = safeSignaturePath(signaturePath);
     if (validSig) {
       packetData.certification.applicantSignaturePath = validSig;

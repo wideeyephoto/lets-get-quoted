@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getJob } from '@/lib/jobs';
-import { executePermitSubmission } from '@/lib/permit-intel';
+import { executePermitSubmission, listContractorCredentials } from '@/lib/permit-intel';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +78,36 @@ export async function POST(
         { error: 'A valid qualifying contractor license number is required before permit filing.' },
         { status: 400 },
       );
+    }
+
+    // Verify licenseNumber matches a vault credential for the account
+    if (typeof (supabase as any)?.from === 'function') {
+      const credentials = await listContractorCredentials(supabase, membership.accountId);
+      const hasMatchingCredential = credentials.some(
+        (c) => c.licenseNumber && c.licenseNumber.trim() === licenseNumber,
+      );
+
+      let siteLicenseMatches = false;
+      if (!hasMatchingCredential) {
+        const { data: site } = await supabase
+          .from('sites')
+          .select('license')
+          .eq('account_id', membership.accountId)
+          .maybeSingle();
+        if (site?.license && site.license.trim() === licenseNumber) {
+          siteLicenseMatches = true;
+        }
+      }
+
+      if (!hasMatchingCredential && !siteLicenseMatches) {
+        return NextResponse.json(
+          {
+            error:
+              'The qualifying license number provided does not match any registered contractor credential in your workspace vault or site settings.',
+          },
+          { status: 400 },
+        );
+      }
     }
 
     const submissionResult = await executePermitSubmission(

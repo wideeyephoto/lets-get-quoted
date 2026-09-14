@@ -56,6 +56,15 @@ export type MunicipalCoiCertificate = {
   authorizedRepresentative: string;
 };
 
+export class CoverageDataMissingError extends Error {
+  constructor(missing: string[]) {
+    super(
+      `Cannot generate Certificate of Insurance: missing required coverage data (${missing.join(', ')}). Coverage data must be recorded in Credentials Vault.`,
+    );
+    this.name = 'CoverageDataMissingError';
+  }
+}
+
 /**
  * Generates an ACORD 25 compliant Certificate of Insurance tailored for municipal permit submittals.
  */
@@ -80,6 +89,16 @@ export function generateMunicipalCoi(input: {
   };
   projectAddress?: string;
 }): MunicipalCoiCertificate {
+  const missingCoverage: string[] = [];
+  if (!input.contractor.generalLiabilityCarrier) missingCoverage.push('General Liability Carrier');
+  if (!input.contractor.generalLiabilityPolicyNumber) missingCoverage.push('General Liability Policy Number');
+  if (!input.contractor.workersCompCarrier) missingCoverage.push("Workers' Compensation Carrier");
+  if (!input.contractor.workersCompPolicyNumber) missingCoverage.push("Workers' Compensation Policy Number");
+
+  if (missingCoverage.length > 0) {
+    throw new CoverageDataMissingError(missingCoverage);
+  }
+
   const dateStr = new Date().toISOString().slice(0, 10);
   const expDate = new Date(Date.now() + 86400000 * 365).toISOString().slice(0, 10);
   const certId = `COI-${input.municipality.state}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -102,13 +121,13 @@ export function generateMunicipalCoi(input: {
     },
     insured: {
       companyName: input.contractor.companyName,
-      address: input.contractor.address || 'Contractor Operating Address',
-      phone: input.contractor.phone || '(555) 012-3456',
-      stateLicenseNumber: input.contractor.licenseNumber || 'Active State License',
+      address: input.contractor.address || '',
+      phone: input.contractor.phone || '',
+      stateLicenseNumber: input.contractor.licenseNumber || '',
     },
     insurers: {
-      insurerA: input.contractor.generalLiabilityCarrier || 'Travelers Property Casualty Co. of America',
-      insurerB: input.contractor.workersCompCarrier || 'Accident Fund Insurance Co. / State Fund',
+      insurerA: input.contractor.generalLiabilityCarrier!,
+      insurerB: input.contractor.workersCompCarrier!,
     },
     coverages: {
       generalLiability: {
@@ -118,7 +137,7 @@ export function generateMunicipalCoi(input: {
         personalAndAdvInjury: 1000000,
         generalAggregate: 2000000,
         productsCompOpAgg: 2000000,
-        policyNumber: input.contractor.generalLiabilityPolicyNumber || 'GL-8849201',
+        policyNumber: input.contractor.generalLiabilityPolicyNumber!,
         effectiveDate: dateStr,
         expirationDate: expDate,
         additionalInsured: true,
@@ -128,7 +147,7 @@ export function generateMunicipalCoi(input: {
         eachAccident: 500000,
         diseasePolicyLimit: 500000,
         diseaseEachEmployee: 500000,
-        policyNumber: input.contractor.workersCompPolicyNumber || 'WC-9940122',
+        policyNumber: input.contractor.workersCompPolicyNumber!,
         effectiveDate: dateStr,
         expirationDate: expDate,
       },

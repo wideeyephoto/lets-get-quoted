@@ -50,6 +50,7 @@ describe('Permit PDF Download API Route - GET & POST /api/jobs/:id/permits/pdf',
       property: { streetAddress: '211 S Williams St' },
       authority: { name: 'City of Royal Oak' },
       certification: { applicantSignatureText: 'John Contractor' },
+      readiness: { complete: true, missing: [] },
     } as any);
 
     const fakePdfBuffer = Buffer.from('%PDF-1.4 test stream');
@@ -61,6 +62,33 @@ describe('Permit PDF Download API Route - GET & POST /api/jobs/:id/permits/pdf',
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('application/pdf');
     expect(res.headers.get('Content-Disposition')).toContain('Permit-Application-');
+  });
+
+  it('blocks PDF export with 409 when attested credentials are missing', async () => {
+    vi.mocked(createSupabaseServerClient).mockReturnValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'usr-1' } } }) },
+    } as any);
+
+    vi.mocked(getCurrentMembership).mockResolvedValue({
+      accountId: 'acc-1',
+      role: 'owner',
+    } as any);
+
+    vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set(['jobs.read']));
+
+    vi.mocked(compilePermitApplication).mockResolvedValueOnce({
+      property: { streetAddress: '211 S Williams St' },
+      authority: { name: 'City of Royal Oak' },
+      readiness: { complete: false, missing: ['licenseNumber'] },
+    } as any);
+
+    const req = new Request('http://localhost/api/jobs/11111111-1111-1111-1111-111111111111/permits/pdf');
+    const res = await GET(req, { params: Promise.resolve({ id: '11111111-1111-1111-1111-111111111111' }) });
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toContain('PDF export blocked');
+    expect(body.missingFields).toEqual(['licenseNumber']);
   });
 
   it('attaches vector signature when sig query parameter is passed to GET', async () => {
@@ -79,6 +107,7 @@ describe('Permit PDF Download API Route - GET & POST /api/jobs/:id/permits/pdf',
       property: { streetAddress: '211 S Williams St' },
       authority: { name: 'City of Royal Oak' },
       certification: { applicantSignatureText: 'John Contractor' },
+      readiness: { complete: true, missing: [] },
     };
     vi.mocked(compilePermitApplication).mockResolvedValueOnce(mockPacket);
     vi.mocked(generatePermitApplicationPdf).mockResolvedValueOnce(Buffer.from('%PDF-signed'));
@@ -108,6 +137,7 @@ describe('Permit PDF Download API Route - GET & POST /api/jobs/:id/permits/pdf',
       property: { streetAddress: '211 S Williams St' },
       authority: { name: 'City of Royal Oak' },
       certification: { applicantSignatureText: 'John Contractor' },
+      readiness: { complete: true, missing: [] },
     };
     vi.mocked(compilePermitApplication).mockResolvedValueOnce(mockPacket);
     vi.mocked(generatePermitApplicationPdf).mockResolvedValueOnce(Buffer.from('%PDF-signed'));

@@ -56,6 +56,15 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
 
       doc.moveDown(0.5);
 
+function getAttestedText(
+  field: { status: 'provided'; value: string } | { status: 'missing'; label: string } | string | undefined | null,
+  placeholder = '—',
+): string {
+  if (!field) return placeholder;
+  if (typeof field === 'string') return field;
+  return field.status === 'provided' ? field.value : placeholder;
+}
+
       // Section 1: Property Location
       drawSectionHeader(doc, contentWidth, 'I. PROPERTY & JOB SITE LOCATION');
       const propY = doc.y + 4;
@@ -63,13 +72,13 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
       doc.font('Helvetica').text(data.property.streetAddress, PAGE_MARGIN + 80, propY);
 
       doc.font('Helvetica-Bold').text('City / State / ZIP: ', PAGE_MARGIN + 6, propY + 12);
-      doc.font('Helvetica').text(`${data.property.city}, ${data.property.state} ${data.property.zip}`, PAGE_MARGIN + 88, propY + 12);
+      doc.font('Helvetica').text(`${data.property.city}${data.property.city && data.property.state ? ', ' : ''}${data.property.state} ${data.property.zip}`, PAGE_MARGIN + 88, propY + 12);
 
       doc.font('Helvetica-Bold').text('Occupancy / Type: ', PAGE_MARGIN + 280, propY);
       doc.font('Helvetica').text(`${data.property.occupancyType} · ${data.property.constructionType}`, PAGE_MARGIN + 365, propY);
 
       doc.font('Helvetica-Bold').text('Parcel ID: ', PAGE_MARGIN + 280, propY + 12);
-      doc.font('Helvetica').text(data.property.parcelNumber || 'Assigned by Assessing', PAGE_MARGIN + 330, propY + 12);
+      doc.font('Helvetica').text(getAttestedText(data.property.parcelNumber, 'Pending Verification'), PAGE_MARGIN + 330, propY + 12);
 
       doc.y = propY + 28;
 
@@ -77,7 +86,7 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
       drawSectionHeader(doc, contentWidth, 'II. PROPERTY OWNER IDENTIFICATION');
       const ownerY = doc.y + 4;
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0f172a').text('Owner Name: ', PAGE_MARGIN + 6, ownerY);
-      doc.font('Helvetica').text(data.property.ownerName, PAGE_MARGIN + 70, ownerY);
+      doc.font('Helvetica').text(getAttestedText(data.property.ownerName, 'Property Owner'), PAGE_MARGIN + 70, ownerY);
 
       doc.font('Helvetica-Bold').text('Phone: ', PAGE_MARGIN + 280, ownerY);
       doc.font('Helvetica').text(data.property.ownerPhone || 'On File', PAGE_MARGIN + 315, ownerY);
@@ -94,23 +103,25 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
       doc.font('Helvetica').text(data.applicant.companyName, PAGE_MARGIN + 55, contY);
 
       doc.font('Helvetica-Bold').text('Licensee: ', PAGE_MARGIN + 280, contY);
-      doc.font('Helvetica').text(data.applicant.contactName, PAGE_MARGIN + 325, contY);
+      doc.font('Helvetica').text(getAttestedText(data.applicant.contactName, 'Qualifying Licensee'), PAGE_MARGIN + 325, contY);
 
       doc.font('Helvetica-Bold').text('State License #: ', PAGE_MARGIN + 6, contY + 12);
-      doc.font('Helvetica').text(`${data.applicant.licenseNumber} (${data.applicant.licenseType})`, PAGE_MARGIN + 80, contY + 12);
+      doc.font('Helvetica').text(`${getAttestedText(data.applicant.licenseNumber, 'Pending License')} (${getAttestedText(data.applicant.licenseType, 'Trade License')})`, PAGE_MARGIN + 80, contY + 12);
 
       doc.font('Helvetica-Bold').text('Expiration: ', PAGE_MARGIN + 280, contY + 12);
-      doc.font('Helvetica').text(data.applicant.licenseExpiration || 'Current Active', PAGE_MARGIN + 335, contY + 12);
+      doc.font('Helvetica').text(getAttestedText(data.applicant.licenseExpiration, 'Current Active'), PAGE_MARGIN + 335, contY + 12);
 
       doc.font('Helvetica-Bold').text('Insurance / Carrier: ', PAGE_MARGIN + 6, contY + 24);
-      doc.font('Helvetica').text(
-        `${data.applicant.insuranceCarrier || 'Commercial Liability on File'} (Pol #${data.applicant.insurancePolicyNumber || 'Active'})`,
-        PAGE_MARGIN + 95,
-        contY + 24,
-      );
+      const insCarrier = getAttestedText(data.applicant.insuranceCarrier, '');
+      const insPolicy = getAttestedText(data.applicant.insurancePolicyNumber, '');
+      const insLabel = insCarrier ? (insPolicy ? `${insCarrier} (Pol #${insPolicy})` : insCarrier) : 'Pending Insurance Verification';
+      doc.font('Helvetica').text(insLabel, PAGE_MARGIN + 95, contY + 24);
 
       doc.font('Helvetica-Bold').text('Worker\'s Comp: ', PAGE_MARGIN + 280, contY + 24);
-      doc.font('Helvetica').text(data.applicant.workersCompCarrier || 'Compliant Exempt', PAGE_MARGIN + 355, contY + 24);
+      const wcCarrier = getAttestedText(data.applicant.workersCompCarrier, '');
+      const wcPolicy = getAttestedText(data.applicant.workersCompPolicy, '');
+      const wcLabel = wcCarrier ? (wcPolicy ? `${wcCarrier} (Pol #${wcPolicy})` : wcCarrier) : 'Compliant Exempt';
+      doc.font('Helvetica').text(wcLabel, PAGE_MARGIN + 355, contY + 24);
 
       doc.y = contY + 38;
 
@@ -121,7 +132,7 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
       doc.font('Helvetica').text(data.workScope.projectTitle, PAGE_MARGIN + 70, scopeY);
 
       doc.font('Helvetica-Bold').text('Estimated Valuation: ', PAGE_MARGIN + 280, scopeY);
-      doc.font('Helvetica').text(`$${data.workScope.estimatedCost.toLocaleString()}`, PAGE_MARGIN + 375, scopeY);
+      doc.font('Helvetica').text(data.workScope.estimatedCost != null ? `$${data.workScope.estimatedCost.toLocaleString()}` : 'Pending Quote', PAGE_MARGIN + 375, scopeY);
 
       doc.font('Helvetica-Bold').text('Detailed Description: ', PAGE_MARGIN + 6, scopeY + 12);
       doc.font('Helvetica').text(data.workScope.detailedDescription, PAGE_MARGIN + 105, scopeY + 12, {
@@ -206,6 +217,17 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
       doc.font('Helvetica-Bold').text('Date: ', PAGE_MARGIN + 320, signLineY);
       doc.font('Helvetica').text(data.certification.signatureDate, PAGE_MARGIN + 355, signLineY);
       doc.moveTo(PAGE_MARGIN + 350, signLineY + 10).lineTo(PAGE_MARGIN + 460, signLineY + 10).strokeColor('#0f172a').lineWidth(0.75).stroke();
+
+      if (data.readiness && !data.readiness.complete) {
+        doc.save();
+        doc.rotate(-35, { origin: [doc.page.width / 2, doc.page.height / 2] });
+        doc.fontSize(44).font('Helvetica-Bold').fillColor('#dc2626', 0.18);
+        doc.text('DRAFT — NOT FOR SUBMISSION', 0, doc.page.height / 2 - 20, {
+          align: 'center',
+          width: doc.page.width,
+        });
+        doc.restore();
+      }
 
       doc.end();
     } catch (err) {

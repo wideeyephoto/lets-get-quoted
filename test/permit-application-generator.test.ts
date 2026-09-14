@@ -72,8 +72,14 @@ describe('Permit Application Pre-fill Generator', () => {
 
     expect(data.authority.name).toBe('City of Royal Oak');
     expect(data.applicant.companyName).toBe('Great Lakes Roofing Pros LLC');
-    expect(data.applicant.licenseNumber).toBe('2102948123');
-    expect(data.property.ownerName).toBe('John & Jane Homeowner');
+    expect(data.applicant.licenseNumber.status).toBe('provided');
+    if (data.applicant.licenseNumber.status === 'provided') {
+      expect(data.applicant.licenseNumber.value).toBe('2102948123');
+    }
+    expect(data.property.ownerName.status).toBe('provided');
+    if (data.property.ownerName.status === 'provided') {
+      expect(data.property.ownerName.value).toBe('John & Jane Homeowner');
+    }
     expect(data.property.streetAddress).toBe('211 S Williams St');
     expect(data.property.city).toBe('Royal Oak');
     expect(data.property.state).toBe('MI');

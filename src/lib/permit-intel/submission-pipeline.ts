@@ -52,8 +52,22 @@ export function validateSubmissionReadiness(
   const warnings: string[] = [];
 
   // 1. Check contractor licensing
-  if (!application.applicant.licenseNumber || application.applicant.licenseNumber.trim().length < 5) {
+  const lic =
+    typeof application.applicant.licenseNumber === 'object' && application.applicant.licenseNumber !== null
+      ? (application.applicant.licenseNumber.status === 'provided' ? application.applicant.licenseNumber.value : '')
+      : String(application.applicant.licenseNumber || '');
+
+  if (!lic || lic.trim().length < 5) {
     blockers.push('Contractor license number is missing or invalid.');
+  }
+
+  // Check any missing Tier A attested fields
+  if (application.readiness && !application.readiness.complete) {
+    for (const missing of application.readiness.missing) {
+      if (missing !== 'State Builder License #' && !blockers.includes(`${missing} is required.`)) {
+        blockers.push(`${missing} is required.`);
+      }
+    }
   }
 
   // 2. Check property details
@@ -65,12 +79,12 @@ export function validateSubmissionReadiness(
     blockers.push('Property municipality/city is required.');
   }
 
-  // 3. Check technical roofing specs
+  // 3. Check technical specs
   if (!application.workScope.detailedDescription) {
     blockers.push('Scope of work description is required.');
   }
 
-  if (application.workScope.estimatedCost <= 0) {
+  if (!application.workScope.estimatedCost || application.workScope.estimatedCost <= 0) {
     warnings.push('Project valuation is not specified or $0.');
   }
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import type { UniversalPermitApplicationData } from '@/lib/permit-intel/application-generator';
 import { generatePermitApplicationHtml } from '@/lib/permit-intel/application-generator';
 import SignaturePad from '@/components/signature-pad';
+import { CredentialsVaultModal } from './CredentialsVaultModal';
 import styles from './PermitApplicationModal.module.css';
 
 export type PermitApplicationModalProps = {
@@ -26,6 +27,7 @@ export function PermitApplicationModal({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [signatureMethod, setSignatureMethod] = useState<'drawn' | 'typed'>('drawn');
   const [signaturePath, setSignaturePath] = useState<string | null>(null);
+  const [isVaultOpen, setIsVaultOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!isOpen || !jobId) return;
@@ -229,37 +231,74 @@ export function PermitApplicationModal({
         </div>
 
         <div className={styles.modalFooter}>
-          <div>
+          <div style={{ flex: 1 }}>
             {feedback && <span className={styles.successNotice}>{feedback}</span>}
+            {data && !data.readiness?.complete && (
+              <div style={{ color: '#f87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <span>
+                  ⚠️ <strong>{data.readiness.missing.length} required field{data.readiness.missing.length > 1 ? 's' : ''} missing</strong> before filing ({data.readiness.missing.slice(0, 3).join(', ')}{data.readiness.missing.length > 3 ? ` +${data.readiness.missing.length - 3} more` : ''})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsVaultOpen(true)}
+                  style={{
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '3px 8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Open Credentials Vault
+                </button>
+              </div>
+            )}
           </div>
           <div className={styles.buttonGroup}>
             <button
               type="button"
               onClick={handleSaveDraft}
-              disabled={saving || loading}
+              disabled={saving || loading || !data?.readiness?.complete}
+              title={!data?.readiness?.complete ? 'Cannot save incomplete application draft' : undefined}
               className={styles.secondaryButton}
             >
               {saving ? 'Saving...' : '💾 Save to Job Documents'}
             </button>
             {jobId && (
-              <a
-                href={
-                  signaturePath
-                    ? `/api/jobs/${jobId}/permits/pdf?sig=${encodeURIComponent(signaturePath)}`
-                    : `/api/jobs/${jobId}/permits/pdf`
-                }
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.secondaryButton}
-                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-              >
-                📥 Download PDF File
-              </a>
+              data?.readiness?.complete ? (
+                <a
+                  href={
+                    signaturePath
+                      ? `/api/jobs/${jobId}/permits/pdf?sig=${encodeURIComponent(signaturePath)}`
+                      : `/api/jobs/${jobId}/permits/pdf`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.secondaryButton}
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                >
+                  📥 Download PDF File
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="PDF download blocked: required credentials missing"
+                  className={styles.secondaryButton}
+                  style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                >
+                  📥 Download PDF File
+                </button>
+              )
             )}
             <button
               type="button"
               onClick={handlePrint}
-              disabled={loading || !html}
+              disabled={loading || !html || !data?.readiness?.complete}
+              title={!data?.readiness?.complete ? 'Print blocked: required credentials missing' : undefined}
               className={styles.primaryButton}
             >
               🖨️ Print / Save as PDF
@@ -267,6 +306,26 @@ export function PermitApplicationModal({
           </div>
         </div>
       </div>
+
+      {isVaultOpen && (
+        <CredentialsVaultModal
+          isOpen={isVaultOpen}
+          onClose={() => {
+            setIsVaultOpen(false);
+            if (jobId) {
+              fetch(`/api/jobs/${jobId}/permits/application`)
+                .then((res) => (res.ok ? res.json() : null))
+                .then((json) => {
+                  if (json?.data) {
+                    setData(json.data);
+                    setHtml(json.html);
+                  }
+                })
+                .catch(() => {});
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
