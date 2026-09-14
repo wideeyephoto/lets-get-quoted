@@ -1,0 +1,111 @@
+{
+  "project": "uydlabvgauzujdwuqzxq",
+  "repairCommit": "12308b6c4",
+  "batches": [
+    {
+      "name": "customer_email_repair_20260914_batch_01",
+      "files": [
+        "20260909133220_operational_alert_delivery.sql",
+        "20260914133327_contractor_lifecycle_send_ledger.sql",
+        "20260914135714_document_email_send_ledger.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_02",
+      "files": [
+        "20260914142641_email_send_recovery_monitoring.sql",
+        "20260914150046_email_recovery_worker.sql",
+        "20260914152829_platform_campaign_preferences.sql",
+        "20260914155952_lifecycle_recipient_suppression.sql",
+        "20260914164359_operational_callback_evidence.sql",
+        "20260914170327_email_domain_failure_snapshots.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_03",
+      "files": [
+        "20260914171033_email_domain_failure_callbacks.sql",
+        "20260914171633_website_domain_connection_notices.sql",
+        "20260914173129_website_domain_notice_snapshots.sql",
+        "20260914173622_website_domain_notice_callbacks.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_04",
+      "files": [
+        "20260914174223_email_domain_restoration_notices.sql",
+        "20260914175031_owner_event_notices.sql",
+        "20260914175807_client_owner_request_receipts.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_05",
+      "files": [
+        "20260914180733_messaging_owner_event_notices.sql",
+        "20260914181805_change_order_owner_notices.sql",
+        "20260914182041_warranty_claim_owner_notices.sql",
+        "20260914182236_warranty_request_receipts.sql",
+        "20260914182551_private_feedback_owner_requests.sql",
+        "20260914182814_review_link_feedback_requests.sql",
+        "20260914183134_quick_stop_confirmation_notices.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_06",
+      "files": [
+        "20260914183419_quick_stop_cancellation_notices.sql",
+        "20260914183645_quick_stop_expiry_notices.sql",
+        "20260914183857_quick_stop_request_owner_notices.sql",
+        "20260914184145_quick_stop_request_receipts.sql",
+        "20260914185901_payment_refund_owner_notices.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_07",
+      "files": [
+        "20260914190341_quick_stop_cancellation_refund_attempts.sql",
+        "20260914191438_quick_stop_refund_outcome_reconciliation.sql",
+        "20260914191924_connect_transfer_owner_notices.sql",
+        "20260914192733_payment_dispute_owner_notices.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_08",
+      "files": [
+        "20260914193348_recurring_failure_owner_notices.sql",
+        "20260914194033_quote_approval_owner_notices.sql",
+        "20260914194628_portal_message_request_receipts.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_09",
+      "files": [
+        "20260914200123_quote_option_owner_notices.sql",
+        "20260914200549_quote_option_request_receipts.sql",
+        "20260914201115_margin_owner_notices.sql",
+        "20260914201537_margin_evaluation_requests.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_10",
+      "files": [
+        "20260914202500_quote_approval_request_receipts.sql",
+        "20260914203000_warranty_sweep_owner_notices.sql",
+        "20260914203132_operator_recovery_controls.sql"
+      ]
+    },
+    {
+      "name": "customer_email_repair_20260914_batch_11",
+      "files": [
+        "20260914204000_remaining_owner_notices.sql",
+        "20260914210000_customer_email_send_ledger.sql",
+        "20260914210500_platform_event_notices.sql",
+        "20260914210600_stream_1_owner_triggers.sql"
+      ]
+    }
+  ],
+  "followups": [
+    "20260914221852_email_release_foreign_key_indexes.sql",
+    "20260914222112_portal_message_client_fk_index.sql"
+  ]
+}

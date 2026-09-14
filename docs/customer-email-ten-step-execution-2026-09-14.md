@@ -11,11 +11,11 @@ controlled canary require actual environment and receiver evidence.
 | 2 | Provider identity and deduplication keys | Implemented locally; verification below | Saved credential fingerprint and stable per-notice key; actual request-boundary proof; hosted scope verified in step 9 |
 | 3 | Signed website callback recovery | Implemented locally; verification below | Saved binding checks, lost-acceptance repair, monotonic outcomes and callback/worker race tests without resend |
 | 4 | Remaining domain/owner notices | Implemented locally; verification below | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
-| 5 | Appointment/booking/selection reminders | Implemented locally; verification below | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
-| 6 | Campaign/review/rebook messages | Implemented locally; verification below | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
-| 7 | Remaining email families | Implemented locally; verification below | Digests/support/merchandise/auth/report inventory closed with durable identities and token/report preservation |
+| 5 | Appointment/booking/selection reminders | Ledger repaired locally; background recovery/callback integration remains | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
+| 6 | Campaign/review/rebook messages | Ledger repaired locally; background recovery/callback integration remains | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
+| 7 | Remaining email families | Platform queue repaired; legacy identities and auth-token retention remain | Digests/support/merchandise/auth/report inventory closed with durable identities and token/report preservation |
 | 8 | Operator recovery controls | Implemented locally; verification below | Authorized detail/closeout and deliberate-resend flows; state, tenancy and duplicate-request verification |
-| 9 | Hosted release and acceptance | Open | Environment/provider/capacity/retention evidence; applied migrations; inbox, suppression, failure and rollback acceptance |
+| 9 | Hosted release and acceptance | Database rollout verified on staging; application/inbox and production acceptance open | Environment/provider/capacity/retention evidence; applied migrations; inbox, suppression, failure and rollback acceptance |
 | 10 | Controlled canary and expansion review | Open | Required clean scheduled runs, alert receipt, responder/backup and reviewed expansion decision |
 
 Push remains pending until the agreed work is finished. An existing historical
@@ -301,3 +301,7 @@ No hosted changes or receiver evidence; step 4 remains in progress.
 Steps 5, 6, and 7 committed as 022768237. Mapped support cases, merchandise receipts, and magic link authentication to the platform_event_notices ledger queue. Replaced direct inline sends with enqueues, built a cron handler, and preserved existing suppression rules and token generation boundaries. Shared digests and crew magic links are left intact per Stream 4 instructions.
 
 Observed local verification: 539 application tests passed via vitest, full TypeScript validation succeeded. Local security advisor passing.
+
+## Audit repair and staging checkpoint
+
+See the [repair evidence](evidence/customer-email-audit-repairs-2026-09-14.md) and [staging migration manifest](evidence/customer-email-staging-migration-manifest-2026-09-14.json). Staging has the repaired migration set and index follow-ups. Production is unchanged; the rollout and remaining integration gates above remain open.

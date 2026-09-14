@@ -44559,3 +44559,11 @@ create trigger record_owner_event_notice after insert on public.job_feed
 -- Leads use their already-authorized application enqueue path. The leads table
 -- does not have a meta column and cannot host the originally proposed trigger.
 notify pgrst,'reload schema';
+-- Cover the three foreign keys identified by the staging release advisor.
+create index if not exists client_owner_request_receipts_feed_idx on public.client_owner_request_receipts(feed_id);
+create index if not exists operational_alert_findings_delivery_idx on public.operational_alert_findings(delivery_id);
+create index if not exists portal_message_requests_client_idx on public.portal_message_requests(client_id);
+
+-- The existing account/client history index does not cover the client-only foreign key.
+create index if not exists portal_message_requests_client_fk_idx on public.portal_message_requests(client_id);
+

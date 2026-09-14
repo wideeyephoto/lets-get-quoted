@@ -21,6 +21,12 @@ This checkpoint follows the committed-work audit through `0b2f1e772` and include
 
 ## Release status and remaining gates
 
-At this checkpoint, staging migration rollout is the next action. Staging has no September 14 email foundations; production has a subset under different migration timestamps. Apply reviewed content according to actual installed objects, not filename timestamps alone.
+Staging (`uydlabvgauzujdwuqzxq`) received all 45 September 14 email migrations plus the operational-alert foundation in 11 recorded batches, versions `20260914221552` through `20260914221736`. The initial oversized connector request failed before any database change; a read-only check confirmed that before the smaller batches began. Follow-up index migrations address the three foreign keys identified by the staging advisor.
+
+Hosted verification confirmed private-table RLS and denied public insert/resend access, disabled recovery with no enrolled accounts, and an empty recovery queue. A synthetic platform notice completed claim, recipient preparation, immutable snapshot and callback resolution inside a transaction that was rolled back; zero fixture rows remain and no provider was called. This is database verification, not inbox acceptance.
+
+The staging security advisor reported no actionable warnings on the functions or tables in this release. Informational RLS-without-policy findings are intentional for service-only queues. Other pre-existing project findings remain and were not cleared by this release. See [Supabase's advisor descriptions](https://supabase.com/docs/guides/database/database-linter) for the distinction. The batch/file manifest accompanies this evidence.
+
+Production has an earlier subset under different timestamps and was not changed. Its rollout must use actual installed content and coordinate the application release and legacy workers. The repair branch incorporates committed stream work through `719c2ee75`; uncommitted work in the shared stream checkout was preserved.
 
 Production deployment, worker enablement, provider/receiver acceptance and controlled canary remain open. The customer ledger still needs integration into background recovery selection, monitoring and callback reconciliation; direct retry protections do not close that work. Legacy direct platform senders and null-account auth-token retention also remain explicit release work. Keep the prelaunch list open until these have evidence.

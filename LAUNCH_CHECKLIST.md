@@ -1,5 +1,14 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Current customer email release checkpoint — September 14
+
+- [x] Repair and commit migration, recipient, permission, quote/deposit replay and delivery defects. Local verification: 194 database checks, 294 application tests, full typecheck and local advisor; another 51 tests passed after merging the earlier stream commits.
+- [x] Apply 46 reviewed migration files to staging in 11 recorded batches, then two index follow-ups. Verify private access, disabled recovery, and a synthetic saved-message/callback flow with all test writes rolled back. [Evidence](docs/evidence/customer-email-audit-repairs-2026-09-14.md) and [migration manifest](docs/evidence/customer-email-staging-migration-manifest-2026-09-14.json).
+- [ ] Finish customer-ledger background recovery, monitoring and callback integration; remaining direct platform sender identities and auth-token retention.
+- [ ] Complete application/inbox/suppression acceptance, production compatibility and the controlled canary. Production, deployed application and background worker enablement remain unchanged by this staging rollout.
+
+The older checkpoint below is historical. Local implementation labels do not close the remaining integration and hosted acceptance work above.
+
 ## Customer email progress summary — break checkpoint, 2026-09-14
 
 **Paused at Brett's request after commit `0cb013dc2`. All implementation work completed so far is committed locally. This workstream has not been pushed, deployed or enabled in the hosted environment. The full ten-step objective remains unfinished.**
@@ -1804,9 +1813,3 @@ The following **12 pages** have not been touched in over 3 weeks. Each surface h
 | `/site/[subdomain]/privacy` | `src/app/site/[subdomain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/terms` | `src/app/site/[subdomain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/videos` | `src/app/site/[subdomain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-# Customer email audit repair checkpoint — September 14
-
-- [x] Repair malformed migrations, tenant/recipient guards, operator permissions, quote/deposit replay, notice identities and platform snapshot delivery. [Repair evidence](docs/evidence/customer-email-audit-repairs-2026-09-14.md): 194 database checks and 294 application tests, typecheck and local advisor passed.
-- [ ] Apply and verify the reviewed staging migration set, including missing earlier email foundations. Earlier entries saying migrations were "applied" describe local work unless accompanied by hosted evidence.
-- [ ] Complete customer-ledger background recovery, monitoring and callback integration; remaining direct platform sender identities and auth-token retention.
-- [ ] Complete production migration/deployment compatibility, provider/inbox/suppression acceptance and controlled canary before launch or worker enablement.
