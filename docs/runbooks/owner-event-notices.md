@@ -62,9 +62,42 @@ immutable source/message data, deletion and callback ordering. Ten sender-regist
 tests and changed-file lint passed. The local security advisor reported no issues.
 Full application/test type checking completed with no diagnostics.
 
-The identity above deduplicates dispatch of the same committed feed event. It
-does not deduplicate two HTTP submissions that each create a different feed row.
-Explicit request identities at those UI/action boundaries remain required before
-claiming end-to-end repeated-submission protection. Remaining contractor alerts,
+The subsequent request-receipt migration below closes repeated-submission protection for these two migrated request flows. Remaining contractor alerts,
 owner confirmations, lead notices and messaging application notices are still
 open under step 4; steps 5–10 also remain open.
+
+## Request receipts — September 14 follow-up
+
+Apply 20260914175807_client_owner_request_receipts.sql before the updated forms,
+actions and request libraries. Questions include a request UUID in their server-rendered
+form. Follow-up forms create one UUID at first submission, keep it and the input
+contents after an uncertain response, and replace it when the customer closes
+and reopens the form. Old forms without an ID must refresh; the server never
+silently generates a new identity for an unidentifiable retry.
+
+Every request revalidates the access token. A private receipt is unique to account,
+job and request UUID and binds the normalized request category/text and attachment
+content hashes. The service-only submission RPC checks job ownership, serializes
+concurrent submissions of that identity, and commits the receipt, feed event and
+owner notice together. Identical retries reuse the event. Changed content under
+the same ID fails; a new ID represents a deliberate new request.
+
+The receipt survives feed deletion with a null event ID, so delayed retries cannot
+recreate deleted requests or notices. Account closure removes only that account's
+receipts. Quote-question SMS also uses the stable request ID. This does not migrate
+other SMS families or other owner email callers.
+
+Follow-up attachments use deterministic workspace/job/request/content paths and
+never overwrite an existing object. A completed receipt skips repeat upload;
+a provider 409 at the identical path is treated as the already-saved object.
+Other upload failures stop source creation rather than silently losing a photo.
+Storage is external to the database transaction: interrupted uploads can leave
+unreferenced files and capacity is checked before a batch. Existing storage
+retention and capacity acceptance remain release requirements.
+
+Verification: **50 application tests**, **99 PostgreSQL 17 checks**, full type
+checking and the local security advisor passed. Changed-file lint had no errors;
+one existing unused-variable warning in the page and four existing unused-import
+warnings in the server-action test remain. The rendered DOM test proves stable
+request IDs and preserved text across a lost response, plus a new ID after reopening.
+No hosted migration, email, configuration change or deployment occurred.

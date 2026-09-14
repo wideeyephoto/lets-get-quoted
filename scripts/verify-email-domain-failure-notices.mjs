@@ -123,6 +123,7 @@ try {
   await (await import('./verify-email-domain-restoration-snapshot-checks.mjs')).verifyRestorationSnapshots(db, other, root, passed);
   await (await import('./verify-owner-event-notices.mjs')).verifyOwnerEventNotices(db, other, root, passed);
   await (await import('./verify-owner-event-snapshot-checks.mjs')).verifyOwnerEventSnapshots(db, other, root, passed);
+  await (await import('./verify-client-owner-requests.mjs')).verifyClientOwnerRequests(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

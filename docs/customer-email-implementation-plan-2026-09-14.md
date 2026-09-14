@@ -145,3 +145,9 @@ Production-specific inputs needed before M5/M6: environment identity, internal r
 - **T16/T17/T19:** Marked client question, follow-up and more-work feed events atomically create a private owner notice. Inline dispatch uses the saved source ID; a disabled-by-default background pickup can recover pending events after request interruption. Saved messages/provider keys and signed callbacks protect an attempted event from duplicate dispatch.
 - **Verification:** 192 application tests and 93 PostgreSQL checks passed, plus lint, ten registry tests and a clean local security advisor. See the [owner-event runbook](runbooks/owner-event-notices.md).
 - **Remaining:** Explicit request IDs are still needed to deduplicate repeated submissions that create different feed rows. Other contractor/owner alert families, operator controls, hosted acceptance and canary evidence remain open.
+
+### Twenty-seventh-pass implementation — client request identities
+
+- **T16/T17:** Questions and follow-up/more-work submissions now carry explicit request IDs. A scoped immutable receipt commits with the feed event and owner notice, deduplicates concurrent retries, rejects changed content and retains a deletion tombstone. Attachment paths and question SMS keys stay stable on retry.
+- **Verification:** 50 application tests, 99 PostgreSQL checks, full type checking and a clean local security advisor; lint has no errors with existing unused-variable/import warnings. The rendered form test covers lost response, retained input/request identity and deliberate new request.
+- **Remaining:** Continue other owner alerts and confirmations, lead notices and messaging application events. Hosted acceptance, storage capacity/retention, remaining email families and canary evidence stay open.

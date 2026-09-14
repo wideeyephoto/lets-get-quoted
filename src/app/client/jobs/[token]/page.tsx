@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import SaveButton from '@/components/save-button';
@@ -402,6 +403,7 @@ export default async function ClientJobDashboardPage({
         <details className="client-ask">
           <summary>Not ready to approve? Ask a question</summary>
           <form action={askQuoteQuestionAction.bind(null, params.token)} className="client-ask-form">
+            <input type="hidden" name="request_id" value={randomUUID()} />
             <label htmlFor="quote-question">What would you like to know?</label>
             <textarea id="quote-question" name="question" rows={3} required placeholder="Does the price include hauling away the old material?" />
             <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent">Send to {dashboard.businessName}</SaveButton>

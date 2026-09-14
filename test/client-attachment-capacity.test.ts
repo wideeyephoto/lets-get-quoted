@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  ownerNotice: vi.fn(), capacity: vi.fn(), upload: vi.fn(), access: vi.fn(), feed: vi.fn(), claim: vi.fn(),
+  save: vi.fn(), lookup: vi.fn(), ownerNotice: vi.fn(), capacity: vi.fn(), upload: vi.fn(), access: vi.fn(), feed: vi.fn(), claim: vi.fn(),
 }));
 vi.mock('@/lib/billing/storage-usage', () => ({ assertStorageCapacity: mocks.capacity }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({
@@ -12,6 +12,7 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({
 }) }));
 vi.mock('@/lib/change-order-client', () => ({ resolveJobAccess: mocks.access }));
 vi.mock('@/lib/job-feed', () => ({ createJobFeedEvent: mocks.feed }));
+vi.mock('@/lib/client-owner-requests', async original => ({ ...await original<typeof import('@/lib/client-owner-requests')>(), saveClientRequest:mocks.save,findClientRequest:mocks.lookup }));
 vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: mocks.ownerNotice }));
 vi.mock('@/lib/warranties-data', () => ({ raiseClaim: mocks.claim }));
 vi.mock('@/lib/email', () => ({ getAccountOwnerEmail: async () => null, sendContractorAlertEmail: vi.fn() }));
@@ -27,13 +28,15 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.access.mockResolvedValue({ accountId: 'account-a', jobId: 'job-a' });
   mocks.feed.mockResolvedValue({ id: 'feed-a' });
+  mocks.save.mockResolvedValue({feed_id:'feed-a',replayed:false});
+  mocks.lookup.mockResolvedValue(null);
   mocks.upload.mockResolvedValue({ error: null });
   mocks.claim.mockResolvedValue({ ok: true, claim: { id: 'claim-a', description: 'Help', inWarrantyAtClaim: true } });
 });
 
 const photo = (bytes: number) => new File([new Uint8Array(bytes)], 'photo.jpg', { type: 'image/jpeg' });
 const submit = {
-  followup: (files: File[]) => requestJobFollowup('token', { description: 'Help', files }),
+  followup: (files: File[]) => requestJobFollowup('token', { description: 'Help', files, requestId:'11111111-1111-4111-8111-111111111111' }),
   warranty: (files: File[]) => {
     const form = new FormData();
     form.set('description', 'Help');
@@ -76,7 +79,38 @@ describe.each(['followup', 'warranty'] as const)('%s attachment capacity', (kind
 });
 
 it.each(['followup','warranty','more_work'] as const)('saves %s metadata and dispatches only its owned event', async category => {
-  expect(await requestJobFollowup('token',{ description:'Help',category })).toEqual({ok:true});
-  expect(mocks.feed).toHaveBeenCalledWith(expect.anything(),'account-a','job-a',expect.objectContaining({meta:{owner_email_notice:'v1'}}));
+  expect(await requestJobFollowup('token',{ description:'Help',category,requestId:'11111111-1111-4111-8111-111111111111' })).toEqual({ok:true});
+  expect(mocks.save).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({accountId:'account-a',jobId:'job-a',requestId:'11111111-1111-4111-8111-111111111111'}));
   expect(mocks.ownerNotice).toHaveBeenCalledWith(expect.anything(),{sourceId:'feed-a',accountId:'account-a'});
+});
+
+it('reuses a saved request before uploading any attachment again',async()=>{
+  mocks.lookup.mockResolvedValue({payload_hash:'saved',feed_id:'feed-a'});
+  expect(await submit.followup([photo(4)])).toEqual({ok:true});
+  expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.save).not.toHaveBeenCalled();
+  expect(mocks.ownerNotice).toHaveBeenCalledWith(expect.anything(),{sourceId:'feed-a',accountId:'account-a'});
+});
+it('does not recreate a deleted request event',async()=>{
+  mocks.lookup.mockResolvedValue({payload_hash:'saved',feed_id:null});
+  expect(await submit.followup([photo(4)])).toEqual({ok:true});
+  expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.ownerNotice).not.toHaveBeenCalled();
+});
+it('retries identical attachments at the same path without overwriting files',async()=>{
+  await submit.followup([photo(4)]);
+  const first=mocks.upload.mock.calls[0];
+  mocks.upload.mockResolvedValue({error:{statusCode:'409'}});
+  expect(await submit.followup([photo(4)])).toEqual({ok:true});
+  expect(mocks.upload.mock.calls[1][0]).toBe(first[0]);
+  expect(first[2]).toMatchObject({upsert:false});
+  expect(mocks.save.mock.calls[1][1].hash).toBe(mocks.save.mock.calls[0][1].hash);
+});
+it('refuses unknown attachment errors without saving a partial request',async()=>{
+  mocks.upload.mockResolvedValue({error:{statusCode:'500'}});
+  expect((await submit.followup([photo(4)])).ok).toBe(false);
+  expect(mocks.save).not.toHaveBeenCalled();
+});
+it('rejects a request receipt conflict before any upload or notification',async()=>{
+  mocks.lookup.mockRejectedValue(new Error('Different content'));
+  expect((await submit.followup([photo(4)])).ok).toBe(false);
+  expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.ownerNotice).not.toHaveBeenCalled();
 });

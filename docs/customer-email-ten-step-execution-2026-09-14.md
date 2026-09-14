@@ -105,3 +105,21 @@ explicit request identity. Remaining owner alert callers and families are not
 silently counted as migrated. The full ten-step goal and final push stay open.
 
 Full application/test type checking completed with exit 0 and no diagnostics for the owner-event implementation.
+
+## September 14 — request IDs for migrated customer requests
+
+Owner event foundation committed as 31db0be62. Question and follow-up forms now
+carry stable request IDs through their actions. A private request receipt binds
+content and atomically commits with its feed event and owner notice. Concurrent
+or delayed identical submissions reuse the result; changed content is rejected.
+Deletion retains a replay tombstone. Attachment paths and quote-question SMS keys
+are stable across retries. See the [updated owner-event runbook](runbooks/owner-event-notices.md).
+
+Verification: **50 application tests**, **99 PostgreSQL checks**, full type checking
+and local security advisor passed. Changed-file lint reports no errors and the
+same existing unused-variable/import warnings. The form is exercised in a rendered
+DOM, including uncertain response, retry and explicit new request.
+
+Step 4 remains open for the remaining owner alert/confirmation, lead and messaging
+application families. The full ten-step goal, hosted acceptance and final push
+remain open. No live changes were made.

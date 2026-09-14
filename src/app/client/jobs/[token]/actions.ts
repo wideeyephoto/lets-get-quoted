@@ -41,7 +41,7 @@ export async function requestJobFollowupAction(
     }
   }
 
-  const result = await requestJobFollowup(token, { category, description, files });
+  const result = await requestJobFollowup(token, { category, description, files, requestId: String(formData.get('request_id') ?? '') });
   if (result.ok) {
     revalidatePath(`/client/jobs/${token}`);
   }
@@ -196,7 +196,7 @@ export async function updateQuoteOptionsAction(token: string, formData: FormData
 
 // The other thing a person can want to do with a quote. See lib/client-question.
 export async function askQuoteQuestionAction(token: string, formData: FormData) {
-  const result = await askQuoteQuestion(token, (formData.get('question') ?? '').toString());
+  const result = await askQuoteQuestion(token, (formData.get('question') ?? '').toString(), String(formData.get('request_id') ?? ''));
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?${result.ok ? 'asked=1' : 'ask-failed=1'}`);
 }

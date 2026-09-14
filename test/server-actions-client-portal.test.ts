@@ -221,6 +221,7 @@ describe('Server Actions: Customer Portal & Token Access', () => {
         category: 'issue',
         description: 'Leak under sink persists',
         files: [],
+        requestId: '',
       });
       expect(mocks.revalidatePath).toHaveBeenCalledWith(`/client/jobs/${TOKEN}`);
     });

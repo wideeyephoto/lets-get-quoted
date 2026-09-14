@@ -9,9 +9,7 @@ vi.mock('@/lib/change-order-client', () => ({
   resolveJobAccess: vi.fn(),
 }));
 
-vi.mock('@/lib/job-feed', () => ({
-  createJobFeedEvent: vi.fn().mockResolvedValue({ id: 'feed-1' }),
-}));
+vi.mock('@/lib/client-owner-requests', async original => ({ ...await original<typeof import('@/lib/client-owner-requests')>(), saveClientRequest: vi.fn().mockResolvedValue({ feed_id:'feed-1',replayed:false }) }));
 
 vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: vi.fn() }));
 
@@ -42,14 +40,14 @@ describe('Client Question Lib', () => {
 
   describe('askQuoteQuestion', () => {
     it('returns error if question empty', async () => {
-      const res = await askQuoteQuestion('token', '   ');
+      const res = await askQuoteQuestion('token', '   ', '11111111-1111-4111-8111-111111111111');
       expect(res).toEqual({ ok: false, message: 'Type your question first.' });
     });
 
     it('returns error if invalid token', async () => {
       const resolveMock = (await import('@/lib/change-order-client')).resolveJobAccess;
       (resolveMock as any).mockResolvedValue(null);
-      const res = await askQuoteQuestion('token', 'Hi');
+      const res = await askQuoteQuestion('token', 'Hi', '11111111-1111-4111-8111-111111111111');
       expect(res).toEqual({ ok: false, message: 'This link is no longer valid. Ask your contractor to resend it.' });
     });
 
@@ -64,11 +62,11 @@ describe('Client Question Lib', () => {
         if (callCount === 2) return Promise.resolve({ data: { business_name: 'Biz', alert_phone: '1234567890' } }); // account
       });
 
-      const res = await askQuoteQuestion('token', 'What is this charge?');
+      const res = await askQuoteQuestion('token', 'What is this charge?', '11111111-1111-4111-8111-111111111111');
       expect(res).toEqual({ ok: true });
 
-      const createEventMock = (await import('@/lib/job-feed')).createJobFeedEvent;
-      expect(createEventMock).toHaveBeenCalledWith(adminMock, '1', '2', expect.objectContaining({ meta: { owner_email_notice: 'v1' } }));
+      const createEventMock = (await import('@/lib/client-owner-requests')).saveClientRequest;
+      expect(createEventMock).toHaveBeenCalledWith(adminMock, expect.objectContaining({ accountId:'1',jobId:'2',requestId:'11111111-1111-4111-8111-111111111111',kind:'client_question' }));
       
       const sendEmailMock = (await import('@/lib/owner-event-notices')).runOwnerEventNotices;
       expect(sendEmailMock).toHaveBeenCalledWith(adminMock, { sourceId: 'feed-1', accountId: '1' });
@@ -91,7 +89,7 @@ describe('Client Question Lib', () => {
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
-      const res = await askQuoteQuestion('token', 'Test');
+      const res = await askQuoteQuestion('token', 'Test', '11111111-1111-4111-8111-111111111111');
       expect(res).toEqual({ ok: true });
       expect(consoleSpy).toHaveBeenCalledTimes(2);
 

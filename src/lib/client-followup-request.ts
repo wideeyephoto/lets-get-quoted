@@ -1,7 +1,7 @@
-import { randomUUID } from 'crypto';
+import { createHash } from 'node:crypto';
 import { createAdminClient } from '@/lib/auth';
 import { resolveJobAccess } from '@/lib/change-order-client';
-import { createJobFeedEvent } from '@/lib/job-feed';
+import { clientRequestHash, findClientRequest, saveClientRequest, validClientRequestId } from '@/lib/client-owner-requests';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
@@ -22,6 +22,7 @@ const ALLOWED_MIME = new Set([
 export type FollowupCategory = 'followup' | 'warranty' | 'more_work';
 
 export type FollowupRequestInput = {
+  requestId: string;
   category?: FollowupCategory;
   description: string;
   files?: File[];
@@ -29,35 +30,26 @@ export type FollowupRequestInput = {
 
 export type FollowupResult = { ok: true; photoUrls?: string[] } | { ok: false; message: string };
 
-async function uploadFollowupFiles(accountId: string, files: File[]): Promise<string[]> {
+async function prepareFollowupFiles(files: File[]) {
+  const accepted = files.slice(0,3).filter(file => file.size>0 && file.size<=MAX_ATTACHMENT_BYTES && ALLOWED_MIME.has(file.type));
+  return Promise.all(accepted.map(async file => {
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    return { file, bytes, digest };
+  }));
+}
+
+async function uploadFollowupFiles(accountId: string, jobId: string, requestId: string, files: Awaited<ReturnType<typeof prepareFollowupFiles>>): Promise<string[]> {
   const admin = createAdminClient();
+  if (files.length) await assertStorageCapacity(admin,accountId,files.reduce((total,item)=>total+item.bytes.length,0));
   const paths: string[] = [];
-
-  const accepted = files.slice(0, 3).filter((file) =>
-    file.size > 0 && file.size <= MAX_ATTACHMENT_BYTES && ALLOWED_MIME.has(file.type));
-  // Check the whole batch: the periodic measurement does not change between uploads.
-  if (accepted.length > 0) {
-    await assertStorageCapacity(admin, accountId, accepted.reduce((total, file) => total + file.size, 0));
+  for (const [index,item] of files.entries()) {
+    const extension = item.file.type.split('/')[1].replace('quicktime','mov');
+    const path = `${accountId}/requests/${jobId}/${requestId.toLowerCase()}/${index}-${item.digest}.${extension}`;
+    const { error } = await admin.storage.from('job-photos').upload(path,item.bytes,{ contentType:item.file.type,cacheControl:'31536000',upsert:false });
+    if (error && String((error as {statusCode?: string | number}).statusCode) !== '409') throw new Error('Attachment could not be saved.');
+    paths.push(path);
   }
-
-  for (const file of accepted) {
-
-    const extension = file.type.includes('/') ? file.type.split('/')[1].replace('quicktime', 'mov') : 'jpg';
-    const path = `${accountId}/${randomUUID()}.${extension}`;
-
-    const { error } = await admin.storage
-      .from('job-photos')
-      .upload(path, Buffer.from(await file.arrayBuffer()), {
-        contentType: file.type || 'image/jpeg',
-        cacheControl: '31536000',
-        upsert: false,
-      });
-
-    if (!error) {
-      paths.push(path);
-    }
-  }
-
   return paths;
 }
 
@@ -71,6 +63,8 @@ export async function requestJobFollowup(token: string, input: FollowupRequestIn
   const text = (input.description ?? '').toString().trim().slice(0, MAX_FOLLOWUP_LENGTH);
   if (!text) return { ok: false, message: 'Please describe what you need help with.' };
 
+  if (!validClientRequestId(input.requestId)) return {ok:false,message:'Refresh this page before submitting your request.'};
+  if (input.category && !['followup','warranty','more_work'].includes(input.category)) return {ok:false,message:'Choose a request type.'};
   const access = await resolveJobAccess(token);
   if (!access) return { ok: false, message: 'This link is no longer valid. Please call your contractor directly.' };
 
@@ -95,23 +89,23 @@ export async function requestJobFollowup(token: string, input: FollowupRequestIn
       ? `${clientName} requested warranty service`
       : `${clientName} requested a follow-up`;
 
-  let photoPaths: string[] = [];
+  let feedId: string | null;
   try {
-    if (input.files?.length) photoPaths = await uploadFollowupFiles(access.accountId, input.files);
-  } catch {
-    return { ok: false, message: 'Attachments could not be saved. Please submit without attachments or contact your contractor.' };
-  }
-
-  const feedEvent = await createJobFeedEvent(admin, access.accountId, access.jobId, {
-    kind: feedKind,
-    title: feedTitle,
-    body: text,
-    visibility: 'client',
-    meta: { owner_email_notice: 'v1', ...(photoPaths.length > 0 ? { photo_paths: photoPaths } : {}) },
-  });
+    const files = await prepareFollowupFiles(input.files ?? []);
+    const hash = clientRequestHash(category,text,files.map(item=>JSON.stringify({name:item.file.name,type:item.file.type,digest:item.digest})));
+    const previous = await findClientRequest(admin,access.accountId,access.jobId,input.requestId,hash);
+    if (previous) feedId=previous.feed_id;
+    else {
+      const photoPaths=await uploadFollowupFiles(access.accountId,access.jobId,input.requestId,files);
+      const receipt=await saveClientRequest(admin,{accountId:access.accountId,jobId:access.jobId,requestId:input.requestId,hash,kind:feedKind,title:feedTitle,body:text,
+        meta: photoPaths.length ? {photo_paths:photoPaths} : {}});
+      feedId=receipt.feed_id;
+    }
+  } catch { return {ok:false,message:'Request or attachments could not be saved. Retry the same form, or reopen it to submit without attachments.'}; }
+  if (!feedId) return {ok:true};
 
   try {
-    await runOwnerEventNotices(admin, { sourceId: feedEvent.id, accountId: access.accountId });
+    await runOwnerEventNotices(admin, { sourceId: feedId, accountId: access.accountId });
   } catch (error) {
     console.error(`Could not email owner about follow-up request on job ${access.jobId}:`, error instanceof Error ? error.message : error);
   }

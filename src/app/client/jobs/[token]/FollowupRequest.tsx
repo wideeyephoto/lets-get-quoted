@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { requestJobFollowupAction } from './actions';
 
@@ -25,6 +25,7 @@ export default function FollowupRequest({
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const requestId = useRef<string | null>(null);
 
   // If the job is not complete and there are no warranties, we keep the page focused on active work.
   if (!isComplete && !hasWarranties) return null;
@@ -50,18 +51,22 @@ export default function FollowupRequest({
         <form
           className="client-warranty-form"
           style={{ marginTop: '1rem' }}
-          action={(formData) => {
+          onSubmit={(event) => {
+            event.preventDefault();
+            const formData = new FormData(event.currentTarget);
             setError(null);
             startTransition(async () => {
+              requestId.current ??= crypto.randomUUID();
+              formData.set('request_id', requestId.current);
               formData.set('category', open);
-              const result = await requestJobFollowupAction(token, formData);
+              const result = await requestJobFollowupAction(token, formData).catch(() => ({ok:false,message:'Could not confirm your request. Retry this form.'}));
               if (result.ok) {
                 setDone(
                   open === 'more_work'
                     ? `Thank you! ${businessName} has received your request for more work and will be in touch soon.`
                     : `Sent. ${businessName} has received your follow-up request and will follow up shortly.`
                 );
-                setOpen(null);
+                setOpen(null); requestId.current = null;
               } else {
                 setError(result.message ?? 'Could not send request. Please try calling instead.');
               }
@@ -107,7 +112,7 @@ export default function FollowupRequest({
             <button type="submit" className="btn primary" disabled={pending}>
               {pending ? 'Sending…' : open === 'more_work' ? 'Send request for new work' : 'Send follow-up request'}
             </button>
-            <button type="button" className="btn ghost" onClick={() => setOpen(null)} disabled={pending}>
+            <button type="button" className="btn ghost" onClick={() => { setOpen(null); requestId.current = null; }} disabled={pending}>
               Cancel
             </button>
           </div>
@@ -119,12 +124,12 @@ export default function FollowupRequest({
               Book your next project
             </Link>
           ) : (
-            <button type="button" className="btn primary" onClick={() => setOpen('more_work')}>
+            <button type="button" className="btn primary" onClick={() => { setOpen('more_work'); requestId.current = null; }}>
               Request more work
             </button>
           )}
 
-          <button type="button" className="btn secondary" onClick={() => setOpen('followup')}>
+          <button type="button" className="btn secondary" onClick={() => { setOpen('followup'); requestId.current = null; }}>
             Request a follow-up
           </button>
 

@@ -11,7 +11,7 @@
 
 import { createAdminClient } from '@/lib/auth';
 import { resolveJobAccess } from '@/lib/change-order-client';
-import { createJobFeedEvent } from '@/lib/job-feed';
+import { clientRequestHash, saveClientRequest, validClientRequestId } from '@/lib/client-owner-requests';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { loadBusinessName } from '@/lib/business-name';
 import { sendOwnerPortalMessageAlertSms } from '@/lib/sms';
@@ -23,10 +23,12 @@ const MAX_QUESTION = 1000;
 
 export type AskResult = { ok: true } | { ok: false; message: string };
 
-export async function askQuoteQuestion(token: string, question: string): Promise<AskResult> {
+export async function askQuoteQuestion(token: string, question: string, requestId: string): Promise<AskResult> {
   const text = (question ?? '').toString().trim().slice(0, MAX_QUESTION);
   if (!text) return { ok: false, message: 'Type your question first.' };
 
+  if (!validClientRequestId(requestId)) return { ok: false, message: 'Refresh this page before sending your question.' };
+  requestId = requestId.toLowerCase();
   const access = await resolveJobAccess(token);
   if (!access) return { ok: false, message: 'This link is no longer valid. Ask your contractor to resend it.' };
 
@@ -49,18 +51,22 @@ export async function askQuoteQuestion(token: string, question: string): Promise
 
   // Client-visible on purpose: the person who asked should be able to see that
   // they asked, and the contractor's reply belongs in the same thread.
-  const feedEvent = await createJobFeedEvent(admin, access.accountId, access.jobId, {
-    kind: 'client_question',
-    title: `${clientName} asked a question about the quote`,
-    body: text,
-    visibility: 'client',
-    meta: { owner_email_notice: 'v1' },
-  });
+  let feedId: string | null;
+  try {
+    const receipt = await saveClientRequest(admin, {
+      accountId: access.accountId, jobId: access.jobId, requestId,
+      hash: clientRequestHash('client_question',text), kind: 'client_question',
+      title: `${clientName} asked a question about the quote`, body: text,
+    });
+    feedId = receipt.feed_id;
+  } catch { return { ok: false, message: 'Question could not be saved. Retry the same form or refresh to start a new question.' }; }
+  if (!feedId) return { ok: true }; // A replay of a deleted event must not recreate it.
+
 
   // Best-effort. A question that reached the feed has arrived; failing the whole
   // action because an email bounced would tell the customer it didn't.
   try {
-    await runOwnerEventNotices(admin, { sourceId: feedEvent.id, accountId: access.accountId });
+    await runOwnerEventNotices(admin, { sourceId: feedId, accountId: access.accountId });
   } catch (error) {
     console.error(`Could not email the owner about a quote question on job ${access.jobId}:`, error instanceof Error ? error.message : error);
   }
@@ -75,7 +81,7 @@ export async function askQuoteQuestion(token: string, question: string): Promise
         customerName: clientName,
         messagePreview: `${job?.ref ? `[${job.ref}] ` : ''}${text}`,
         dashboardUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
-        idempotencyKey: `owner-quote-q:${access.accountId}:${access.jobId}:${Date.now()}`,
+        idempotencyKey: `owner-quote-q:${access.accountId}:${access.jobId}:${requestId}`,
       });
     } catch (error) {
       console.error(`Could not SMS alert the owner about a quote question on job ${access.jobId}:`, error instanceof Error ? error.message : error);
