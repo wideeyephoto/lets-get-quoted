@@ -1,3 +1,4 @@
+import { reconcileQuickStopCancellationRefunds } from '@/lib/quick-stop-cancellation-refund-reconciliation';
 import { randomUUID } from 'node:crypto';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { resolveLegacyRefundEvidence } from '@/lib/billing/legacy-refund-evidence';
@@ -970,11 +971,13 @@ async function dispatchStripeEvent(
       const { data: payment, error: paymentError } = refundRead;
       if (paymentError) throw paymentError;
 
+      const verifiedRefunds:Stripe.Refund[]=[];
       const confirmedCents = payment && isLegacyDestinationPayment(payment)
         ? await resolveLegacyRefundEvidence(stripe, {chargeId:charge.id,paymentId:payment.id,
-            paymentIntent:payment.stripe_payment_intent,amountCents:toCents(payment.amount),livemode:event.livemode})
+            paymentIntent:payment.stripe_payment_intent,amountCents:toCents(payment.amount),livemode:event.livemode,onVerifiedRefunds:refunds=>verifiedRefunds.push(...refunds)})
         : 0;
       if (payment && confirmedCents < toCents(Number(payment.refunded_amount) || 0)) {
+        await reconcileQuickStopCancellationRefunds(admin,payment.account_id,payment.id,verifiedRefunds.filter(refund=>refund.status!=='succeeded'));
         throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
       }
       const refundedTotal = fromCents(confirmedCents);
@@ -1042,6 +1045,7 @@ async function dispatchStripeEvent(
           await createPaymentFeedEvent(admin, paymentId, 'payment_refunded');
         }
       }
+      if(payment) await reconcileQuickStopCancellationRefunds(admin,payment.account_id,payment.id,verifiedRefunds);
     }
   }
 

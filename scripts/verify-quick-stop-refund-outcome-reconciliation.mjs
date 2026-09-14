@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+export async function verifyQuickStopRefundReconciliation(db,other,root,passed){
+  await db.query('reset role');const migration=readFileSync(join(root,'migrations/20260914191438_quick_stop_refund_outcome_reconciliation.sql'),'utf8');
+  assert.ok(readFileSync(join(root,'schema.sql'),'utf8').replace(/\r\n/g,'\n').includes(migration.replace(/\r\n/g,'\n').trim()));
+  await db.query(migration);await db.query('set role service_role');await other.query('set role service_role');
+  const account=(await db.query('insert into accounts default values returning id')).rows[0].id;
+  const make=async()=>{
+    const payment=(await db.query("insert into payments(account_id,status,stripe_payment_intent) values($1,'paid','pi_reconcile') returning id",[account])).rows[0].id;
+    const request=(await db.query("insert into extra_stop_requests(account_id,payment_id,status) values($1,$2,'confirmed') returning id",[account,payment])).rows[0].id;
+    await db.query("update extra_stop_requests set status='contractor_canceled',canceled_at=clock_timestamp(),cancellation_refund_requested_cents=5000 where id=$1",[request]);
+    const attempt=(await db.query('select claim_quick_stop_cancellation_refund($1,$2) a',[account,request])).rows[0].a;
+    return {payment,request,attempt};
+  };
+  const reconcile=(item,status,client=db,amount=5000,accountId=account)=>client.query('select reconcile_quick_stop_cancellation_refund($1,$2,$3,$4,$5,$6,$7,$8) ok',[accountId,item.payment,item.attempt.id,'re_'+item.attempt.id.replaceAll('-',''),status,'pi_reconcile',amount,'usd']).then(r=>r.rows[0].ok);
+  const first=await make();
+  await db.query('select finish_quick_stop_cancellation_refund($1,$2,false)',[account,first.attempt.id]);
+  assert.equal(await reconcile(first,'succeeded'),false);
+  await db.query('update payments set refunded_amount=50,refund_notice_event_id=$2 where id=$1',[first.payment,randomUUID()]);
+  assert.equal(await reconcile(first,'succeeded'),true);assert.equal(await reconcile(first,'succeeded'),true);
+  assert.equal((await db.query('select state from quick_stop_cancellation_refund_attempts where id=$1',[first.attempt.id])).rows[0].state,'accounted');
+  assert.equal((await db.query('select refund_cents from extra_stop_requests where id=$1',[first.request])).rows[0].refund_cents,5000);
+  assert.equal((await db.query("select count(*)::int c from owner_event_notices where source_type='payment_refund' and source_payload->>'payment_id'=$1",[first.payment])).rows[0].c,1);
+  passed('a verified late refund closes an uncertain attempt only after matching accounting, without another refund notice');
+  assert.equal(await reconcile(first,'pending'),true);
+  assert.equal((await db.query('select state from quick_stop_cancellation_refund_attempts where id=$1',[first.attempt.id])).rows[0].state,'accounted');
+  assert.equal(await reconcile(first,'failed'),true);assert.equal(await reconcile(first,'succeeded'),true);
+  assert.equal((await db.query('select state,provider_status from quick_stop_cancellation_refund_attempts where id=$1',[first.attempt.id])).rows[0].provider_status,'failed');
+  assert.equal((await db.query('select refund_cents from extra_stop_requests where id=$1',[first.request])).rows[0].refund_cents,0);
+  assert.equal((await db.query('select claim_quick_stop_cancellation_refund($1,$2) a',[account,first.request])).rows[0].a,null);
+  passed('late terminal failures require review; stale pending/success observations cannot reopen or resubmit an attempt');
+  const raced=await make();await db.query('select observe_quick_stop_cancellation_refund($1,$2,$3,$4,$5,$6,$7)',[account,raced.attempt.id,'re_'+raced.attempt.id.replaceAll('-',''),'succeeded','pi_reconcile',5000,'usd']);
+  await db.query('update payments set refunded_amount=50,refund_notice_event_id=$2 where id=$1',[raced.payment,randomUUID()]);
+  const results=await Promise.all([reconcile(raced,'succeeded',other),db.query('select finish_quick_stop_cancellation_refund($1,$2,true) ok',[account,raced.attempt.id]).then(r=>r.rows[0].ok)]);assert.deepEqual(results,[true,true]);
+  assert.equal((await db.query('select observe_quick_stop_cancellation_refund($1,$2,$3,$4,$5,$6,$7) ok',[account,raced.attempt.id,'re_'+raced.attempt.id.replaceAll('-',''),'succeeded','pi_reconcile',5000,'usd'])).rows[0].ok,true);
+  assert.equal((await db.query('select finish_quick_stop_cancellation_refund($1,$2,false) ok',[account,raced.attempt.id])).rows[0].ok,true);
+  assert.equal((await db.query('select state from quick_stop_cancellation_refund_attempts where id=$1',[raced.attempt.id])).rows[0].state,'accounted');
+  assert.equal((await db.query('select observe_quick_stop_cancellation_refund($1,$2,$3,$4,$5,$6,$7) ok',[account,raced.attempt.id,'re_'+raced.attempt.id.replaceAll('-',''),'failed','pi_reconcile',5000,'usd'])).rows[0].ok,true);
+  assert.equal((await db.query('select state,provider_status from quick_stop_cancellation_refund_attempts where id=$1',[raced.attempt.id])).rows[0].provider_status,'failed');
+  passed('webhook and synchronous completion races preserve one result while terminal negative evidence remains reviewable');
+  const invalid=await make();assert.equal(await reconcile(invalid,'pending',db,4999),false);assert.equal(await reconcile(invalid,'pending',db,5000,randomUUID()),false);
+  const gone=await make();await db.query('update payments set refunded_amount=50 where id=$1',[gone.payment]);await db.query('delete from extra_stop_requests where id=$1',[gone.request]);assert.equal(await reconcile(gone,'succeeded'),true);
+  assert.equal((await db.query('select state from quick_stop_cancellation_refund_attempts where id=$1',[gone.attempt.id])).rows[0].state,'manual_review');
+  for(const role of ['anon','authenticated'])assert.equal((await db.query("select has_function_privilege($1,'reconcile_quick_stop_cancellation_refund(uuid,uuid,uuid,text,text,text,bigint,text)','execute') ok",[role])).rows[0].ok,false);
+  passed('wrong account or amount cannot reconcile; a deleted request retains provider evidence for review');
+}

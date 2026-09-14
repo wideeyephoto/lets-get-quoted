@@ -36,3 +36,11 @@ it('accepts expanded provider bindings',async()=>{
   list.mockResolvedValueOnce({data:[{...refund(),charge:{id:'ch_test'},payment_intent:{id:'pi_test'}}],has_more:false});
   expect(await resolveLegacyRefundEvidence(stripe,input)).toBe(1000);
 });
+
+it('exposes complete verified outcomes only after pagination succeeds',async()=>{
+  const collected=vi.fn();list.mockResolvedValueOnce({data:[refund('re_first')],has_more:true}).mockRejectedValueOnce(new Error('next page unavailable'));
+  await expect(resolveLegacyRefundEvidence(stripe,{...input,onVerifiedRefunds:collected})).rejects.toThrow();expect(collected).not.toHaveBeenCalled();
+  list.mockResolvedValueOnce({data:[refund()],has_more:false});
+  expect(await resolveLegacyRefundEvidence(stripe,{...input,onVerifiedRefunds:collected})).toBe(1000);
+  expect(collected).toHaveBeenCalledWith([refund()]);
+});

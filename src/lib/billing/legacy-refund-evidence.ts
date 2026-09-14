@@ -5,7 +5,7 @@ const check = (value: unknown): void => { if (!value) throw new Error('Legacy re
 
 /** Refetch current platform evidence; an event's aggregate can include unfinished refunds. */
 export async function resolveLegacyRefundEvidence(stripe: Stripe, input: {
-  chargeId: string; paymentId: string; paymentIntent: string | null; amountCents: number; livemode: boolean;
+  chargeId: string; paymentId: string; paymentIntent: string | null; amountCents: number; livemode: boolean; onVerifiedRefunds?: (refunds:readonly Stripe.Refund[])=>void;
 }): Promise<number> {
   check(/^(ch|py)_[A-Za-z0-9_]+$/.test(input.chargeId) && !!input.paymentIntent && typeof input.livemode === 'boolean');
   const charge = await stripe.charges.retrieve(input.chargeId);
@@ -14,6 +14,7 @@ export async function resolveLegacyRefundEvidence(stripe: Stripe, input: {
     && charge.currency === 'usd' && charge.paid && charge.captured
     && Number.isSafeInteger(input.amountCents) && input.amountCents > 0
     && charge.amount === input.amountCents && charge.amount_captured === input.amountCents);
+  const refunds:Stripe.Refund[]=[];
   let total = 0;
   let cursor: string | undefined;
   const seen = new Set<string>();
@@ -28,8 +29,9 @@ export async function resolveLegacyRefundEvidence(stripe: Stripe, input: {
       if (refund.status === 'succeeded') total += refund.amount;
       else check(['pending','requires_action','failed','canceled'].includes(refund.status ?? ''));
     }
+    refunds.push(...result.data);
     check(Number.isSafeInteger(total) && total <= input.amountCents);
-    if (!result.has_more) return total;
+    if (!result.has_more) { input.onVerifiedRefunds?.(refunds); return total; }
     check(result.data.length > 0);
     cursor = result.data[result.data.length - 1].id;
   }

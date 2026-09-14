@@ -536,6 +536,26 @@ describe('legacy refund charge-model boundary', () => {
     mocks.ownerNotice.mockRejectedValueOnce(new Error('Pickup unavailable'));
     await expect(refundPayment(client,'acct_workspace','pay_legacy_guard',25)).resolves.toMatchObject({amount:25,refundedTotal:25});
   });
+  it('closes a tagged attempt on later completion and revisits it on duplicate webhook delivery',async()=>{
+    const db=statefulWebhookAdmin('destination');const rpc=vi.fn().mockResolvedValue({data:true,error:null});mocks.admin={...db.admin,rpc};
+    const attemptId='14b2d1c1-a31d-4416-bf4b-1ab0486d79bc';
+    const saved={id:'re_saved_attempt',charge:'ch_webhook_guard',payment_intent:'pi_webhook_guard',currency:'usd',amount:5000,metadata:{lgq_quick_stop_refund_attempt_id:attemptId}};
+    mocks.event={id:'evt_attempt_update',type:'refund.updated',livemode:false,data:{object:{id:saved.id,charge:'ch_webhook_guard'}}};
+    mocks.listRefunds.mockResolvedValueOnce({has_more:false,data:[{...saved,status:'pending'}]}).mockResolvedValue({has_more:false,data:[{...saved,status:'succeeded'}]});
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);expect(db.updates).toHaveLength(0);
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);expect(db.state.refunded_amount).toBe(50);
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);expect(db.updates).toHaveLength(1);
+    expect(rpc).toHaveBeenLastCalledWith('reconcile_quick_stop_cancellation_refund',expect.objectContaining({p_id:attemptId,p_payment_id:'pay_webhook_guard',p_account_id:'acct_workspace',p_status:'succeeded'}));
+    expect(mocks.sendPaymentSmsEvent).toHaveBeenCalledTimes(1);expect(mocks.createRefund).not.toHaveBeenCalled();
+  });
+  it('retries attempt closeout after a lost database response without repeating accounting',async()=>{
+    const db=statefulWebhookAdmin('destination');const rpc=vi.fn().mockResolvedValueOnce({data:null,error:{message:'offline'}}).mockResolvedValue({data:true,error:null});mocks.admin={...db.admin,rpc};
+    mocks.event=chargeRefundedEvent(5000);
+    mocks.listRefunds.mockResolvedValue({has_more:false,data:[{id:'re_retry_attempt',charge:'ch_webhook_guard',payment_intent:'pi_webhook_guard',currency:'usd',amount:5000,status:'succeeded',metadata:{lgq_quick_stop_refund_attempt_id:'14b2d1c1-a31d-4416-bf4b-1ab0486d79bc'}}]});
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(db.updates).toHaveLength(1);expect(rpc).toHaveBeenCalledTimes(2);expect(mocks.sendPaymentSmsEvent).toHaveBeenCalledTimes(1);
+  });
   it('keeps explicit destination charge.refunded reconciliation on the legacy path', async () => {
     const db = statefulWebhookAdmin('destination');
     mocks.admin = db.admin;
