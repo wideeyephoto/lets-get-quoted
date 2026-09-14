@@ -297,7 +297,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Iowa',
     fips: '19',
     licensingBoard: 'Iowa Division of Labor / Plumbing and Mechanical Systems Board',
-    licensingUrl: 'https://www.iowadivisionoflabor.gov',
+    licensingUrl: 'https://dial.iowa.gov/',
     codes: {
       building: { name: '2021 International Residential Code (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
