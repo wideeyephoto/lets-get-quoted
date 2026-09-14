@@ -1926,3 +1926,98 @@ export async function sendMessagingApplicationStatusEmail(input: {
   }
 }
 
+export async function sendPlatformEventNoticeEmail(input: {
+  noticeId: string;
+  prepareIntent: (snapshot: { payload: any, providerFingerprint: string, idempotencyKey: string }) => Promise<void>;
+  recipientEmail: string;
+  accountId: string | null;
+  eventFamily: 'daily_digest' | 'support_case_staff' | 'support_case_customer' | 'merchandise_receipt' | 'merchandise_alert' | 'auth_link' | 'public_report';
+  payload: any;
+}): Promise<string> {
+  if (!process.env.RESEND_API_KEY) throw new Error('Email provider is not configured.');
+  
+  let html = input.payload.html || '';
+  let subject = input.payload.subject || 'Notice';
+  let tags = input.payload.tags || [{ name: 'kind', value: input.eventFamily }];
+  
+  const fromAddress = input.payload.from || `"Let's Get Quoted" <hello@letsgetquoted.com>`;
+  const replyTo = input.payload.reply_to;
+  
+  if (input.eventFamily === 'daily_digest') {
+    const brand = await brandFor({ accountId: input.accountId!, businessName: input.payload.businessName || "Let's Get Quoted" });
+    html = renderDailyDigestEmailHtml({ ...input.payload, brand });
+    tags = defaultTags('daily_digest', brand, input.accountId!);
+  } else if (input.eventFamily === 'support_case_staff') {
+    const who = input.payload.businessName?.trim() || input.payload.requesterEmail;
+    const headline = input.payload.kind === 'opened' ? `${who} opened a support request` : `${who} replied`;
+    subject = `[Support] ${input.payload.subject} — ${who}`;
+    html = renderBrandedEmail({
+        brand: {
+          businessName: "Let's Get Quoted Support", accent: '#0284c7', theme: 'spotlight',
+          logoUrl: null, phone: null, siteUrl: APP_ORIGIN, replyTo: null,
+        },
+        preheader: `${headline}: ${input.payload.subject}`,
+        eyebrow: 'Support Ticket', heading: headline,
+        bodyHtml: `
+          <p style="margin:0 0 6px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Requester:</strong> ${escapeHtml(input.payload.requesterEmail)}</p>
+          <p style="margin:0 0 12px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Topic:</strong> ${escapeHtml(input.payload.subject)}</p>
+          <div style="padding:16px 18px;margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0284c7;border-radius:8px;line-height:1.6;font-family:${FONT_STACK};font-size:14px;color:#1e293b">
+            ${escapeHtml(input.payload.body || '').replace(/\n/g, '<br/>')}
+          </div>
+        `,
+        cta: { label: 'Open support ticket', url: `${APP_ORIGIN}/admin/cases/${input.payload.caseId}` },
+        footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Replying here does not reach the customer — answer on the case so it lands in their thread.</p>`,
+    });
+  } else if (input.eventFamily === 'support_case_customer') {
+    const received = input.payload.kind === 'received';
+    const headline = received ? 'We have received your support request' : 'Support replied to your request';
+    const lead = received ? 'A member of our team will review your request and get back to you shortly.' : 'Here is the latest update on your request:';
+    const quote = input.payload.body ? `<div style="padding:16px 18px;margin-top:14px;background:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #0284c7;border-radius:8px;line-height:1.6;font-family:${FONT_STACK};font-size:14px;color:#1e293b">${escapeHtml(input.payload.body).replace(/\n/g, '<br/>')}</div>` : '';
+    subject = received ? `We have your request: ${input.payload.subject}` : `Re: ${input.payload.subject}`;
+    html = renderBrandedEmail({
+        design: 'platform', audience: 'account',
+        brand: {
+          businessName: "Let's Get Quoted Support", accent: '#ff6a24', theme: 'blueprint',
+          logoUrl: null, phone: null, siteUrl: APP_ORIGIN, replyTo: null,
+        },
+        preheader: headline, eyebrow: 'Customer Support', heading: headline, paragraphs: [lead],
+        bodyHtml: `<p style="margin:0 0 8px;font-family:${FONT_STACK};font-size:14px;color:#64748b"><strong>Case Subject:</strong> ${escapeHtml(input.payload.subject)}</p>${quote}`,
+        cta: { label: 'View support thread', url: `${APP_ORIGIN}/dashboard/help/${input.payload.caseId}` },
+        footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">You can follow this request and post additional replies directly from your dashboard help center.</p>`,
+    });
+  } else if (input.eventFamily === 'auth_link') {
+    html = renderBrandedEmail({
+      design: 'platform',
+      audience: 'account',
+      brand: {
+        businessName: input.payload.businessName || "Let's Get Quoted",
+        accent: '#ff6a24', theme: 'blueprint', logoUrl: null, phone: null, siteUrl: APP_ORIGIN, replyTo: null,
+      },
+      eyebrow: input.payload.inviteUrl ? 'Team Invitation' : 'Contractor Login',
+      heading: input.payload.inviteUrl ? 'Join the team' : 'Sign in to your workspace',
+      paragraphs: [
+        input.payload.inviteUrl 
+          ? 'You have been invited to join a Let\'s Get Quoted workspace. Click the button below to accept the invitation.'
+          : 'Tap the secure button below to sign in to your Let\'s Get Quoted account. No password needed.',
+      ],
+      cta: {
+        label: input.payload.inviteUrl ? 'Accept Invitation' : 'Sign in to your dashboard',
+        url: input.payload.verifyUrl || input.payload.inviteUrl,
+      },
+      footerHtml: input.payload.tokenExpiryMinutes ? `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This link expires in ${input.payload.tokenExpiryMinutes} minutes. If you did not request this sign-in link, you can safely ignore this email.</p>` : '',
+    });
+  }
+
+  const result = await resend.emails.send({
+    from: fromAddress,
+    to: input.recipientEmail,
+    subject,
+    html,
+    reply_to: replyTo,
+    tags: [...tags, { name: 'platform_event_notice_id', value: input.noticeId }],
+  }, { idempotencyKey: 'platform-event:v1:' + input.noticeId, prepareIntent: input.prepareIntent });
+  
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data?.id) throw new Error('Email provider returned no message ID.');
+  return result.data.id;
+}

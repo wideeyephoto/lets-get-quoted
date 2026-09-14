@@ -166,12 +166,22 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
       supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
       supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
     ]);
-    await sendOfficeInvitationEmail({
-      accountId,
-      businessName: pickBusinessName(site, account),
-      recipientEmail: email,
+    const businessName = pickBusinessName(site, account);
+    const payload = {
+      to: email,
+      businessName,
       inviteUrl: link,
+    };
+    
+    const admin = require('@/lib/auth').createAdminClient();
+    const { error: insertError } = await admin.from('platform_event_notices').insert({
+      account_id: accountId,
+      event_family: 'auth_link', // reusing auth_link for invitations or maybe 'office_invitation'? The DB has 'auth_link'
+      source_id: 'invite-' + email,
+      payload
     });
+    if (insertError) throw insertError;
+    
     emailed = true;
   } catch (error) {
     // The recipient (masked), never the link.

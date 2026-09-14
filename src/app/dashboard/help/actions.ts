@@ -61,12 +61,21 @@ export async function openSupportCaseAction(formData: FormData) {
   // The case is already saved. Email is a notification, not the record, so a
   // provider outage must not lose the request or show the contractor an error
   // for something that worked.
-  await notify(() =>
-    sendSupportCaseStaffEmail({ kind: 'opened', caseId: opened.id, subject, body, requesterEmail: userEmail, businessName }),
-  );
-  await notify(() =>
-    sendSupportCaseCustomerEmail({ kind: 'received', to: userEmail, caseId: opened.id, subject }),
-  );
+  const staffPayload = {
+    to: process.env.STAFF_ALERT_EMAIL || 'hello@letsgetquoted.com',
+    kind: 'opened', caseId: opened.id, subject, body, requesterEmail: userEmail, businessName
+  };
+  await admin.from('platform_event_notices').insert({
+    account_id: accountId, event_family: 'support_case_staff', source_id: opened.id, payload: staffPayload
+  });
+  
+  const customerPayload = {
+    to: userEmail,
+    kind: 'received', caseId: opened.id, subject
+  };
+  await admin.from('platform_event_notices').insert({
+    account_id: accountId, event_family: 'support_case_customer', source_id: opened.id, payload: customerPayload
+  });
 
   revalidatePath('/dashboard/help');
   redirect(`/dashboard/help/${opened.id}?done=opened`);
@@ -95,16 +104,18 @@ export async function replyToSupportCaseAction(caseId: string, formData: FormDat
   const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
   const businessName = (account as { business_name?: string | null } | null)?.business_name ?? null;
 
-  await notify(() =>
-    sendSupportCaseStaffEmail({
-      kind: 'reply',
-      caseId: replied.id,
-      subject: replied.subject,
-      body,
-      requesterEmail: userEmail,
-      businessName,
-    }),
-  );
+  const staffPayload = {
+    to: process.env.STAFF_ALERT_EMAIL || 'hello@letsgetquoted.com',
+    kind: 'reply',
+    caseId: replied.id,
+    subject: replied.subject,
+    body,
+    requesterEmail: userEmail,
+    businessName,
+  };
+  await admin.from('platform_event_notices').insert({
+    account_id: accountId, event_family: 'support_case_staff', source_id: replied.id + '-reply-' + Date.now(), payload: staffPayload
+  });
 
   revalidatePath(path);
   redirect(`${path}?done=replied`);

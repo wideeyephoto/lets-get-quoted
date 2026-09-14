@@ -36,12 +36,21 @@ export async function addNoteAction(caseId: string, formData: FormData) {
     // a failure of the reply, which is already saved.
     const supportCase = await getSupportCase(admin, caseId);
     const to = supportCase?.requester_email;
-    if (to) {
-      try {
-        await sendSupportCaseCustomerEmail({ kind: 'reply', to, caseId, subject: supportCase.subject, body });
-      } catch (err) {
-        console.error('support case reply email failed:', err);
-      }
+    const subject = supportCase?.subject;
+    if (to && subject) {
+      const customerPayload = {
+        to,
+        kind: 'reply',
+        caseId,
+        subject,
+        body,
+      };
+      await admin.from('platform_event_notices').insert({
+        account_id: supportCase.account_id,
+        event_family: 'support_case_customer',
+        source_id: caseId + '-adminreply-' + Date.now(),
+        payload: customerPayload,
+      });
     }
   }
 
