@@ -102,14 +102,14 @@ describe('the acceptance is idempotent, and finishes what it started', () => {
     expect(bailAt).toBeGreaterThan(acceptAt);
   });
 
-  it('still fires the once-only side effects exactly once', () => {
-    // The owner's alert email and deposit-on-approval sit after the bail, so a
-    // double-submit cannot re-email or raise a second deposit.
+  it('keeps the deposit guard while owner notices use saved approval identity', () => {
+    // The existing deposit guard remains; owner notices use the saved feed ID.
     const approve = JOB_FEED.slice(JOB_FEED.indexOf('export async function approveClientJobQuote('));
     const bailAt = approve.indexOf('if (alreadyApproved) return;');
     const after = approve.slice(bailAt);
     expect(after).toContain('deposit_on_approval');
-    expect(after).toContain('sendContractorAlertEmail');
+    expect(after).not.toContain('sendContractorAlertEmail');
+    expect(JOB_FEED).toContain("owner_email_notice: 'quote_approval_v1'");
   });
 });
 

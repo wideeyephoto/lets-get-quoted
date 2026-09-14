@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+export async function verifyQuoteApprovalNotices(db,other,root,passed){
+  await db.query('reset role');
+  await db.query('alter table jobs add column quoted_amount numeric default 100; alter table job_feed add column source_table text,add column source_id uuid,add column amount numeric');
+  await db.query('create unique index job_feed_source_once_idx on job_feed(source_table,source_id,kind) where source_table is not null and source_id is not null');
+  const sql=readFileSync(join(root,'migrations/20260914194033_quote_approval_owner_notices.sql'),'utf8');
+  assert.ok(readFileSync(join(root,'schema.sql'),'utf8').replace(/\r\n/g,'\n').includes(sql.replace(/\r\n/g,'\n').trim()));
+  await db.query(sql);await db.query('set role service_role');await other.query('set role service_role');
+  const account=(await db.query('insert into accounts default values returning id')).rows[0].id;
+  const job=async()=>(await db.query('insert into jobs(account_id) values($1) returning id',[account])).rows[0].id;
+  const insert=(client,id,meta={owner_email_notice:'quote_approval_v1',acceptance_source:'client_link'},amount=100)=>client.query("insert into job_feed(account_id,job_id,kind,title,body,visibility,source_table,source_id,amount,meta) values($1,$2,'quote_approved','Client approved','Client accepted the quote.','client','jobs',$2,$3,$4) returning id",[account,id,amount,meta]);
+  const id=await job();const results=await Promise.allSettled([insert(db,id),insert(other,id)]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  const notice=(await db.query("select * from owner_event_notices where event_kind='quote_approved' and account_id=$1",[account])).rows[0];
+  assert.equal((await db.query("select count(*)::int c from owner_event_notices where event_kind='quote_approved' and account_id=$1",[account])).rows[0].c,1);
+  assert.equal(notice.source_payload.title,'Quote approval recorded');
+  assert.equal((await db.query('select owner_event_source_available(n) ok from owner_event_notices n where id=$1',[notice.id])).rows[0].ok,true);
+  passed('concurrent quote approval records commit one notice under the existing source uniqueness rule');
+  await db.query('update jobs set quoted_amount=120 where id=$1',[id]);
+  assert.equal((await db.query('select * from claim_owner_event_notices(1,$1,$2)',[notice.source_id,account])).rowCount,0);
+  assert.equal((await db.query('select state from owner_event_notices where id=$1',[notice.id])).rows[0].state,'cancelled');
+  const otherJob=await job();const feed=(await insert(db,otherJob)).rows[0].id;await db.query("update job_feed set body='Changed' where id=$1",[feed]);
+  assert.equal((await db.query('select owner_event_source_available(n) ok from owner_event_notices n where source_id=$1',[feed])).rows[0].ok,false);
+  passed('changed quote totals or edited approval evidence cancel pending approval notices');
+  for(const meta of [null,{acceptance_source:'owner_verbal'}])await insert(db,await job(),meta);
+  await assert.rejects(insert(db,await job(),{owner_email_notice:'quote_approval_v1',acceptance_source:'owner_verbal'}),/Invalid quote/);
+  await assert.rejects(insert(db,await job(),undefined,101),/source changed/);
+  await assert.rejects(db.query("insert into job_feed(account_id,job_id,kind,title,visibility,source_table,source_id,amount,meta) values($1,$2,'quote_approved','Test','client','jobs',$2,100,'{\"owner_email_notice\":\"quote_approval_v1\",\"acceptance_source\":\"client_link\"}')",[account,randomUUID()]),/source changed/);
+  assert.equal((await db.query("select count(*)::int c from owner_event_notices where event_kind='quote_approved' and account_id=$1",[account])).rows[0].c,2);
+  passed('historical and owner-entered approvals remain silent while mismatched quote sources are rejected');
+  const rollback=await job();await db.query('reset role');await db.query("alter table owner_event_notices add constraint test_reject_quote check(event_kind<>'quote_approved') not valid");await db.query('set role service_role');
+  await assert.rejects(insert(db,rollback),/test_reject_quote/);assert.equal((await db.query('select count(*)::int c from job_feed where job_id=$1',[rollback])).rows[0].c,0);
+  for(const role of ['anon','authenticated'])assert.equal((await db.query("select has_function_privilege($1,'record_quote_approval_owner_notice()','execute') ok",[role])).rows[0].ok,false);
+  await db.query('reset role');await db.query('alter table owner_event_notices drop constraint test_reject_quote');await db.query('set role service_role');
+  passed('failed quote notice insertion rolls back its approval event and public roles cannot call the trigger');
+}

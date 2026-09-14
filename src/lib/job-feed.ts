@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { getJob, formatJobSchedule, formatMoney, parseQuoteItems, computeQuoteTotal, type QuoteItem } from '@/lib/jobs';
 import { getLeadByConvertedJob, updateLeadStatus } from '@/lib/leads';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
 import { createDepositRequest, type Payment } from '@/lib/payments';
 import { planSchedulePreview } from '@/lib/payment-plan-math';
@@ -12,11 +12,9 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { loadClientMilestones } from '@/lib/milestones-data';
 import type { MilestoneStatus } from '@/lib/milestones';
 import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
-import { pickBusinessName } from '@/lib/business-name';
 import { toClientFeed, clientSafeText, type ClientFeedItem } from '@/lib/client-feed';
 import { safeSignaturePath, type SignatureMethod } from '@/lib/signature';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 export type JobFeedVisibility = 'internal' | 'client' | 'client_financial';
 
@@ -264,6 +262,7 @@ export async function createJobFeedEvent(
     const { data: existing, error: existingError } = await supabase
       .from('job_feed')
       .select('*')
+      .eq('account_id', accountId).eq('job_id', jobId)
       .eq('source_table', input.sourceTable)
       .eq('source_id', input.sourceId)
       .eq('kind', input.kind)
@@ -293,6 +292,13 @@ export async function createJobFeedEvent(
     .select('*')
     .single();
 
+  if (error?.code === '23505' && input.sourceTable && input.sourceId) {
+    const winner = await supabase.from('job_feed').select('*')
+      .eq('account_id', accountId).eq('job_id', jobId).eq('source_table', input.sourceTable)
+      .eq('source_id', input.sourceId).eq('kind', input.kind).maybeSingle();
+    if (winner.error) throw winner.error;
+    if (winner.data) return winner.data as JobFeedEvent;
+  }
   if (error || !data) throw error ?? new Error('Unable to create job feed event.');
   return data as JobFeedEvent;
 }
@@ -601,9 +607,7 @@ const ACCEPTANCE_TITLE: Record<QuoteAcceptanceSource, string> = {
  * returned, and left the job at 'new_lead' forever underneath a feed entry
  * announcing it had been approved.
  *
- * Deliberately NOT here: deposit-on-approval and the owner alert email. Those
- * are once-only side effects of the client-link path, and they stay behind its
- * own guard — accepting on somebody's behalf should not silently raise a deposit
+ * Deposit-on-approval remains in the client-link path behind its own guard — accepting on somebody's behalf should not silently raise a deposit
  * request against them.
  */
 export async function applyQuoteAcceptance(
@@ -617,8 +621,9 @@ export async function applyQuoteAcceptance(
 
   const amount = input.quotedAmount ?? (Number(job.quoted_amount) || 0);
 
-  await createJobFeedEvent(admin, accountId, jobId, {
+  const acceptanceEvent = await createJobFeedEvent(admin, accountId, jobId, {
     kind: 'quote_approved',
+    meta: input.source === 'client_link' ? { owner_email_notice: 'quote_approval_v1', acceptance_source: 'client_link' } : null,
     title: ACCEPTANCE_TITLE[input.source],
     body: `${job.client_name} accepted the quote${amount > 0 ? ` (${formatMoney(amount)})` : ''}.${input.note ?? ''}`,
     // Client-visible, whichever way it happened — "you approved this" is a thing
@@ -633,9 +638,10 @@ export async function applyQuoteAcceptance(
   // complete or archived job backwards.
   let promoted = false;
   if (job.status === 'new_lead') {
-    const { error } = await admin.from('jobs').update({ status: 'in_progress' }).eq('account_id', accountId).eq('id', jobId);
+    const { data: promotedJob, error } = await admin.from('jobs').update({ status: 'in_progress' })
+      .eq('account_id', accountId).eq('id', jobId).eq('status', 'new_lead').select('id').maybeSingle();
     if (error) throw error;
-    promoted = true;
+    promoted = Boolean(promotedJob);
   }
 
   let leadWon = false;
@@ -659,6 +665,10 @@ export async function applyQuoteAcceptance(
     }
   }
 
+  if (input.source === 'client_link' && acceptanceEvent.meta?.owner_email_notice === 'quote_approval_v1') {
+    try { await runOwnerEventNotices(admin, { sourceId: acceptanceEvent.id, accountId }); }
+    catch { console.error('Quote approval notice remains saved for pickup'); }
+  }
   return { recorded: true, promoted, leadWon };
 }
 
@@ -779,7 +789,8 @@ export async function approveClientJobQuote(
     note: addonNote,
   });
 
-  // Everything past here happens once and only once.
+  // Keep the existing deposit replay guard. Concurrent deposit creation and
+  // interrupted deposit follow-ups still require their own durable recovery.
   if (alreadyApproved) return;
 
   // Deposit-on-approval: turn the approval straight into a deposit ask when the
@@ -842,38 +853,6 @@ export async function approveClientJobQuote(
     console.error(`Deposit-on-approval failed for job ${jobId}:`, error instanceof Error ? error.message : error);
   }
 
-  // The lead is won by applyQuoteAcceptance above, alongside the promotion and
-  // the feed row — the three of them are one fact and are no longer written
-  // from three different places.
-
-  // Best-effort owner alert — approval must never fail because the email failed.
-  try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      const [{ data: account }, { data: site }] = await Promise.all([
-        admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-        admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-      ]);
-      const businessName = pickBusinessName(site, account);
-      await sendContractorAlertEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: `${job.client_name} approved the quote`,
-        heading: `${job.client_name} approved the quote`,
-        bodyLines: [
-          `${job.client_name} approved the quote for ${job.ref}.`,
-          ...(quotedAmount > 0 ? [`Quote total: ${formatMoney(quotedAmount)}.`] : []),
-          'The job is now marked in progress.',
-        ],
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${jobId}`,
-        tone: 'info',
-      });
-    }
-  } catch (error) {
-    console.error(`Unable to email owner about quote approval for job ${jobId}:`, error);
-  }
 }
 
 export async function createPaymentFeedEvent(
