@@ -1,7 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
-import { sendContractorAlertEmail, getAccountOwnerEmail } from '@/lib/email';
 import { serviceDue, todayKey } from '@/lib/warranties';
-import { loadBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -60,43 +58,27 @@ export async function runServiceReminderSweep(): Promise<SweepResult> {
   }
 
   for (const [accountId, items] of byAccount) {
-    // Stamped first. See the note above.
-    const { error: stampError } = await admin
-      .from('warranties')
-      .update({ service_reminded_at: new Date().toISOString() })
-      .in('id', items.map((item) => item.id));
-    if (stampError) {
-      console.error(`Service reminder stamp failed for account ${accountId}:`, stampError.message);
+    const title = `${items.length} job${items.length === 1 ? '' : 's'} due a service`;
+    const body = [
+      'These past jobs are due the servicing their warranty depends on:',
+      ...items.slice(0, 12).map((item) => `${item.title} — ${item.label}`),
+      items.length > 12 ? `…and ${items.length - 12} more.` : '',
+      'Some manufacturer warranties are void without it, so this is a call the customer will thank you for.',
+    ].filter(Boolean).join('\n');
+
+    const { data: noticeId, error: stampError } = await admin.rpc('record_warranty_service_reminders', {
+      p_account_id: accountId,
+      p_warranty_ids: items.map((item) => item.id),
+      p_title: title,
+      p_body: body,
+    });
+
+    if (stampError || !noticeId) {
+      console.error(`Service reminder stamp failed for account ${accountId}:`, stampError?.message ?? 'no notice id');
       continue;
     }
 
-    try {
-      const [ownerEmail, businessName] = await Promise.all([
-        getAccountOwnerEmail(admin, accountId),
-        loadBusinessName(admin, accountId),
-      ]);
-      if (!ownerEmail) continue;
-
-      await sendContractorAlertEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: `${items.length} job${items.length === 1 ? '' : 's'} due a service`,
-        heading: 'Work you could book this month',
-        bodyLines: [
-          'These past jobs are due the servicing their warranty depends on:',
-          ...items.slice(0, 12).map((item) => `${item.title} — ${item.label}`),
-          items.length > 12 ? `…and ${items.length - 12} more.` : '',
-          'Some manufacturer warranties are void without it, so this is a call the customer will thank you for.',
-        ].filter(Boolean),
-        ctaLabel: 'Open your jobs',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs`,
-        tone: 'info',
-      });
-      result.notified += items.length;
-    } catch (error) {
-      console.error(`Service reminder email failed for account ${accountId}:`, error instanceof Error ? error.message : error);
-    }
+    result.notified += items.length;
   }
 
   return result;
