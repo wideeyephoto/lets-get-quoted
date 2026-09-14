@@ -823,7 +823,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Utah',
     fips: '49',
     licensingBoard: 'Utah Division of Professional Licensing (DOPL)',
-    licensingUrl: 'https://dopl.utah.gov',
+    licensingUrl: 'https://commerce.utah.gov/dopl/',
     codes: {
       building: { name: '2021 Utah Residential Code (2021 IRC with UT Amendments)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
