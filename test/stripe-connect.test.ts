@@ -12,6 +12,10 @@ vi.mock('@/lib/stripe', () => ({
   getStripeClient: vi.fn(),
 }));
 
+vi.mock('@/lib/connect-owner-notices', () => ({
+  syncConnectTransferStatus: vi.fn(),
+}));
+
 describe('stripe-connect', () => {
   let mockSupabase: any;
   let mockStripe: any;
@@ -180,51 +184,32 @@ describe('stripe-connect', () => {
   });
 
   describe('refreshAccountOnboardingStatus', () => {
-    let writeError = false;
-    beforeEach(() => {
-      writeError = false;
-      let writing = false;
-      const q = {
-        select: () => q, eq: () => q, is: () => q,
-        update: (value: unknown) => { writing = true; mockUpdate(value); return q; },
-        maybeSingle: async () => writing
-          ? { data: { id: 'acc_1' }, error: writeError ? {} : null }
-          : { data: { id: 'acc_1', connect_onboarded: false, connect_disabled_at: null, connect_notice_event_id: null, connect_status_version: null }, error: null },
-      };
-      mockSupabase.from.mockReturnValue(q);
-    });
-
-    it('updates connect_onboarded to true when status is active', async () => {
-      mockStripe.v2.core.accounts.retrieve.mockResolvedValue({
-        configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: 'active' } } } } }
-      });
+    it('returns true when sync returns true', async () => {
+      const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+      vi.mocked(syncConnectTransferStatus).mockResolvedValue(true);
 
       const result = await refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe');
       
       expect(result).toBe(true);
-      expect(mockUpdate).toHaveBeenCalledWith({ connect_onboarded: true, connect_disabled_at: null, connect_status_version: expect.any(String) });
+      expect(syncConnectTransferStatus).toHaveBeenCalledWith(mockSupabase, 'acct_stripe', 'acc_1');
     });
 
-    it('updates connect_onboarded to false when status is pending', async () => {
-      mockStripe.v2.core.accounts.retrieve.mockResolvedValue({
-        configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: 'pending' } } } } }
-      });
+    it('returns false when sync returns false', async () => {
+      const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+      vi.mocked(syncConnectTransferStatus).mockResolvedValue(false);
 
       const result = await refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe');
       
       expect(result).toBe(false);
-      expect(mockUpdate).toHaveBeenCalledWith({ connect_onboarded: false, connect_status_version: expect.any(String) });
     });
 
-    it('throws if update fails', async () => {
-      mockStripe.v2.core.accounts.retrieve.mockResolvedValue({
-        configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: 'active' } } } } }
-      });
-      writeError = true;
+    it('throws if sync returns undefined', async () => {
+      const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+      vi.mocked(syncConnectTransferStatus).mockResolvedValue(undefined);
 
       await expect(
         refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe')
-      ).rejects.toThrow('Could not save connected account');
+      ).rejects.toThrow('Connected account no longer matches onboarding return');
     });
   });
 });
