@@ -145,6 +145,10 @@ alter table accounts add column if not exists daily_digest_enabled boolean not n
 -- The UTC date the digest was last sent, so a cron re-run in the same day is a
 -- no-op (account-level idempotency; the daily cron is the only writer).
 alter table accounts add column if not exists last_digest_date date;
+-- Contractor compliance & tax identification (permits and business filing).
+alter table accounts add column if not exists fein text;
+alter table accounts add column if not exists state_employer_number text;
+alter table accounts add column if not exists license_type text;
 
 -- Intake AI tuning + lead priority (see src/lib/estimate-posture.ts).
 -- estimate_posture: biases the AI instant-estimate lower/higher — one of
