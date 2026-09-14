@@ -162,9 +162,7 @@
         "<module>:provider-email-request": 1,
         "<module>:provider-import:resend": 1,
         "<module>:sdk-email-submit": 1,
-        "sendAppointmentReminderEmail:sdk-email-submit": 1,
         "sendBookingConfirmationEmail:sdk-email-submit": 1,
-        "sendCampaignEmail:sdk-email-submit": 1,
         "sendCardSetupEmail:sdk-email-submit": 1,
         "sendCardUpdateEmail:sdk-email-submit": 1,
         "sendChoiceReminderTestEmail:sdk-email-submit": 1,
@@ -179,15 +177,12 @@
         "sendMessagingApplicationStatusEmail:sdk-email-submit": 1,
         "sendMessagingApplicationSubmittedEmail:sdk-email-submit": 1,
         "sendOfficeInvitationEmail:sdk-email-submit": 1,
+        "sendOwnerEventNoticeEmail:sdk-email-submit": 1,
         "sendQuoteFollowupEmail:sdk-email-submit": 1,
-        "sendRebookInviteEmail:sdk-email-submit": 1,
-        "sendReviewRequestEmail:sdk-email-submit": 1,
-        "sendSelectionRequestEmail:sdk-email-submit": 1,
         "sendSendingDomainFailedEmail:sdk-email-submit": 1,
-        "sendSupportCaseCustomerEmail:sdk-email-submit": 1,
-        "sendSupportCaseStaffEmail:sdk-email-submit": 1,
         "sendSendingDomainRestoredEmail:sdk-email-submit": 1,
-        "sendOwnerEventNoticeEmail:sdk-email-submit": 1
+        "sendSupportCaseCustomerEmail:sdk-email-submit": 1,
+        "sendSupportCaseStaffEmail:sdk-email-submit": 1
       }
     },
     "src/lib/founder-alerts.ts": {
@@ -272,6 +267,17 @@
       "signatures": {
         "runSeedTest:gate:preparePlatformTransactionalEmail": 1,
         "runSeedTest:provider-url": 1
+      }
+    },
+    "src/lib/customer-email-sends.ts": {
+      "purpose": "Customer email sends",
+      "recipientScope": "tenant",
+      "transport": "ledger",
+      "suppression": "ledger rules",
+      "remaining": "Provider delivery",
+      "signatures": {
+        "<module>:provider-import:resend": 1,
+        "executeCustomerEmailClaim:provider-email-request": 1
       }
     }
   }
