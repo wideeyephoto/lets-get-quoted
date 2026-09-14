@@ -31,6 +31,9 @@ export const REQUIRED_LIVE_WEBHOOK_EVENTS = [
   'checkout.session.expired',
   'payment_intent.payment_failed',
   'payment_intent.succeeded',
+  'refund.created',
+  'refund.failed',
+  'refund.updated',
 ] as const;
 
 export type RequiredLiveWebhookEvent = typeof REQUIRED_LIVE_WEBHOOK_EVENTS[number];

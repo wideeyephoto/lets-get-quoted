@@ -183,14 +183,14 @@ try {
   assert(paymentE.status === 'failed', `payment E should be failed, got ${paymentE.status}`);
   console.log('PASS: checkout.session.expired -> payment status failed');
 
-  // --- Test F: charge.refunded transitions a paid payment to refunded ---
+  // --- Test F: a fabricated refund cannot advance payment accounting ---
   const f = await makeJobAndPayment({ withInvoice: false });
   await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: `pi_test_f_${suffix}` }).eq('id', f.paymentId);
   res = await postWebhook(makeEvent('charge.refunded', { id: `ch_test_f_${suffix}`, object: 'charge', amount: 50000, amount_refunded: 50000, metadata: { payment_id: f.paymentId } }));
-  assert(res.status === 200, `webhook POST F should 200, got ${res.status}`);
+  assert(res.status === 500, `webhook POST F without provider proof should 500, got ${res.status}`);
   const { data: paymentF } = await admin.from('payments').select('status').eq('id', f.paymentId).single();
-  assert(paymentF.status === 'refunded', `payment F should be refunded, got ${paymentF.status}`);
-  console.log('PASS: charge.refunded -> payment status refunded');
+  assert(paymentF.status === 'paid', `payment F must remain paid without provider proof, got ${paymentF.status}`);
+  console.log('PASS: fabricated charge.refunded cannot claim a completed refund');
 
   // --- Test G: charge.dispute.created transitions a paid payment to disputed ---
   // Disputes carry no charge metadata, so the handler matches on the stored

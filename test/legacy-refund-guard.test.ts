@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getStripeClient: vi.fn(),
   createRefund: vi.fn(),
+  listRefunds: vi.fn(),
+  retrieveCharge: vi.fn(),
   admin: null as unknown,
   event: null as unknown,
   sendPaymentSmsEvent: vi.fn(),
@@ -151,6 +153,8 @@ function webhookAdmin(chargeModel: unknown) {
   });
   const row = {
     id: 'pay_webhook_guard',
+    account_id: 'acct_workspace',
+    stripe_payment_intent: 'pi_webhook_guard',
     invoice_id: null,
     status: 'paid',
     refunded_amount: 0,
@@ -188,9 +192,12 @@ function statefulWebhookAdmin(
   const updates: Record<string, unknown>[] = [];
   const monotonicFilters: string[] = [];
   const chargeModelFilters: unknown[] = [];
+  const bindingFilters: Array<[string,unknown]> = [];
 
   const row = (includeChargeModel: boolean) => ({
     id: 'pay_webhook_guard',
+    account_id: 'acct_workspace',
+    stripe_payment_intent: 'pi_webhook_guard',
     invoice_id: null,
     status: 'paid',
     // A fixed old value can emulate two concurrent deliveries that both read
@@ -231,6 +238,7 @@ function statefulWebhookAdmin(
         let chargeModelFilter: unknown;
         const transition = {
           eq: vi.fn((column: string, value: unknown) => {
+            bindingFilters.push([column,value]);
             if (column === 'charge_model') {
               chargeModelFilter = value;
               chargeModelFilters.push(value);
@@ -263,14 +271,16 @@ function statefulWebhookAdmin(
     })),
   };
 
-  return { admin, state, selections, updates, monotonicFilters, chargeModelFilters };
+  return { admin, state, selections, updates, monotonicFilters, chargeModelFilters, bindingFilters };
 }
 
 function chargeRefundedEvent(amountRefundedCents: number) {
   return {
     type: 'charge.refunded',
+    livemode: false,
     data: {
       object: {
+        id: 'ch_webhook_guard',
         amount: 5000,
         amount_refunded: amountRefundedCents,
         metadata: { payment_id: 'pay_webhook_guard' },
@@ -327,6 +337,8 @@ const destinationRefundRail = {
 const destinationRefundPayment = {
   data: {
     id: 'pay_webhook_guard',
+    account_id: 'acct_workspace',
+    stripe_payment_intent: 'pi_webhook_guard',
     invoice_id: null,
     status: 'paid',
     refunded_amount: 0,
@@ -344,9 +356,12 @@ describe('legacy refund charge-model boundary', () => {
     vi.clearAllMocks();
     mocks.createRefund.mockResolvedValue({ id: 're_legacy_guard', status: 'succeeded', amount: 2500, currency: 'usd', payment_intent: 'pi_legacy_guard' });
     mocks.getStripeClient.mockReturnValue({
-      refunds: { create: mocks.createRefund },
+      refunds: { create: mocks.createRefund, list: mocks.listRefunds },
+      charges: { retrieve: mocks.retrieveCharge },
       webhooks: { constructEvent: () => mocks.event },
     });
+    mocks.retrieveCharge.mockImplementation(async()=>({id:'ch_webhook_guard',payment_intent:'pi_webhook_guard',metadata:{payment_id:'pay_webhook_guard'},livemode:false,currency:'usd',paid:true,captured:true,amount:5000,amount_captured:5000}));
+    mocks.listRefunds.mockImplementation(async()=>({has_more:false,data:[{id:'re_webhook_guard',charge:'ch_webhook_guard',payment_intent:'pi_webhook_guard',currency:'usd',status:'succeeded',amount:(mocks.event as {data:{object:{amount_refunded:number}}}).data.object.amount_refunded}]}));
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_legacy_guard';
   });
 
@@ -445,6 +460,7 @@ describe('legacy refund charge-model boundary', () => {
       type: 'charge.refunded',
       data: {
         object: {
+          id: 'ch_webhook_guard',
           amount: 10000,
           amount_refunded: 2500,
           metadata: { payment_id: 'pay_webhook_guard' },
@@ -465,6 +481,34 @@ describe('legacy refund charge-model boundary', () => {
     expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
   });
 
+  it('does not turn a pending refund aggregate into a completion message',async()=>{
+    const db=statefulWebhookAdmin('destination');mocks.admin=db.admin;mocks.event=chargeRefundedEvent(5000);
+    mocks.listRefunds.mockResolvedValueOnce({has_more:false,data:[{id:'re_pending',charge:'ch_webhook_guard',payment_intent:'pi_webhook_guard',currency:'usd',amount:5000,status:'pending'}]});
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(db.updates).toEqual([]);expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
+  });
+  it('reconciles a later succeeded refund.updated without creating another refund',async()=>{
+    const db=statefulWebhookAdmin('destination');mocks.admin=db.admin;
+    mocks.event={id:'evt_refund_updated',type:'refund.updated',livemode:false,data:{object:{id:'re_updated',charge:'ch_webhook_guard'}}};
+    mocks.listRefunds.mockResolvedValue({has_more:false,data:[{id:'re_updated',charge:'ch_webhook_guard',payment_intent:'pi_webhook_guard',currency:'usd',amount:5000,status:'succeeded'}]});
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(db.state.refunded_amount).toBe(50);expect(mocks.sendPaymentSmsEvent).toHaveBeenCalledTimes(1);
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(200);
+    expect(mocks.sendPaymentSmsEvent).toHaveBeenCalledTimes(1);expect(mocks.createRefund).not.toHaveBeenCalled();
+  });
+  it('returns a retryable error without writes when provider evidence is unavailable',async()=>{
+    const db=statefulWebhookAdmin('destination');mocks.admin=db.admin;mocks.event=chargeRefundedEvent(5000);
+    mocks.retrieveCharge.mockRejectedValueOnce(new Error('offline'));
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);expect(db.updates).toEqual([]);
+  });
+  it('flags a lower current provider total for review instead of announcing another refund',async()=>{
+    const db=statefulWebhookAdmin('destination',{initialRefunded:50});mocks.admin=db.admin;mocks.event=chargeRefundedEvent(2500);
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);expect(db.updates).toEqual([]);expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+  });
+  it('rejects connected-account events before legacy refund writes',async()=>{
+    const db=statefulWebhookAdmin('destination');mocks.admin=db.admin;mocks.event={...chargeRefundedEvent(5000),account:'acct_connected'};
+    expect((await legacyStripeWebhook(webhookRequest())).status).toBe(500);expect(db.updates).toEqual([]);expect(mocks.retrieveCharge).not.toHaveBeenCalled();
+  });
   it('keeps explicit destination charge.refunded reconciliation on the legacy path', async () => {
     const db = statefulWebhookAdmin('destination');
     mocks.admin = db.admin;
@@ -475,6 +519,7 @@ describe('legacy refund charge-model boundary', () => {
     expect(response.status).toBe(200);
     expect(db.state).toMatchObject({ refunded_amount: 25, status: 'paid' });
     expect(db.chargeModelFilters).toEqual(['destination']);
+    expect(db.bindingFilters).toEqual(expect.arrayContaining([['account_id','acct_workspace'],['stripe_payment_intent','pi_webhook_guard'],['amount',50]]));
     expect(db.monotonicFilters).toEqual(['refunded_amount.is.null,refunded_amount.lt.25']);
     expect(mocks.createPaymentFeedEvent).toHaveBeenCalledTimes(1);
   });

@@ -1,3 +1,4 @@
+import { resolveLegacyRefundEvidence } from '@/lib/billing/legacy-refund-evidence';
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripeClient, fromCents, toCents } from '@/lib/stripe';
@@ -926,22 +927,19 @@ async function dispatchStripeEvent(
     }
   }
 
-  // Charge refunded — either from our own refundPayment() call or a refund issued
-  // directly in the Stripe Dashboard (which carries no metadata beyond what the
-  // charge already had). `amount_refunded` is CUMULATIVE cents across all refunds
-  // on this charge, so a $20-then-$30 sequence arrives as 20 then 50. Treat it as
-  // the source of truth: store the running dollar total and only mark the payment
-  // fully `refunded` once it reaches the charge total. A partial refund keeps it
-  // `paid` (still collectible/refundable) and leaves any linked invoice intact.
-  if (event.type === 'charge.refunded') {
-    const charge = event.data.object;
+  // A signed event triggers current provider verification. Only succeeded
+  // refunds count toward completion; the event aggregate alone is insufficient.
+  if (event.type === 'charge.refunded' || event.type === 'refund.created' || event.type === 'refund.updated' || event.type === 'refund.failed') {
+    if (event.account) throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
+    const refundChargeId = event.type === 'charge.refunded' ? event.data.object.id : expandableStripeId(event.data.object.charge);
+    if (!refundChargeId) throw new Error(LEGACY_PROVIDER_BINDING_MISSING);
+    const charge = event.type === 'charge.refunded' ? event.data.object : await stripe.charges.retrieve(refundChargeId);
     const paymentId = charge.metadata?.payment_id;
 
     if (paymentId) {
       console.log(`Charge refunded for payment ${paymentId}: ${charge.amount_refunded}/${charge.amount} cents`);
-      const refundedTotal = fromCents(charge.amount_refunded);
 
-      const refundPaymentColumns = 'id, invoice_id, status, refunded_amount, amount, platform_fee';
+      const refundPaymentColumns = 'id, account_id, stripe_payment_intent, invoice_id, status, refunded_amount, amount, platform_fee';
       const refundRail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
       const refundRead = (refundRail.kind === 'allowed'
         ? await admin
@@ -956,6 +954,8 @@ async function dispatchStripeEvent(
         : { data: null, error: null }) as unknown as {
           data: {
             id: string;
+            account_id: string;
+            stripe_payment_intent: string | null;
             invoice_id: string | null;
             status: string;
             refunded_amount: number | null;
@@ -968,9 +968,15 @@ async function dispatchStripeEvent(
       const { data: payment, error: paymentError } = refundRead;
       if (paymentError) throw paymentError;
 
-      const isFull = typeof charge.amount === 'number'
-        ? charge.amount_refunded >= charge.amount
-        : payment ? toCents(refundedTotal) >= toCents(payment.amount) : false;
+      const confirmedCents = payment && isLegacyDestinationPayment(payment)
+        ? await resolveLegacyRefundEvidence(stripe, {chargeId:charge.id,paymentId:payment.id,
+            paymentIntent:payment.stripe_payment_intent,amountCents:toCents(payment.amount),livemode:event.livemode})
+        : 0;
+      if (payment && confirmedCents < toCents(Number(payment.refunded_amount) || 0)) {
+        throw new Error(LEGACY_PROVIDER_BINDING_CONTRADICTION);
+      }
+      const refundedTotal = fromCents(confirmedCents);
+      const isFull = payment ? confirmedCents === toCents(payment.amount) : false;
 
       // Reconcile only a collected payment; never resurrect a disputed one, and
       // never walk the refunded total backwards. Acting only on NEW progress makes
@@ -998,7 +1004,10 @@ async function dispatchStripeEvent(
               refundedTotal,
             }),
           })
-          .eq('id', payment.id);
+          .eq('id', payment.id)
+          .eq('account_id', payment.account_id)
+          .eq('stripe_payment_intent', payment.stripe_payment_intent)
+          .eq('amount', payment.amount);
         // Re-check the immutable rail at write time whenever the column exists.
         // The pre-migration fallback cannot name a column that is not there.
         if (refundRail.kind === 'allowed' && refundRail.chargeModelColumnPresent) {
@@ -1006,7 +1015,7 @@ async function dispatchStripeEvent(
         }
         const { data: transitioned, error: transitionError } = await transition
           .in('status', ['paid', 'refunded'])
-          // The event carries Stripe's cumulative refunded total. Make the
+          // Current provider evidence supplies the completed total. Make the
           // monotonicity check part of the UPDATE itself so concurrent 20-then-
           // 50 (or 50-then-20) deliveries can only move the stored total
           // forward. `refunded_amount` is null on older untouched rows.

@@ -332,3 +332,11 @@ The synchronous legacy refund function accepts only a succeeded refund with matc
 This guard does not add a durable attempt ledger or complete signed refund reconciliation. The legacy charge.refunded handler still requires a separate evidence review before it can support authoritative outcome notices. A canceled Quick Stop remains terminal after an uncertain refund; operators must inspect provider evidence rather than reopening cancellation. The owner cancellation email continues to request payment-status verification.
 
 Provider reference: [Stripe Refund object and status](https://docs.stripe.com/api/refunds/object).
+
+### Legacy refund webhook evidence
+
+The legacy route now handles charge.refunded plus refund.created, refund.updated and refund.failed. Verify the live endpoint subscription against REQUIRED_LIVE_WEBHOOK_EVENTS during rollout; the declaration is local configuration evidence only. The handler reloads the charge in platform context and binds the current provider payment intent, captured amount, currency and mode before paginating all refunds (bounded to ten pages). Only succeeded refund amounts advance accounting. Incomplete or contradictory evidence returns a retryable handler error; it never creates another refund. A lower current provider total is flagged for operator review instead of silently rewriting financial history.
+
+Writes fence the saved account, payment intent, amount and rail. Owner outcome notices and durable recovery of side effects are still outstanding. The existing mock webhook script's fabricated charge must now be rejected; it is not a substitute for real provider refund acceptance.
+
+Provider reference: [Stripe refund pagination](https://docs.stripe.com/api/refunds/list).

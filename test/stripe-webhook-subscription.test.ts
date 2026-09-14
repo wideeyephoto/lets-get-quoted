@@ -33,15 +33,18 @@ describe('platform Stripe webhook subscription contract', () => {
     expect(required).toEqual([...new Set(required)].sort());
   });
 
-  it('reports the four events the live endpoint was missing before the fix', () => {
-    // A live endpoint read, not a fixture. These four handlers were dead in
-    // production: two of them are the only paths that settle an ACH payment.
-    // Resolved 2026-08-17; kept so the detector is proven against the real defect.
+  it('reports historical gaps plus the newly required refund outcomes', () => {
+    // The recorded historical subscription omitted four then-required events.
+    // The three new refund events also appear against that old subscription;
+    // their hosted configuration must be verified at rollout.
     expect(missingLiveWebhookEvents(LIVE_WEBHOOK_EVENTS_BEFORE_2026_08_17_FIX)).toEqual([
       'charge.dispute.closed',
       'checkout.session.async_payment_failed',
       'checkout.session.async_payment_succeeded',
       'payment_intent.succeeded',
+      'refund.created',
+      'refund.failed',
+      'refund.updated',
     ]);
   });
 
