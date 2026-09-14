@@ -39822,3 +39822,16 @@ grant execute on function public.record_tenant_audit_event_atomic(
   uuid, text, text, text, jsonb, text, text, uuid, text, text[], jsonb, jsonb
 ) to authenticated, service_role;
 
+
+-- Permit FK Indexes
+CREATE INDEX IF NOT EXISTS idx_job_permit_cases_job ON public.job_permit_cases(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_cases_authority ON public.job_permit_cases(authority_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_documents_job ON public.job_permit_documents(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_documents_uploader ON public.job_permit_documents(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_job ON public.job_permit_inspections(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_case ON public.job_permit_inspections(permit_case_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_adoptions_authority ON public.permit_code_adoptions(authority_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_amendments_adoption ON public.permit_code_amendments(adoption_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_amendments_authority ON public.permit_code_amendments(authority_id);
+CREATE INDEX IF NOT EXISTS idx_permit_requirement_rules_authority ON public.permit_requirement_rules(authority_id);
+
