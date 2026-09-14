@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
@@ -191,6 +191,7 @@ function createMockSupabase(tables: Record<string, { data?: unknown; error?: unk
         return builder;
       }),
       neq: vi.fn(() => builder),
+      is: vi.fn(() => builder),
       in: vi.fn(() => builder),
       gte: vi.fn(() => builder),
       lte: vi.fn(() => builder),
@@ -481,6 +482,12 @@ describe('dashboard weather and schedule actions', () => {
   });
 
   describe('quick-stops actions', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-14T12:00:00Z'));
+    });
+    afterEach(() => vi.useRealTimers());
+
     it('declineQuickStopAction declines open request', async () => {
       const mockDb = createMockSupabase({
         extra_stop_requests: { data: [{ id: 'qs-1' }] },
@@ -541,7 +548,7 @@ describe('dashboard weather and schedule actions', () => {
       await expect(createQuickStopOfferAction('qs-1', formData)).rejects.toThrow('Finish your Stripe payout setup');
     });
 
-    it('createQuickStopOfferAction creates tentative job and sends offer', async () => {
+    it('createQuickStopOfferAction publishes tentative job and payment atomically then sends offer', async () => {
       const mockDb = createMockSupabase({
         accounts: {
           data: [{
@@ -563,6 +570,8 @@ describe('dashboard weather and schedule actions', () => {
         },
       });
       mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId, userEmail });
+      const publish = vi.fn().mockResolvedValue({ data: { id: 'qs-1', job_id: 'job-new-qs', payment_id: 'pay-qs' }, error: null });
+      mocks.createAdminClient.mockReturnValue({ rpc: publish });
       mocks.getQuickStopRequest.mockResolvedValue({
         id: 'qs-1',
         status: 'awaiting_contractor',
@@ -591,7 +600,8 @@ describe('dashboard weather and schedule actions', () => {
 
       await createQuickStopOfferAction('qs-1', formData);
 
-      expect(mocks.createJob).toHaveBeenCalled();
+      expect(publish).toHaveBeenCalledWith('create_quick_stop_offer', expect.objectContaining({ p_account_id: accountId, p_request_id: 'qs-1' }));
+      expect(mocks.createJob).not.toHaveBeenCalled();
       expect(mocks.sendQuickStopOffer).toHaveBeenCalledWith(mockDb, accountId, 'qs-1');
       expect(mocks.revalidatePath).toHaveBeenCalledWith('/dashboard/quick-stops');
     });

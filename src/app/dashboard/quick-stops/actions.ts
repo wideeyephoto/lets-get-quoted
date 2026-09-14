@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireOfficeContext, createAdminClient } from '@/lib/auth';
-import { createJob } from '@/lib/jobs';
 import { sendQuickStopStatusSms } from '@/lib/sms';
 import { quickStopStatusText } from '@/lib/sms-templates';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
@@ -16,26 +15,23 @@ import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-request
 import { geocodeArea } from '@/lib/geocode';
 import { computeQuickStopRoute } from '@/lib/quick-stop-route';
 import { sendQuickStopOffer } from '@/lib/quick-stop-payments';
+import { validateQuickStopOfferWindow } from '@/lib/quick-stop-offers';
+import { transitionQuickStopRequest } from '@/lib/quick-stop-transition';
 
 const OFFERABLE = ['awaiting_contractor', 'more_information_requested'];
-// Statuses that still occupy a slot on a given arrival day (for the daily cap).
-const DAY_OCCUPYING = ['contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'];
 
 // Contractor declines a request outright. Terminal.
 export async function declineQuickStopAction(requestId: string, formData: FormData) {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const request = await getQuickStopRequest(supabase, accountId, requestId);
   if (!request) throw new Error('Request not found.');
+  if (!OFFERABLE.includes(request.status)) throw new Error('This request can no longer be declined.');
   const reason = (formData.get('reason') ?? '').toString().trim() || null;
 
-  const { data: claimed } = await supabase
-    .from('extra_stop_requests')
-    .update({ status: 'contractor_declined', cancel_reason: reason, updated_at: new Date().toISOString() })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .in('status', OFFERABLE)
-    .select('id')
-    .maybeSingle();
+  const claimed = await transitionQuickStopRequest(supabase, {
+    accountId, requestId, from: request.status, to: 'contractor_declined',
+    patch: { cancel_reason: reason, updated_at: new Date().toISOString() },
+  });
   if (!claimed) throw new Error('This request can no longer be declined.');
 
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: request.status, to: 'contractor_declined', meta: { reason } });
@@ -49,36 +45,40 @@ export async function requestMoreInfoQuickStopAction(requestId: string, formData
   if (!request) throw new Error('Request not found.');
   const note = (formData.get('note') ?? '').toString().trim() || null;
 
-  const { data: claimed } = await supabase
-    .from('extra_stop_requests')
-    .update({ status: 'more_information_requested', contractor_note: note, updated_at: new Date().toISOString() })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .in('status', OFFERABLE)
-    .select('id')
-    .maybeSingle();
+  let claimed: boolean;
+  const patch = { contractor_note: note, updated_at: new Date().toISOString() };
+  if (request.status === 'more_information_requested') {
+    const { data, error } = await supabase.from('extra_stop_requests').update(patch)
+      .eq('account_id', accountId).eq('id', requestId).eq('status', request.status).select('id').maybeSingle();
+    if (error) throw new Error(error.message);
+    claimed = Boolean(data);
+  } else {
+    claimed = await transitionQuickStopRequest(supabase, {
+      accountId, requestId, from: request.status, to: 'more_information_requested', patch,
+    });
+  }
   if (!claimed) throw new Error('This request is no longer open.');
 
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: request.status, to: 'more_information_requested', meta: { note } });
   revalidatePath('/dashboard/quick-stops');
 }
 
-// Contractor sends an offer: validates the window + fee against settings and the
-// daily cap, claims the request in a single transaction, then creates a TENTATIVE job — that
-// job is the calendar placeholder (it renders like any scheduled job, flagged as
-// an unconfirmed Quick Stop) and is what the payment attaches to. Payment link +
-// customer SMS + the transition to awaiting_customer_payment are added in M5.
+// Publish the date, calendar hold, payment and expiration in one transaction.
+// A failure cannot leave a staged request or an unlinked payable payment.
 export async function createQuickStopOfferAction(requestId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  // The service-role transaction replaces session writes to jobs/payments, so
+  // explicitly preserve both capabilities those tables previously enforced.
+  const { supabase, accountId } = await requireOfficeContext('schedule.write', 'jobs.write', 'payments.collect');
   const request = await getQuickStopRequest(supabase, accountId, requestId);
   if (!request) throw new Error('Request not found.');
   if (!OFFERABLE.includes(request.status)) throw new Error('This request can no longer be offered.');
 
-  const { data: accountRow } = await supabase
+  const { data: accountRow, error: accountError } = await supabase
     .from('accounts')
     .select(`${QUICK_STOP_SETTINGS_COLUMNS}, timezone, instant_book_drive_time, connect_onboarded, stripe_connect_id`)
     .eq('id', accountId)
     .single();
+  if (accountError || !accountRow) throw new Error('Could not load your Quick Stop settings.');
   const settings = quickStopSettingsFromAccount(accountRow as Parameters<typeof quickStopSettingsFromAccount>[0]);
   const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
 
@@ -99,38 +99,10 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
   const visitMinutes = Number.isFinite(visitMinutesRaw) && visitMinutesRaw > 0 ? Math.round(visitMinutesRaw) : request.ai_visit_minutes ?? null;
   const note = (formData.get('note') ?? '').toString().trim() || null;
 
-  // Window validations against the owner's Quick Stop settings.
-  if (!arrivalDate || !arrivalStart || !arrivalEnd) throw new Error('Set an arrival date and a start/end window.');
-  if (arrivalStart >= arrivalEnd) throw new Error('The window end must be after its start.');
-  const dow = new Date(`${arrivalDate}T12:00:00`).getDay();
-  if (settings.weekdays.length && !settings.weekdays.includes(dow)) throw new Error('That day isn’t in your Quick Stop schedule.');
-  if (arrivalStart < settings.earliestTime) throw new Error(`Arrival can’t start before ${settings.earliestTime}.`);
-  if (arrivalEnd > settings.latestEnd) throw new Error(`The window can’t end after ${settings.latestEnd}.`);
+  validateQuickStopOfferWindow(arrivalDate, arrivalStart, arrivalEnd, timezone, settings);
   if (feeCents <= 0) throw new Error('Enter a Quick Stop fee.');
 
-  // Daily Quick Stop cap for that date (separate from normal booking capacity).
-  const { data: sameDay } = await supabase
-    .from('extra_stop_requests')
-    .select('id')
-    .eq('account_id', accountId)
-    .eq('arrival_date', arrivalDate)
-    .in('status', DAY_OCCUPYING);
-  if ((sameDay?.length ?? 0) >= settings.maxPerDay) {
-    throw new Error(`You’re at your Quick Stop limit (${settings.maxPerDay}) for that day.`);
-  }
-
-  // Claim the request in a single update so a double-submit can't create two placeholders.
-  const { data: claimed } = await supabase
-    .from('extra_stop_requests')
-    .update({ status: 'contractor_offer_sent', updated_at: new Date().toISOString() })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .in('status', OFFERABLE)
-    .select('id')
-    .maybeSingle();
-  if (!claimed) throw new Error('This request was just updated — reload and try again.');
-
-  // Route cost vs the final scheduled stop that day (best-effort).
+  // Complete route work before reserving capacity or creating money records.
   const target = request.lat != null && request.lng != null ? { lat: request.lat, lng: request.lng } : null;
   const route = await computeQuickStopRoute(supabase, accountId, target, {
     arrivalDate,
@@ -139,49 +111,25 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
     timezone,
   });
 
-  // The tentative placeholder job (calendar hold). Confirmed → made live in M5.
-  const job = await createJob(supabase, accountId, {
-    clientName: request.client_name,
-    clientPhone: request.client_phone,
-    clientEmail: request.client_email,
-    address: request.address,
-    scope: `Quick Stop — ${request.ai_summary || 'quick visit'}`,
-    status: 'new_lead',
-    scheduledFor: arrivalDate,
-    scheduledTime: arrivalStart,
-    quotedAmount: 0,
-    estimatedHours: visitMinutes ? Math.max(0.25, Math.round((visitMinutes / 60) * 100) / 100) : undefined,
-  });
-
-  await supabase
-    .from('extra_stop_requests')
-    .update({
-      job_id: job.id,
+  const { data: published, error } = await createAdminClient().rpc('create_quick_stop_offer', {
+    p_account_id: accountId,
+    p_request_id: requestId,
+    p_offer: {
       arrival_date: arrivalDate,
       arrival_start: arrivalStart,
       arrival_end: arrivalEnd,
       fee_cents: feeCents,
       diagnostic_fee_cents: diagnosticFeeCents,
-      offer_visit_minutes: visitMinutes,
+      visit_minutes: visitMinutes,
       contractor_note: note,
       detour_miles: route.detourMiles,
       detour_minutes: route.detourMinutes,
       route_extension_minutes: route.routeExtensionMinutes,
-      offer_sent_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('account_id', accountId)
-    .eq('id', requestId);
-
-  await logQuickStopEvent(supabase, accountId, requestId, {
-    actor: 'contractor',
-    from: request.status,
-    to: 'contractor_offer_sent',
-    meta: { feeCents, arrivalDate, arrivalStart, arrivalEnd },
+    },
   });
+  if (error || !published) throw new Error(error?.message || 'Could not create the Quick Stop offer.');
 
-  // Create the payment request, start the 15-minute clock, and text the customer
-  // the pay link — moves the request to awaiting_customer_payment.
+  // Notification is idempotent and best-effort; the complete offer is durable.
   await sendQuickStopOffer(supabase, accountId, requestId);
 
   revalidatePath('/dashboard/quick-stops');
@@ -198,14 +146,10 @@ export async function markEnRouteQuickStopAction(requestId: string) {
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
   const nowIso = new Date().toISOString();
-  const { data: claimed } = await supabase
-    .from('extra_stop_requests')
-    .update({ status: 'en_route', en_route_at: nowIso, updated_at: nowIso })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .eq('status', 'confirmed')
-    .select('id')
-    .maybeSingle();
+  const claimed = await transitionQuickStopRequest(supabase, {
+    accountId, requestId, from: req.status, to: 'en_route',
+    patch: { en_route_at: nowIso, updated_at: nowIso },
+  });
   if (!claimed) throw new Error('You can only start “en route” from a confirmed Quick Stop.');
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: 'confirmed', to: 'en_route' });
   if (req.client_phone) await sendQuickStopStatusSms({
@@ -227,20 +171,15 @@ export async function markArrivedQuickStopAction(requestId: string, formData: Fo
   const lat = Number(formData.get('lat'));
   const lng = Number(formData.get('lng'));
   const nowIso = new Date().toISOString();
-  const { data: claimed } = await supabase
-    .from('extra_stop_requests')
-    .update({
-      status: 'arrived',
+  const claimed = await transitionQuickStopRequest(supabase, {
+    accountId, requestId, from: req.status, to: 'arrived',
+    patch: {
       arrived_at: nowIso,
       arrival_lat: Number.isFinite(lat) ? lat : null,
       arrival_lng: Number.isFinite(lng) ? lng : null,
       updated_at: nowIso,
-    })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .in('status', ['confirmed', 'en_route'])
-    .select('id')
-    .maybeSingle();
+    },
+  });
   if (!claimed) throw new Error('This Quick Stop can’t be marked arrived.');
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: req.status, to: 'arrived', meta: { lat: Number.isFinite(lat) ? lat : null, lng: Number.isFinite(lng) ? lng : null } });
   if (req.client_phone) await sendQuickStopStatusSms({
@@ -283,15 +222,13 @@ export async function completeQuickStopAction(requestId: string) {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
   const req = await getQuickStopRequest(supabase, accountId, requestId);
   if (!req) throw new Error('Request not found.');
+  if (!['arrived', 'en_route', 'confirmed'].includes(req.status)) throw new Error('This Quick Stop can’t be completed.');
   const nowIso = new Date().toISOString();
-  const { data: claimed } = await supabase
-    .from('extra_stop_requests')
-    .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .in('status', ['arrived', 'en_route', 'confirmed'])
-    .select('id')
-    .maybeSingle();
+  const claimed = await transitionQuickStopRequest(supabase, {
+    accountId, requestId, from: req.status, to: 'completed',
+    patch: { completed_at: nowIso, updated_at: nowIso },
+    expected: { no_show_reported_at: null },
+  });
   if (!claimed) throw new Error('This Quick Stop can’t be completed.');
   if (req.job_id) await supabase.from('jobs').update({ status: 'complete' }).eq('id', req.job_id).eq('account_id', accountId);
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: req.status, to: 'completed' });
@@ -323,26 +260,26 @@ export async function proposeRevisedWindowQuickStopAction(requestId: string, for
   if (!req) throw new Error('Request not found.');
   if (!['confirmed', 'en_route'].includes(req.status)) throw new Error('You can only propose a new window on a confirmed Quick Stop.');
 
-  const { data: accountRow } = await supabase.from('accounts').select(QUICK_STOP_SETTINGS_COLUMNS).eq('id', accountId).single();
+  const { data: accountRow, error: accountError } = await supabase.from('accounts').select(`${QUICK_STOP_SETTINGS_COLUMNS}, timezone`).eq('id', accountId).single();
+  if (accountError || !accountRow) throw new Error('Could not load your Quick Stop settings.');
   const settings = quickStopSettingsFromAccount(accountRow as Parameters<typeof quickStopSettingsFromAccount>[0]);
+  const timezone = (accountRow as { timezone?: string | null }).timezone || 'America/New_York';
 
   const d = (formData.get('proposedDate') ?? '').toString().trim();
   const st = (formData.get('proposedStart') ?? '').toString().trim();
   const en = (formData.get('proposedEnd') ?? '').toString().trim();
-  if (!d || !st || !en) throw new Error('Set a date and a start/end window.');
-  if (st >= en) throw new Error('The window end must be after its start.');
-  const dow = new Date(`${d}T12:00:00`).getDay();
-  if (settings.weekdays.length && !settings.weekdays.includes(dow)) throw new Error('That day isn’t in your Quick Stop schedule.');
-  if (st < settings.earliestTime) throw new Error(`Arrival can’t start before ${settings.earliestTime}.`);
-  if (en > settings.latestEnd) throw new Error(`The window can’t end after ${settings.latestEnd}.`);
+  validateQuickStopOfferWindow(d, st, en, timezone, settings);
 
   const nowIso = new Date().toISOString();
-  await supabase
+  const { data: proposed, error: proposalError } = await supabase
     .from('extra_stop_requests')
     .update({ proposed_arrival_date: d, proposed_arrival_start: st, proposed_arrival_end: en, proposed_window_at: nowIso, updated_at: nowIso })
     .eq('account_id', accountId)
     .eq('id', requestId)
-    .in('status', ['confirmed', 'en_route']);
+    .eq('status', req.status)
+    .select('id')
+    .maybeSingle();
+  if (proposalError || !proposed) throw new Error(proposalError?.message || 'This Quick Stop was just updated. Reload before proposing a window.');
   await logQuickStopEvent(supabase, accountId, requestId, { actor: 'contractor', meta: { proposedWindow: { d, st, en } } });
   if (req.client_phone) {
     await sendQuickStopStatusSms({

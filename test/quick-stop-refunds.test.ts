@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeCustomerRefundPercent } from '@/lib/quick-stop-refunds';
+import { computeCustomerRefundPercent as computeRefund } from '@/lib/quick-stop-refunds';
 import type { QuickStopRequest } from '@/lib/quick-stop-requests';
 
 // A fixed "now" and helpers to build a request at various lifecycle points.
-const NOW = new Date('2026-07-29T18:00:00').getTime();
+const NOW = new Date('2026-07-29T18:00:00Z').getTime();
+const computeCustomerRefundPercent = (request: QuickStopRequest, now: number) => computeRefund(request, now, undefined, 'UTC');
 const minsAgo = (m: number) => new Date(NOW - m * 60_000).toISOString();
 
 function req(partial: Partial<QuickStopRequest>): QuickStopRequest {
@@ -18,6 +19,11 @@ function req(partial: Partial<QuickStopRequest>): QuickStopRequest {
 }
 
 describe('computeCustomerRefundPercent — cancellation tiers', () => {
+  it('uses the contractor time zone before awarding the missed-window tier', () => {
+    const r = req({ paid_at: minsAgo(90), arrival_end: '15:00' });
+    expect(computeRefund(r, Date.parse('2026-07-29T21:59:00Z'), undefined, 'America/Los_Angeles')).toBe(75);
+    expect(computeRefund(r, Date.parse('2026-07-29T22:01:00Z'), undefined, 'America/Los_Angeles')).toBe(100);
+  });
   it('unpaid → full (no-op) refund', () => {
     expect(computeCustomerRefundPercent(req({ paid_at: null }), NOW)).toBe(100);
   });

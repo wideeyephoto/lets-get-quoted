@@ -38889,3 +38889,1257 @@ begin
   end if;
 end;
 $grants$;
+
+-- Quick Stop hardening: 2026-09-14
+
+-- Source: migrations/20260914132411_quick_stop_refund_recovery.sql
+begin;
+-- Also establish the small reconciliation prerequisites for installations that
+-- never enabled the optional legacy payment worker. Ambiguous bindings fail the
+-- unique index rather than letting either payment path pick an arbitrary visit.
+create unique index if not exists extra_stop_requests_payment_unique
+  on public.extra_stop_requests(payment_id) where payment_id is not null;
+alter table public.extra_stop_events add column if not exists dedupe_key text;
+create unique index if not exists extra_stop_events_request_dedupe_unique
+  on public.extra_stop_events(request_id,dedupe_key) where dedupe_key is not null;
+
+create or replace function public.protect_quick_stop_system_event_dedupe()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if current_user not in ('postgres','service_role') then
+    if tg_op = 'INSERT' and new.dedupe_key is not null then
+      raise exception 'system Quick Stop event keys are backend-managed' using errcode='42501';
+    elsif tg_op = 'UPDATE' and (old.dedupe_key is not null or new.dedupe_key is not null) then
+      raise exception 'system Quick Stop events are immutable' using errcode='42501';
+    elsif tg_op = 'DELETE' and old.dedupe_key is not null then
+      raise exception 'system Quick Stop events are immutable' using errcode='42501';
+    end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+revoke all on function public.protect_quick_stop_system_event_dedupe() from public,anon,authenticated,service_role;
+drop trigger if exists protect_quick_stop_system_event_dedupe_trigger on public.extra_stop_events;
+create trigger protect_quick_stop_system_event_dedupe_trigger before insert or update or delete
+  on public.extra_stop_events for each row execute function public.protect_quick_stop_system_event_dedupe();
+
+-- Cancellation is final for scheduling immediately. Its financial obligation is
+-- a separate durable job, including when settlement arrives after cancellation.
+alter table public.extra_stop_requests
+  add column if not exists refund_due_cents integer check (refund_due_cents >= 0),
+  add column if not exists refund_state text not null default 'none'
+    check (refund_state in ('none', 'pending', 'processing', 'retry', 'completed', 'review'));
+
+create table public.quick_stop_refund_tasks (
+  id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique references public.extra_stop_requests(id),
+  account_id uuid not null references public.accounts(id),
+  payment_id uuid not null references public.payments(id),
+  target_cents integer not null check (target_cents > 0),
+  state text not null default 'pending' check (state in ('pending','processing','retry','completed','review')),
+  attempts integer not null default 0,
+  next_attempt_at timestamptz not null default now(),
+  lease_token uuid,
+  lease_until timestamptz,
+  stripe_payment_intent text,
+  attempt_cents integer check (attempt_cents > 0),
+  first_attempt_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check ((attempt_cents is null) = (first_attempt_at is null)),
+  check ((attempt_cents is null) = (stripe_payment_intent is null))
+);
+alter table public.quick_stop_refund_tasks enable row level security;
+revoke all on public.quick_stop_refund_tasks from public, anon, authenticated;
+grant select, insert, update on public.quick_stop_refund_tasks to service_role;
+create index quick_stop_refund_due_idx on public.quick_stop_refund_tasks(next_attempt_at, id)
+  where state in ('pending','processing','retry');
+
+-- Provider calls cannot hold a SQL transaction open. A durable reservation
+-- serializes manual and automatic refunds across that boundary. Unknown manual
+-- results never expire automatically into a second provider request.
+create table public.quick_stop_manual_refund_reservations (
+  payment_id uuid primary key references public.payments(id),
+  account_id uuid not null references public.accounts(id),
+  token uuid not null default gen_random_uuid(),
+  target_cents integer not null check(target_cents>0),
+  state text not null default 'active' check(state in ('active','unknown')),
+  created_at timestamptz not null default now()
+);
+alter table public.quick_stop_manual_refund_reservations enable row level security;
+revoke all on public.quick_stop_manual_refund_reservations from public,anon,authenticated;
+grant select,insert,update,delete on public.quick_stop_manual_refund_reservations to service_role;
+
+-- The older optional worker uses a different persisted Stripe key. Retained
+-- tasks, including dead letters with unknown provider outcomes, must be drained
+-- or reconciled before either the new worker or manual refunds can send money.
+-- Dynamic SQL keeps this migration usable where that optional table is absent.
+create function public.quick_stop_has_unresolved_legacy_refund(p_payment_id uuid)
+returns boolean language plpgsql stable security invoker set search_path = '' as $$
+declare v_exists boolean;
+begin
+  if pg_catalog.to_regclass('public.quick_stop_payment_tasks') is null then return false; end if;
+  execute 'select exists(select 1 from public.quick_stop_payment_tasks where payment_id=$1 and task_state<>''completed'')'
+    into v_exists using p_payment_id;
+  return v_exists;
+end $$;
+revoke all on function public.quick_stop_has_unresolved_legacy_refund(uuid) from public,anon,authenticated;
+grant execute on function public.quick_stop_has_unresolved_legacy_refund(uuid) to service_role;
+
+create function public.begin_quick_stop_manual_refund(p_account_id uuid,p_payment_id uuid,p_target_cents integer,p_expected_refunded_cents integer default null)
+returns uuid language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_token uuid; v_gross numeric;
+  v_refunded integer; v_status text; v_charge_model text;
+begin
+  select amount*100,round(coalesce(refunded_amount,0)*100)::integer,status::text,charge_model
+    into v_gross,v_refunded,v_status,v_charge_model from public.payments
+    where id=p_payment_id and account_id=p_account_id for update;
+  if not found then raise exception 'Payment not found'; end if;
+  select * into r from public.extra_stop_requests where payment_id=p_payment_id and account_id=p_account_id for update;
+  if not found then return null; end if;
+  if v_status is distinct from 'paid' or v_charge_model is distinct from 'destination'
+    or (p_expected_refunded_cents is not null and p_expected_refunded_cents is distinct from v_refunded) then
+    raise exception 'The payment changed before the refund was reserved. Refresh and try again';
+  end if;
+  if p_target_cents is null or p_target_cents<=0 or p_target_cents>v_gross then raise exception 'Invalid manual refund target'; end if;
+  if p_target_cents<=v_refunded then raise exception 'The requested refund target has already been met'; end if;
+  if public.quick_stop_has_unresolved_legacy_refund(p_payment_id) then
+    raise exception 'An earlier Quick Stop refund needs reconciliation before another refund can be issued';
+  end if;
+  if exists(select 1 from public.quick_stop_refund_tasks where payment_id=p_payment_id and state<>'completed')
+    or exists(select 1 from public.quick_stop_manual_refund_reservations where payment_id=p_payment_id) then
+    raise exception 'This Quick Stop already has a refund in progress or awaiting review';
+  end if;
+  insert into public.quick_stop_manual_refund_reservations(payment_id,account_id,target_cents)
+    values(p_payment_id,p_account_id,p_target_cents) returning token into v_token;
+  update public.extra_stop_requests set refund_state='processing',
+    refund_due_cents=greatest(coalesce(refund_due_cents,0),p_target_cents),updated_at=now() where id=r.id;
+  return v_token;
+end $$;
+
+create function public.finish_quick_stop_manual_refund(p_account_id uuid,p_payment_id uuid,p_token uuid,p_succeeded boolean)
+returns boolean language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_target integer; v_refunded integer;
+begin
+  select round(coalesce(refunded_amount,0)*100)::integer into v_refunded from public.payments
+    where id=p_payment_id and account_id=p_account_id for update;
+  select * into r from public.extra_stop_requests where payment_id=p_payment_id and account_id=p_account_id for update;
+  select target_cents into v_target from public.quick_stop_manual_refund_reservations
+    where payment_id=p_payment_id and account_id=p_account_id and token=p_token for update;
+  if not found then return false; end if;
+  if p_succeeded and v_refunded>=v_target then
+    delete from public.quick_stop_manual_refund_reservations where payment_id=p_payment_id and token=p_token;
+    update public.quick_stop_refund_tasks set state='pending',next_attempt_at=now(),last_error=null,updated_at=now()
+      where request_id=r.id and state='review' and last_error='manual_refund_active';
+    update public.extra_stop_requests set refund_cents=greatest(coalesce(refund_cents,0),v_refunded),
+      refund_state=coalesce((select state from public.quick_stop_refund_tasks where request_id=r.id),'completed'),
+      updated_at=now() where id=r.id;
+  else
+    update public.quick_stop_manual_refund_reservations set state='unknown' where payment_id=p_payment_id;
+    insert into public.quick_stop_refund_tasks(request_id,account_id,payment_id,target_cents,state,last_error)
+      values(r.id,p_account_id,p_payment_id,greatest(v_target,coalesce(r.refund_due_cents,0)),'review','manual_provider_result_unknown')
+      on conflict(request_id) do update set state='review',
+        target_cents=greatest(public.quick_stop_refund_tasks.target_cents,excluded.target_cents),
+        last_error='manual_provider_result_unknown',updated_at=now();
+    update public.extra_stop_requests set refund_state='review',
+      refund_due_cents=greatest(coalesce(refund_due_cents,0),v_target),updated_at=now() where id=r.id;
+  end if;
+  -- An applied review record is not a successfully released reservation. The
+  -- caller requesting success must surface missing local refund evidence.
+  return p_succeeded is not true or v_refunded>=v_target;
+end $$;
+
+-- Service role only. One obligation per request; replay cannot raise a partial
+-- cancellation refund to 100% merely because its payment webhook was redelivered.
+create function public.queue_quick_stop_refund(p_request_id uuid)
+returns uuid language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_target integer; v_task uuid;
+begin
+  select * into r from public.extra_stop_requests where id=p_request_id;
+  -- Existing webhook code locks payment before request; preserve that order.
+  if r.payment_id is not null then perform 1 from public.payments where id=r.payment_id for update; end if;
+  select * into r from public.extra_stop_requests where id=p_request_id for update;
+  if not found then raise exception 'Quick Stop not found'; end if;
+  if r.status not in ('offer_expired','customer_canceled','customer_declined',
+      'contractor_canceled','contractor_declined','no_show_confirmed','refunded') then
+    raise exception 'Quick Stop still has a fulfillable appointment';
+  end if;
+  v_target := coalesce(r.refund_due_cents, r.fee_cents, 0);
+  if r.payment_id is null or v_target <= 0 then return null; end if;
+  if not exists (select 1 from public.payments p where p.id=r.payment_id and p.account_id=r.account_id) then
+    raise exception 'Quick Stop payment account mismatch';
+  end if;
+  insert into public.quick_stop_refund_tasks(request_id,account_id,payment_id,target_cents,state,last_error)
+    values(r.id,r.account_id,r.payment_id,v_target,
+      case when public.quick_stop_has_unresolved_legacy_refund(r.payment_id)
+        or exists(select 1 from public.quick_stop_manual_refund_reservations where payment_id=r.payment_id) then 'review' else 'pending' end,
+      case when public.quick_stop_has_unresolved_legacy_refund(r.payment_id) then 'legacy_refund_unresolved'
+        when exists(select 1 from public.quick_stop_manual_refund_reservations where payment_id=r.payment_id) then 'manual_refund_active' else null end)
+    on conflict(request_id) do update set
+      target_cents=greatest(public.quick_stop_refund_tasks.target_cents,excluded.target_cents),
+      state=case when excluded.last_error='legacy_refund_unresolved' or excluded.target_cents>public.quick_stop_refund_tasks.target_cents then 'review' else public.quick_stop_refund_tasks.state end,
+      last_error=case when excluded.last_error='legacy_refund_unresolved' then excluded.last_error
+        when excluded.target_cents>public.quick_stop_refund_tasks.target_cents then 'refund_obligation_increased' else public.quick_stop_refund_tasks.last_error end;
+  select id into v_task from public.quick_stop_refund_tasks where request_id=r.id;
+  update public.extra_stop_requests set refund_due_cents=v_target,
+    refund_state=(select state from public.quick_stop_refund_tasks where id=v_task)
+    where id=r.id;
+  return v_task;
+end $$;
+
+-- Confirmation and calendar activation share the same lock/commit. A customer
+-- cancellation cannot archive the job between these two effects and have it
+-- reactivated by a late continuation of the webhook handler.
+create function public.confirm_quick_stop_payment(p_payment_id uuid)
+returns setof public.extra_stop_requests language plpgsql security invoker set search_path = '' as $$
+declare p public.payments%rowtype; r public.extra_stop_requests%rowtype;
+begin
+  select * into p from public.payments where id=p_payment_id for update;
+  if not found then return; end if;
+  select * into r from public.extra_stop_requests where payment_id=p_payment_id for update;
+  if not found or r.status <> 'awaiting_customer_payment' then return; end if;
+  if p.status is distinct from 'paid' or p.paid_at is null or p.stripe_payment_intent is null or p.charge_model is distinct from 'destination'
+    or p.account_id is distinct from r.account_id or p.job_id is distinct from r.job_id
+    or r.job_id is null or r.fee_cents is null or r.fee_cents <> round(p.amount*100) then
+    raise exception 'Quick Stop confirmation requires matching captured payment evidence';
+  end if;
+  update public.jobs set status='in_progress' where id=r.job_id and account_id=r.account_id
+    and status in ('new_lead','in_progress');
+  if not found then raise exception 'Quick Stop calendar job cannot be confirmed'; end if;
+  return query update public.extra_stop_requests set status='confirmed',paid_at=p.paid_at,updated_at=now()
+    where id=r.id returning *;
+end $$;
+
+-- The request lock protects eligibility, timeline evidence, cancellation, job
+-- archival and the refund obligation in one transaction. Losing calls do nothing.
+create function public.cancel_quick_stop_request(
+  p_account_id uuid, p_request_id uuid, p_expected_status text, p_kind text,
+  p_refund_pct integer, p_reason text, p_require_reporting_window boolean default false
+) returns boolean language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_status text; v_end timestamptz;
+  v_zone text; v_due integer; v_now timestamptz := clock_timestamp();
+begin
+  if p_kind is null or p_kind not in ('customer_cancel','contractor_cancel','no_show')
+     or p_refund_pct is null or p_refund_pct < 0 or p_refund_pct > 100 then
+    raise exception 'Invalid cancellation';
+  end if;
+  -- Enforcement takes the account lock before a request lock. Take it first
+  -- here too so cancellation plus enforcement can commit together without an
+  -- account/request lock-order inversion with a concurrent replay.
+  if p_kind='no_show' then perform 1 from public.accounts where id=p_account_id for update; end if;
+  select * into r from public.extra_stop_requests where id=p_request_id and account_id=p_account_id;
+  if r.payment_id is not null then perform 1 from public.payments where id=r.payment_id for update; end if;
+  select * into r from public.extra_stop_requests
+    where id=p_request_id and account_id=p_account_id for update;
+  if not found then raise exception 'Quick Stop not found'; end if;
+  v_status := case p_kind when 'no_show' then 'no_show_confirmed'
+    when 'contractor_cancel' then 'contractor_canceled' else 'customer_canceled' end;
+  if r.status=v_status then return false; end if;
+  if r.status is distinct from p_expected_status then return false; end if;
+  if (p_kind='customer_cancel' and r.status not in ('awaiting_customer_payment','confirmed','en_route','arrived'))
+    or (p_kind='contractor_cancel' and r.status not in ('contractor_offer_sent','awaiting_customer_payment','confirmed','en_route','arrived'))
+    or (p_kind='no_show' and r.status not in ('confirmed','en_route','completed','disputed','no_show_reported')) then
+    raise exception 'This Quick Stop cannot be canceled from its current state';
+  end if;
+  if p_kind='no_show' then
+    if r.paid_at is null or r.payment_id is null or r.job_id is null or r.arrived_at is not null
+      or r.arrival_date is null or r.arrival_start is null or r.arrival_end is null
+      or r.arrival_start >= r.arrival_end
+      or not exists(select 1 from public.payments p where p.id=r.payment_id and p.account_id=r.account_id
+        and p.status in ('paid','refunded') and p.paid_at is not null) then
+      raise exception 'No-show requires a paid scheduled visit that never arrived';
+    end if;
+    select coalesce(nullif(btrim(timezone),''),'America/New_York') into v_zone
+      from public.accounts where id=p_account_id;
+    if v_zone is null or not exists(select 1 from pg_catalog.pg_timezone_names where name=v_zone) then
+      raise exception 'Invalid account time zone';
+    end if;
+    v_end := public.quick_stop_window_instant(r.arrival_date,r.arrival_end,v_zone);
+    if v_end is null or public.quick_stop_window_instant(r.arrival_date,r.arrival_start,v_zone) is null
+      or public.quick_stop_window_instant(r.arrival_date,r.arrival_start,v_zone)>=v_end then
+      raise exception 'Invalid arrival instant';
+    end if;
+    if v_now < v_end or (p_require_reporting_window and
+      (r.status not in ('confirmed','en_route') or v_now > v_end + interval '2 hours')) then
+      raise exception 'No-show cannot be reported outside the reporting window';
+    end if;
+  end if;
+  -- An unpaid offer cancellation still owes 100% of a charge that settles later.
+  v_due := case when r.payment_id is null then 0
+    when p_kind <> 'customer_cancel' or r.paid_at is null then coalesce(r.fee_cents,0)
+    else round(coalesce(r.fee_cents,0)::numeric*p_refund_pct/100)::integer end;
+  update public.extra_stop_requests set status=v_status, refund_due_cents=v_due,
+    refund_state=case when v_due>0 then 'pending' else 'none' end,
+    cancel_reason=p_reason, updated_at=v_now,
+    canceled_at=case when p_kind <> 'no_show' then v_now else canceled_at end,
+    no_show_confirmed_at=case when p_kind='no_show' then v_now else no_show_confirmed_at end,
+    no_show_reported_at=case when p_kind='no_show' then coalesce(no_show_reported_at,v_now) else no_show_reported_at end
+    where id=r.id;
+  if r.job_id is not null then
+    update public.jobs set status='archived' where id=r.job_id and account_id=r.account_id;
+  end if;
+  if v_due>0 then perform public.queue_quick_stop_refund(r.id); end if;
+  if p_kind='no_show' then perform public.apply_quick_stop_no_show_lock(p_account_id,r.id); end if;
+  return true;
+end $$;
+
+create function public.claim_quick_stop_refunds(p_limit integer default 25, p_account_id uuid default null, p_request_id uuid default null)
+returns setof public.quick_stop_refund_tasks language plpgsql security invoker set search_path = '' as $$
+declare stale record;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100 then raise exception 'Invalid refund batch size'; end if;
+  -- Recover a process crash after manual reservation but before its finally
+  -- block. The result is uncertain, so surface review instead of releasing it.
+  for stale in select m.* from public.quick_stop_manual_refund_reservations m
+    where m.state='active' and m.created_at<now()-interval '5 minutes'
+      and (p_account_id is null or m.account_id=p_account_id)
+    order by m.created_at,m.payment_id limit p_limit loop
+    perform public.finish_quick_stop_manual_refund(stale.account_id,stale.payment_id,stale.token,false);
+  end loop;
+  return query
+    with due as (
+      select t.id from public.quick_stop_refund_tasks t
+      join public.payments p on p.id=t.payment_id and p.account_id=t.account_id
+      where t.state in ('pending','processing','retry') and t.next_attempt_at<=now()
+        and not exists(select 1 from public.quick_stop_manual_refund_reservations m where m.payment_id=t.payment_id)
+        and not public.quick_stop_has_unresolved_legacy_refund(t.payment_id)
+        and (t.lease_until is null or t.lease_until<now())
+        and p.status in ('paid','refunded') and p.stripe_payment_intent is not null
+        and (p_account_id is null or t.account_id=p_account_id)
+        and (p_request_id is null or t.request_id=p_request_id)
+      order by t.next_attempt_at,t.id limit p_limit for update of t skip locked
+    ) update public.quick_stop_refund_tasks t set state='processing', attempts=t.attempts+1,
+      lease_token=gen_random_uuid(),lease_until=now()+interval '5 minutes',updated_at=now()
+      from due where t.id=due.id returning t.*;
+end $$;
+
+-- Save the exact provider request BEFORE egress. A lease replay never invents
+-- a new amount/key. Unknown results older than Stripe's retention need review.
+create function public.prepare_quick_stop_refund(p_task_id uuid,p_lease_token uuid,p_payment_intent text,p_amount_cents integer)
+returns setof public.quick_stop_refund_tasks language plpgsql security invoker set search_path = '' as $$
+begin
+  return query update public.quick_stop_refund_tasks t
+    set stripe_payment_intent=coalesce(t.stripe_payment_intent,p_payment_intent),
+      attempt_cents=coalesce(t.attempt_cents,p_amount_cents),
+      first_attempt_at=coalesce(t.first_attempt_at,clock_timestamp()),updated_at=now()
+    where t.id=p_task_id and t.lease_token=p_lease_token and t.state='processing' and t.lease_until>now()
+      and not public.quick_stop_has_unresolved_legacy_refund(t.payment_id)
+      and p_amount_cents>0 and p_amount_cents<=t.target_cents
+      and (t.stripe_payment_intent is null or t.stripe_payment_intent=p_payment_intent)
+      and (t.attempt_cents is null or t.attempt_cents=p_amount_cents)
+    returning t.*;
+end $$;
+
+-- Staff may re-read a reviewed task after resolving the provider side. This
+-- claim is used by a read-only provider executor; it never authorizes new money.
+create function public.claim_quick_stop_refund_review(p_account_id uuid,p_request_id uuid)
+returns setof public.quick_stop_refund_tasks language plpgsql security invoker set search_path = '' as $$
+begin
+  return query update public.quick_stop_refund_tasks set state='processing',
+    lease_token=gen_random_uuid(),lease_until=now()+interval '5 minutes',updated_at=now()
+    where account_id=p_account_id and request_id=p_request_id and state='review'
+      and (lease_until is null or lease_until<now()) returning *;
+end $$;
+
+create function public.finish_quick_stop_refund(p_task_id uuid,p_lease_token uuid,p_state text,p_refunded_cents integer default 0,p_error text default null)
+returns boolean language plpgsql security invoker set search_path = '' as $$
+declare t public.quick_stop_refund_tasks%rowtype; v_request_id uuid; v_payment_id uuid; v_amount numeric; v_fee numeric;
+begin
+  if p_state is null or p_state not in ('completed','retry','review')
+    or p_refunded_cents is null or p_refunded_cents<0 then raise exception 'Invalid refund outcome'; end if;
+  select request_id,payment_id into v_request_id,v_payment_id from public.quick_stop_refund_tasks where id=p_task_id;
+  perform 1 from public.payments where id=v_payment_id for update;
+  perform 1 from public.extra_stop_requests where id=v_request_id for update;
+  select * into t from public.quick_stop_refund_tasks where id=p_task_id for update;
+  if not found or t.lease_token is distinct from p_lease_token or t.state <> 'processing' then return false; end if;
+  if p_state='completed' then
+    select amount,platform_fee into v_amount,v_fee from public.payments
+      where id=t.payment_id and account_id=t.account_id and status in ('paid','refunded')
+      and charge_model='destination' for update;
+    if not found or p_refunded_cents<t.target_cents or p_refunded_cents>round(v_amount*100) then
+      raise exception 'Refund completion requires exact provider evidence';
+    end if;
+    update public.payments set refunded_amount=greatest(coalesce(refunded_amount,0),p_refunded_cents/100.0),
+      status=case when p_refunded_cents>=round(v_amount*100) then 'refunded' else status end,
+      refunded_at=case when p_refunded_cents>round(coalesce(refunded_amount,0)*100) then now() else refunded_at end,
+      platform_fee_refunded=greatest(coalesce(platform_fee_refunded,0),round(coalesce(v_fee,0)*p_refunded_cents/(v_amount*100),2))
+      where id=t.payment_id;
+    update public.extra_stop_requests set refund_cents=greatest(coalesce(refund_cents,0),p_refunded_cents),
+      refund_state='completed',updated_at=now() where id=t.request_id;
+    delete from public.quick_stop_manual_refund_reservations where payment_id=t.payment_id and target_cents<=p_refunded_cents;
+  else
+    update public.extra_stop_requests set refund_state=p_state,updated_at=now() where id=t.request_id;
+  end if;
+  update public.quick_stop_refund_tasks set state=p_state,last_error=p_error,
+    lease_token=null,lease_until=null,
+    next_attempt_at=now()+make_interval(secs=>least(3600,60*power(2,least(attempts,6)))::integer),
+    updated_at=now() where id=t.id;
+  return true;
+end $$;
+
+revoke all on function public.queue_quick_stop_refund(uuid) from public,anon,authenticated;
+revoke all on function public.cancel_quick_stop_request(uuid,uuid,text,text,integer,text,boolean) from public,anon,authenticated;
+revoke all on function public.claim_quick_stop_refunds(integer,uuid,uuid) from public,anon,authenticated;
+revoke all on function public.prepare_quick_stop_refund(uuid,uuid,text,integer) from public,anon,authenticated;
+revoke all on function public.finish_quick_stop_refund(uuid,uuid,text,integer,text) from public,anon,authenticated;
+grant execute on function public.queue_quick_stop_refund(uuid) to service_role;
+revoke all on function public.confirm_quick_stop_payment(uuid) from public,anon,authenticated;
+grant execute on function public.confirm_quick_stop_payment(uuid) to service_role;
+grant execute on function public.cancel_quick_stop_request(uuid,uuid,text,text,integer,text,boolean) to service_role;
+grant execute on function public.claim_quick_stop_refunds(integer,uuid,uuid) to service_role;
+grant execute on function public.prepare_quick_stop_refund(uuid,uuid,text,integer) to service_role;
+grant execute on function public.finish_quick_stop_refund(uuid,uuid,text,integer,text) to service_role;
+revoke all on function public.claim_quick_stop_refund_review(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.claim_quick_stop_refund_review(uuid,uuid) to service_role;
+revoke all on function public.begin_quick_stop_manual_refund(uuid,uuid,integer,integer) from public,anon,authenticated;
+revoke all on function public.finish_quick_stop_manual_refund(uuid,uuid,uuid,boolean) from public,anon,authenticated;
+grant execute on function public.begin_quick_stop_manual_refund(uuid,uuid,integer,integer) to service_role;
+grant execute on function public.finish_quick_stop_manual_refund(uuid,uuid,uuid,boolean) to service_role;
+
+-- Supersede the feature-gated legacy reconciliation entrypoint as well.
+create or replace function public.reconcile_legacy_quick_stop_payment(p_payment_id uuid)
+returns table (
+  reconcile_status text,
+  quick_stop_request_id uuid,
+  late_refund_task_id uuid,
+  late_refund_task_state text
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone = 'UTC'
+as $$
+declare
+  v_payment public.payments%rowtype;
+  v_request public.extra_stop_requests%rowtype;
+  v_job public.jobs%rowtype;
+  v_event public.extra_stop_events%rowtype;
+  v_now timestamptz := pg_catalog.now();
+  v_gross_cents bigint;
+  v_refunded_cents bigint;
+  v_refund_cents bigint;
+  v_task_key text;
+  v_event_key text;
+  v_idempotency_key text;
+  v_snapshot jsonb;
+  v_fingerprint text;
+begin
+  if p_payment_id is null then
+    raise exception 'payment ID is required' using errcode = '22023';
+  end if;
+
+  select p.* into v_payment
+    from public.payments p
+   where p.id = p_payment_id
+   for update;
+  if not found then
+    raise exception 'payment was not found' using errcode = 'P0002';
+  end if;
+  if v_payment.charge_model is distinct from 'destination' then
+    raise exception 'legacy Quick Stop reconciliation requires a destination payment'
+      using errcode = '22000';
+  end if;
+  if v_payment.status not in ('paid', 'refunded') then
+    raise exception 'legacy Quick Stop reconciliation requires settled payment truth'
+      using errcode = '55000';
+  end if;
+  if v_payment.status = 'paid' and v_payment.paid_at is null then
+    raise exception 'paid legacy Quick Stop payment is missing its settlement timestamp'
+      using errcode = '22000';
+  end if;
+
+  select r.* into v_request
+    from public.extra_stop_requests r
+   where r.payment_id = p_payment_id
+   for update;
+  if not found then
+    return query select 'not_quick_stop'::text, null::uuid, null::uuid, null::text;
+    return;
+  end if;
+
+  if v_request.account_id is distinct from v_payment.account_id then
+    raise exception 'Quick Stop and payment account scopes do not match'
+      using errcode = '23514';
+  end if;
+  if v_request.job_id is null
+     or v_request.job_id is distinct from v_payment.job_id
+     or v_payment.kind::text is distinct from 'deposit' then
+    raise exception 'Quick Stop and payment job scopes do not match'
+      using errcode = '23514';
+  end if;
+
+  v_gross_cents := (v_payment.amount * 100)::bigint;
+  v_refunded_cents := (coalesce(v_payment.refunded_amount, 0) * 100)::bigint;
+  if v_gross_cents <= 0
+     or v_payment.amount is distinct from v_gross_cents::numeric / 100
+     or v_refunded_cents < 0
+     or coalesce(v_payment.refunded_amount, 0)
+        is distinct from v_refunded_cents::numeric / 100
+     or v_refunded_cents > v_gross_cents then
+    raise exception 'Quick Stop payment amount cannot be represented exactly in cents'
+      using errcode = '22000';
+  end if;
+  if v_request.fee_cents is null
+     or v_request.fee_cents::bigint is distinct from v_gross_cents then
+    raise exception 'Quick Stop fee and payment amount do not match'
+      using errcode = '22000';
+  end if;
+
+  -- Every nonfulfillable state uses the durable obligation queue, including
+  -- cancellation before settlement. Preserve a previously decided partial tier.
+  if v_request.status in ('offer_expired','customer_canceled','customer_declined',
+      'contractor_canceled','contractor_declined','no_show_confirmed','refunded') then
+    perform public.queue_quick_stop_refund(v_request.id);
+    return query select
+      case when t.state='completed' then 'refund_reconciled' else 'refund_queued' end::text,
+      v_request.id, case when t.state='completed' then null::uuid else t.id end,
+      case t.state when 'pending' then 'ready' when 'processing' then 'leased'
+        when 'retry' then 'retry_wait' when 'review' then 'dead_letter' else t.state end::text
+      from public.quick_stop_refund_tasks t where t.request_id=v_request.id;
+    if not found then
+      return query select 'not_actionable'::text,v_request.id,null::uuid,null::text;
+    end if;
+    return;
+  end if;
+  if v_request.status in ('awaiting_customer_payment', 'confirmed') then
+    if v_payment.status <> 'paid' then
+      raise exception 'a refunded payment cannot confirm a Quick Stop'
+        using errcode = '55000';
+    end if;
+    if v_request.job_id is null then
+      raise exception 'paid Quick Stop has no calendar job'
+        using errcode = '55000';
+    end if;
+    select j.* into v_job
+      from public.jobs j
+     where j.id = v_request.job_id
+       and j.account_id = v_request.account_id
+     for update;
+    if not found then
+      raise exception 'paid Quick Stop calendar job is unavailable'
+        using errcode = '55000';
+    end if;
+
+    -- A fresh confirmation may activate only a tentative/live job. A replay of
+    -- an already-confirmed payment must remain idempotent after the appointment
+    -- has naturally moved to complete or archived.
+    if v_request.status = 'awaiting_customer_payment' then
+      if v_job.status not in ('new_lead', 'in_progress') then
+        raise exception 'paid Quick Stop calendar job is unavailable'
+          using errcode = '55000';
+      end if;
+
+      if v_job.status = 'new_lead' then
+        update public.jobs j
+           set status = 'in_progress'
+         where j.id = v_job.id
+           and j.account_id = v_request.account_id
+           and j.status = 'new_lead';
+        if not found then
+          raise exception 'Quick Stop calendar job changed during confirmation'
+            using errcode = '40001';
+        end if;
+      end if;
+    end if;
+
+    if v_request.status = 'awaiting_customer_payment' then
+      update public.extra_stop_requests r
+         set status = 'confirmed',
+             paid_at = coalesce(r.paid_at, v_payment.paid_at, v_now),
+             updated_at = v_now
+       where r.id = v_request.id
+         and r.status = 'awaiting_customer_payment';
+      if not found then
+        raise exception 'Quick Stop changed during confirmation'
+          using errcode = '40001';
+      end if;
+    end if;
+
+    v_event_key := 'quick_stop_payment.confirmed.v1:' || p_payment_id::text;
+    insert into public.extra_stop_events (
+      account_id, request_id, actor, from_status, to_status, meta, dedupe_key
+    ) values (
+      v_request.account_id,
+      v_request.id,
+      'stripe',
+      'awaiting_customer_payment',
+      'confirmed',
+      pg_catalog.jsonb_build_object(
+        'paymentId', p_payment_id,
+        'reason', 'legacy_destination_payment_settled'
+      ),
+      v_event_key
+    )
+    on conflict (request_id, dedupe_key) where dedupe_key is not null do nothing;
+
+    select e.* into v_event
+      from public.extra_stop_events e
+     where e.request_id = v_request.id
+       and e.dedupe_key = v_event_key;
+    if not found
+       or v_event.account_id is distinct from v_request.account_id
+       or v_event.actor is distinct from 'stripe'
+       or v_event.from_status is distinct from 'awaiting_customer_payment'
+       or v_event.to_status is distinct from 'confirmed'
+       or v_event.meta is distinct from pg_catalog.jsonb_build_object(
+         'paymentId', p_payment_id,
+         'reason', 'legacy_destination_payment_settled'
+       ) then
+      raise exception 'Quick Stop confirmation event dedupe conflict'
+        using errcode = '23505';
+    end if;
+
+    return query select
+      case when v_request.status = 'confirmed' then 'already_confirmed' else 'confirmed' end,
+      v_request.id,
+      null::uuid,
+      null::text;
+    return;
+  end if;
+
+  return query select 'not_actionable'::text, v_request.id, null::uuid, null::text;
+end
+$$;
+
+revoke all on function public.reconcile_legacy_quick_stop_payment(uuid) from public,anon,authenticated;
+grant execute on function public.reconcile_legacy_quick_stop_payment(uuid) to service_role;
+
+commit;
+
+-- Source: migrations/20260914132439_quick_stop_atomic_offer.sql
+-- Publish a complete offer in one transaction. No externally visible reservation
+-- exists without its date, tentative job, payment, and expiration deadline.
+begin;
+
+create or replace function public.create_quick_stop_offer(
+  p_account_id uuid,
+  p_request_id uuid,
+  p_offer jsonb
+) returns jsonb
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_account public.accounts%rowtype;
+  v_request public.extra_stop_requests%rowtype;
+  v_day date := (p_offer->>'arrival_date')::date;
+  v_start time := (p_offer->>'arrival_start')::time;
+  v_end time := (p_offer->>'arrival_end')::time;
+  v_fee integer := (p_offer->>'fee_cents')::integer;
+  v_visit integer := (p_offer->>'visit_minutes')::integer;
+  v_zone text;
+  v_cap integer;
+  v_count integer;
+  v_ref_number numeric;
+  v_job_id uuid;
+  v_payment_id uuid;
+  v_now timestamptz := clock_timestamp();
+  v_deadline timestamptz;
+begin
+  if v_day is null or v_start is null or v_end is null or v_start >= v_end
+     or v_fee is null or v_fee <= 0 then
+    raise exception 'Set a valid arrival window and Quick Stop fee.' using errcode = '22023';
+  end if;
+
+  -- Transaction-scoped, account/date-scoped serialization covers the count AND
+  -- publication. Different request IDs cannot consume the same last slot.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('quick-stop-day:' || p_account_id::text || ':' || v_day::text, 0)
+  );
+  select * into v_account from public.accounts where id = p_account_id;
+  if not found then raise exception 'Account not found.' using errcode = 'P0002'; end if;
+  if not coalesce(v_account.connect_onboarded, false) or nullif(v_account.stripe_connect_id, '') is null then
+    raise exception 'Finish your Stripe payout setup before sending Quick Stop offers.' using errcode = '22023';
+  end if;
+  v_zone := coalesce(nullif(v_account.timezone, ''), 'America/New_York');
+  if not exists (select 1 from pg_catalog.pg_timezone_names where name = v_zone) then
+    raise exception 'The account timezone is invalid.' using errcode = '22023';
+  end if;
+  -- Reject DST gaps as well as elapsed windows. A contractor may negotiate a
+  -- date beyond the customer request horizon; daysAhead is intentionally absent.
+  if public.quick_stop_window_instant(v_day, v_start, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_end, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_end, v_zone) <= clock_timestamp() then
+    raise exception 'Choose an arrival window that has not ended in your timezone.' using errcode = '22023';
+  end if;
+  if nullif(v_account.extra_stop_weekdays, '') is not null
+     and not (extract(dow from v_day)::integer = any(string_to_array(v_account.extra_stop_weekdays, ',')::integer[])) then
+    raise exception 'That day is not in your Quick Stop schedule.' using errcode = '22023';
+  end if;
+  if v_start < coalesce(nullif(v_account.extra_stop_earliest_time, '')::time, '08:00'::time)
+     or v_end > coalesce(nullif(v_account.extra_stop_latest_end, '')::time, '20:00'::time) then
+    raise exception 'The arrival window is outside your Quick Stop hours.' using errcode = '22023';
+  end if;
+
+  select * into v_request from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id for update;
+  if not found then raise exception 'Request not found.' using errcode = 'P0002'; end if;
+  if v_request.status not in ('awaiting_contractor', 'more_information_requested') then
+    raise exception 'This request can no longer be offered.' using errcode = '22023';
+  end if;
+  if v_request.job_id is not null or v_request.payment_id is not null then
+    raise exception 'This request already has a job or payment. Reload before continuing.' using errcode = '22023';
+  end if;
+  if v_request.client_id is not null and not exists (
+    select 1 from public.clients where id = v_request.client_id and account_id = p_account_id
+  ) then
+    raise exception 'The request client does not belong to this account.' using errcode = '22023';
+  end if;
+  v_cap := greatest(1, least(50, coalesce(v_account.extra_stop_max_per_day, 2)));
+  select count(*) into v_count from public.extra_stop_requests
+    where account_id = p_account_id and arrival_date = v_day
+      and status in ('contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived');
+  if v_count >= v_cap then
+    raise exception 'You are at your Quick Stop limit (%) for that day.', v_cap using errcode = '22023';
+  end if;
+
+  -- Preserve the normal numeric J- reference allocation. Normal job creation
+  -- does not take our day lock, so retry an account/ref collision transactionally.
+  for attempt in 1..5 loop
+    select greatest(1000, coalesce(max(substring(ref from 3)::numeric), 1000)) + 1
+      into v_ref_number from public.jobs where account_id = p_account_id and ref ~ '^J-[0-9]+$';
+    begin
+      insert into public.jobs (
+        account_id, ref, client_id, client_name, client_phone, client_email,
+        address, scope, status, scheduled_for, scheduled_time, quoted_amount,
+        estimated_hours, lat, lng, geocoded_at
+      ) values (
+        p_account_id, 'J-' || v_ref_number::text, v_request.client_id,
+        v_request.client_name, v_request.client_phone, v_request.client_email,
+        v_request.address, 'Quick Stop — ' || coalesce(nullif(v_request.ai_summary, ''), 'quick visit'),
+        'new_lead', v_day, v_start, 0,
+        case when v_visit > 0 then greatest(0.25, round(v_visit::numeric / 60, 2)) else null end,
+        v_request.lat, v_request.lng,
+        case when v_request.lat is not null and v_request.lng is not null then v_now else null end
+      ) returning id into v_job_id;
+      exit;
+    exception when unique_violation then
+      if attempt = 5 then raise; end if;
+    end;
+  end loop;
+
+  -- Same payment shape as createDepositRequest. Stripe Checkout is created only
+  -- when the customer follows the link, after this transaction has committed.
+  insert into public.payments (
+    account_id, job_id, kind, label, amount, status,
+    homeowner_phone, sms_consent, sms_consent_at
+  ) values (
+    p_account_id, v_job_id, 'deposit', 'Quick Stop priority visit fee', v_fee::numeric / 100,
+    'requested', v_request.client_phone, nullif(v_request.client_phone, '') is not null,
+    case when nullif(v_request.client_phone, '') is not null then v_now else null end
+  ) returning id into v_payment_id;
+
+  v_deadline := clock_timestamp() + make_interval(mins => least(720, greatest(1, coalesce(nullif(v_account.extra_stop_payment_deadline_mins, 0), 15))));
+  update public.extra_stop_requests set
+    status = 'awaiting_customer_payment', job_id = v_job_id, payment_id = v_payment_id,
+    arrival_date = v_day, arrival_start = v_start, arrival_end = v_end,
+    fee_cents = v_fee, diagnostic_fee_cents = (p_offer->>'diagnostic_fee_cents')::integer,
+    offer_visit_minutes = v_visit, contractor_note = p_offer->>'contractor_note',
+    detour_miles = (p_offer->>'detour_miles')::numeric,
+    detour_minutes = (p_offer->>'detour_minutes')::numeric,
+    route_extension_minutes = (p_offer->>'route_extension_minutes')::numeric,
+    offer_sent_at = v_now, payment_deadline_at = v_deadline, hold_expires_at = v_deadline,
+    updated_at = v_now
+    where id = p_request_id and account_id = p_account_id;
+  insert into public.extra_stop_events(account_id, request_id, actor, from_status, to_status, meta)
+    values(p_account_id, p_request_id, 'contractor', v_request.status, 'awaiting_customer_payment',
+      jsonb_build_object('paymentId', v_payment_id, 'jobId', v_job_id, 'arrivalDate', v_day, 'atomicOffer', true));
+  return jsonb_build_object('id', p_request_id, 'job_id', v_job_id, 'payment_id', v_payment_id,
+    'status', 'awaiting_customer_payment', 'payment_deadline_at', v_deadline);
+end;
+$$;
+
+revoke all on function public.create_quick_stop_offer(uuid, uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.create_quick_stop_offer(uuid, uuid, jsonb) to service_role;
+
+-- Recover pre-migration staged offers. New creation never commits this status.
+-- Stamp/compare updated_at because failure may precede offer_sent_at entirely.
+create or replace function public.recover_stale_quick_stop_offer(
+  p_account_id uuid, p_request_id uuid, p_stale_before timestamptz
+) returns boolean
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_request public.extra_stop_requests%rowtype;
+  v_snapshot public.extra_stop_requests%rowtype;
+  v_now timestamptz := clock_timestamp();
+begin
+  select * into v_snapshot from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id;
+  if not found or p_stale_before is null or v_snapshot.status <> 'contractor_offer_sent'
+     or v_snapshot.updated_at > least(p_stale_before, v_now - interval '15 minutes') then return false; end if;
+  -- Include a payment created against the placeholder before linkage failed.
+  -- Lock payments before requests, matching capture/refund reconciliation.
+  perform 1 from public.payments where account_id = p_account_id
+    and (id = v_snapshot.payment_id or job_id = v_snapshot.job_id) order by id for update;
+  select * into v_request from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id for update;
+  if not found or v_request.status <> 'contractor_offer_sent'
+     or v_request.updated_at > least(p_stale_before, v_now - interval '15 minutes')
+     or v_request.payment_id is distinct from v_snapshot.payment_id
+     or v_request.job_id is distinct from v_snapshot.job_id then return false; end if;
+  -- A concurrent captured payment wins. Preserve charge evidence for review and
+  -- keep processing the rest of the bounded batch instead of rolling it back.
+  if exists (select 1 from public.payments where account_id = p_account_id
+      and (id = v_request.payment_id or job_id = v_request.job_id)
+      and (status in ('paid', 'refunded', 'disputed') or paid_at is not null)) then
+    return false;
+  end if;
+  update public.payments set status = 'failed', failed_at = v_now
+    where account_id = p_account_id and (id = v_request.payment_id or job_id = v_request.job_id)
+      and status in ('requested', 'processing');
+  update public.jobs set status = 'archived' where id = v_request.job_id and account_id = p_account_id;
+  update public.extra_stop_requests set status = 'offer_expired', updated_at = v_now
+    where id = p_request_id and account_id = p_account_id;
+  insert into public.extra_stop_events(account_id, request_id, actor, from_status, to_status, meta)
+    values(p_account_id, p_request_id, 'system', 'contractor_offer_sent', 'offer_expired',
+      jsonb_build_object('reason', 'offer_creation_interrupted'));
+  return true;
+end;
+$$;
+
+revoke all on function public.recover_stale_quick_stop_offer(uuid, uuid, timestamptz) from public, anon, authenticated;
+grant execute on function public.recover_stale_quick_stop_offer(uuid, uuid, timestamptz) to service_role;
+
+-- Bound work after filtering out settled rows that require staff adjudication.
+-- Those rows cannot repeatedly occupy the first page and starve recoverable ones.
+create or replace function public.recover_stale_quick_stop_offers(
+  p_account_id uuid default null, p_limit integer default 50
+) returns integer
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_row record;
+  v_count integer := 0;
+  v_before timestamptz := clock_timestamp() - interval '15 minutes';
+begin
+  for v_row in
+    select r.id, r.account_id from public.extra_stop_requests r
+      where r.status = 'contractor_offer_sent' and r.updated_at <= v_before
+        and (p_account_id is null or r.account_id = p_account_id)
+        and not exists (select 1 from public.payments p where p.account_id = r.account_id
+          and (p.id = r.payment_id or p.job_id = r.job_id)
+          and (p.status in ('paid', 'refunded', 'disputed') or p.paid_at is not null))
+      order by r.updated_at, r.id limit greatest(1, least(coalesce(p_limit, 50), 100))
+  loop
+    if public.recover_stale_quick_stop_offer(v_row.account_id, v_row.id, v_before) then
+      v_count := v_count + 1;
+    end if;
+  end loop;
+  return v_count;
+end;
+$$;
+revoke all on function public.recover_stale_quick_stop_offers(uuid, integer) from public, anon, authenticated;
+grant execute on function public.recover_stale_quick_stop_offers(uuid, integer) to service_role;
+
+-- Accepting a negotiated date consumes that day's same capacity as a new offer.
+-- Compare the precise proposal version and perform both schedule writes together.
+create or replace function public.accept_quick_stop_window(
+  p_account_id uuid, p_request_id uuid, p_expected_proposed_at timestamptz
+) returns boolean
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_request public.extra_stop_requests%rowtype;
+  v_account public.accounts%rowtype;
+  v_day date;
+  v_zone text;
+  v_count integer;
+  v_cap integer;
+  v_now timestamptz := clock_timestamp();
+begin
+  select proposed_arrival_date into v_day from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id;
+  if not found or v_day is null or p_expected_proposed_at is null then return false; end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('quick-stop-day:' || p_account_id::text || ':' || v_day::text, 0)
+  );
+  select * into v_request from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id for update;
+  if not found or v_request.status not in ('confirmed', 'en_route')
+     or v_request.no_show_reported_at is not null
+     or v_request.proposed_window_at is distinct from p_expected_proposed_at
+     or v_request.proposed_arrival_date is distinct from v_day then return false; end if;
+  select * into v_account from public.accounts where id = p_account_id;
+  if not found then return false; end if;
+  v_zone := coalesce(nullif(v_account.timezone, ''), 'America/New_York');
+  if v_request.proposed_arrival_start is null or v_request.proposed_arrival_end is null
+     or v_request.proposed_arrival_start >= v_request.proposed_arrival_end
+     or public.quick_stop_window_instant(v_day, v_request.proposed_arrival_start, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_request.proposed_arrival_end, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_request.proposed_arrival_end, v_zone) <= clock_timestamp() then
+    raise exception 'Choose an arrival window that has not ended in your timezone.' using errcode = '22023';
+  end if;
+  if (nullif(v_account.extra_stop_weekdays, '') is not null
+      and not (extract(dow from v_day)::integer = any(string_to_array(v_account.extra_stop_weekdays, ',')::integer[])))
+     or v_request.proposed_arrival_start < coalesce(nullif(v_account.extra_stop_earliest_time, '')::time, '08:00'::time)
+     or v_request.proposed_arrival_end > coalesce(nullif(v_account.extra_stop_latest_end, '')::time, '20:00'::time) then
+    raise exception 'The arrival window is outside your Quick Stop schedule.' using errcode = '22023';
+  end if;
+  v_cap := greatest(1, least(50, coalesce(v_account.extra_stop_max_per_day, 2)));
+  select count(*) into v_count from public.extra_stop_requests where account_id = p_account_id
+    and arrival_date = v_day and id <> p_request_id
+    and status in ('contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived');
+  if v_count >= v_cap then
+    raise exception 'This arrival day has reached its Quick Stop limit. Ask your contractor for another window.' using errcode = '22023';
+  end if;
+  update public.jobs set scheduled_for = v_day, scheduled_time = v_request.proposed_arrival_start
+    where id = v_request.job_id and account_id = p_account_id;
+  if not found then raise exception 'The Quick Stop job could not be updated.' using errcode = 'P0002'; end if;
+  update public.extra_stop_requests set
+    arrival_date = v_day, arrival_start = v_request.proposed_arrival_start, arrival_end = v_request.proposed_arrival_end,
+    proposed_arrival_date = null, proposed_arrival_start = null, proposed_arrival_end = null,
+    proposed_window_at = null, updated_at = v_now
+    where id = p_request_id and account_id = p_account_id;
+  insert into public.extra_stop_events(account_id, request_id, actor, from_status, to_status, meta)
+    values(p_account_id, p_request_id, 'customer', v_request.status, v_request.status,
+      jsonb_build_object('action', 'accepted_revised_window', 'arrivalDate', v_day));
+  return true;
+end;
+$$;
+revoke all on function public.accept_quick_stop_window(uuid, uuid, timestamptz) from public, anon, authenticated;
+grant execute on function public.accept_quick_stop_window(uuid, uuid, timestamptz) to service_role;
+
+commit;
+
+-- Source: migrations/20260914132825_quick_stop_atomic_sweep.sql
+begin;
+
+-- Same conversion as quick-stop-time.ts: reject skipped local times and use
+-- the later instant when a wall-clock time repeats. No session zone is used.
+create or replace function public.quick_stop_window_instant(p_day date, p_time time, p_timezone text)
+returns timestamptz language plpgsql stable strict security invoker set search_path = '' as $$
+declare
+  v_wall timestamp;
+  v_base timestamptz;
+  v_probe timestamptz;
+  v_candidate timestamptz;
+  v_result timestamptz;
+  v_step integer;
+begin
+  if not isfinite(p_day) or extract(year from p_day) not between 1 and 9999
+    or extract(hour from p_time) >= 24
+    or not exists(select 1 from pg_catalog.pg_timezone_names where name=p_timezone) then
+    return null;
+  end if;
+  v_wall := p_day + p_time;
+  v_base := v_wall at time zone 'UTC';
+  for v_step in -3..3 loop
+    v_probe := v_base + make_interval(hours => v_step * 12);
+    v_candidate := v_base - ((v_probe at time zone p_timezone) - (v_probe at time zone 'UTC'));
+    if v_candidate at time zone p_timezone = v_wall then
+      v_result := greatest(v_result,v_candidate);
+    end if;
+  end loop;
+  return v_result;
+exception when datetime_field_overflow or invalid_parameter_value then
+  return null;
+end $$;
+
+create or replace function public.sweep_quick_stop_requests(p_account_id uuid default null, p_limit integer default 50)
+returns table(kind text, request_id uuid, account_id uuid, client_name text)
+language plpgsql security invoker set search_path = '' as $$
+declare
+  c public.extra_stop_requests%rowtype;
+  r public.extra_stop_requests%rowtype;
+  p public.payments%rowtype;
+  v_now timestamptz := clock_timestamp();
+  v_end timestamptz;
+  v_start timestamptz;
+  v_zone text;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100 then
+    raise exception 'Invalid Quick Stop sweep batch size' using errcode='22023';
+  end if;
+
+  -- Capture reconciliation already locks payment before request. Take the same
+  -- order and skip contended rows, then recheck the entire request under lock.
+  -- Eligibility is filtered before LIMIT, so future and malformed rows cannot
+  -- indefinitely occupy the first batch ahead of actual overdue work.
+  for c in
+    select e.* from public.extra_stop_requests e
+    where e.status='awaiting_customer_payment' and e.payment_deadline_at<v_now and e.paid_at is null
+      and (p_account_id is null or e.account_id=p_account_id)
+      and not exists(select 1 from public.payments p0 where p0.id=e.payment_id and p0.account_id=e.account_id
+        and (p0.paid_at is not null or p0.status in ('paid','refunded')))
+    order by e.payment_deadline_at,e.id limit p_limit
+  loop
+    if c.payment_id is not null then
+      select * into p from public.payments p0 where p0.id=c.payment_id and p0.account_id=c.account_id for update skip locked;
+      if not found or p.paid_at is not null or p.status in ('paid','refunded') then continue; end if;
+    end if;
+    select * into r from public.extra_stop_requests e where e.id=c.id and e.account_id=c.account_id for update skip locked;
+    if not found or r.payment_id is distinct from c.payment_id or r.status<>'awaiting_customer_payment'
+      or r.paid_at is not null or r.payment_deadline_at is null or r.payment_deadline_at>=v_now then continue; end if;
+    update public.extra_stop_requests e set status='offer_expired',hold_expires_at=null,updated_at=v_now where e.id=r.id;
+    if r.payment_id is not null then
+      update public.payments p0 set status='failed',failed_at=v_now
+        where p0.id=r.payment_id and p0.account_id=r.account_id and p0.status in ('requested','processing') and p0.paid_at is null;
+    end if;
+    if r.job_id is not null then
+      update public.jobs j set status='archived' where j.id=r.job_id and j.account_id=r.account_id;
+    end if;
+    insert into public.extra_stop_events(account_id,request_id,actor,from_status,to_status,meta)
+      values(r.account_id,r.id,'system',r.status,'offer_expired','{"reason":"payment_window_elapsed"}'::jsonb);
+    kind:='payment_expired'; request_id:=r.id; account_id:=r.account_id; client_name:=r.client_name;
+    return next;
+  end loop;
+
+  for c in
+    select e.* from public.extra_stop_requests e
+    where e.status in ('awaiting_contractor','more_information_requested') and e.response_deadline_at<v_now
+      and e.paid_at is null and (p_account_id is null or e.account_id=p_account_id)
+      and not exists(select 1 from public.payments p0 where p0.id=e.payment_id and p0.account_id=e.account_id
+        and (p0.paid_at is not null or p0.status in ('paid','refunded')))
+    order by e.response_deadline_at,e.id limit p_limit
+  loop
+    if c.payment_id is not null then
+      select * into p from public.payments p0 where p0.id=c.payment_id and p0.account_id=c.account_id for update skip locked;
+      if not found or p.paid_at is not null or p.status in ('paid','refunded') then continue; end if;
+    end if;
+    select * into r from public.extra_stop_requests e where e.id=c.id and e.account_id=c.account_id for update skip locked;
+    if not found or r.payment_id is distinct from c.payment_id or r.status not in ('awaiting_contractor','more_information_requested')
+      or r.paid_at is not null or r.response_deadline_at is null or r.response_deadline_at>=v_now then continue; end if;
+    update public.extra_stop_requests e set status='offer_expired',hold_expires_at=null,updated_at=v_now where e.id=r.id;
+    if r.payment_id is not null then
+      update public.payments p0 set status='failed',failed_at=v_now
+        where p0.id=r.payment_id and p0.account_id=r.account_id and p0.status in ('requested','processing') and p0.paid_at is null;
+    end if;
+    if r.job_id is not null then
+      update public.jobs j set status='archived' where j.id=r.job_id and j.account_id=r.account_id;
+    end if;
+    insert into public.extra_stop_events(account_id,request_id,actor,from_status,to_status,meta)
+      values(r.account_id,r.id,'system',r.status,'offer_expired','{"reason":"response_window_elapsed"}'::jsonb);
+    kind:='response_expired'; request_id:=r.id; account_id:=r.account_id; client_name:=r.client_name;
+    return next;
+  end loop;
+
+  for c in
+    select e.* from public.extra_stop_requests e
+    join public.accounts a on a.id=e.account_id
+    cross join lateral (select
+      public.quick_stop_window_instant(e.arrival_date,e.arrival_start,coalesce(nullif(a.timezone,''),'America/New_York')) as start_at,
+      public.quick_stop_window_instant(e.arrival_date,e.arrival_end,coalesce(nullif(a.timezone,''),'America/New_York')) as end_at
+    ) w
+    where e.status in ('confirmed','en_route','arrived') and e.no_show_reported_at is null
+      and e.paid_at is not null and e.paid_at<=v_now and e.job_id is not null and e.payment_id is not null
+      and e.arrival_date <= (v_now at time zone 'UTC')::date + 1
+      and (p_account_id is null or e.account_id=p_account_id)
+      and w.start_at<w.end_at and w.end_at + interval '2 hours'<v_now
+      and exists(select 1 from public.payments p0 where p0.id=e.payment_id and p0.account_id=e.account_id
+        and p0.status in ('paid','refunded') and p0.paid_at is not null)
+      and exists(select 1 from public.jobs j where j.id=e.job_id and j.account_id=e.account_id)
+    order by w.end_at,e.id limit p_limit
+  loop
+    select * into p from public.payments p0 where p0.id=c.payment_id and p0.account_id=c.account_id for update skip locked;
+    if not found or p.status not in ('paid','refunded') or p.paid_at is null then continue; end if;
+    select * into r from public.extra_stop_requests e where e.id=c.id and e.account_id=c.account_id for update skip locked;
+    if not found or r.payment_id is distinct from c.payment_id or r.status not in ('confirmed','en_route','arrived')
+      or r.no_show_reported_at is not null or r.paid_at is null or r.paid_at>v_now or r.job_id is null then continue; end if;
+    select coalesce(nullif(a.timezone,''),'America/New_York') into v_zone from public.accounts a where a.id=r.account_id;
+    v_start:=public.quick_stop_window_instant(r.arrival_date,r.arrival_start,v_zone);
+    v_end:=public.quick_stop_window_instant(r.arrival_date,r.arrival_end,v_zone);
+    if v_start is null or v_end is null or v_start>=v_end or v_end + interval '2 hours'>=v_now then continue; end if;
+    update public.jobs j set status='complete' where j.id=r.job_id and j.account_id=r.account_id;
+    if not found then continue; end if;
+    update public.extra_stop_requests e set status='completed',completed_at=v_now,updated_at=v_now where e.id=r.id;
+    insert into public.extra_stop_events(account_id,request_id,actor,from_status,to_status,meta)
+      values(r.account_id,r.id,'system',r.status,'completed','{"reason":"auto_complete_after_window"}'::jsonb);
+    kind:='auto_completed'; request_id:=r.id; account_id:=r.account_id; client_name:=r.client_name;
+    return next;
+  end loop;
+end $$;
+
+create index if not exists quick_stop_payment_sweep_idx on public.extra_stop_requests(payment_deadline_at,id)
+  where status='awaiting_customer_payment' and paid_at is null;
+create index if not exists quick_stop_response_sweep_idx on public.extra_stop_requests(response_deadline_at,id)
+  where status in ('awaiting_contractor','more_information_requested') and paid_at is null;
+create index if not exists quick_stop_completion_sweep_idx on public.extra_stop_requests(arrival_date,id)
+  where status in ('confirmed','en_route','arrived') and no_show_reported_at is null;
+
+revoke all on function public.quick_stop_window_instant(date,time,text) from public,anon,authenticated;
+revoke all on function public.sweep_quick_stop_requests(uuid,integer) from public,anon,authenticated;
+grant execute on function public.quick_stop_window_instant(date,time,text) to service_role;
+grant execute on function public.sweep_quick_stop_requests(uuid,integer) to service_role;
+
+commit;
+
+-- Source: migrations/20260914133059_quick_stop_lifecycle_guard.sql
+-- Scheduling can close while refunds/disputes remain open. This predicate mirrors
+-- QUICK_STOP_TRANSITIONS and protects every writer, including older webhooks.
+create or replace function public.quick_stop_can_transition(p_from text, p_to text)
+returns boolean language sql immutable security invoker set search_path = '' as $$
+  select p_to = any(case p_from
+    when 'requested' then array['awaiting_contractor','contractor_declined']
+    when 'awaiting_contractor' then array['contractor_offer_sent','awaiting_customer_payment','more_information_requested','contractor_declined','offer_expired']
+    when 'more_information_requested' then array['awaiting_contractor','contractor_offer_sent','awaiting_customer_payment','contractor_declined','offer_expired']
+    when 'contractor_declined' then array['refunded']
+    when 'contractor_offer_sent' then array['awaiting_customer_payment','offer_expired','customer_declined','contractor_canceled']
+    when 'awaiting_customer_payment' then array['confirmed','offer_expired','customer_declined','customer_canceled','contractor_canceled']
+    when 'offer_expired' then array['refunded']
+    when 'customer_declined' then array['refunded']
+    when 'confirmed' then array['en_route','arrived','completed','customer_canceled','contractor_canceled','no_show_confirmed','refunded','disputed']
+    when 'en_route' then array['arrived','completed','customer_canceled','contractor_canceled','no_show_confirmed','refunded','disputed']
+    when 'arrived' then array['completed','customer_canceled','contractor_canceled','refunded','disputed']
+    when 'completed' then array['no_show_confirmed','refunded','disputed']
+    when 'customer_canceled' then array['refunded','disputed']
+    when 'contractor_canceled' then array['refunded','disputed']
+    when 'no_show_reported' then array['no_show_confirmed','completed','refunded','disputed']
+    when 'no_show_confirmed' then array['refunded','disputed']
+    when 'refunded' then array['disputed']
+    when 'disputed' then array['refunded','completed','no_show_confirmed']
+    else array[]::text[] end);
+$$;
+revoke all on function public.quick_stop_can_transition(text,text) from public, anon;
+grant execute on function public.quick_stop_can_transition(text,text) to authenticated, service_role;
+
+create or replace function public.enforce_quick_stop_transition()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    if current_user = 'authenticated' and (
+      new.status not in ('requested','awaiting_contractor')
+      or new.job_id is not null or new.payment_id is not null or new.paid_at is not null
+      or coalesce(new.refund_cents,0) <> 0 or new.refund_due_cents is not null
+      or new.refund_state <> 'none'
+      or new.no_show_confirmed_at is not null or new.no_show_reported_at is not null
+    ) then
+      raise exception 'Quick Stop booking and payment state is server managed' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+  -- Office users can advance field-work states, but payment/refund evidence and
+  -- enforcement outcomes are written only by the authorized server operations.
+  if current_user = 'authenticated' and (
+    new.account_id is distinct from old.account_id
+    or new.job_id is distinct from old.job_id
+    or new.arrival_date is distinct from old.arrival_date
+    or new.arrival_start is distinct from old.arrival_start
+    or new.arrival_end is distinct from old.arrival_end
+    or new.fee_cents is distinct from old.fee_cents
+    or new.diagnostic_fee_cents is distinct from old.diagnostic_fee_cents
+    or new.payment_id is distinct from old.payment_id
+    or new.paid_at is distinct from old.paid_at
+    or new.refund_cents is distinct from old.refund_cents
+    or new.refund_due_cents is distinct from old.refund_due_cents
+    or new.refund_state is distinct from old.refund_state
+    or new.no_show_confirmed_at is distinct from old.no_show_confirmed_at
+    or new.no_show_reported_at is distinct from old.no_show_reported_at
+    or (new.status is distinct from old.status and new.status not in
+      ('contractor_declined','more_information_requested','en_route','arrived','completed'))
+    or (new.status is distinct from old.status and old.status in
+      ('disputed','refunded','no_show_reported','no_show_confirmed'))
+  ) then
+    raise exception 'Quick Stop payment and enforcement state is server managed' using errcode = '42501';
+  end if;
+  if new.status is distinct from old.status
+    and not public.quick_stop_can_transition(old.status, new.status) then
+    raise exception 'Quick Stop cannot move from % to %', old.status, new.status using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_quick_stop_transition() from public, anon, authenticated;
+drop trigger if exists extra_stop_lifecycle_guard on public.extra_stop_requests;
+create trigger extra_stop_lifecycle_guard before insert or update on public.extra_stop_requests
+for each row execute function public.enforce_quick_stop_transition();
+
+create index if not exists extra_stop_interrupted_offer_idx on public.extra_stop_requests(updated_at,id)
+  where status = 'contractor_offer_sent';
+
+-- Source: migrations/20260914134359_quick_stop_no_show_lock.sql
+begin;
+
+-- Keep the idempotency marker away from owner-writable request columns. One
+-- verified visit can affect enforcement once, even if staff later dispute or
+-- refund it, a process retries, or somebody clears the account's lock manually.
+create table public.quick_stop_no_show_enforcements (
+  request_id uuid primary key references public.extra_stop_requests(id) on delete cascade,
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  applied_at timestamptz not null default clock_timestamp(),
+  result jsonb not null
+);
+alter table public.quick_stop_no_show_enforcements enable row level security;
+revoke all on public.quick_stop_no_show_enforcements from public,anon,authenticated;
+grant select,insert on public.quick_stop_no_show_enforcements to service_role;
+
+create or replace function public.apply_quick_stop_no_show_lock(p_account_id uuid,p_request_id uuid)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare
+  a public.accounts%rowtype;
+  r public.extra_stop_requests%rowtype;
+  v_saved jsonb;
+  v_result jsonb;
+  v_anchor timestamptz;
+  v_candidate_until timestamptz;
+  v_now timestamptz := clock_timestamp();
+  v_count90 integer;
+  v_count180 integer;
+  v_prior integer;
+  v_tier integer;
+  v_days integer;
+  v_reason text;
+  v_changed boolean := false;
+begin
+  -- Serialize all enforcement decisions for the account. Cancellation/capture
+  -- transactions finish before calling this function, and never acquire this
+  -- account lock while holding the request lock.
+  select * into a from public.accounts where id=p_account_id for update;
+  if not found then raise exception 'Account not found'; end if;
+  select result into v_saved from public.quick_stop_no_show_enforcements
+    where request_id=p_request_id and account_id=p_account_id;
+  if found then return v_saved || jsonb_build_object('changed',false); end if;
+
+  select * into r from public.extra_stop_requests
+    where id=p_request_id and account_id=p_account_id for update;
+  if not found or r.no_show_confirmed_at is null or r.no_show_confirmed_at>v_now then
+    raise exception 'A confirmed no-show is required for enforcement';
+  end if;
+
+  -- Report timestamps, rather than retry/worker clocks, determine duration.
+  -- Use the latest committed report so an older report committed out of order
+  -- still escalates the latest incident correctly. The confirmation timestamp
+  -- remains evidence after a request moves to refunded or disputed.
+  select max(e.no_show_confirmed_at) into v_anchor from public.extra_stop_requests e
+    where e.account_id=p_account_id and e.no_show_confirmed_at<=v_now;
+  select
+    count(*) filter(where e.no_show_confirmed_at>=v_anchor-interval '2160 hours'),
+    count(*),
+    count(*) filter(where e.id<>p_request_id)
+    into v_count90,v_count180,v_prior
+    from public.extra_stop_requests e
+    where e.account_id=p_account_id and e.no_show_confirmed_at<=v_anchor
+      and e.no_show_confirmed_at>=v_anchor-interval '4320 hours';
+  if v_count180>=3 then
+    v_tier:=3; v_days:=3650;
+    v_reason:='Third no-show within 180 days — Quick Stop disabled pending staff review.';
+  elsif v_count90>=2 then
+    v_tier:=2; v_days:=30;
+    v_reason:='Second no-show within 90 days — Quick Stop locked for 30 days.';
+  else
+    v_tier:=1; v_days:=10;
+    v_reason:='No-show reported — Quick Stop locked for 10 days.';
+  end if;
+  v_candidate_until:=v_anchor+make_interval(secs=>v_days*86400);
+  if a.extra_stop_locked_until is null or a.extra_stop_locked_until<v_candidate_until then
+    update public.accounts set extra_stop_locked_until=v_candidate_until,extra_stop_lock_reason=v_reason
+      where id=p_account_id;
+    a.extra_stop_locked_until:=v_candidate_until;
+    a.extra_stop_lock_reason:=v_reason;
+    v_changed:=true;
+  end if;
+  -- A stronger preexisting manual or automatic suspension keeps both its expiry
+  -- and explanation. Save this request's outcome even when no change was needed.
+  v_result:=jsonb_build_object('tier',v_tier,'untilIso',a.extra_stop_locked_until,
+    'reason',a.extra_stop_lock_reason,'priorNoShows',v_prior,'changed',v_changed);
+  insert into public.quick_stop_no_show_enforcements(request_id,account_id,result)
+    values(p_request_id,p_account_id,v_result);
+  return v_result;
+end $$;
+
+revoke all on function public.apply_quick_stop_no_show_lock(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.apply_quick_stop_no_show_lock(uuid,uuid) to service_role;
+create index if not exists quick_stop_no_show_history_idx on public.extra_stop_requests(account_id,no_show_confirmed_at)
+  where no_show_confirmed_at is not null;
+
+commit;

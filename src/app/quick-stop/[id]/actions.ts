@@ -4,13 +4,11 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/auth';
 import { getQuickStopRequestById, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
-import { updateJobSchedule } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
 import { sendQuickStopStatusSms } from '@/lib/sms';
+import { loadQuickStopTimeZone, quickStopNoShowEligibility } from '@/lib/quick-stop-time';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-
-const NO_SHOW_GRACE_MS = 2 * 60 * 60 * 1000; // 2 hours after the window to report
 
 // Customer cancels their Quick Stop. Refund follows the tier policy (full within
 // 5 min of paying, then decreasing as the visit gets closer). Public — keyed by
@@ -27,21 +25,18 @@ export async function customerCancelQuickStopAction(requestId: string) {
 }
 
 // Customer reports a no-show. Allowed only if the tech never marked arrived and
-// we're within 2 hours of the arrival window's end. A verified no-show is a full
-// refund + record + notify (no contractor lockout — deferred per Phase-1 scope).
+// the paid visit window has ended, and its two-hour reporting period is open.
+// The cancellation transaction rechecks eligibility before refund/enforcement.
 export async function reportNoShowQuickStopAction(requestId: string) {
   const admin = createAdminClient();
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) redirect(`/quick-stop/${requestId}?error=notfound`);
-  if (req.arrived_at || !['confirmed', 'en_route'].includes(req.status)) {
-    redirect(`/quick-stop/${requestId}?error=state`);
-  }
-  const endMs = req.arrival_date && req.arrival_end ? new Date(`${req.arrival_date}T${req.arrival_end}`).getTime() : NaN;
-  if (Number.isFinite(endMs) && Date.now() > endMs + NO_SHOW_GRACE_MS) {
-    redirect(`/quick-stop/${requestId}?error=late`);
-  }
-  await admin.from('extra_stop_requests').update({ no_show_reported_at: new Date().toISOString() }).eq('id', requestId);
-  await resolveQuickStopCancellation(admin, req.account_id, requestId, { kind: 'no_show', reason: 'Customer reported no-show' });
+  const timeZone = await loadQuickStopTimeZone(admin, req.account_id);
+  const eligibility = quickStopNoShowEligibility(req, timeZone);
+  if (eligibility !== 'eligible') redirect(`/quick-stop/${requestId}?error=${eligibility}`);
+  await resolveQuickStopCancellation(admin, req.account_id, requestId, {
+    kind: 'no_show', reason: 'Customer reported no-show', requireReportingWindow: true,
+  });
   redirect(`/quick-stop/${requestId}?done=no_show`);
 }
 
@@ -54,28 +49,12 @@ export async function acceptRevisedWindowQuickStopAction(requestId: string) {
   if (!req.proposed_arrival_date || !['confirmed', 'en_route'].includes(req.status)) {
     redirect(`/quick-stop/${requestId}?error=state`);
   }
-  const nowIso = new Date().toISOString();
-  await admin
-    .from('extra_stop_requests')
-    .update({
-      arrival_date: req.proposed_arrival_date,
-      arrival_start: req.proposed_arrival_start,
-      arrival_end: req.proposed_arrival_end,
-      proposed_arrival_date: null,
-      proposed_arrival_start: null,
-      proposed_arrival_end: null,
-      proposed_window_at: null,
-      updated_at: nowIso,
-    })
-    .eq('id', requestId);
-  if (req.job_id && req.proposed_arrival_date) {
-    try {
-      await updateJobSchedule(admin, req.account_id, req.job_id, req.proposed_arrival_date, req.proposed_arrival_start);
-    } catch (error) {
-      console.error('Quick Stop reschedule failed:', error instanceof Error ? error.message : error);
-    }
-  }
-  await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'customer', meta: { acceptedWindow: { date: req.proposed_arrival_date, start: req.proposed_arrival_start, end: req.proposed_arrival_end } } });
+  const { data: accepted, error } = await admin.rpc('accept_quick_stop_window', {
+    p_account_id: req.account_id,
+    p_request_id: requestId,
+    p_expected_proposed_at: req.proposed_window_at,
+  });
+  if (error || !accepted) redirect(`/quick-stop/${requestId}?error=state`);
   redirect(`/quick-stop/${requestId}?done=window_accepted`);
 }
 
