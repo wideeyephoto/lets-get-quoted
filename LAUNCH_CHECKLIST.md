@@ -80,7 +80,9 @@ Reviewed **46 divergent branches / 123 distinct non-merge commits** against main
 
 No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
 
-## Contractor domains verification — 2026-09-09 to 2026-09-13
+## Contractor domains verification — 2026-09-09 to 2026-09-14
+
+- [x] **Website watcher failure investigated (September 14, 00:44 UTC):** The 00:00 UTC pending-site read failed with a Gateway Timeout/HTTP 500. Scheduled 00:15 and 00:30 runs recovered without manual intervention; active and fixture website TLS/verification remain valid. Retain one failed website run in the observation record. The separate email canary remains at **2/7 successful checks and two elapsed days** with its original start; final acceptance remains open. See [failure and recovery evidence](docs/contractor-domains-canary-2026-09-09.md#september-14-website-watcher-timeout-and-recovery).
 
 - [x] **Isolated platform callback reviewed (September 13, 21:43 UTC):** One new `email.delivered` Gateway Timeout concerned platform mail outside the canary and approved test inboxes. Provider and canonical records independently confirmed delivery. The supported staff resolution retained the incident and its audit without resend/replay; zero unresolved Resend callbacks remain. Domain health and the **2/7-check, two-day** window are unchanged. This does not claim the timeout root cause is fixed. See [incident evidence](docs/contractor-domains-canary-2026-09-09.md#september-13-isolated-platform-callback-review).
 
