@@ -112,7 +112,7 @@ export async function POST(request: Request) {
       }
 
       contractor = {
-        businessName: stateLic?.holderName || contractor?.businessName || accountBusinessName || undefined,
+        businessName: stateLic?.holderName || contractor?.businessName || accountBusinessName || 'Contractor',
         licenseNumber: stateLic?.licenseNumber || contractor?.licenseNumber,
         insuranceCarrier: liabIns?.insuranceCarrier || contractor?.insuranceCarrier,
         policyNumber: liabIns?.policyNumber || contractor?.policyNumber,

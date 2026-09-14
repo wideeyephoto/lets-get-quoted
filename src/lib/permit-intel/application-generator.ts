@@ -50,6 +50,7 @@ export type UniversalPermitApplicationData = {
   };
   workScope: {
     trade: string;
+    discipline?: string;
     projectTitle: string;
     detailedDescription: string;
     estimatedCost?: number;
@@ -313,6 +314,7 @@ export async function compilePermitApplication(
     },
     workScope: {
       trade: scopeProfile.tradeLabel,
+      discipline: effectiveDiscipline,
       projectTitle: scopeProfile.projectTitle,
       detailedDescription:
         job.scope ||
