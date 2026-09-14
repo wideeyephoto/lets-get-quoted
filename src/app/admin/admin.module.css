@@ -511,6 +511,14 @@
   border-radius: 0.65rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   gap: 0.2rem;
+  max-width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.filterTabs::-webkit-scrollbar {
+  display: none;
 }
 .filterTab {
   font-size: 0.78rem;
@@ -520,6 +528,8 @@
   color: rgba(247, 245, 239, 0.7);
   transition: all 0.15s ease;
   text-decoration: none;
+  white-space: nowrap;
+  flex: none;
 }
 .filterTab:hover {
   color: #ffffff;
@@ -1147,7 +1157,14 @@ textarea.input {
   border-radius: 0.75rem;
   padding: 0.3rem;
   margin: 0 0 1.3rem;
-  flex-wrap: wrap;
+  max-width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.tabStrip::-webkit-scrollbar {
+  display: none;
 }
 .tabBtn {
   display: inline-flex;
@@ -1163,6 +1180,8 @@ textarea.input {
   cursor: pointer;
   transition: all 0.15s ease;
   text-decoration: none;
+  white-space: nowrap;
+  flex: none;
 }
 .tabBtn:hover {
   color: #ffffff;
@@ -1576,3 +1595,16 @@ textarea.input {
 
 
 
+
+/* Universal Focus-Visible Accessibility */
+.statCard.link:focus-visible,
+.tabBtn:focus-visible,
+.filterTab:focus-visible,
+.btn:focus-visible,
+.moveBtn:focus-visible,
+.rowLink:focus-visible,
+.input:focus-visible,
+.compactInput:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21) !important;
+  outline-offset: 2px !important;
+}
