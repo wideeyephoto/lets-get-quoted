@@ -112,6 +112,7 @@ const requiredFunctions = [
   'record_sms_shared_notice_reply',
   'sms_recipient_keyword_opted_out',
   'sms_account_recipient_opted_out',
+  'apply_sms_carrier_opt_out_receipt',
 ];
 
 const dbDir = join(process.cwd(), '.pg17-messaging-schema-check');
@@ -149,34 +150,15 @@ try {
   await client.query(prelude);
   await client.query(readFileSync(join(process.cwd(), 'schema.sql'), 'utf8'));
   check('schema.sql executes top-to-bottom in a fresh PostgreSQL 17 database', true);
-  // Reapply the current Campaign-wide suppression, dispatch sender registration,
-  // purpose boundary, and registry callback quarantine so this harness checks
-  // the final production definitions.
+  // schema.sql already contains every forward migration in order. Replaying
+  // older function replacements here downgrades the final definitions and
+  // breaks later shape patches. Verify only the newest migration's replay;
+  // individual migration harnesses cover their own historical starting states.
   await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906120000_sms_campaign_wide_stop.sql'),
+    join(process.cwd(), 'migrations/20260914134735_sms_carrier_opt_out_projection.sql'),
     'utf8',
   ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906121036_register_signalwire_dispatch_sender.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906130000_sms_campaign_purpose_boundary.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906131500_messaging_registry_callback_fail_closed.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260908173107_sms_dispatch_help_account_binding.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260908175833_subcontractor_sms_projection_service_grant.sql'),
-    'utf8',
-  ));
-  check('Campaign STOP, dispatch sender, purpose boundary, callback quarantine, HELP binding, and projection grant reapply', true);
+  check('latest carrier opt-out migration reapplies over the canonical schema', true);
 
   const tables = await client.query(
     `select tablename from pg_catalog.pg_tables
@@ -1516,6 +1498,38 @@ try {
       && followupSecurity?.settlement_force_rls === true
       && followupSecurity?.scope_force_rls === true,
     JSON.stringify(followupSecurity));
+  // Exercise the real status ingress, receipt trigger, and suppression reader
+  // together under the complete schema's constraints and RLS definitions.
+  const carrierEventId = randomUUID();
+  await client.query(`insert into public.sms_events(
+    id,account_id,event_type,phone_number,status,provider,provider_id,body,context,
+    sender_number_id,send_started_at,provider_accepted_at
+  ) values($1,$2,'carrier_opt_out_test','+12485550221','sent','signalwire',
+    'carrier-opt-out-canonical','Test','customer',$3,clock_timestamp(),clock_timestamp())`,
+  [carrierEventId,accountId,senderId]);
+  const ingestCarrier = () => client.query(`select * from public.apply_sms_delivery_status_webhook(
+    'signalwire','carrier-opt-out-canonical','undelivered','21610',
+    'carrier-opt-out-canonical:undelivered:21610',$1,'application/json',
+    'https://example.test/api/sms/status')`,['d'.repeat(64)]);
+  const carrierIngress = (await ingestCarrier()).rows[0];
+  const carrierState = (await client.query(`select e.status,r.carrier_opt_out_disposition,
+    public.sms_recipient_keyword_opted_out(e.sender_number_id,e.phone_number) as stopped
+    from public.sms_events e join public.sms_webhook_receipts r on r.sms_event_id=e.id
+    where e.id=$1`,[carrierEventId])).rows[0];
+  check('real status ingress atomically records failure and carrier opt-out',
+    carrierIngress.sms_event_id===carrierEventId && carrierState.status==='failed'
+      && carrierState.carrier_opt_out_disposition==='applied' && carrierState.stopped===true,
+    JSON.stringify(carrierState));
+  await client.query(`update public.sms_sender_keyword_preferences
+    set status='opted_in',source='inbound_start',opted_out_at=null,updated_at=clock_timestamp()
+    where sender_number_id=$1 and phone_number='+12485550221'`,[senderId]);
+  await ingestCarrier();
+  const afterReplay = (await client.query(`select
+    public.sms_recipient_keyword_opted_out($1,'+12485550221') as stopped,
+    (select count(*)::int from public.sms_webhook_receipts where sms_event_id=$2) as receipts`,
+  [senderId,carrierEventId])).rows[0];
+  check('real duplicate ingress preserves START and a single immutable receipt',
+    afterReplay.stopped===false && afterReplay.receipts===1,JSON.stringify(afterReplay));
 } catch (error) {
   check('fresh schema harness ran to completion', false,
     error instanceof Error

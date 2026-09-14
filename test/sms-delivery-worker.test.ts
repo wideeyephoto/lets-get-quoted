@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SmsDestinationNotSupportedError } from '@/lib/sms-destination-policy';
 
 import {
@@ -19,6 +19,7 @@ import {
 } from '@/lib/sms-provider';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
+afterEach(() => vi.useRealTimers());
 const CLAIM: SmsDeliveryClaim = Object.freeze({
   claimToken: '22222222-2222-4222-8222-222222222222',
   eventId: '33333333-3333-4333-8333-333333333333',
@@ -101,6 +102,59 @@ function preflightFailure(error: Error) {
 }
 
 describe('durable SMS delivery worker', () => {
+  it.each(['customer_message', 'payment_message'] as const)('rechecks %s quiet hours on a retry before staging', async billingCategory => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-15T01:00:00Z'));
+    const claim = { ...CLAIM, billingCategory, senderPurpose: 'contractor_dedicated', attemptNumber: 2 };
+    const fake = store({ claimBatch: vi.fn().mockResolvedValueOnce([claim]).mockResolvedValue([]) });
+    const delivery = messenger();
+    const result = await runSmsDeliveryBatch(1, fake.value, delivery, runtime());
+    expect(result).toMatchObject({ deferredCount: 1, failedCount: 0 });
+    expect(fake.value.defer).toHaveBeenCalledWith(claim, 'sms_quiet_hours', 39660);
+    expect(fake.value.stage).not.toHaveBeenCalled();
+    expect(delivery.send).not.toHaveBeenCalled();
+  });
+
+  it.each(['preflight', 'request-marker'] as const)('defers safely when the cutoff passes during %s', async boundary => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-15T00:59:59Z'));
+    const claim = { ...CLAIM, billingCategory: 'payment_message' as const, senderPurpose: 'contractor_dedicated' };
+    const fake = store({
+      claimBatch: vi.fn().mockResolvedValueOnce([claim]).mockResolvedValue([]),
+      markRequestStarted: vi.fn(async () => {
+        fake.calls.push('start');
+        if (boundary === 'request-marker') vi.setSystemTime(new Date('2026-09-15T01:00:00Z'));
+      }),
+    });
+    const carrier = vi.fn(async () => 'must-not-send');
+    const delivery: SmsDeliveryMessenger = { send: async (_claim, _provider, _sender, _media, beforeRequest) => {
+      if (boundary === 'preflight') vi.setSystemTime(new Date('2026-09-15T01:00:00Z'));
+      await beforeRequest({ kind: 'unmetered' });
+      return carrier();
+    } };
+    const result = await runSmsDeliveryBatch(1, fake.value, delivery, runtime());
+    expect(result).toMatchObject({ deferredCount: 1, failedCount: 0, completedCount: 0 });
+    expect(carrier).not.toHaveBeenCalled();
+    expect(fake.value.fail).not.toHaveBeenCalled();
+    expect(fake.value.defer).toHaveBeenCalledWith(claim, 'sms_quiet_hours', 39660);
+    expect(fake.value.rollbackPreRequestBoundary).toHaveBeenCalledTimes(boundary === 'request-marker' ? 1 : 0);
+    expect(fake.value.markRequestStarted).toHaveBeenCalledTimes(boundary === 'request-marker' ? 1 : 0);
+  });
+
+  it('quarantines an uncertain marker rollback instead of treating it as safely deferred', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-15T00:59:59Z'));
+    const claim = { ...CLAIM, billingCategory: 'customer_message' as const, senderPurpose: 'contractor_dedicated' };
+    const fake = store({
+      claimBatch: vi.fn().mockResolvedValueOnce([claim]).mockResolvedValue([]),
+      markRequestStarted: vi.fn(async () => { fake.calls.push('start'); vi.setSystemTime(new Date('2026-09-15T01:00:00Z')); }),
+      rollbackPreRequestBoundary: vi.fn().mockRejectedValue(new Error('database unavailable')),
+    });
+    const carrier = vi.fn(async () => 'must-not-send');
+    const result = await runSmsDeliveryBatch(1, fake.value, messenger(carrier), runtime());
+    expect(result.indeterminateCount).toBe(1);
+    expect(fake.value.defer).not.toHaveBeenCalled();
+    expect(fake.value.fail).toHaveBeenCalledWith(claim, expect.any(String), false);
+    expect(carrier).not.toHaveBeenCalled();
+  });
+
   it('does not retry an unsupported destination or cross the request boundary', async () => {
     const fake = store();
     await runSmsDeliveryBatch(1, fake.value, preflightFailure(new SmsDestinationNotSupportedError()), runtime());

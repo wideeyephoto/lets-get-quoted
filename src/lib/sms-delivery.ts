@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
-import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
+import { smsQuietHoursResumeAt } from '@/lib/sms-quiet-hours-policy';
 import { assertSupportedSmsDestination } from '@/lib/sms-destination-policy';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -43,7 +43,6 @@ export type EnqueueSmsDeliveryInput = Readonly<{
   crewId?: string | null;
   senderNumberId?: string | null;
   availableAt?: Date | string | null;
-  bypassQuietHours?: boolean;
   mediaUrls?: string[];
 }>;
 
@@ -115,12 +114,13 @@ export async function enqueueSmsDelivery(
   }
 
   let availableAt = input.availableAt;
-  if (!availableAt && !input.bypassQuietHours && ['customer_message', 'payment_message'].includes(input.billingCategory)) {
-    const tz = resolveRecipientTimeZone({ phone: input.phoneNumber });
-    const check = getTcpaCompliantSendTime(new Date(), tz);
-    if (check.isDelayed) {
-      availableAt = check.sendAt;
-    }
+  const now = new Date();
+  const requestedAt = typeof availableAt === 'string' ? new Date(availableAt) : availableAt ?? now;
+  if (!Number.isFinite(requestedAt.getTime())) throw new Error('SMS availability time is invalid.');
+  const resumeAt = smsQuietHoursResumeAt(input.billingCategory, input.phoneNumber,
+    requestedAt > now ? requestedAt : now);
+  if (resumeAt) {
+    availableAt = resumeAt;
   }
 
   const { data, error } = await admin.rpc('enqueue_sms_delivery', {

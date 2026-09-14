@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildSendRequest, sendProviderMessage, smsProviderConfig, smsProviderSummary } from '@/lib/sms-provider';
+import { SmsQuietHoursDeferredError } from '@/lib/sms-quiet-hours-policy';
 
 const mocks = vi.hoisted(() => ({
   begin: vi.fn(), commit: vi.fn(), release: vi.fn(), admin: vi.fn(),
@@ -37,6 +38,17 @@ afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 const context = { accountId: '11111111-1111-4111-8111-111111111111', category: 'customer_message' } as const;
 
 describe('production SMS callback preflight', () => {
+  it('releases reserved credits when the final quiet-hours gate defers the send', async () => {
+    const deferred = new SmsQuietHoursDeferredError(new Date('2026-09-15T12:01:00Z'));
+    await expect(sendProviderMessage('+12485550140', 'Test', context, {
+      beforeRequest: async () => { throw deferred; },
+    })).rejects.toBe(deferred);
+    expect(mocks.begin).toHaveBeenCalledTimes(1);
+    expect(mocks.release).toHaveBeenCalledTimes(1);
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it.each(['+447700900123', '+12425550140', '+17875550140', '+15555550140'])
     ('blocks an unsupported direct or legacy queued destination before billing: %s', async (phone) => {
       const beforeRequest = vi.fn();

@@ -43,6 +43,9 @@ jobs:
       - name: Account closure domain database checks
         run: npm run test:pg17:closure-domains
 
+      - name: SMS carrier opt-out database checks
+        run: npm run test:pg17:sms-carrier-opt-out
+
       - name: SEO tests
         run: npm run test:seo
 

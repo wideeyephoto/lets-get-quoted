@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/auth';
 import { quoteFollowupDeliveryEligibility } from '@/lib/quote-followup-delivery';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import { lgqSmsDeliveryHold } from '@/lib/sms-brand';
-import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
+import { SmsQuietHoursDeferredError, smsQuietHoursResumeAt } from '@/lib/sms-quiet-hours-policy';
 import { SmsDestinationNotSupportedError } from '@/lib/sms-destination-policy';
 import {
   outboundSmsSuppression,
@@ -529,15 +529,12 @@ export async function runSmsDeliveryBatch(
       continue;
     }
 
-    if (['customer_message', 'payment_message'].includes(claim.billingCategory)) {
-      const tz = resolveRecipientTimeZone({ phone: claim.phoneNumber });
-      const check = getTcpaCompliantSendTime(new Date(), tz);
-      if (check.isDelayed) {
-        const delaySeconds = Math.max(1, Math.floor((check.sendAt.getTime() - Date.now()) / 1000));
-        await store.defer(claim, 'sms_quiet_hours', delaySeconds);
-        deferredCount += 1;
-        continue;
-      }
+    const resumeAt = smsQuietHoursResumeAt(claim.billingCategory, claim.phoneNumber);
+    if (resumeAt) {
+      const delaySeconds = Math.max(5, Math.ceil((resumeAt.getTime() - Date.now()) / 1000));
+      await store.defer(claim, 'sms_quiet_hours', delaySeconds);
+      deferredCount += 1;
+      continue;
     }
 
     let requestStarted = false;
@@ -558,9 +555,18 @@ export async function runSmsDeliveryBatch(
         stage.senderE164,
         claim.mediaUrls,
         async (usage) => {
+          const assertDaytime = () => {
+            const next = smsQuietHoursResumeAt(claim.billingCategory, claim.phoneNumber);
+            if (next) throw new SmsQuietHoursDeferredError(next);
+          };
+          // Sender readiness and credit reservation can cross the cutoff.
+          assertDaytime();
           try {
             await store.markRequestStarted(claim, usage);
             requestStarted = true;
+            // Check again after the last asynchronous database operation, just
+            // before returning control to the provider socket boundary.
+            assertDaytime();
           } catch (error) {
             // The RPC may have committed and lost its response, but the
             // provider socket is certainly not open yet. A token-bound
@@ -569,6 +575,7 @@ export async function runSmsDeliveryBatch(
             // observes the durable marker and quarantines the task instead.
             try {
               await store.rollbackPreRequestBoundary(claim);
+              requestStarted = false;
             } catch {
               console.error('SMS pre-request boundary rollback needs reconciliation');
             }
@@ -587,6 +594,12 @@ export async function runSmsDeliveryBatch(
       await store.complete(claim, providerId);
       completedCount += 1;
     } catch (error) {
+      if (error instanceof SmsQuietHoursDeferredError && !requestStarted) {
+        await store.defer(claim, 'sms_quiet_hours',
+          Math.max(5, Math.ceil((error.resumeAt.getTime() - Date.now()) / 1000)));
+        deferredCount += 1;
+        continue;
+      }
       console.error('[sms-delivery-worker] SMS delivery failed for claim', claim.eventId, error);
       const failure = classifySmsDeliveryFailure(error);
       const outcome = requestStarted && failure.providerRejection

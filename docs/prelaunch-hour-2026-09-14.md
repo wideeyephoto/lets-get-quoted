@@ -39,3 +39,86 @@ Verification:
 
 Deployment and real carrier acceptance remain open. No hosted database changes,
 carrier messages, customer records or financial transactions were performed.
+
+## B1 — Carrier opt-out projection
+
+Migration `20260914134735_sms_carrier_opt_out_projection.sql` was generated with
+Supabase CLI 2.117.0 and adds request-time sender scope plus an idempotent receipt
+projection. Explicit carrier code `21610` on failed/undelivered statuses updates
+the existing sender preference, whose trigger updates the exact provider/Campaign
+ledger. All writes occur with the receipt transaction, including reconciliation.
+The HTTP route retries the service-only projection and returns 503 on an unavailable
+or invalid result; it no longer rewrites legacy account consent using callback time.
+
+The projection preserves a keyword preference newer than the original send and
+never re-applies a completed receipt. A reassigned sender or historical event
+without a scope snapshot opens critical operator review instead of guessing.
+Codes `30003`, `30004`, `30006`, and `30007` retain their existing terminal delivery
+handling without being misclassified as an explicit consent withdrawal.
+
+Sources: [SignalWire error codes](https://developer.signalwire.com/compatibility-api/rest/overview/error-codes/)
+and [Twilio 21610](https://www.twilio.com/docs/api/errors/21610).
+
+- Focused real PostgreSQL 17 harness: **14/14 passed**; tests atomic rollback,
+  sender/Campaign/provider/recipient isolation, historical review, reassignment,
+  reconciliation, duplicate/late receipt handling, concurrent START and RPC ACLs.
+- Complete schema: **28/28 passed**, including real status ingress and replay.
+  The harness now uses the canonical migration order instead of replaying older
+  function replacements over newer patches. No production schema was modified.
+- Schema digest and creation order both pass. The new focused database harness
+  runs in GitHub CI through `test:pg17:sms-carrier-opt-out`.
+- Raw outputs: `C:/dev/prelaunch-carrier-pg17-20260914.log` and
+  `C:/dev/prelaunch-carrier-schema-pg17-20260914.log`.
+
+Release order: apply the migration, verify function grants/scope capture, then
+deploy the route. Historical unbound receipts remain reviewable. Real carrier
+acceptance is still open; local database verification does not substitute for it.
+
+## A1/A2 — Quiet-hour policy and final egress
+
+One category table now documents the existing owner, crew, and verification
+exemptions while requiring customer and payment messages to wait for daytime.
+The queue evaluates an explicit future timestamp too, rejects invalid dates,
+and removes an unused bypass option. It preserves a later permitted schedule.
+
+The worker rechecks before staging, after sender/credit preparation, and again
+after the final asynchronous request-marker call. A crossed cutoff triggers
+the existing token-bound rollback before safe deferral; an uncertain rollback
+goes to quarantine. The provider releases its credit hold before returning the
+deferral. No carrier socket opens in either race. This uses the existing recipient
+phone/time-zone resolver; it does not add location evidence to a delivery claim.
+
+Tests cover both customer-facing categories, all three exemptions, 9pm/8am,
+both daylight-saving transitions, retry after cutoff, both asynchronous cutoff
+races, credit release, and uncertain rollback. Production deferred-release and
+the existing legal-policy review remain separate acceptance work.
+
+## Validation of B1 and A1/A2 together
+
+- **1,427 test files / 17,090 tests passed**, exit 0 at 14:14 UTC.
+  `C:/dev/prelaunch-hour-final-tests-20260914.log`.
+- `npm run typecheck`: PASS, including test files.
+  `C:/dev/prelaunch-hour-final-typecheck-20260914.log`.
+- `npm run build`: PASS, including production page generation; existing lint
+  warnings remain. `C:/dev/prelaunch-hour-final-build-20260914.log`.
+
+## Read-only production checks
+
+Live Stripe top-up inspection at approximately 14:12 UTC returned one active
+matching price for each of all 12 sellable SKUs, with every contract check passing.
+The audit only used price search/retrieve. No purchase, price, subscription, or
+tax-registration mutation occurred. Sanitized output is retained in
+`docs/prelaunch-live-top-up-prices-2026-09-14.txt`.
+
+At 14:14 UTC, read-only `cron_runs` queries against the configured production
+project (`mfuvvtrkipkigwqqtcal`) showed:
+
+| Job | Latest evidence | Disposition |
+| --- | --- | --- |
+| `db-guard` | `13da3412-4a9f-4152-bc1d-918b229252e6`, 14:10:34 UTC; ten recent runs failed with one error each | Open: `public.get_long_running_queries(min_duration_seconds)` is absent from the API schema cache; repository search finds no definition. |
+| `webhook-heal` | `b512d076-3cbd-4a32-affc-a29f4c12ff96`, 14:00:41 UTC; ten recent quarter-hour runs successful | Scheduled execution proven; two unresolved items remain escalated. |
+| `smart-dunning` | Last recorded run `c40bc0ca-09ce-4c0f-a75a-f7ed5ab3cd6f`, September 12, 12:00:19 UTC | Intentionally unscheduled and parked by `52a99e69c`; do not reactivate. |
+| `activation-autopilot` | No run rows | Intentionally unscheduled and parked by `52a99e69c`; do not reactivate. |
+
+No jobs were invoked and no backlog records were changed. The old four-job
+observation item is corrected to reflect the deliberate parking decision.
