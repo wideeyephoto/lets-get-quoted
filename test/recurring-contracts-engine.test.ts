@@ -437,6 +437,16 @@ describe('Recurring Contracts Engine (src/lib/recurring.ts)', () => {
       expect(mocks.recordRecurringChargeFailure).toHaveBeenCalled();
     });
 
+    it('does not reinterpret failure-storage errors as a new Stripe decline', async () => {
+      mockStripe.paymentIntents.create.mockResolvedValueOnce({ id: 'pi_needs_action', status: 'requires_action' });
+      const error = new Error('Could not persist recurring charge failure');
+      error.name = 'RecurringFailureSaveError';
+      mocks.recordRecurringChargeFailure.mockRejectedValueOnce(error);
+      await expect(runRecurringPlanNow(TEST_ACCOUNT_ID, TEST_PLAN_ID)).rejects.toMatchObject({ name: 'RecurringFailureSaveError' });
+      expect(mocks.recordRecurringChargeFailure).toHaveBeenCalledTimes(1);
+      expect(mocks.extractStripeDecline).not.toHaveBeenCalled();
+    });
+
     it('handles prepaid plans without generating invoices or charging card', async () => {
       const prepaidPlan = {
         id: 'plan-prepaid-1',

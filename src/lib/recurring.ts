@@ -701,6 +701,7 @@ async function chargePlanVisit(
     );
     return 'failed';
   } catch (error) {
+    if (error instanceof Error && error.name === 'RecurringFailureSaveError') throw error;
     // Capture the decline reason (thrown away before dunning existed) and hand
     // off to the dunning recorder: schedule retries for transient declines, ask
     // for a new card on unrecoverable ones, and alert the owner.

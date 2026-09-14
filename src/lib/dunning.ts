@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { createAdminClient } from '@/lib/auth';
 import { getStripeClient, toCents, canCreateConnectCharge, CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createPaymentFeedEvent } from '@/lib/job-feed';
 import { sendPaymentSmsEvent, sendCardUpdateSms } from '@/lib/sms';
-import { sendContractorAlertEmail, getAccountOwnerEmail, sendCardUpdateEmail } from '@/lib/email';
+import { sendCardUpdateEmail } from '@/lib/email';
 import { createCardSetupSession } from '@/lib/card-on-file';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import type { RecurringPlan } from '@/lib/recurring';
@@ -92,67 +94,12 @@ export function decideDunningTransition(
   return { state: 'scheduled', newAttempts, nextRetryAt: new Date(now + RETRY_OFFSET_DAYS[newAttempts] * DAY_MS).toISOString() };
 }
 
-// A short, client-safe reason label for owner-facing messaging.
-function declineLabel(code: string | null, declineCode: string | null): string {
-  if (declineCode === 'insufficient_funds') return 'insufficient funds';
-  if (code === 'expired_card' || declineCode === 'expired_card') return 'the card has expired';
-  if (code === 'authentication_required') return 'the card needs verification';
-  if (code === 'incorrect_cvc' || code === 'invalid_cvc' || declineCode === 'incorrect_cvc') return 'an incorrect security code';
-  if (declineCode === 'lost_card' || declineCode === 'stolen_card') return 'the card was reported lost or stolen';
-  return 'the card was declined';
-}
-
 async function resolveBusinessName(admin: AdminClient, accountId: string): Promise<string> {
   const [{ data: site }, { data: account }] = await Promise.all([
     admin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
     admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
   ]);
   return pickBusinessName(site, account);
-}
-
-// Best-effort owner email alert about a failed recurring charge. Never throws
-// (a notification failure must not sink the charge/retry path).
-async function alertOwnerChargeFailed(
-  admin: AdminClient,
-  plan: Pick<RecurringPlan, 'account_id' | 'title' | 'client_name' | 'amount'>,
-  businessName: string,
-  reasonLabel: string,
-  disposition: 'retrying' | 'needs_card' | 'exhausted' | 'unreachable',
-): Promise<void> {
-  try {
-    const to = await getAccountOwnerEmail(admin, plan.account_id);
-    if (!to) {
-      console.warn(`Dunning: no owner email for account ${plan.account_id}; alert skipped.`);
-      return;
-    }
-    // Coerce: a numeric column can arrive as a string, so never call .toFixed on
-    // it directly (that would throw and silently drop the owner alert).
-    const money = `$${(Number(plan.amount) || 0).toFixed(2)}`;
-    const dispositionLine =
-      disposition === 'retrying'
-        ? "We'll automatically retry the card over the next few days. No action needed unless it keeps failing."
-        : disposition === 'needs_card'
-          ? "We've asked the client to update their card — we'll charge it automatically once they do."
-          : disposition === 'unreachable'
-            ? "We couldn't reach the client automatically (no email or opted-in mobile on file), so please contact them to update their card."
-            : `The card failed after several automatic retries. We've asked the client to update their card; you may also want to follow up.`;
-    await sendContractorAlertEmail({
-      accountId: plan.account_id,
-      recipientEmail: to,
-      businessName,
-      subject: `A recurring charge for ${plan.client_name} couldn't be collected`,
-      heading: 'Recurring payment failed',
-      bodyLines: [
-        `${plan.client_name}'s ${plan.title} payment of ${money} was declined — ${reasonLabel}.`,
-        dispositionLine,
-      ],
-      ctaLabel: 'Open recurring plans',
-      ctaUrl: `${APP_ORIGIN}/dashboard/recurring`,
-      tone: 'warning',
-    });
-  } catch (err) {
-    console.error('Dunning owner alert failed:', err instanceof Error ? err.message : err);
-  }
 }
 
 // Best-effort "update your card" nudge to the client — email when there's an
@@ -210,6 +157,11 @@ export async function recordRecurringChargeFailure(
   canText: boolean,
   isRetry: boolean,
 ): Promise<DunningState> {
+  if (!Number.isSafeInteger(payment.charge_attempts) || payment.charge_attempts < 1
+    || !Number.isSafeInteger(payment.dunning_attempts) || payment.dunning_attempts < 0) {
+    throw new Error('Invalid recurring charge attempt');
+  }
+  const failureEventId = randomUUID();
   const classification = classifyDecline(decline.code, decline.declineCode);
   const { state, newAttempts, nextRetryAt } = decideDunningTransition({
     chargeAttempts: payment.charge_attempts,
@@ -220,10 +172,12 @@ export async function recordRecurringChargeFailure(
   const terminal = state === 'needs_card' || state === 'exhausted';
   const wasTerminal = payment.dunning_state === 'needs_card' || payment.dunning_state === 'exhausted';
 
-  const { error: updateError } = await admin
+  let failureUpdate = admin
     .from('payments')
     .update({
       status: 'failed',
+      dunning_failure_event_id: failureEventId,
+      dunning_failure_attempt: payment.charge_attempts,
       failure_code: decline.code,
       failure_message: decline.declineCode || decline.message,
       failed_at: payment.failed_at ?? new Date().toISOString(),
@@ -232,38 +186,35 @@ export async function recordRecurringChargeFailure(
       dunning_state: state,
       ...(decline.intentId ? { stripe_payment_intent: decline.intentId } : {}),
     })
-    .eq('id', payment.id);
+    .eq('id', payment.id).eq('account_id', plan.account_id).eq('recurring_plan_id', plan.id)
+    .eq('amount', payment.amount).eq('charge_attempts', payment.charge_attempts)
+    .eq('dunning_attempts', payment.dunning_attempts).in('status', ['requested','processing','failed'])
+    .or('dunning_failure_attempt.is.null,dunning_failure_attempt.lt.' + payment.charge_attempts);
+  failureUpdate = payment.dunning_state === null ? failureUpdate.is('dunning_state', null) : failureUpdate.eq('dunning_state', payment.dunning_state);
+  const { data: saved, error: updateError } = await failureUpdate.select('id').maybeSingle();
   if (updateError) {
-    // The dunning state didn't persist. Log loudly and stop — proceeding to
-    // notify as if it landed would misinform the owner/client.
-    console.error(`Dunning: failed to persist failure state for payment ${payment.id}:`, updateError.message);
-    return state;
+    const error = new Error('Could not persist recurring charge failure');
+    error.name = 'RecurringFailureSaveError';
+    throw error;
+  }
+  if (!saved) return state; // Another handler or payment outcome won; no repeated effects.
+  if (payment.charge_attempts === 1 || terminal) {
+    try { await runOwnerEventNotices(admin, { sourceId: failureEventId, accountId: plan.account_id }); }
+    catch { console.error('Recurring failure notice remains saved for pickup'); }
   }
 
   // Feed event only on the first failure (retries shouldn't spam the job feed).
   if (!isRetry) await createPaymentFeedEvent(admin, payment.id, 'payment_failed');
 
   const businessName = await resolveBusinessName(admin, plan.account_id);
-  const reasonLabel = declineLabel(decline.code, decline.declineCode);
 
   // Client: on entering a terminal state, send the update-card link (once per
   // transition). On a transient first failure, keep the existing "here's a manual
   // pay link" text so an opted-in client is informed and can pay now.
-  let reachedClient = true;
   if (terminal && !wasTerminal) {
-    reachedClient = await notifyClientUpdateCard(admin, plan, businessName);
+    await notifyClientUpdateCard(admin, plan, businessName);
   } else if (!isRetry && !terminal && canText) {
     await sendPaymentSmsEvent(payment.id, 'payment_failed');
-  }
-
-  // Owner: alert on the first failure (any disposition) and when a retry run
-  // finally gives up (terminal). Never on intermediate retries. If we entered a
-  // terminal state but couldn't reach the client, tell the owner to follow up.
-  if (!isRetry || terminal) {
-    const disposition = terminal && !reachedClient ? 'unreachable'
-      : state === 'scheduled' ? 'retrying'
-        : state === 'needs_card' ? 'needs_card' : 'exhausted';
-    await alertOwnerChargeFailed(admin, plan, businessName, reasonLabel, disposition);
   }
 
   return state;
@@ -410,6 +361,7 @@ async function retryDunningPayment(admin: AdminClient, payment: SweptPayment): P
     await recordRecurringChargeFailure(admin, plan as RecurringPlan, { id: payment.id, amount: Number(payment.amount) || 0, dunning_attempts: payment.dunning_attempts, charge_attempts: seq, dunning_state: 'scheduled', failed_at: payment.failed_at }, { code: 'authentication_required', declineCode: null, message: null, intentId: intent.id }, payment.sms_consent, true);
     return 'failed';
   } catch (error) {
+    if (error instanceof Error && error.name === 'RecurringFailureSaveError') throw error;
     const decline = extractStripeDecline(error);
     await recordRecurringChargeFailure(admin, plan as RecurringPlan, { id: payment.id, amount: Number(payment.amount) || 0, dunning_attempts: payment.dunning_attempts, charge_attempts: seq, dunning_state: 'scheduled', failed_at: payment.failed_at }, decline, payment.sms_consent, true);
     console.error(`Dunning retry failed for payment ${payment.id}:`, error instanceof Error ? error.message : error);

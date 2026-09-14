@@ -388,3 +388,13 @@ Partial/currency-adjusted amounts return legacy_dispute_amount_review_required b
 Local evidence: 217 application tests, 149 PostgreSQL checks, type checking, lint, registry and clean local security advisor. Hosted acceptance must include actual test-mode provider disputes, early/duplicate/out-of-order delivery, suppression and owner inbox evidence. Synthetic signed events with fabricated dispute IDs are now rejection tests and cannot prove positive financial acceptance.
 
 Provider references: [Dispute object and statuses](https://docs.stripe.com/api/disputes/object), [retrieve the current dispute](https://docs.stripe.com/api/disputes/retrieve).
+
+### Recurring-payment failure owner notices
+
+Deploy 20260914193348_recurring_failure_owner_notices.sql before the updated dunning and recurring callers; drain the legacy inline owner sender. This migration adds a saved failure event UUID and the last recorded lifetime charge attempt on payments. It does not create historical notices or authorize another charge.
+
+The failure recorder compares account, recurring plan, amount, lifetime counter, cycle counter and prior dunning state, and excludes paid/refunded/disputed outcomes. Only the current attempt can advance the last-recorded failure number. Replayed or competing handlers return before owner/client/feed effects. Database storage errors have a distinct RecurringFailureSaveError name; the initial charge and retry catch paths propagate them instead of interpreting a storage failure as a new card decline.
+
+The trigger saves an owner notice on attempt one and on needs-card/exhausted outcomes. Intermediate scheduled failures update the failure identity without notifying. Source validation binds the same account, payment, plan, amount, attempt and dunning state; newer attempts, recovery or changed source identity stop pending old notices. The message links to recurring plans and asks the owner to review the payment and contact the client if needed. It does not promise a successful retry or that a card-update message reached the client.
+
+Local verification: 104 application tests, 154 PostgreSQL checks, lint, registry and clean local security advisor; full type checking passed. This is a post-attempt recording/owner-notice change. Durable pre-provider charge attempts, authoritative recovery after a lost provider response, retry safety for unknown outcomes, and client/feed delivery recovery remain separate launch requirements. Retry exits for missing plans/cards, missing Connect setup and lifetime caps outside the recorder need explicit notice/recovery policy. Verify the background owner worker and real inbox evidence during hosted acceptance.
