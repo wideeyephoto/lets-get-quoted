@@ -648,6 +648,98 @@ alter table jobs add column if not exists appointment_confirmed_at timestamptz;
 alter table jobs add column if not exists parcel_number text;
 
 -- ----------------------------------------------------------------------------
+-- CONTRACTOR_CREDENTIALS — vault for trade licenses, municipal PINs & insurance
+-- ----------------------------------------------------------------------------
+create table if not exists public.contractor_credentials (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  credential_type text not null,
+  trade_discipline text not null default 'building',
+  license_number text,
+  issuing_authority text not null,
+  authority_id text,
+  contractor_pin text,
+  holder_name text not null,
+  policy_number text,
+  insurance_carrier text,
+  coverage_amount numeric(12, 2),
+  expires_at date,
+  status text not null default 'active',
+  document_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_contractor_credentials_account on public.contractor_credentials(account_id);
+create index if not exists idx_contractor_credentials_discipline on public.contractor_credentials(account_id, trade_discipline);
+create index if not exists idx_contractor_credentials_authority on public.contractor_credentials(account_id, authority_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_CASES — municipal permit case tracking per job
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_cases (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  authority_id text,
+  requirement_verdict text not null default 'verify',
+  application_status text not null default 'not_started',
+  external_permit_number text,
+  estimated_fee numeric(10,2),
+  actual_fee numeric(10,2),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint job_permit_cases_account_job_unique unique (account_id, job_id)
+);
+create index if not exists idx_job_permit_cases_account_job on public.job_permit_cases (account_id, job_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_DOCUMENTS — permit application drafts, COIs, affidavits, and issued permits
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_documents (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete cascade,
+  document_type text not null,
+  file_name text not null,
+  file_size_bytes bigint not null default 0,
+  mime_type text not null default 'application/pdf',
+  storage_path text not null,
+  sha256_hash text,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_job_permit_documents_account_job on public.job_permit_documents (account_id, job_id);
+create index if not exists idx_job_permit_documents_case on public.job_permit_documents (permit_case_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_INSPECTIONS — municipal inspection milestones per permit
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_inspections (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete set null,
+  inspection_type text not null,
+  title text not null,
+  status text not null default 'required',
+  requested_date date,
+  scheduled_date date,
+  completed_date date,
+  inspector_name text,
+  inspector_phone text,
+  notes text,
+  failure_reasons text[],
+  reinspection_fee numeric(10, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_job_permit_inspections_job on public.job_permit_inspections(account_id, job_id);
+create index if not exists idx_job_permit_inspections_status on public.job_permit_inspections(status);
+
+-- ----------------------------------------------------------------------------
 -- JOB_TASKS  — per-job checklist / punch list. Owner sets the list; crew tick
 -- items off from the field app (done_by/done_at record who + when).
 -- ----------------------------------------------------------------------------
@@ -4033,6 +4125,197 @@ alter table leads add column if not exists referral_settled_at timestamptz;
 -- for the same reason: the insert already names the column, so capture needs no
 -- migration. This is the money-shaped half, which cannot be derived.
 alter table extra_stop_requests add column if not exists referral_settled_at timestamptz;
+
+-- ============================================================================
+-- PERMIT INTELLIGENCE, JURISDICTIONS & CREDENTIALS VAULT
+-- Mirrors migrations 20260826150000, 20260826160000, 20260826170000, 20260826180000
+-- ============================================================================
+
+create table if not exists public.permit_authorities (
+  id text primary key,
+  name text not null,
+  agency_name text not null,
+  state text not null,
+  county text not null,
+  city_or_township text,
+  portal_url text,
+  phone text,
+  office_hours text,
+  provider_type text not null default 'generic' check (provider_type in ('bsa_accessmygov', 'accela', 'opengov', 'municipality_native', 'generic')),
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_authority_coverage (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text not null references public.permit_authorities(id) on delete cascade,
+  discipline text not null check (discipline in ('building', 'electrical', 'mechanical', 'plumbing')),
+  enforcing_agency text not null,
+  level text not null check (level in ('municipality', 'township', 'county', 'state')),
+  effective_from date not null default '2020-01-01',
+  effective_to date,
+  source_url text,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create index if not exists idx_permit_authority_coverage_auth_disc
+  on public.permit_authority_coverage (authority_id, discipline);
+
+create table if not exists public.permit_sources (
+  id text primary key,
+  publisher text not null,
+  url text not null,
+  retrieval_date date not null default current_date,
+  content_hash text,
+  licensing_class text not null default 'advisory_summary',
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_code_adoptions (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text not null references public.permit_authorities(id) on delete cascade,
+  code_family text not null,
+  edition_year text not null,
+  effective_from date not null default '2016-02-08',
+  effective_to date,
+  governing_body text not null,
+  is_current boolean not null default true,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_code_amendments (
+  id uuid primary key default gen_random_uuid(),
+  adoption_id uuid references public.permit_code_adoptions(id) on delete cascade,
+  authority_id text references public.permit_authorities(id) on delete cascade,
+  section_ref text not null,
+  title text not null,
+  summary text not null,
+  amendment_type text not null default 'standard_model' check (amendment_type in ('standard_model', 'state_amendment', 'local_ordinance')),
+  citation_url text,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_requirement_rules (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text references public.permit_authorities(id) on delete cascade,
+  trade text not null,
+  scope text not null,
+  decision text not null check (decision in ('required', 'not_required', 'verify')),
+  base_fee numeric(10,2),
+  effective_from date not null default '2020-01-01',
+  effective_to date,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.job_permit_cases (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  authority_id text references public.permit_authorities(id) on delete set null,
+  requirement_verdict text not null default 'verify' check (requirement_verdict in ('required', 'not_required', 'verify')),
+  application_status text not null default 'not_started' check (
+    application_status in (
+      'not_started', 'draft', 'ready_for_review', 'authorized', 'submitting',
+      'submitted', 'in_review', 'corrections_required', 'approved', 'issued',
+      'rejected', 'withdrawn', 'inspection_scheduled', 'inspection_passed',
+      'inspection_failed', 'closed'
+    )
+  ),
+  external_permit_number text,
+  estimated_fee numeric(10,2),
+  actual_fee numeric(10,2),
+  notes text,
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
+  constraint job_permit_cases_account_job_unique unique (account_id, job_id)
+);
+
+create index if not exists idx_job_permit_cases_account_job
+  on public.job_permit_cases (account_id, job_id);
+
+create table if not exists public.job_permit_documents (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete cascade,
+  document_type text not null check (
+    document_type in (
+      'application_draft', 'site_plan', 'contractor_license', 'insurance_coi',
+      'homeowner_affidavit', 'permit_issued_pdf', 'inspection_report', 'receipt', 'other'
+    )
+  ),
+  file_name text not null,
+  file_size_bytes bigint not null default 0,
+  mime_type text not null default 'application/pdf',
+  storage_path text not null,
+  sha256_hash text,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create index if not exists idx_job_permit_documents_account_job
+  on public.job_permit_documents (account_id, job_id);
+create index if not exists idx_job_permit_documents_case
+  on public.job_permit_documents (permit_case_id);
+
+create table if not exists public.job_permit_inspections (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete set null,
+  inspection_type text not null,
+  title text not null,
+  status text not null default 'required',
+  requested_date date,
+  scheduled_date date,
+  completed_date date,
+  inspector_name text,
+  inspector_phone text,
+  notes text,
+  failure_reasons text[],
+  reinspection_fee numeric(10, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_job_permit_inspections_job on public.job_permit_inspections(account_id, job_id);
+create index if not exists idx_job_permit_inspections_status on public.job_permit_inspections(status);
+
+create table if not exists public.contractor_credentials (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  credential_type text not null,
+  trade_discipline text not null default 'building',
+  license_number text,
+  issuing_authority text not null,
+  authority_id text,
+  contractor_pin text,
+  holder_name text not null,
+  policy_number text,
+  insurance_carrier text,
+  coverage_amount numeric(12, 2),
+  expires_at date,
+  status text not null default 'active',
+  document_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_contractor_credentials_account on public.contractor_credentials(account_id);
+create index if not exists idx_contractor_credentials_discipline on public.contractor_credentials(account_id, trade_discipline);
+create index if not exists idx_contractor_credentials_authority on public.contractor_credentials(account_id, authority_id);
+
+alter table public.permit_authorities enable row level security;
+alter table public.permit_authority_coverage enable row level security;
+alter table public.permit_sources enable row level security;
+alter table public.permit_code_adoptions enable row level security;
+alter table public.permit_code_amendments enable row level security;
+alter table public.permit_requirement_rules enable row level security;
+alter table public.job_permit_cases enable row level security;
+alter table public.job_permit_documents enable row level security;
+alter table public.job_permit_inspections enable row level security;
+alter table public.contractor_credentials enable row level security;
 
 -- BEGIN GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 -- Generated by scripts/sync-messaging-schema.mjs. Do not edit this block by hand.
