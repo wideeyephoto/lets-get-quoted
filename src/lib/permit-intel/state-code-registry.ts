@@ -549,7 +549,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'New Hampshire',
     fips: '33',
     licensingBoard: 'New Hampshire State Building Code Review Board / Electricians & Plumbers Boards',
-    licensingUrl: 'https://www.nh.gov/safety/boardsandcommissions/bcrb',
+    licensingUrl: 'https://www.nh.gov/safety/divisions/firesafety/boards/bcrb.html',
     codes: {
       building: { name: '2018/2021 New Hampshire State Building Code (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
