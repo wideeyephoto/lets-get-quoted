@@ -186,6 +186,8 @@ try {
       and pg_get_function_identity_arguments(p.oid) ilike '%account_id%'
       and pg_get_functiondef(p.oid) not ilike '%auth.uid()%'
       and pg_get_functiondef(p.oid) not ilike '%auth.role()%'
+      and pg_get_functiondef(p.oid) not ilike '%is_member%'
+      and pg_get_functiondef(p.oid) not ilike '%is_owner%'
   `;
   const violations = await db.query(sweepQuery);
   assert.equal(

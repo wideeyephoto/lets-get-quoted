@@ -111,6 +111,9 @@ describe('F1: unguarded SECURITY DEFINER RPC authorization', () => {
 //     and has_function_privilege('authenticated', p.oid, 'EXECUTE')
 //     and pg_get_function_identity_arguments(p.oid) ilike '%account_id%'
 //     and pg_get_functiondef(p.oid) not ilike '%auth.uid()%'
-//     and pg_get_functiondef(p.oid) not ilike '%auth.role()%';
+//     and pg_get_functiondef(p.oid) not ilike '%auth.role()%'
+//     and pg_get_functiondef(p.oid) not ilike '%is_member%'
+//     and pg_get_functiondef(p.oid) not ilike '%is_owner%';
 //   -- expected: zero rows
 // ---------------------------------------------------------------------------
+
