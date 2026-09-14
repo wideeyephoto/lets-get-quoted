@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "mode": "read-only",
+  "timestamp": "2026-09-14T16:11:32.226Z",
+  "upstreamStatus": 200,
+  "developerTokenHeaderSent": false,
+  "accessibleAccountCount": 2,
+  "managerAccountAccessible": true,
+  "deploymentId": "dpl_AvAHiewcmXRG8UNobdqVh2QNFHsJ",
+  "deploymentUrl": "https://lets-get-quoted-3g80m5mo2-lets-get-quoted.vercel.app",
+  "commit": "b1c4bdd52a61d593fb1aee2815322e29e695ce41",
+  "accessMethod": "Authenticated Vercel CLI",
+  "appDomainProbeStatus": 404
+}
