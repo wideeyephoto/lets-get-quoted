@@ -5,7 +5,7 @@ import { renderPlatformEmail, renderPlatformEmailText } from '@/emails/platform'
 import { buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
 import { recordAccountEvent } from '@/lib/account-events';
-import { ownerEmailsForAccounts } from '@/lib/admin-accounts';
+import { ownerEmailsForAccounts } from '@/lib/account-owner-emails';
 import { interpolateTokens, type PlatformCampaignRecipient } from '@/lib/admin-campaign-types';
 import { APP_ORIGIN } from '@/lib/app-origin';
 
@@ -180,21 +180,25 @@ export async function runContractorLifecycleSweep(
 ): Promise<{
   checked: number;
   sent: number;
+  planned: number;
+  dryRun: boolean;
   skipped: number;
   errors: number;
-  details: Array<{ accountId: string; stepId: string; status: 'sent' | 'skipped' | 'error'; note?: string }>;
+  details: Array<{ accountId: string; stepId: string; status: 'sent' | 'planned' | 'skipped' | 'error'; note?: string }>;
 }> {
   const admin = adminClient ?? createAdminClient();
   const isDryRun = options?.dryRun ?? false;
   const result = {
     checked: 0,
     sent: 0,
+    planned: 0,
+    dryRun: isDryRun,
     skipped: 0,
     errors: 0,
-    details: [] as Array<{ accountId: string; stepId: string; status: 'sent' | 'skipped' | 'error'; note?: string }>,
+    details: [] as Array<{ accountId: string; stepId: string; status: 'sent' | 'planned' | 'skipped' | 'error'; note?: string }>,
   };
 
-  const resend = getResendClient();
+  const resend = isDryRun ? null : getResendClient();
   if (!resend && !isDryRun) {
     console.warn('[contractor-lifecycle-sweep] No Resend API key; sweep skipped.');
     return result;
@@ -213,8 +217,7 @@ export async function runContractorLifecycleSweep(
     .limit(500);
 
   if (accountsErr || !accounts) {
-    console.error('[contractor-lifecycle-sweep] Failed to fetch accounts:', accountsErr);
-    return result;
+    throw new Error('Lifecycle accounts unavailable; no emails sent.');
   }
 
   result.checked = accounts.length;
@@ -223,7 +226,9 @@ export async function runContractorLifecycleSweep(
   const accountIds = accounts.map((a) => a.id);
 
   // Load owner login emails
-  const ownerEmailMap = await ownerEmailsForAccounts(admin, accountIds);
+  const ownerEmailMap = await ownerEmailsForAccounts(admin, accountIds, () => {
+    throw new Error('Lifecycle owner emails unavailable; no emails sent.');
+  });
 
   // Load existing lifecycle sent history from account_events
   const { data: sentEvents, error: historyError } = await admin
@@ -275,6 +280,9 @@ export async function runContractorLifecycleSweep(
   if (suppressionError) {
     console.error('Failed to load email suppression list for contractor lifecycle sweep (failing closed):', suppressionError.message);
     throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+  }
+  if (!suppressions || suppressions.length >= 1000) {
+    throw new Error('Lifecycle suppression list unavailable or truncated; no emails sent.');
   }
 
   const suppressedSet = new Set<string>();
@@ -365,11 +373,11 @@ export async function runContractorLifecycleSweep(
       const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
 
       if (isDryRun) {
-        result.sent++;
+        result.planned++;
         result.details.push({
           accountId: account.id,
           stepId: stepToSend.id,
-          status: 'sent',
+          status: 'planned',
           note: `[DRY-RUN] Subject: "${subject}" to ${recipient.email}`,
         });
         continue;
@@ -449,13 +457,14 @@ export interface ActivationNudgeBatchRecipient {
 
 export interface ActivationNudgeBatchResult {
   sent: number;
+  planned: number;
   skipped: number;
   errors: number;
   dryRun: boolean;
   details: Array<{
     accountId: string;
     stepId: string;
-    status: 'sent' | 'skipped' | 'error';
+    status: 'sent' | 'planned' | 'skipped' | 'error';
     note?: string;
   }>;
 }
@@ -483,6 +492,7 @@ export async function sendActivationNudgeBatch(
 
   const result: ActivationNudgeBatchResult = {
     sent: 0,
+    planned: 0,
     skipped: 0,
     errors: 0,
     dryRun: isDryRun,
@@ -504,6 +514,9 @@ export async function sendActivationNudgeBatch(
   if (suppressionError) {
     console.error('[activation-nudges] Failed to check suppression list:', suppressionError.message);
     throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+  }
+  if (!suppressions || suppressions.length >= 1000) {
+    throw new Error('Activation suppression list unavailable or truncated; no nudges sent.');
   }
 
   const suppressedSet = new Set<string>();
@@ -629,11 +642,11 @@ export async function sendActivationNudgeBatch(
       const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
 
       if (isDryRun) {
-        result.sent++;
+        result.planned++;
         result.details.push({
           accountId: r.accountId,
           stepId: step.id,
-          status: 'sent',
+          status: 'planned',
           note: `[DRY-RUN] Subject: "${subject}" to ${cleanEmail}`,
         });
         continue;

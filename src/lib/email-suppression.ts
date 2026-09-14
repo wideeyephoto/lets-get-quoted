@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// CAN-SPAM email opt-out (unsubscribe) support for MARKETING email only —
-// campaign blasts, "book again" invites, and review-request emails. Transactional
-// mail (receipts, quotes, invoices, reminders, card-setup) never consults this.
+// Marketing opt-outs and provider delivery blocks share storage but have
+// different meanings. Marketing paths consult all these rows. Transactional
+// paths currently rely on Resend's delivery suppression, not marketing opt-outs.
 //
 // The unsubscribe link is a stateless, signed token over (account_id, email): no
 // per-recipient row exists to hang it on, so we HMAC the pair and verify it back
@@ -146,14 +146,46 @@ export async function suppressEmail(
   // on_conflict can't target. A pre-check keeps it idempotent; the unique index is
   // the backstop against a race (duplicate insert simply errors and is ignored).
   const already = await isEmailSuppressed(supabase, accountId, normalized);
-  if (already) return true;
+  if (already) return promoteSuppressionReason(supabase, accountId, normalized, reason);
   const { error } = await supabase
     .from('email_suppression')
     .insert({ account_id: accountId, email: normalized, reason });
   if (error) {
     // A concurrent insert that hit the unique index still leaves them suppressed.
-    if (await isEmailSuppressed(supabase, accountId, normalized)) return true;
+    if (await isEmailSuppressed(supabase, accountId, normalized)) {
+      return promoteSuppressionReason(supabase, accountId, normalized, reason);
+    }
     console.error('suppressEmail insert failed:', error.message);
+    return false;
+  }
+  return true;
+}
+
+// A marketing opt-out must not hide a later delivery block. The predicate is
+// evaluated by the database during UPDATE, so concurrent/replayed opt-outs or
+// weaker provider events cannot downgrade a stronger reason. A complaint is
+// strongest; permanent bounce is more specific than a generic provider block.
+async function promoteSuppressionReason(
+  supabase: SupabaseClient,
+  accountId: string,
+  email: string,
+  reason: string,
+): Promise<boolean> {
+  const weakerReasons: Record<string, string[]> = {
+    provider_suppressed: ['unsubscribe_link', 'one_click_unsubscribe'],
+    hard_bounce: ['unsubscribe_link', 'one_click_unsubscribe', 'provider_suppressed'],
+    complaint: ['unsubscribe_link', 'one_click_unsubscribe', 'provider_suppressed', 'hard_bounce'],
+  };
+  const weaker = weakerReasons[reason];
+  if (!weaker) return true;
+
+  const { error } = await supabase.from('email_suppression')
+    .update({ reason })
+    .eq('account_id', accountId)
+    .eq('email', email)
+    .in('reason', weaker);
+  if (error) {
+    console.error('suppressEmail reason update failed:', error.message);
     return false;
   }
   return true;
