@@ -321,6 +321,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('Payment & Card Setup Emails', () => {
     it('sendCardSetupEmail invites customer to securely store card', async () => {
       await sendCardSetupEmail({
+        accountId: 'acc-1',
         recipientEmail: 'client@example.com',
         businessName: 'Ace Contracting',
         planTitle: 'Monthly Lawn Care',
@@ -337,6 +338,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
     it('sendCardUpdateEmail alerts client when saved card was declined', async () => {
       await sendCardUpdateEmail({
+        accountId: 'acc-1',
         recipientEmail: 'client@example.com',
         businessName: 'Ace Contracting',
         planTitle: 'Quarterly Pest Control',

@@ -184,6 +184,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 10 offline checker tests passed; all reviewed file signatures match; changed-script lint passed. Scan limits are documented. No hosted queries, credentials, live sends or deployment were involved.
 - **Remaining:** Optional account-tag callers, independent operational-alert policy, indirect/external transports, provider workspace/region/history and durable identities remain open. See the [registry runbook](runbooks/email-sender-registry.md).
 
+### Fourteenth-pass implementation — required workspace scope
+
+- **T12/T18:** Reviewed the production callers of eleven formerly optional shared senders; all already pass an account. Their contracts now require it. Tenant tag creation rejects missing/altered IDs, and the shared transport refuses unscoped submissions except the three explicitly gated platform support/contact kinds.
+- **Verification:** 17 files / 348 tests and full application/test type checking passed, including 23 new cases across the real sender functions. Changed-file lint and the sender-registry check passed. See the [workspace caller review](runbooks/shared-email-workspace-scope.md). No live sends or hosted changes occurred.
+- **Remaining:** Independent operations-recipient policy, indirect/external transport review, durable identities, provider evidence and hosted acceptance.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

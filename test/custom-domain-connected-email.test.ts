@@ -3,10 +3,13 @@ import { sendCustomDomainConnectedEmail } from '@/lib/email';
 
 const send = vi.hoisted(() => vi.fn().mockResolvedValue({ data: { id: 'email' }, error: null }));
 vi.mock('resend', () => ({ Resend: class { emails = { send }; } }));
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ in: async () => ({ data: [], error: null }) }) }) }) }) }));
+vi.mock('@/lib/email-brand', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/email-brand')>(), loadEmailBrand: async () => { throw new Error('Use fallback brand'); } }));
 
 describe('website certificate owner notification', () => {
   it('describes connection readiness without claiming an unpublished site is public, and matches its support reply address', async () => {
     await sendCustomDomainConnectedEmail({
+      accountId: 'workspace-a',
       recipientEmail: 'owner@example.com', businessName: 'Contractor', domain: 'fixture.contractor.com',
       siteUrl: 'https://fixture.contractor.com', settingsUrl: 'https://app.letsgetquoted.com/dashboard/sites',
     });

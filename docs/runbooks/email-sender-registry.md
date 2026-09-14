@@ -14,7 +14,7 @@ This is a bounded drift check, not exhaustive call-graph analysis or proof of en
 
 ## Outstanding scope and provider evidence
 
-- Shared `email.ts` still has optional account-tag paths that require caller-by-caller review; registry presence does not certify every caller as protected.
+- The subsequent [shared workspace review](shared-email-workspace-scope.md) makes eleven formerly optional sender contracts require a workspace and adds rejection of missing scope. Registry presence still does not certify caller authorization or indirect/external paths.
 - The independent operational monitor retains its durable alert transport; its recipient/block policy must be reviewed separately from customer marketing preferences.
 - Hosted Resend workspace/region, actual capacity, credential identity and historical delivery-block reconciliation are explicitly **unverified** in the registry. Local configuration names are not evidence of a particular hosted provider account.
 - Remaining notice families need durable event identities. This registry neither creates a send ledger nor authorizes retries.

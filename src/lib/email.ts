@@ -76,6 +76,7 @@ const resend = {
         else if (['contact_message', 'support_case_staff', 'support_case_customer'].includes(resendTagValue(payload.tags, 'kind') ?? '')) {
           return sendPlatformTransactionalEmail(createAdminClient(), client, payload, options);
         }
+        else throw new Error('Email workspace could not be verified. No email was submitted.');
         return client.emails.send(payload, options);
       }, ...args);
     },
@@ -130,12 +131,15 @@ function cleanTag(value: string): string {
 }
 
 /** Standard tags attached to all outbound emails for outcome tracking and theme performance. */
-function defaultTags(kind: string, brand: EmailBrand, accountId?: string | null): Array<{ name: string; value: string }> {
+function defaultTags(kind: string, brand: EmailBrand, accountId: string): Array<{ name: string; value: string }> {
+  if (!accountId || accountId.trim() !== accountId || cleanTag(accountId) !== accountId) {
+    throw new Error('Email workspace could not be verified. No email was submitted.');
+  }
   return [
     { name: 'kind', value: cleanTag(kind) },
     { name: 'theme', value: cleanTag(brand.theme || 'studio') },
     { name: 'template_version', value: '2_0' },
-    ...(accountId ? [{ name: 'account_id', value: cleanTag(accountId) }] : []),
+    { name: 'account_id', value: accountId },
   ];
 }
 
@@ -339,7 +343,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput & {
  * nothing else, which is the same rule the action's audit entry follows.
  */
 export async function sendOfficeInvitationEmail(input: {
-  accountId: string | null;
+  accountId: string;
   businessName: string;
   recipientEmail: string;
   inviteUrl: string;
@@ -606,7 +610,7 @@ export async function sendQuoteFollowupEmail(input: {
   businessName: string;
   clientName: string;
   url: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -655,7 +659,7 @@ export async function sendSelectionRequestEmail(input: {
   count: number;
   overdue: boolean;
   url: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -803,7 +807,7 @@ export async function sendAppointmentReminderEmail(input: {
   whenLabel: string;
   address: string | null;
   jobRef: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -855,7 +859,7 @@ export async function sendChoiceReminderTestEmail(input: {
   businessName: string;
   /** The rendered SMS body, exactly as a customer would receive it. */
   message: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -898,7 +902,7 @@ export async function sendBookingConfirmationEmail(input: {
   altWhenLabel?: string | null;
   serviceName: string | null;
   address: string | null;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -963,7 +967,7 @@ export async function sendClientPortalLinkEmail(input: {
   recipientEmail: string;
   businessName: string;
   linkUrl: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -999,7 +1003,7 @@ export async function sendCardUpdateEmail(input: {
   businessName: string;
   planTitle: string;
   url: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -1039,7 +1043,7 @@ export async function sendCardSetupEmail(input: {
   businessName: string;
   planTitle: string;
   url: string;
-  accountId?: string;
+  accountId: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -1259,7 +1263,7 @@ export async function sendSendingDomainFailedEmail(input: {
   recipientEmail: string;
   businessName: string;
   domain: string;
-  accountId?: string;
+  accountId: string;
   reason?: string | null;
   settingsUrl: string;
 }): Promise<string> {
@@ -1310,7 +1314,7 @@ export async function sendCustomDomainConnectedEmail(input: {
   recipientEmail: string;
   businessName: string;
   domain: string;
-  accountId?: string;
+  accountId: string;
   siteUrl: string;
   settingsUrl: string;
 }): Promise<void> {

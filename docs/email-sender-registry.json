@@ -153,10 +153,10 @@
     },
     "src/lib/email.ts": {
       "purpose": "Shared tenant notices, marketing, documents and platform support/contact",
-      "recipientScope": "workspace when tagged; explicit platform support/contact; other untagged paths require review",
+      "recipientScope": "required workspace for tenant senders; explicit platform support/contact",
       "transport": "SDK wrapper plus document ledger",
-      "suppression": "account-tagged gate; selected platform kinds gated; marketing blocks all opt-outs; fallback rechecks",
-      "remaining": "Audit optional/missing account tags at callers; remaining durable families; provider evidence",
+      "suppression": "missing/altered tenant IDs rejected; explicit platform kinds gated; marketing blocks all opt-outs; fallback rechecks",
+      "remaining": "Caller authorization remains upstream; independent/external paths, remaining durable families and provider evidence",
       "signatures": {
         "<module>:gate:sendPlatformTransactionalEmail": 1,
         "<module>:provider-import:resend": 1,
