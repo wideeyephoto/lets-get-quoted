@@ -156,12 +156,13 @@ export async function POST(request: Request) {
     const failureNoticeId = resendTagValue(event.data.tags, 'domain_failure_notice_id');
     const websiteNoticeId = resendTagValue(event.data.tags, 'website_domain_notice_id');
     const restorationNoticeId = resendTagValue(event.data.tags, 'domain_restoration_notice_id');
-    if ([failureNoticeId, websiteNoticeId, restorationNoticeId].filter(Boolean).length > 1) throw new Error('Callback has conflicting notice families');
-    const domainNoticeId = failureNoticeId || websiteNoticeId || restorationNoticeId;
-    const noticeTag = restorationNoticeId ? 'domain_restoration_notice_id' : websiteNoticeId ? 'website_domain_notice_id' : 'domain_failure_notice_id';
+    const ownerNoticeId = resendTagValue(event.data.tags, 'owner_event_notice_id');
+    if ([failureNoticeId, websiteNoticeId, restorationNoticeId, ownerNoticeId].filter(Boolean).length > 1) throw new Error('Callback has conflicting notice families');
+    const domainNoticeId = failureNoticeId || websiteNoticeId || restorationNoticeId || ownerNoticeId;
+    const noticeTag = ownerNoticeId ? 'owner_event_notice_id' : restorationNoticeId ? 'domain_restoration_notice_id' : websiteNoticeId ? 'website_domain_notice_id' : 'domain_failure_notice_id';
     if (domainNoticeId) {
       const boundRecipient = operationalSingleRecipient(event.data.to);
-      if (kind !== (restorationNoticeId ? 'sending_domain_restored' : websiteNoticeId ? 'custom_domain_connected' : 'sending_domain_failed') || !accountId || !boundRecipient
+      if (kind !== (ownerNoticeId ? 'contractor_alert' : restorationNoticeId ? 'sending_domain_restored' : websiteNoticeId ? 'custom_domain_connected' : 'sending_domain_failed') || !accountId || !boundRecipient
         || !unambiguousDomainNoticeTags(event.data.tags, noticeTag)
         || resendTagValue(event.data.tags, 'delivery_scope')
         || (event.data.cc && (!Array.isArray(event.data.cc) || event.data.cc.length))
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
       }
       // Validate against the immutable snapshot before changing delivery history
       // or suppression. The signed tag alone is insufficient evidence.
-      const { data: result, error: confirmError } = await admin.rpc(restorationNoticeId ? 'confirm_email_domain_restoration_notice' : websiteNoticeId ? 'confirm_website_domain_connection_notice' : 'confirm_email_domain_failure_notice', {
+      const { data: result, error: confirmError } = await admin.rpc(ownerNoticeId ? 'confirm_owner_event_notice' : restorationNoticeId ? 'confirm_email_domain_restoration_notice' : websiteNoticeId ? 'confirm_website_domain_connection_notice' : 'confirm_email_domain_failure_notice', {
         p_id: domainNoticeId, p_account_id: accountId, p_recipient: boundRecipient, p_provider_id: providerId,
         p_status: status, p_occurred_at: event.created_at ?? new Date().toISOString(),
         p_event_id: request.headers.get('svix-id'),

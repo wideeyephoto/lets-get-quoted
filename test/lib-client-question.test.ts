@@ -10,13 +10,10 @@ vi.mock('@/lib/change-order-client', () => ({
 }));
 
 vi.mock('@/lib/job-feed', () => ({
-  createJobFeedEvent: vi.fn(),
+  createJobFeedEvent: vi.fn().mockResolvedValue({ id: 'feed-1' }),
 }));
 
-vi.mock('@/lib/email', () => ({
-  getAccountOwnerEmail: vi.fn().mockResolvedValue('owner@test.com'),
-  sendContractorAlertEmail: vi.fn(),
-}));
+vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: vi.fn() }));
 
 vi.mock('@/lib/business-name', () => ({
   loadBusinessName: vi.fn().mockResolvedValue('Test Biz'),
@@ -71,10 +68,10 @@ describe('Client Question Lib', () => {
       expect(res).toEqual({ ok: true });
 
       const createEventMock = (await import('@/lib/job-feed')).createJobFeedEvent;
-      expect(createEventMock).toHaveBeenCalled();
+      expect(createEventMock).toHaveBeenCalledWith(adminMock, '1', '2', expect.objectContaining({ meta: { owner_email_notice: 'v1' } }));
       
-      const sendEmailMock = (await import('@/lib/email')).sendContractorAlertEmail;
-      expect(sendEmailMock).toHaveBeenCalled();
+      const sendEmailMock = (await import('@/lib/owner-event-notices')).runOwnerEventNotices;
+      expect(sendEmailMock).toHaveBeenCalledWith(adminMock, { sourceId: 'feed-1', accountId: '1' });
 
       const sendSmsMock = (await import('@/lib/sms')).sendOwnerPortalMessageAlertSms;
       expect(sendSmsMock).toHaveBeenCalled();
@@ -86,7 +83,7 @@ describe('Client Question Lib', () => {
 
       adminMock.maybeSingle.mockResolvedValue({ data: { alert_phone: '1234567890' } });
 
-      const sendEmailMock = (await import('@/lib/email')).sendContractorAlertEmail;
+      const sendEmailMock = (await import('@/lib/owner-event-notices')).runOwnerEventNotices;
       (sendEmailMock as any).mockRejectedValue(new Error('email fail'));
 
       const sendSmsMock = (await import('@/lib/sms')).sendOwnerPortalMessageAlertSms;

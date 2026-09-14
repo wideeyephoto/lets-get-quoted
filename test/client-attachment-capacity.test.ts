@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  capacity: vi.fn(), upload: vi.fn(), access: vi.fn(), feed: vi.fn(), claim: vi.fn(),
+  ownerNotice: vi.fn(), capacity: vi.fn(), upload: vi.fn(), access: vi.fn(), feed: vi.fn(), claim: vi.fn(),
 }));
 vi.mock('@/lib/billing/storage-usage', () => ({ assertStorageCapacity: mocks.capacity }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({
@@ -12,6 +12,7 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({
 }) }));
 vi.mock('@/lib/change-order-client', () => ({ resolveJobAccess: mocks.access }));
 vi.mock('@/lib/job-feed', () => ({ createJobFeedEvent: mocks.feed }));
+vi.mock('@/lib/owner-event-notices', () => ({ runOwnerEventNotices: mocks.ownerNotice }));
 vi.mock('@/lib/warranties-data', () => ({ raiseClaim: mocks.claim }));
 vi.mock('@/lib/email', () => ({ getAccountOwnerEmail: async () => null, sendContractorAlertEmail: vi.fn() }));
 vi.mock('@/lib/business-name', () => ({ loadBusinessName: async () => 'Business' }));
@@ -25,6 +26,7 @@ import { raiseWarrantyClaimAction } from '@/app/client/jobs/[token]/warranty-act
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.access.mockResolvedValue({ accountId: 'account-a', jobId: 'job-a' });
+  mocks.feed.mockResolvedValue({ id: 'feed-a' });
   mocks.upload.mockResolvedValue({ error: null });
   mocks.claim.mockResolvedValue({ ok: true, claim: { id: 'claim-a', description: 'Help', inWarrantyAtClaim: true } });
 });
@@ -71,4 +73,10 @@ describe.each(['followup', 'warranty'] as const)('%s attachment capacity', (kind
     expect(mocks.capacity).not.toHaveBeenCalled();
     expect(mocks.upload).not.toHaveBeenCalled();
   });
+});
+
+it.each(['followup','warranty','more_work'] as const)('saves %s metadata and dispatches only its owned event', async category => {
+  expect(await requestJobFollowup('token',{ description:'Help',category })).toEqual({ok:true});
+  expect(mocks.feed).toHaveBeenCalledWith(expect.anything(),'account-a','job-a',expect.objectContaining({meta:{owner_email_notice:'v1'}}));
+  expect(mocks.ownerNotice).toHaveBeenCalledWith(expect.anything(),{sourceId:'feed-a',accountId:'account-a'});
 });

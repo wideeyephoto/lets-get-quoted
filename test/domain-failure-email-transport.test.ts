@@ -5,7 +5,7 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/email-send-policy', () => ({ assertEmailSendAllowed: vi.fn() }));
 vi.mock('@/lib/email-brand', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/email-brand')>(), loadEmailBrand: async () => { throw new Error('Use default brand'); } }));
 import { assertEmailSendAllowed } from '@/lib/email-send-policy';
-import { sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail, sendSendingDomainRestoredEmail, type DurableOwnerEmailSnapshot } from '@/lib/email';
+import { sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail, sendSendingDomainRestoredEmail, sendOwnerEventNoticeEmail, type DurableOwnerEmailSnapshot } from '@/lib/email';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
@@ -57,4 +57,20 @@ it.each([sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail, sendSendi
   } })).rejects.toThrow('new delivery block');
   await expect(sendNotice(input as never)).rejects.toThrow('preparation is required');
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it('saves an owner event message before the exact keyed HTTP request and refuses failed preparation', async () => {
+  vi.stubEnv('RESEND_API_KEY', 'synthetic-offline-key');
+  const fetch = vi.fn(async () => new Response(JSON.stringify({ id: 'owner-provider' }), { status: 200 }));
+  vi.stubGlobal('fetch', fetch);
+  const prepareIntent = vi.fn(async (_snapshot: DurableOwnerEmailSnapshot) => { expect(fetch).not.toHaveBeenCalled(); });
+  const input = { accountId:'account-a', noticeId:'11111111-1111-4111-8111-111111111111', recipientEmail:'owner@example.test', businessName:'Builder', subject:'Question', heading:'Question', bodyLines:['Original question'], ctaLabel:'Open job', ctaUrl:'https://example.test/dashboard/jobs/job-1', prepareIntent };
+  expect(await sendOwnerEventNoticeEmail(input)).toBe('owner-provider');
+  const options = (fetch.mock.calls[0] as unknown as [string,RequestInit])[1];
+  expect(new Headers(options.headers).get('Idempotency-Key')).toBe('owner-event:v1:'+input.noticeId);
+  expect(prepareIntent.mock.calls[0][0].payload).toEqual(JSON.parse(options.body as string));
+  expect(prepareIntent.mock.calls[0][0].payload.tags).toContainEqual({name:'owner_event_notice_id',value:input.noticeId});
+  expect(assertEmailSendAllowed).toHaveBeenCalledTimes(2);
+  await expect(sendOwnerEventNoticeEmail({...input,prepareIntent:async()=>{throw new Error('save failed');}})).rejects.toThrow('save failed');
+  expect(fetch).toHaveBeenCalledTimes(1);
 });

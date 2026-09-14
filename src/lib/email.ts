@@ -451,6 +451,25 @@ export async function sendContractorAlertEmail(input: {
   console.log(`Contractor alert email sent: ${input.subject}`);
 }
 
+/** Delivery for an already claimed, durable owner event. */
+export async function sendOwnerEventNoticeEmail(input: Parameters<typeof sendContractorAlertEmail>[0] & {
+  noticeId: string;
+  prepareIntent: PrepareOwnerEmail;
+}): Promise<string> {
+  if (!process.env.RESEND_API_KEY) throw new Error('Email provider is not configured.');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.noticeId)) throw new Error('Owner event identity is invalid.');
+  const brand = await brandFor(input);
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>", to: input.recipientEmail,
+    subject: input.subject, html: renderContractorAlertEmailHtml({ ...input, brand }),
+    reply_to: 'hello@letsgetquoted.com',
+    tags: [...defaultTags('contractor_alert', brand, input.accountId), { name: 'owner_event_notice_id', value: input.noticeId }],
+  }, { idempotencyKey: 'owner-event:v1:' + input.noticeId, prepareIntent: input.prepareIntent });
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data?.id) throw new Error('Email provider returned no message ID.');
+  return result.data.id;
+}
+
 // ---------------------------------------------------------------------------
 // "It went out" confirmations for the contractor
 // ---------------------------------------------------------------------------

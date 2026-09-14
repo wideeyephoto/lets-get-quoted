@@ -551,3 +551,62 @@ describe('Restoration notice signed callback binding', () => {
     expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.upsert).not.toHaveBeenCalled();
   });
 });
+
+describe('Owner event signed callback binding', () => {
+  const noticeId = '20000000-0000-4000-8000-000000000001';
+  const domainData = (extra: Record<string, unknown> = {}) => taggedData('domain-provider', {
+    tags: { kind: 'contractor_alert', account_id: ACCOUNT_ID, owner_event_notice_id: noticeId }, ...extra,
+  });
+  it.each(['email.sent','email.delivered','email.bounced','email.complained','email.failed','email.suppressed','email.delivery_delayed'])('binds signed website %s evidence before recording events', async type => {
+    mocks.rpc.mockResolvedValue({ data: 'confirmed', error: null });
+    expect((await POST(signedRequest(type, domainData()))).status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('confirm_owner_event_notice', expect.objectContaining({
+      p_id: noticeId, p_account_id: ACCOUNT_ID, p_recipient: RECIPIENT, p_provider_id: 'domain-provider',
+      p_occurred_at: EVENT_TIME, p_event_id: 'msg_domain-provider',
+    }));
+    expect(mocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(mocks.upsert.mock.invocationCallOrder[0]);
+  });
+  it.each([{ data: 'conflict', error: null }, { data: null, error: { message: 'unavailable' } }])('rejects unverified domain binding without side effects', async result => {
+    mocks.rpc.mockResolvedValue(result);
+    expect((await POST(signedRequest('email.complained', domainData()))).status).toBe(500);
+    expect(mocks.upsert).not.toHaveBeenCalled(); expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+  it.each(['missing','unprepared'])('quarantines a %s notice without assigning delivery or suppression', async result => {
+    mocks.rpc.mockResolvedValue({ data: result, error: null });
+    expect((await POST(signedRequest('email.complained', domainData()))).status).toBe(202);
+    expect(mocks.quarantine).toHaveBeenCalled(); expect(mocks.upsert).not.toHaveBeenCalled(); expect(mocks.suppressEmail).not.toHaveBeenCalled();
+    expect(JSON.stringify(mocks.quarantine.mock.calls)).not.toContain(RECIPIENT);
+    mocks.quarantine.mockResolvedValue({ error: { message: 'unavailable' } });
+    expect((await POST(signedRequest('email.complained', domainData()))).status).toBe(500);
+  });
+  it.each([
+    { to: [RECIPIENT, 'other@example.com'] }, { cc: ['other@example.com'] }, { bcc: ['other@example.com'] },
+    { tags: { kind: 'invoice', account_id: ACCOUNT_ID, owner_event_notice_id: noticeId } },
+    { tags: { kind: 'contractor_alert', owner_event_notice_id: noticeId } },
+    { tags: { kind: 'contractor_alert', account_id: ACCOUNT_ID, owner_event_notice_id: noticeId, delivery_scope: 'platform_transactional' } },
+    { tags: [{ name: 'kind', value: 'contractor_alert' }, { name: 'account_id', value: ACCOUNT_ID }, { name: 'account_id', value: ACCOUNT_ID }, { name: 'owner_event_notice_id', value: noticeId }] },
+  ])('rejects ambiguous website callback envelopes', async extra => {
+    expect((await POST(signedRequest('email.delivered', domainData(extra)))).status).toBe(500);
+    expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+  it('does not touch domain evidence for an invalid signature', async () => {
+    const request = signedRequest('email.delivered', domainData()); request.headers.set('svix-signature', 'v1,invalid');
+    expect((await POST(request)).status).toBe(400); expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it('accepts array tags and retries suppression after callback acceptance was already repaired', async () => {
+    const data = domainData({ tags: [
+      { name: 'kind', value: 'contractor_alert' }, { name: 'account_id', value: ACCOUNT_ID },
+      { name: 'owner_event_notice_id', value: noticeId },
+    ] });
+    mocks.rpc.mockResolvedValue({ data: 'confirmed', error: null });
+    mocks.suppressEmail.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    expect((await POST(signedRequest('email.complained', data))).status).toBe(500);
+    expect((await POST(signedRequest('email.complained', data))).status).toBe(200);
+    expect(mocks.suppressEmail).toHaveBeenCalledTimes(2);
+    expect(mocks.suppressEmail).toHaveBeenLastCalledWith(expect.anything(), ACCOUNT_ID, RECIPIENT, 'complaint');
+  });
+  it('rejects conflicting notice families', async () => {
+    expect((await POST(signedRequest('email.delivered', domainData({ tags: { kind: 'contractor_alert', account_id: ACCOUNT_ID, owner_event_notice_id: noticeId, domain_failure_notice_id: noticeId } })))).status).toBe(500);
+    expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+});

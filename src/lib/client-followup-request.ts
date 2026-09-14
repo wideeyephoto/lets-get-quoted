@@ -2,11 +2,9 @@ import { randomUUID } from 'crypto';
 import { createAdminClient } from '@/lib/auth';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
-import { loadBusinessName } from '@/lib/business-name';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 /** Up to 2,000 characters — detailed enough for photos/notes, concise enough for email. */
 const MAX_FOLLOWUP_LENGTH = 2000;
@@ -104,53 +102,16 @@ export async function requestJobFollowup(token: string, input: FollowupRequestIn
     return { ok: false, message: 'Attachments could not be saved. Please submit without attachments or contact your contractor.' };
   }
 
-  await createJobFeedEvent(admin, access.accountId, access.jobId, {
+  const feedEvent = await createJobFeedEvent(admin, access.accountId, access.jobId, {
     kind: feedKind,
     title: feedTitle,
     body: text,
     visibility: 'client',
-    meta: photoPaths.length > 0 ? { photo_paths: photoPaths } : null,
+    meta: { owner_email_notice: 'v1', ...(photoPaths.length > 0 ? { photo_paths: photoPaths } : {}) },
   });
 
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, access.accountId);
-    if (ownerEmail) {
-      const businessName = await loadBusinessName(admin, access.accountId);
-      const subject = isMoreWork
-        ? `New project request from ${clientName} (${job?.ref ?? 'past job'})`
-        : isWarranty
-          ? `Warranty request from ${clientName} on ${job?.ref ?? 'job'}`
-          : `Follow-up request from ${clientName} on ${job?.ref ?? 'job'}`;
-
-      const heading = isMoreWork
-        ? `${clientName} would like to book more work`
-        : isWarranty
-          ? `${clientName} requested warranty service`
-          : `${clientName} requested a follow-up`;
-
-      const noteLine = isMoreWork
-        ? 'A past customer wants to hire you for another project. Reach out to discuss the scope.'
-        : isWarranty
-          ? 'Submitted from their job dashboard regarding warranty or service coverage.'
-          : 'Submitted from their job dashboard. Reply directly or open the job to coordinate.';
-
-      const bodyLines = [text, noteLine];
-      if (photoPaths.length > 0) {
-        bodyLines.push(`Attached ${photoPaths.length} photo/video attachment${photoPaths.length === 1 ? '' : 's'}.`);
-      }
-
-      await sendContractorAlertEmail({
-        accountId: access.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject,
-        heading,
-        bodyLines,
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
-        tone: isWarranty ? 'warning' : 'info',
-      });
-    }
+    await runOwnerEventNotices(admin, { sourceId: feedEvent.id, accountId: access.accountId });
   } catch (error) {
     console.error(`Could not email owner about follow-up request on job ${access.jobId}:`, error instanceof Error ? error.message : error);
   }

@@ -12,7 +12,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { loadBusinessName } from '@/lib/business-name';
 import { sendOwnerPortalMessageAlertSms } from '@/lib/sms';
 
@@ -49,30 +49,18 @@ export async function askQuoteQuestion(token: string, question: string): Promise
 
   // Client-visible on purpose: the person who asked should be able to see that
   // they asked, and the contractor's reply belongs in the same thread.
-  await createJobFeedEvent(admin, access.accountId, access.jobId, {
+  const feedEvent = await createJobFeedEvent(admin, access.accountId, access.jobId, {
     kind: 'client_question',
     title: `${clientName} asked a question about the quote`,
     body: text,
     visibility: 'client',
+    meta: { owner_email_notice: 'v1' },
   });
 
   // Best-effort. A question that reached the feed has arrived; failing the whole
   // action because an email bounced would tell the customer it didn't.
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, access.accountId);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId: access.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: `${clientName} has a question about ${job?.ref ?? 'their quote'}`,
-        heading: `${clientName} asked about their quote`,
-        bodyLines: [text, 'They have not approved or declined — they are waiting on an answer.'],
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
-        tone: 'info',
-      });
-    }
+    await runOwnerEventNotices(admin, { sourceId: feedEvent.id, accountId: access.accountId });
   } catch (error) {
     console.error(`Could not email the owner about a quote question on job ${access.jobId}:`, error instanceof Error ? error.message : error);
   }

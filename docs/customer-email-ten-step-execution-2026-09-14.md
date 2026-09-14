@@ -85,3 +85,23 @@ notices are done. Digests/support are also tracked in step 7 and booking/reminde
 notifications in step 5; overlap does not remove their acceptance requirement.
 
 Full application/test type checking completed successfully with no diagnostics after the final application changes.
+
+## September 14 — shared owner-event queue, first source migration
+
+Restoration committed as 639a2e877. Added a shared owner-event ledger with atomic
+source creation, immutable source/message snapshots, one-winner claims and signed
+callback repair. Client questions and follow-up/more-work requests now dispatch
+their saved event ID, so a request interruption cannot lose the pending notice.
+A bounded, authenticated five-minute pickup route is configured locally and
+background sending defaults disabled. See the [owner-event runbook](runbooks/owner-event-notices.md).
+
+Observed verification: **192 application tests**, **93/93 PostgreSQL 17 checks**,
+**10 sender-registry tests**, changed-file lint and a clean local security advisor.
+No hosted migration, email, environment change, deployment or canary expansion.
+
+Step 4 remains in progress. Dispatch deduplication now covers each migrated feed
+event, but repeated HTTP submissions creating separate feed rows still need an
+explicit request identity. Remaining owner alert callers and families are not
+silently counted as migrated. The full ten-step goal and final push stay open.
+
+Full application/test type checking completed with exit 0 and no diagnostics for the owner-event implementation.

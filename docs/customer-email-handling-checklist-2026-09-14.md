@@ -266,3 +266,9 @@ Execution order, acceptance criteria and milestone dependencies are in the [impl
 - **T16/T17/T19:** A previously attempted domain failure can now produce one durable restoration notice per verified recovery. The source update and notice commit together; current owner, message, provider identity/key and signed outcomes are retained. Changed connections stop unsent notices. No automatic resend is enabled.
 - **Verification:** 153 application tests and 75 PostgreSQL checks passed, plus lint, sender-registry checks and a clean local security advisor. See the [restoration runbook](runbooks/email-domain-restoration-notices.md) and [ten-step record](customer-email-ten-step-execution-2026-09-14.md).
 - **Remaining:** Step 4 still includes generic contractor alerts, owner confirmations, lead notices and messaging application notices. Steps 5–10 and hosted acceptance remain open. No live change occurred.
+
+### Twenty-sixth-pass implementation — owner-event queue and customer requests
+
+- **T16/T17/T19:** Marked client question, follow-up and more-work feed events atomically create a private owner notice. Inline dispatch uses the saved source ID; a disabled-by-default background pickup can recover pending events after request interruption. Saved messages/provider keys and signed callbacks protect an attempted event from duplicate dispatch.
+- **Verification:** 192 application tests and 93 PostgreSQL checks passed, plus lint, ten registry tests and a clean local security advisor. See the [owner-event runbook](runbooks/owner-event-notices.md).
+- **Remaining:** Explicit request IDs are still needed to deduplicate repeated submissions that create different feed rows. Other contractor/owner alert families, operator controls, hosted acceptance and canary evidence remain open.

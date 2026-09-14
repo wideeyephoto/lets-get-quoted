@@ -52,6 +52,8 @@ export type ParkedCronRoute = {
 export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [];
 
 export const CRON_JOBS: CronJobSpec[] = [
+  { job: 'owner-event-notices', label: 'Owner event notices', schedule: '*/5 * * * *', importance: 'customer',
+    consequence: 'Saved customer questions and follow-up notices can remain pending. Background sending is disabled until explicitly enabled.' },
   {
     job: 'email-recovery', label: 'Email recovery', schedule: '*/5 * * * *', importance: 'customer',
     consequence: 'Eligible saved emails can miss their retry window; uncertain sends require operator review. Sending is disabled until explicitly enabled.',
