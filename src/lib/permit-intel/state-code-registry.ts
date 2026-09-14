@@ -585,7 +585,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'New Mexico',
     fips: '35',
     licensingBoard: 'New Mexico Regulation and Licensing Department (Construction Industries Division / CID)',
-    licensingUrl: 'https://www.rld.nm.gov/construction-industries-division',
+    licensingUrl: 'https://www.rld.nm.gov/construction-industries/',
     codes: {
       building: { name: '2021 New Mexico Residential Building Code (NMRBC / 2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 New Mexico Electrical Code (NEC)', edition: '2020', model: 'NEC' },
