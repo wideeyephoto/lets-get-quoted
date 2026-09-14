@@ -7,7 +7,8 @@ import { createAdminClient } from '@/lib/supabase-admin';
 import styles from '../../../../admin.module.css';
 import { resolveEmailSend, resendDocumentEmail } from './actions';
 
-export default async function EmailSendRecoveryDetail({ params }: { params: { source: string; id: string } }) {
+export default async function EmailSendRecoveryDetail(props: { params: Promise<{ source: string; id: string }> }) {
+  const params = await props.params;
   const { staff } = await requireAdmin();
   const canManage = staffCan(staff, 'ops.manage');
   if (params.source !== 'lifecycle' && params.source !== 'document') {

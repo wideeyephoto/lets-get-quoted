@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { requireOfficeContext } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { OFFICE_CAPABILITY_KEYS } from '@/lib/office-permissions';
 import { recordAccountEvent } from '@/lib/account-events';
 import { APP_ORIGIN } from '@/lib/app-origin';
@@ -173,7 +173,7 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
       inviteUrl: link,
     };
     
-    const admin = require('@/lib/auth').createAdminClient();
+    const admin = createAdminClient();
     const { error: insertError } = await admin.from('platform_event_notices').insert({
       account_id: accountId,
       event_family: 'auth_link', // reusing auth_link for invitations or maybe 'office_invitation'? The DB has 'auth_link'

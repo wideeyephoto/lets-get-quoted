@@ -145,7 +145,7 @@ export default function Html5ProductCanvasCaster({
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [showBoundary, setShowBoundary] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [_renderError, setRenderError] = useState<string | null>(null);
 
   // Cached blank image and logo image elements
   const blankImgRef = useRef<HTMLImageElement | null>(null);
