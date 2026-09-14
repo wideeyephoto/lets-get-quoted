@@ -55,6 +55,9 @@ jobs:
       - name: Review email transport registry drift
         run: npm run test:email-registry
 
+      - name: Verify read-only callback evidence review
+        run: npm run test:callback-evidence-review
+
       - name: Document, recovery and platform email database checks
         run: npm run test:pg17:document-email
 

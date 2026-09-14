@@ -78,6 +78,7 @@
     "test:email-dry-run": "node --test scripts/dry-run-contractor-lifecycle.test.mjs",
     "test:email-seed": "node --test scripts/run-deliverability-seed-test.test.mjs",
     "test:email-registry": "node --test scripts/check-email-sender-registry.test.mjs && node scripts/check-email-sender-registry.mjs",
+    "test:callback-evidence-review": "node --test scripts/inspect-operational-callback-evidence.test.mjs",
     "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
     "test:pg17:job-access": "node scripts/verify-job-access-boundary.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",

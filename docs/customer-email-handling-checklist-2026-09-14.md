@@ -209,6 +209,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 100 selected application tests, full type checking and 35 actual PostgreSQL 17 checks passed; the local security advisor found no issues. Changed-file lint and registry checks passed. Migration `20260914164359_operational_callback_evidence.sql` is prepared locally only; no emails or hosted changes occurred.
 - **Remaining:** Unknown/unrecovered IDs, emergency messages without ledgers, historical evidence, storage retention review and hosted acceptance. See the [durable evidence runbook](runbooks/operational-callback-evidence.md).
 
+### Eighteenth-pass implementation — read-only evidence review
+
+- **T12/T19/T20:** Added a bounded report for retained callback evidence: unmatched provider IDs, recipient-binding conflicts and missing/weaker/present blocks. Explicit host matching and GET-only table restrictions prevent writes, RPCs and provider calls. Output omits recipient addresses and message bodies.
+- **Verification:** 16 offline tests with the installed Supabase client passed, including lower API caps, partial-read failures, privacy and request restrictions. Changed-script lint and registry checks passed; CI includes the report tests. No hosted report or email was run.
+- **Remaining:** Collect/review actual environment evidence, resolve unknown IDs through supported paths, approve retention rules and continue durable identities. See the [review runbook](runbooks/operational-callback-evidence-review.md).
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

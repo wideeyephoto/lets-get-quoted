@@ -22,6 +22,8 @@ Preserve the evidence table and reconciliation trigger when rolling back applica
 
 ## Review and limitations
 
+Use the [read-only evidence report](operational-callback-evidence-review.md) to distinguish unmatched IDs, recipient conflicts and missing/weaker/existing blocks. It exposes operational references rather than recipient addresses or message bodies and performs no repair or deletion.
+
 Unmatched evidence stays private and inert until an operational provider ID is recorded. This includes emergency notifications without ledger rows and events from another environment sharing the provider. No address-only matching, automatic reassignment or historical import occurs. An operational provider ID that is never recovered cannot be reconciled automatically.
 
 Older callbacks predating this migration are not reconstructed from free-text errors: those records may lack the permanent/transient classification. Reconcile historical failures from retained provider evidence with explicit environment and recipient provenance. Storage retention and unmatched-evidence review remain operational work; no automatic purge was added that might discard unresolved evidence. Existing deletion of a send does not delete its negative evidence or remove a recipient block.
