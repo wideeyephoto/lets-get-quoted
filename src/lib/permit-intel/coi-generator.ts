@@ -57,11 +57,14 @@ export type MunicipalCoiCertificate = {
 };
 
 export class CoverageDataMissingError extends Error {
-  constructor(missing: string[]) {
+  public readonly missingFields: string[];
+
+  constructor(missing: string[], missingFields?: string[]) {
     super(
       `Cannot generate Certificate of Insurance: missing required coverage data (${missing.join(', ')}). Coverage data must be recorded in Credentials Vault.`,
     );
     this.name = 'CoverageDataMissingError';
+    this.missingFields = missingFields || missing;
   }
 }
 
@@ -90,13 +93,26 @@ export function generateMunicipalCoi(input: {
   projectAddress?: string;
 }): MunicipalCoiCertificate {
   const missingCoverage: string[] = [];
-  if (!input.contractor.generalLiabilityCarrier) missingCoverage.push('General Liability Carrier');
-  if (!input.contractor.generalLiabilityPolicyNumber) missingCoverage.push('General Liability Policy Number');
-  if (!input.contractor.workersCompCarrier) missingCoverage.push("Workers' Compensation Carrier");
-  if (!input.contractor.workersCompPolicyNumber) missingCoverage.push("Workers' Compensation Policy Number");
+  const missingFields: string[] = [];
+  if (!input.contractor.generalLiabilityCarrier) {
+    missingCoverage.push('General Liability Carrier');
+    missingFields.push('generalLiabilityCarrier');
+  }
+  if (!input.contractor.generalLiabilityPolicyNumber) {
+    missingCoverage.push('General Liability Policy Number');
+    missingFields.push('generalLiabilityPolicyNumber');
+  }
+  if (!input.contractor.workersCompCarrier) {
+    missingCoverage.push("Workers' Compensation Carrier");
+    missingFields.push('workersCompCarrier');
+  }
+  if (!input.contractor.workersCompPolicyNumber) {
+    missingCoverage.push("Workers' Compensation Policy Number");
+    missingFields.push('workersCompPolicyNumber');
+  }
 
   if (missingCoverage.length > 0) {
-    throw new CoverageDataMissingError(missingCoverage);
+    throw new CoverageDataMissingError(missingCoverage, missingFields);
   }
 
   const dateStr = new Date().toISOString().slice(0, 10);
