@@ -1905,7 +1905,7 @@ export async function sendPlatformEventNoticeEmail(input: {
   const replyTo = input.payload.reply_to;
   
   if (input.eventFamily === 'daily_digest') {
-    const brand = await brandFor({ accountId: input.accountId! });
+    const brand = await brandFor({ accountId: input.accountId!, businessName: input.payload.businessName || "Let's Get Quoted" });
     html = renderDailyDigestEmailHtml({ ...input.payload, brand });
     tags = defaultTags('daily_digest', brand, input.accountId!);
   } else if (input.eventFamily === 'support_case_staff') {

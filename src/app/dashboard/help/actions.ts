@@ -63,7 +63,6 @@ export async function openSupportCaseAction(formData: FormData) {
   // for something that worked.
   const staffPayload = {
     to: process.env.STAFF_ALERT_EMAIL || 'hello@letsgetquoted.com',
-    subject: `[Support Case] ${subject}`,
     kind: 'opened', caseId: opened.id, subject, body, requesterEmail: userEmail, businessName
   };
   await admin.from('platform_event_notices').insert({
@@ -72,7 +71,6 @@ export async function openSupportCaseAction(formData: FormData) {
   
   const customerPayload = {
     to: userEmail,
-    subject: `Support Request Received: ${subject}`,
     kind: 'received', caseId: opened.id, subject
   };
   await admin.from('platform_event_notices').insert({
@@ -108,7 +106,6 @@ export async function replyToSupportCaseAction(caseId: string, formData: FormDat
 
   const staffPayload = {
     to: process.env.STAFF_ALERT_EMAIL || 'hello@letsgetquoted.com',
-    subject: `[New Reply] ${replied.subject}`,
     kind: 'reply',
     caseId: replied.id,
     subject: replied.subject,

@@ -40,7 +40,6 @@ export async function addNoteAction(caseId: string, formData: FormData) {
     if (to && subject) {
       const customerPayload = {
         to,
-        subject: `[Support Reply] ${subject}`,
         kind: 'reply',
         caseId,
         subject,

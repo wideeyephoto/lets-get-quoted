@@ -177,7 +177,7 @@ export async function inviteOfficeUserAction(input: { email: string }): Promise<
     const { error: insertError } = await admin.from('platform_event_notices').insert({
       account_id: accountId,
       event_family: 'auth_link', // reusing auth_link for invitations or maybe 'office_invitation'? The DB has 'auth_link'
-      source_id: 'invite-' + invited.id,
+      source_id: 'invite-' + email,
       payload
     });
     if (insertError) throw insertError;
