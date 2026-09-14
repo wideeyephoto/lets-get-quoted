@@ -324,7 +324,7 @@ export async function runConnectedPaymentProjectionBatch(
         selectedCount,
         claimedCount,
         results: Object.freeze(results),
-        errorCode: err instanceof Error ? err.message : String(err),
+        errorCode: 'projection_worker_claim_error',
       });
     }
     if (!claim) break;

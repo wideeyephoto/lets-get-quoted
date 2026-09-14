@@ -14,6 +14,7 @@ import PinMap, { type MapPin } from '@/components/pin-map';
 import FocusView from './FocusView';
 import JobSmoothieView from './JobSmoothieView';
 import FieldIntakeHint from '@/components/field-intake-hint';
+import PhotoDefectEstimatorModal from './PhotoDefectEstimatorModal';
 import styles from './jobs.module.css';
 
 // Display-ready job shape, built server-side so this client view never imports
