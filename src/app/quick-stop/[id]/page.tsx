@@ -88,8 +88,8 @@ export default async function QuickStopStatusPage({
         </div>
       </section>
 
-      {searchParams.done === 'canceled' ? <section className="panel workspace-section-card"><p className="payment-banner success">Your Quick Stop was canceled. Any refund due has been issued.</p></section> : null}
-      {searchParams.done === 'no_show' ? <section className="panel workspace-section-card"><p className="payment-banner success">Thanks — we’ve recorded the no-show and issued a full refund.</p></section> : null}
+      {searchParams.done === 'canceled' ? <section className="panel workspace-section-card"><p className="payment-banner success">Your Quick Stop was canceled. Contact the contractor to confirm the status of any refund due.</p></section> : null}
+      {searchParams.done === 'no_show' ? <section className="panel workspace-section-card"><p className="payment-banner success">Thanks — we’ve recorded the no-show. Contact the contractor to confirm your refund status.</p></section> : null}
       {searchParams.done === 'window_accepted' ? <section className="panel workspace-section-card"><p className="payment-banner success">New arrival window confirmed.</p></section> : null}
       {searchParams.done === 'window_declined' ? <section className="panel workspace-section-card"><p className="payment-banner muted">No problem — your original arrival window still stands.</p></section> : null}
       {searchParams.done === 'diag_approved' ? <section className="panel workspace-section-card"><p className="payment-banner success">Diagnostic visit approved. If there’s an additional charge, we’ve texted you a payment link.</p></section> : null}

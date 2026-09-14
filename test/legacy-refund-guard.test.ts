@@ -342,7 +342,7 @@ const transientRefundDbError = { code: '08006', message: 'temporary database fai
 describe('legacy refund charge-model boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createRefund.mockResolvedValue({ id: 're_legacy_guard' });
+    mocks.createRefund.mockResolvedValue({ id: 're_legacy_guard', status: 'succeeded', amount: 2500, currency: 'usd', payment_intent: 'pi_legacy_guard' });
     mocks.getStripeClient.mockReturnValue({
       refunds: { create: mocks.createRefund },
       webhooks: { constructEvent: () => mocks.event },
@@ -350,6 +350,25 @@ describe('legacy refund charge-model boundary', () => {
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_legacy_guard';
   });
 
+  it.each(['pending','requires_action','failed','canceled',null,undefined,'unknown'])('does not account for or announce an unconfirmed %s refund',async status=>{
+    mocks.createRefund.mockResolvedValueOnce({id:'re_pending',status,amount:2500,currency:'usd',payment_intent:'pi_legacy_guard'});
+    const {client,updates}=paymentClient({...legacyPayment,charge_model:'destination'});
+    await expect(refundPayment(client,'acct_workspace','pay_legacy_guard',25)).rejects.toThrow('completion could not be confirmed');
+    expect(updates).toEqual([]);
+    expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+  });
+  it.each([{amount:2400},{currency:'eur'},{payment_intent:'pi_other'},{id:''}])('rejects a succeeded refund with mismatched provider evidence %j',async patch=>{
+    mocks.createRefund.mockResolvedValueOnce({id:'re_match',status:'succeeded',amount:2500,currency:'usd',payment_intent:'pi_legacy_guard',...patch});
+    const {client,updates}=paymentClient({...legacyPayment,charge_model:'destination'});
+    await expect(refundPayment(client,'acct_workspace','pay_legacy_guard',25)).rejects.toThrow('completion could not be confirmed');
+    expect(updates).toEqual([]);
+  });
+  it('accepts a matching full refund with an expanded payment intent',async()=>{
+    mocks.createRefund.mockResolvedValueOnce({id:'re_full',status:'succeeded',amount:10000,currency:'usd',payment_intent:{id:'pi_legacy_guard'}});
+    const {client,updates}=paymentClient({...legacyPayment,charge_model:'destination'});
+    await expect(refundPayment(client,'acct_workspace','pay_legacy_guard')).resolves.toEqual({amount:100,isFull:true,refundedTotal:100});
+    expect(updates[0]).toMatchObject({status:'refunded',refunded_amount:100});
+  });
   it('allows only an absent pre-migration model or explicit destination', () => {
     expect(isLegacyDestinationPayment({})).toBe(true);
     expect(isLegacyDestinationPayment({ charge_model: 'destination' })).toBe(true);

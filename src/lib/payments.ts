@@ -885,6 +885,17 @@ export async function refundPayment(
       { idempotencyKey: `refund_${paymentId}_${alreadyCents}_${requestedCents}` },
     );
 
+    // A successful HTTP response can describe pending, failed or action-required
+    // money movement. Only a matching completed refund may advance accounting
+    // or trigger completion messages. Unknown results require reconciliation.
+    const refundedIntent = typeof refund.payment_intent === 'string'
+      ? refund.payment_intent : refund.payment_intent?.id;
+    if (!refund.id || refundedIntent !== payment.stripe_payment_intent
+      || refund.amount !== requestedCents || refund.currency !== 'usd'
+      || refund.status !== 'succeeded') {
+      throw new Error('Refund completion could not be confirmed. Check the payment provider status before submitting another refund.');
+    }
+
     console.log(`Refund created: ${refund.id} for payment ${paymentId} (${isFull ? 'full' : 'partial'} ${formatMoneyCents(requestedCents)})`);
 
     const refundedTotal = fromCents(alreadyCents + requestedCents);

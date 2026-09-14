@@ -37,6 +37,8 @@ The complete agreed work, commit progress and push gate are maintained in the
 
 - [x] **Local new Quick Stop notice and active-contact protection:** Request/notice creation is atomic and concurrent matching contacts cannot create overlapping active requests. Checks: 36 application tests, 124 database checks, type checking, lint and clean local security advisor.
 - [x] **Local Quick Stop delayed-submission receipts:** Persistent form IDs and atomic receipts prevent concurrent and delayed retries from creating another request, including after closure/deletion. Attachments reuse content-bound paths. Checks: 43 application tests, 127 database checks, full type checking, lint and clean local security advisor.
+- [x] **Local synchronous refund confirmation guard:** Require matching succeeded provider evidence before payment completion writes; cancellation texts describe uncertainty and never treat intended cents as completed. 61 application tests, full type checking and changed-file lint passed.
+- [ ] **Durable refund outcome notifications:** Save refund attempts and reconcile signed provider outcomes, including legacy charge.refunded validation, late outcomes and operator recovery.
 - [ ] **Quick Stop receipt hosted acceptance:** Verify deployment, receiver delivery, receipt retention and interrupted-upload cleanup; authoritative refund outcomes remain open.
 
 ## Workstream Updates (2026-09-12)

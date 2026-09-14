@@ -324,3 +324,11 @@ Deploy migration 20260914184145_quick_stop_request_receipts.sql before the new p
 The action hashes normalized customer input and attachment content, then looks up the private account/request receipt before active-contact checks, date checks, qualification or upload. The submission transaction serializes that identity, checks client ownership, inserts the request (which queues its owner notice), and inserts its receipt. Matching retries return the original identity or a deletion tombstone; different input cannot reuse a completed identity. The form keeps its identity after a lost response.
 
 Attachment paths include account, request, file index and SHA-256 content. Only a conflict at this deterministic path is accepted as an already-uploaded file; other upload errors prevent request creation. Public visitors retain the existing storage-cap exemption. No attachment deletion occurs on an uncertain submission: another attempt may already reference those files. Hosted retention, orphan cleanup and delivery acceptance remain open.
+
+### Refund confirmation guard and remaining recovery work
+
+The synchronous legacy refund function accepts only a succeeded refund with matching intent, requested amount and USD currency. Pending, action-required, failed, canceled, absent or mismatched evidence returns an instruction to verify provider status before another refund request. Quick Stop cancellation copy describes an uncertain outcome without claiming either success or that no refund occurred.
+
+This guard does not add a durable attempt ledger or complete signed refund reconciliation. The legacy charge.refunded handler still requires a separate evidence review before it can support authoritative outcome notices. A canceled Quick Stop remains terminal after an uncertain refund; operators must inspect provider evidence rather than reopening cancellation. The owner cancellation email continues to request payment-status verification.
+
+Provider reference: [Stripe Refund object and status](https://docs.stripe.com/api/refunds/object).

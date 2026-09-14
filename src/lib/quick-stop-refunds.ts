@@ -105,7 +105,7 @@ export async function resolveQuickStopCancellation(
 
   const nowIso = new Date().toISOString();
   const status = opts.kind === 'no_show' ? 'no_show_confirmed' : opts.kind === 'contractor_cancel' ? 'contractor_canceled' : 'customer_canceled';
-  const patch: Record<string, unknown> = { status, refund_cents: intendedRefundCents, cancel_reason: opts.reason ?? null, updated_at: nowIso };
+  const patch: Record<string, unknown> = { status, refund_cents: 0, cancel_reason: opts.reason ?? null, updated_at: nowIso };
   if (opts.kind === 'no_show') {
     patch.no_show_confirmed_at = nowIso;
     patch.no_show_reported_at = req.no_show_reported_at ?? nowIso;
@@ -124,19 +124,21 @@ export async function resolveQuickStopCancellation(
     .eq('status', req.status)
     .select('id')
     .maybeSingle();
-  if (!claimed) return { pct: refundPct, refundCents: intendedRefundCents }; // already resolved by a concurrent path
+  if (!claimed) return { pct: refundPct, refundCents: 0 }; // already resolved by a concurrent path
 
-  // Winner issues the refund (refundPayment is itself idempotency-keyed). On
-  // failure, correct the recorded amount back to 0 so the row never claims money
-  // that didn't move — the contractor can retry from the payment.
-  let refundCents = intendedRefundCents;
+  // Record completed cents only after the provider result is confirmed.
+  // A timeout is uncertain: never tell the customer that no refund occurred.
+  let refundCents = 0;
+  let refundUnconfirmed = false;
   if (intendedRefundCents > 0 && req.payment_id) {
     try {
       await refundPayment(admin, accountId, req.payment_id, centsToDollars(intendedRefundCents));
+      const { error } = await admin.from('extra_stop_requests').update({ refund_cents: intendedRefundCents }).eq('id', requestId).eq('account_id', accountId);
+      if (error) throw error;
+      refundCents = intendedRefundCents;
     } catch (error) {
       console.error('Quick Stop refund failed:', error instanceof Error ? error.message : error);
-      refundCents = 0;
-      await admin.from('extra_stop_requests').update({ refund_cents: 0 }).eq('id', requestId).eq('account_id', accountId);
+      refundUnconfirmed = true;
     }
   }
 
@@ -179,7 +181,7 @@ export async function resolveQuickStopCancellation(
   await logQuickStopEvent(admin, accountId, requestId, { actor, from: req.status, to: status, meta: { pct: refundPct, refundCents, reason: opts.reason ?? null } });
 
   // Notify. Customer gets a refund text; owner gets an email trail.
-  const refundLabel = refundCents > 0 ? `A refund of $${centsToDollars(refundCents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} has been issued.` : 'No charge was refunded.';
+  const refundLabel = refundUnconfirmed ? 'Your refund status needs confirmation. Please contact the contractor for an update.' : refundCents > 0 ? `A refund of $${centsToDollars(refundCents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} has been issued.` : 'No refund was requested with this cancellation.';
   if (req.client_phone) {
     const message =
       opts.kind === 'no_show'

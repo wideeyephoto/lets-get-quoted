@@ -28,3 +28,23 @@ it('does not notify or refund when another cancellation already won',async()=>{
   await resolveQuickStopCancellation(admin,'account-1','request-1',{kind:'customer_cancel'});
   expect(mocks.refund).not.toHaveBeenCalled();expect(mocks.notify).not.toHaveBeenCalled();
 });
+
+it('records zero at cancellation and confirms cents only after a successful refund',async()=>{
+  mocks.get.mockResolvedValueOnce({id:'request-1',status:'confirmed',paid_at:new Date().toISOString(),payment_id:'payment-1',fee_cents:10000,client_phone:'+15552223333'});
+  mocks.refund.mockResolvedValueOnce({amount:100});
+  const result=await resolveQuickStopCancellation(admin,'account-1','request-1',{kind:'contractor_cancel'});
+  expect(query.update.mock.calls[0][0]).toMatchObject({refund_cents:0});
+  expect(query.update).toHaveBeenCalledWith({refund_cents:10000});
+  expect(result.refundCents).toBe(10000);
+  expect(mocks.sms.mock.calls[0][0].message).toContain('A refund of $100 has been issued');
+});
+it('reports uncertainty after a lost refund response without claiming success or no refund',async()=>{
+  mocks.get.mockResolvedValueOnce({id:'request-1',status:'confirmed',paid_at:new Date().toISOString(),payment_id:'payment-1',fee_cents:10000,client_phone:'+15552223333'});
+  mocks.refund.mockRejectedValueOnce(new Error('Response lost'));
+  const result=await resolveQuickStopCancellation(admin,'account-1','request-1',{kind:'contractor_cancel'});
+  expect(result.refundCents).toBe(0);
+  expect(query.update).not.toHaveBeenCalledWith({refund_cents:10000});
+  expect(mocks.sms.mock.calls[0][0].message).toContain('status needs confirmation');
+  expect(mocks.sms.mock.calls[0][0].message).not.toMatch(/has been issued|No charge was refunded/);
+  expect(mocks.notify).toHaveBeenCalled();
+});
