@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { logAdminAction } from '@/lib/admin';
 import { requireMfaPermission } from '@/lib/auth';
-import { sendMessagingApplicationStatusEmail } from '@/lib/email';
+import { dispatchMessagingOwnerNotices } from '@/lib/owner-event-notices';
 import { logMessagingRegistrationActionFailure } from '@/lib/messaging-registration-action-failure';
 import {
   assignMessagingNumberCampaign,
@@ -206,18 +206,9 @@ export async function reviewMessagingApplicationAction(formData: FormData): Prom
       before: { status: before.status },
       after: { status: decision, providerBrandId: providerBrandId || null, providerCampaignId: providerCampaignId || null },
     });
-    const contractorEmail = before.businessEmail || before.authorizedContactEmail;
-    if (contractorEmail && ['action_required', 'rejected', 'approved'].includes(decision)) {
-      sendMessagingApplicationStatusEmail({
-        accountId: before.accountId,
-        recipientEmail: contractorEmail,
-        businessName: before.businessName || before.legalBusinessName,
-        status: decision as 'action_required' | 'rejected' | 'approved',
-        detail: detail || null,
-      }).catch((err) => {
-        console.error('[messaging-admin-action] Failed to send status email:', err);
-      });
-    }
+    await dispatchMessagingOwnerNotices(ctx.admin, before.accountId, id).catch(() => {
+      console.error('[messaging-admin-action] Pending review notice needs background pickup');
+    });
   } catch (error) {
     failed(id, action, 'review_failed', error);
   }
@@ -477,18 +468,9 @@ export async function reconcileMessagingAssignmentAction(formData: FormData): Pr
       reason: confirmation,
       after: { individualAssignmentState: state },
     });
-    const contractorEmail = application.businessEmail || application.authorizedContactEmail;
-    if (contractorEmail && state === 'complete') {
-      sendMessagingApplicationStatusEmail({
-        accountId: application.accountId,
-        recipientEmail: contractorEmail,
-        businessName: application.businessName || application.legalBusinessName,
-        status: 'active',
-        purchasedNumber: application.purchasedNumber,
-      }).catch((err) => {
-        console.error('[messaging-admin-action] Failed to send activation email:', err);
-      });
-    }
+    await dispatchMessagingOwnerNotices(ctx.admin, application.accountId, id).catch(() => {
+      console.error('[messaging-admin-action] Pending activation notice needs background pickup');
+    });
   } catch (error) {
     failed(id, action, 'assignment_reconciliation_failed', error);
   }

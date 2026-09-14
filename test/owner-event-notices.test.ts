@@ -13,8 +13,8 @@ beforeEach(() => {
   });
 });
 
-function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; rejectFinish?: boolean } = {}) {
-  const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', event_kind: 'client_question', source_payload: { title: 'Question', body: 'Help', job_id: 'job-1' }, attempted_at: '2026-09-14T12:00:00Z' };
+function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; rejectFinish?: boolean; messaging?: boolean } = {}) {
+  const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', source_type: options.messaging ? 'messaging_registration_event' : 'job_feed', event_kind: 'client_question', source_payload: { title: 'Question', body: 'Help', job_id: 'job-1', recipient_email: 'application@example.test', business_name: 'Application Business' }, attempted_at: '2026-09-14T12:00:00Z' };
   let state = 'pending';
   const rpc = vi.fn(async (name: string, input: Record<string, unknown>) => {
     if (name === 'claim_owner_event_notices') {
@@ -77,4 +77,16 @@ it('keeps a missing owner visible without calling the sender', async () => {
   const db = fixture(); mocks.owner.mockResolvedValueOnce(null);
   expect((await runOwnerEventNotices(db.client)).errors).toBe(1);
   expect(mocks.send).not.toHaveBeenCalled();
+});
+
+it('uses the saved messaging contact and dashboard without looking up a different owner', async () => {
+  const db = fixture({ messaging: true });
+  expect((await runOwnerEventNotices(db.client)).ownersNotified).toBe(1);
+  expect(mocks.owner).not.toHaveBeenCalled();
+  expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({
+    recipientEmail: 'application@example.test', businessName: 'Application Business',
+    ctaUrl: expect.stringContaining('/dashboard/messages/dedicated-number'),
+  }));
+  await runOwnerEventNotices(db.client);
+  expect(mocks.send).toHaveBeenCalledTimes(1);
 });

@@ -123,3 +123,18 @@ DOM, including uncertain response, retry and explicit new request.
 Step 4 remains open for the remaining owner alert/confirmation, lead and messaging
 application families. The full ten-step goal, hosted acceptance and final push
 remain open. No live changes were made.
+
+## September 14 — messaging owner notices
+
+Prepared messaging event trigger and switched submission, review and activation
+actions to the owner-event queue. Saved application contacts and dashboard links
+are used; unchanged reviews and repeated active polls do not enqueue duplicates.
+Changed revision/status/review notes cancel obsolete pending notices.
+
+Verification: 85 application tests, 103 combined email PostgreSQL checks, 45 real
+provisioning PostgreSQL checks, full type checking, lint and 10 registry tests
+passed. The local security advisor reported no issues. The real provisioning
+suite includes the owner migrations and validates source locking with production
+service privileges. Action tests preserve successful review after pickup failure.
+Deployment must drain legacy inline senders before enabling the event trigger.
+No hosted changes or receiver evidence; step 4 remains in progress.

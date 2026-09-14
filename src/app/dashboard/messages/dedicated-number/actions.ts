@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { buildStandardContractorCampaignPayload } from '@/lib/messaging-contractor-campaign-template';
 import {
   recordMessagingTaxIdentitySubmission,
@@ -10,7 +10,7 @@ import {
   validateMessagingApplication,
 } from '@/lib/messaging-number-provisioning';
 import { sendFounderMessagingApplicationAlert } from '@/lib/founder-alerts';
-import { sendMessagingApplicationSubmittedEmail } from '@/lib/email';
+import { dispatchMessagingOwnerNotices } from '@/lib/owner-event-notices';
 import { MESSAGING_SETUP_FEE_USD } from '@/lib/billing/messaging-setup-checkout';
 import { logMessagingRegistrationActionFailure } from '@/lib/messaging-registration-action-failure';
 
@@ -128,7 +128,7 @@ export async function submitDedicatedNumberApplicationAction(formData: FormData)
       actorReference: userEmail || userId,
     });
 
-    // Fire dual notifications (Admin / Founder alert + Contractor receipt)
+    // The owner receipt was queued atomically with the application event.
     sendFounderMessagingApplicationAlert({
       applicationId: result.applicationId,
       accountId,
@@ -146,14 +146,8 @@ export async function submitDedicatedNumberApplicationAction(formData: FormData)
       console.error('[founder-alert] Failed to send messaging application alert:', err);
     });
 
-    sendMessagingApplicationSubmittedEmail({
-      accountId,
-      recipientEmail: validation.value.businessEmail || validation.value.authorizedContactEmail || userEmail || '',
-      businessName: validation.value.legalBusinessName,
-      desiredAreaCode: validation.value.desiredAreaCode,
-      amountPaid: MESSAGING_SETUP_FEE_USD,
-    }).catch((err) => {
-      console.error('[contractor-email] Failed to send messaging confirmation email:', err);
+    await dispatchMessagingOwnerNotices(createAdminClient(), accountId, result.applicationId).catch(() => {
+      console.error('[contractor-email] Pending messaging notice needs background pickup');
     });
   } catch (error) {
     logMessagingRegistrationActionFailure({

@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { getAccountOwnerEmail, sendOwnerEventNoticeEmail } from '@/lib/email';
 
-type Notice = { id: string; account_id: string; source_id: string; event_kind: string; source_payload: { title: string | null; body: string; job_id: string }; attempted_at: string };
+type Notice = { id: string; account_id: string; source_id: string; source_type?: string; event_kind: string; source_payload: { title: string | null; body: string; job_id?: string; recipient_email?: string; business_name?: string; application_id?: string }; attempted_at: string };
 
 /** One attempt per committed source event. Uncertain outcomes require review. */
 export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sourceId: string; accountId: string }) {
@@ -14,9 +14,11 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
     let providerId: string | null = null;
     let failure: string | null = null;
     try {
-      const recipient = (await getAccountOwnerEmail(admin, notice.account_id))?.trim().toLowerCase();
+      const messaging = notice.source_type === 'messaging_registration_event';
+      const recipient = (messaging ? notice.source_payload.recipient_email : await getAccountOwnerEmail(admin, notice.account_id))?.trim().toLowerCase();
       if (!recipient) throw new Error('owner_email_missing');
-      const site = await admin.from('sites').select('company_name').eq('account_id', notice.account_id).maybeSingle();
+      const site = messaging ? { data: { company_name: notice.source_payload.business_name }, error: null }
+        : await admin.from('sites').select('company_name').eq('account_id', notice.account_id).maybeSingle();
       if (site.error) throw new Error('owner_brand_unavailable');
       const prepared = await admin.rpc('prepare_owner_event_notice', {
         p_id: notice.id, p_account_id: notice.account_id, p_attempted_at: notice.attempted_at, p_recipient: recipient,
@@ -36,8 +38,8 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
         accountId: notice.account_id,
         subject: notice.source_payload.title || 'New customer request',
         heading: notice.source_payload.title || 'New customer request',
-        bodyLines: [notice.source_payload.body], ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}`, tone: 'info',
+        bodyLines: [notice.source_payload.body], ctaLabel: messaging ? 'Open messaging dashboard' : 'Open the job',
+        ctaUrl: messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}`, tone: 'info',
       });
     } catch (error) {
       failure = error instanceof Error && ['owner_email_missing','owner_brand_unavailable','notice_prepare_failed'].includes(error.message)
@@ -58,4 +60,16 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
   const notificationBacklog = pending.count ?? 0;
   return { ownersNotified, notificationReviews, notificationBacklog, errors: notificationReviews + notificationBacklog,
     notificationFailures: (reviews.data ?? []).map(row => ({ noticeId: row.id as string, accountId: row.account_id as string, code: row.last_error as string })) };
+}
+
+/** Dispatch only pending events for the application that just committed. */
+export async function dispatchMessagingOwnerNotices(admin: SupabaseClient, accountId: string, applicationId: string) {
+  const pending = await admin.from('owner_event_notices').select('source_id')
+    .eq('account_id', accountId).eq('source_type', 'messaging_registration_event')
+    .eq('source_payload->>application_id', applicationId).eq('state', 'pending')
+    .order('created_at').limit(5);
+  if (pending.error) throw new Error('Could not read pending messaging notices');
+  for (const notice of pending.data ?? []) {
+    await runOwnerEventNotices(admin, { sourceId: notice.source_id, accountId });
+  }
 }

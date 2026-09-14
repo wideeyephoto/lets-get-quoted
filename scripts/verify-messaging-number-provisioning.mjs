@@ -2,9 +2,10 @@
 // The harness creates its own local cluster, mocks the provider at the RPC
 // boundary, and never reads a hosted database URL or makes a network request.
 
+import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, rmSync, mkdtempSync } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
 import os from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
 
@@ -109,8 +110,9 @@ create unique index sms_sender_numbers_provider_e164_uidx on public.sms_sender_n
 create unique index sms_sender_numbers_provider_resource_uidx on public.sms_sender_numbers(provider,provider_number_id) where provider_number_id is not null;
 `;
 
+const dataDir = mkdtempSync(join(os.tmpdir(), 'lgq-messaging-provisioning-'));
 const pg = new EmbeddedPostgres({
-  databaseDir: join(process.cwd(), '.pg17-number-provisioning-check'),
+  databaseDir: dataDir,
   user: 'postgres',
   password: 'postgres',
   port: PORT,
@@ -197,10 +199,15 @@ try {
   }
 
   await control.query(BASE);
+  await control.query('alter role service_role bypassrls');
   const migration = readFileSync(MIGRATION, 'utf8');
   await control.query(migration);
   await control.query(migration);
   check('migration applies twice on PostgreSQL 17', true);
+
+  await control.query(`create table public.job_feed(id uuid primary key default gen_random_uuid(),account_id uuid references accounts(id),kind text,title text,body text,job_id uuid,meta jsonb default '{}')`);
+  await control.query(readFileSync('migrations/20260914175031_owner_event_notices.sql','utf8'));
+  await control.query(readFileSync('migrations/20260914180733_messaging_owner_event_notices.sql','utf8'));
 
   const firstAccount = randomUUID();
   await control.query('insert into public.accounts(id,business_name) values ($1,$2)', [firstAccount, 'First Test']);
@@ -1195,6 +1202,11 @@ try {
     `${wrongPolicyCode}/${raceSuccesses}/${raceCeilingFailures}/${spendAfterRace.total}`,
   );
 
+  await control.query('set role service_role');
+  const sourceLocks = one(await control.query(`select count(*)::int total,count(*) filter(where public.owner_event_source_available(n))::int available from public.owner_event_notices n`));
+  await control.query('reset role');
+  check('real messaging RPC events enqueue notices and source locking works with production service grants',sourceLocks.total>0 && sourceLocks.available>0);
+
   const lockDefinitions = one(await control.query(`select
       pg_catalog.pg_get_functiondef('public.complete_messaging_number_operation(uuid,uuid,text,jsonb)'::regprocedure) as completion,
       pg_catalog.pg_get_functiondef('public.resolve_messaging_number_operation_v2(uuid,text,text,jsonb,text)'::regprocedure) as recovery`));
@@ -1230,7 +1242,12 @@ try {
   for (const client of [worker, control]) {
     try { await client?.end(); } catch { /* already closed */ }
   }
-  try { await pg.stop(); } catch { /* cluster may not have started */ }
+  if (process.platform === 'win32' && pg.process) {
+    execFileSync(join(BIN,'pg_ctl.exe'), ['-D',dataDir,'stop','-m','fast','-w'], {windowsHide:true,stdio:'ignore',timeout:15000});
+    pg.process=undefined;
+    if (!resolve(dataDir).startsWith(resolve(os.tmpdir())+sep) || !dataDir.includes('lgq-messaging-provisioning-')) throw new Error('Unsafe test cleanup');
+    rmSync(dataDir,{recursive:true,force:true});
+  } else { try { await pg.stop(); } catch { /* cluster may not have started */ } }
 }
 
 const failed = checks.filter((entry) => !entry.ok);

@@ -151,3 +151,9 @@ Production-specific inputs needed before M5/M6: environment identity, internal r
 - **T16/T17:** Questions and follow-up/more-work submissions now carry explicit request IDs. A scoped immutable receipt commits with the feed event and owner notice, deduplicates concurrent retries, rejects changed content and retains a deletion tombstone. Attachment paths and question SMS keys stay stable on retry.
 - **Verification:** 50 application tests, 99 PostgreSQL checks, full type checking and a clean local security advisor; lint has no errors with existing unused-variable/import warnings. The rendered form test covers lost response, retained input/request identity and deliberate new request.
 - **Remaining:** Continue other owner alerts and confirmations, lead notices and messaging application events. Hosted acceptance, storage capacity/retention, remaining email families and canary evidence stay open.
+
+### Twenty-eighth-pass implementation — messaging owner notices
+
+- **T16/T17/T19:** Submission, review and activation events atomically enqueue owner notices. Application revision/contact and current review status fence stale sends. Identical review decisions and repeated activation checks stay silent; changed notes and new transitions retain distinct identities.
+- **Verification:** 85 application tests, 103 combined email PostgreSQL checks, 45 real provisioning PostgreSQL checks, full type checking, lint and 10 registry tests passed. The local security advisor reported no issues. The provisioning suite applies the owner migrations and exercises source availability with production service privileges.
+- **Remaining:** Other owner alerts/confirmations and leads remain in step 4. Staff/founder alerts remain in step 7. Legacy inline producers must be drained before the messaging trigger is deployed. Hosted delivery, release and canary requirements remain open.

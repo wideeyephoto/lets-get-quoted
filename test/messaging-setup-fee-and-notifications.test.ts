@@ -44,16 +44,15 @@ describe('2-way dedicated number $49.99 setup fee & notifications', () => {
   describe('owner submission action notifications', () => {
     it('calls both founder alert and contractor confirmation email upon application submission', () => {
       expect(ownerAction).toContain('sendFounderMessagingApplicationAlert({');
-      expect(ownerAction).toContain('sendMessagingApplicationSubmittedEmail({');
+      expect(ownerAction).toContain('await dispatchMessagingOwnerNotices(createAdminClient(), accountId, result.applicationId)');
       expect(ownerAction).toContain('MESSAGING_SETUP_FEE_USD');
     });
   });
 
   describe('admin registration review & activation notifications', () => {
     it('dispatches status email to contractor when admin takes action or activates number', () => {
-      expect(adminAction).toContain('sendMessagingApplicationStatusEmail({');
-      expect(adminAction).toContain("status: decision as 'action_required' | 'rejected' | 'approved'");
-      expect(adminAction).toContain("status: 'active'");
+      expect(adminAction).toContain('await dispatchMessagingOwnerNotices(ctx.admin, before.accountId, id)');
+      expect(adminAction).toContain('await dispatchMessagingOwnerNotices(ctx.admin, application.accountId, id)');
     });
   });
 

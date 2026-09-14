@@ -63,7 +63,7 @@ tests and changed-file lint passed. The local security advisor reported no issue
 Full application/test type checking completed with no diagnostics.
 
 The subsequent request-receipt migration below closes repeated-submission protection for these two migrated request flows. Remaining contractor alerts,
-owner confirmations, lead notices and messaging application notices are still
+owner confirmations and lead notices are still
 open under step 4; steps 5–10 also remain open.
 
 ## Request receipts — September 14 follow-up
@@ -101,3 +101,37 @@ one existing unused-variable warning in the page and four existing unused-import
 warnings in the server-action test remain. The rendered DOM test proves stable
 request IDs and preserved text across a lost response, plus a new ID after reopening.
 No hosted migration, email, configuration change or deployment occurred.
+
+## Messaging application events
+
+Apply 20260914180733_messaging_owner_event_notices.sql after the owner-event
+foundation. Drain old messaging submission/review/reconciliation actions before
+applying the trigger and deploying the new callers: old code sends inline and
+would otherwise overlap the queued notice. No historical backfill is included.
+
+The append-only messaging audit event is the source identity. Submission and
+resubmission receipts, review decisions requiring action or recording approval/
+rejection, and completed activation transitions enqueue in the source transaction.
+Unchanged review retries and already-active polls remain silent. The source
+snapshot contains business name, application ID/revision, normalized application
+contact and the customer-facing update; tax/provider audit metadata is excluded.
+
+A new revision/contact or obsolete status/review note cancels an unsent notice.
+Submission receipts remain valid after later statuses within the same revision.
+Messages link to the dedicated-number dashboard and use the shared owner-event
+snapshot, provider identity, signed callback and manual-review controls. Pickup
+is bounded to five pending notices for the exact account/application. Pickup
+failure does not undo a committed business action; background pickup remains
+required to recover pending work after interruption.
+
+Messaging tables grant the service only SELECT. The source-availability helper
+therefore uses SECURITY DEFINER solely to reload the persisted notice and acquire
+source row locks, returning a boolean. It has an empty search path, no mutation,
+and EXECUTE only for service_role. Other notice operations remain invoker functions.
+Production-style service privileges are exercised in the actual provisioning suite.
+
+Verification: 85 application tests, 103 email database checks, 45 provisioning
+checks, full type checking, lint, registry checks and clean local security advisor.
+Founder/staff submission alerts remain a separate, unmigrated family under step 7.
+Legacy messaging email helper exports remain for compatibility but have no production
+callers after this migration. Hosted acceptance and canary evidence remain open.
