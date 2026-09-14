@@ -171,6 +171,13 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 18 files / 224 tests passed; full application/test type checking passed. Changed-file lint has zero errors and two existing unused-import warnings. The sender inventory now includes the independent seed script and its unresolved policy/evidence gaps. No production caller was found for the support auto-responder; no live sending was enabled.
 - **Remaining:** Durable support reply identity, uncertain acceptance recovery, seed-script guards, provider inventory/history and hosted acceptance. See the [platform transactional policy](runbooks/platform-transactional-email-policy.md).
 
+### Twelfth-pass implementation — controlled seed runner
+
+- **T12/T18/T19:** Replaced default live sending and assumed seed recipients with offline preview, explicit bounded targets and a live allowlist guard. Each submission uses the shared platform delivery check and scoped callback tag. Partial acceptance IDs survive later failures; uncertain outcomes stop further submissions without retry.
+- **T02/T19:** Removed unverified authentication PASS claims and fake dry-run provider IDs. Samples identify nonfunctional links; inbox/authentication/reply/PDF receiver evidence remains explicitly unverified.
+- **Verification:** 19 offline runner tests passed, including actual templates/PDF, CLI guards, installed-client suppression queries and provider failure fixtures. Changed-script lint passed. The test command is included in CI. No live emails or hosted changes occurred. See the [seed runner runbook](runbooks/deliverability-seed-runner.md).
+- **Remaining:** Provider scope/history, external transport review, capacity, durable identities and hosted acceptance.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.
