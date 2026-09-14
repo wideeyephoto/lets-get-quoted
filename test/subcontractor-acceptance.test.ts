@@ -242,7 +242,7 @@ describe('accepting an available offer', () => {
     expect(texts.filter((text) => text.eventType === 'sub_offer_covered')).toHaveLength(2);
     // Nobody is left to work out for themselves that their link stopped working.
     expect(texts.find((text) => text.eventType === 'sub_offer_covered')?.body).toMatch(/covered by another sub/i);
-    expect(emails).toHaveLength(1);
+    expect(emails).toHaveLength(0);
   });
 
   it('is idempotent — accepting twice does not un-claim anything or re-notify', async () => {

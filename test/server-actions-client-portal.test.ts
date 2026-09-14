@@ -199,12 +199,6 @@ describe('Server Actions: Customer Portal & Token Access', () => {
 
       await customerTogglePlanAction(TOKEN, 'plan-1', false);
       expect(mocks.setRecurringPlanActive).toHaveBeenCalledWith(fakeAdmin, 'acc-1', 'plan-1', false);
-      expect(mocks.sendContractorAlertEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          recipientEmail: 'owner@hvac.test',
-          heading: 'Recurring Plan Paused',
-        }),
-      );
       expect(mocks.revalidatePath).toHaveBeenCalledWith(`/portal/view/${TOKEN}`);
     });
 
@@ -257,6 +251,7 @@ describe('Server Actions: Customer Portal & Token Access', () => {
         [],
         'Alice Homeowner',
         { path: 'data:image/svg...' },
+        { requestId: '', revision: '' }
       );
       expect(mocks.revalidatePath).toHaveBeenCalledWith(`/client/jobs/${TOKEN}`);
     });

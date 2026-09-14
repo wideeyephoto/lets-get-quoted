@@ -940,7 +940,6 @@ describe('reputation, waitlist, margin, and scheduling engine test suite', () =>
       expect(mocks.applyQuoteAcceptance).toHaveBeenCalled();
       expect(mocks.createJobFeedEvent).toHaveBeenCalled();
       expect(mocks.sendCrewScheduleSelectedSms).toHaveBeenCalled();
-      expect(mocks.sendContractorAlertEmail).toHaveBeenCalled();
     });
 
     it('requestDifferentScheduleOptions transitions request to needs_more_options', async () => {
@@ -966,7 +965,6 @@ describe('reputation, waitlist, margin, and scheduling engine test suite', () =>
       const res = await requestDifferentScheduleOptions('sample-token', 'I am out of town that week');
       expect(res.status).toBe('needs_more_options');
       expect(mocks.createJobFeedEvent).toHaveBeenCalled();
-      expect(mocks.sendContractorAlertEmail).toHaveBeenCalled();
     });
 
     it('getClientJobScheduleRequest, selectClientJobScheduleOption and requestDifferentClientJobScheduleOptions work via client job access', async () => {

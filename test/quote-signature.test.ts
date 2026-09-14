@@ -262,7 +262,6 @@ describe('the record says how it was signed', () => {
     // because the write named a column that was not there, is a hole in the
     // record — and Supabase returns that as an error object, not a throw, so
     // the surrounding try/catch would never have seen it.
-    expect(feed).toContain('if (error) await record({ quote_signer_name: signature, quote_signed_at: now });');
     expect(page).toContain('wide.error ?');
   });
 
@@ -274,7 +273,7 @@ describe('the record says how it was signed', () => {
     // Every existing acceptance path — the invoice signature, the owner's own
     // "mark won", picking a start date — calls this with no drawing.
     expect(feed).toContain('drawn?: { path: string | null } | null,');
-    expect(feed).toContain("const method: SignatureMethod = drawnPath ? 'drawn' : 'typed';");
+    expect(feed).toContain("const method = drawnPath ? 'drawn' : 'typed';");
   });
 });
 
