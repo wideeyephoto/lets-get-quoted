@@ -8,9 +8,9 @@ import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { requestJobFollowup, type FollowupCategory } from '@/lib/client-followup-request';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
 import { resolveJobAccess } from '@/lib/change-order-client';
-import { createJobFeedEvent, approveClientJobQuote } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
-import { loadBusinessName } from '@/lib/business-name';
+import { approveClientJobQuote } from '@/lib/job-feed';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
+import { clientRequestHash, saveClientRequest, validClientRequestId } from '@/lib/client-owner-requests';
 import { askQuoteQuestion } from '@/lib/client-question';
 import { updateClientQuoteOptions } from '@/lib/quote-options-data';
 import { startSubscriptionSignup, type SubscriptionSignupMode } from '@/lib/subscription-signup';
@@ -67,51 +67,21 @@ export async function submitJobFeedbackAction(
   const rawRating = Number(formData.get('rating'));
   const rating = Number.isInteger(rawRating) && rawRating >= 1 && rawRating <= 5 ? rawRating : null;
 
-  const { data: job } = await admin
-    .from('jobs')
-    .select('ref, client_name')
-    .eq('account_id', access.accountId)
-    .eq('id', access.jobId)
-    .maybeSingle();
-
-  const clientName = (job?.client_name as string) || 'A customer';
-
+  const requestId = String(formData.get('request_id') ?? '').toLowerCase();
+  if (!validClientRequestId(requestId)) return { ok: false, message: 'Refresh this page before submitting feedback.' };
+  let feedId: string | null;
   try {
-    await createJobFeedEvent(admin, access.accountId, access.jobId, {
-      kind: 'review_feedback',
-      title: `Private feedback${rating ? ` (${rating}★)` : ''}`,
-      body: feedback,
-      visibility: 'internal',
+    const receipt = await saveClientRequest(admin, { ...access, requestId,
+      hash: clientRequestHash('review_feedback', feedback, [String(rating)]), kind: 'review_feedback',
+      title: `Private feedback${rating ? ` (${rating} of 5 stars)` : ''}`, body: feedback, meta: { rating },
     });
-  } catch (error) {
-    console.error('Job feedback feed event failed:', error instanceof Error ? error.message : error);
+    feedId = receipt.feed_id;
+  } catch {
+    return { ok: false, message: 'Feedback could not be saved. Retry this form, or reopen it to send different feedback.' };
   }
-
-  try {
-    const [ownerEmail, businessName] = await Promise.all([
-      getAccountOwnerEmail(admin, access.accountId),
-      loadBusinessName(admin, access.accountId),
-    ]);
-    if (ownerEmail) {
-      const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-      await sendContractorAlertEmail({
-        accountId: access.accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: `New private feedback${rating ? ` (${rating}★)` : ''} for ${job?.ref ?? 'job'}`,
-        heading: `${clientName} left you private feedback`,
-        bodyLines: [
-          `Rating: ${rating ? `${rating} of 5 stars` : 'Not rated'}`,
-          feedback,
-          'Sent privately from their completed job dashboard.',
-        ],
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${access.jobId}`,
-        tone: rating && rating >= 4 ? 'info' : 'warning',
-      });
-    }
-  } catch (error) {
-    console.error('Job feedback email alert failed:', error instanceof Error ? error.message : error);
+  if (feedId) {
+    try { await runOwnerEventNotices(admin, { sourceId: feedId, accountId: access.accountId }); }
+    catch { console.error('Saved feedback notice needs background pickup'); }
   }
 
   revalidatePath(`/client/jobs/${token}`);

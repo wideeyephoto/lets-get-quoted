@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { submitJobFeedbackAction } from './actions';
 
 type ClientReviewCardProps = {
@@ -16,6 +16,7 @@ export default function ClientReviewCard({
   googleUrl,
   isComplete,
 }: ClientReviewCardProps) {
+  const requestId = useRef<string | null>(null);
   const [rating, setRating] = useState<number | null>(null);
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
@@ -107,7 +108,7 @@ export default function ClientReviewCard({
             <button
               type="button"
               className="btn secondary"
-              onClick={() => setShowFeedbackForm(!showFeedbackForm)}
+              onClick={() => { requestId.current = null; setError(null); setShowFeedbackForm(!showFeedbackForm); }}
             >
               {showFeedbackForm ? 'Close direct note' : 'Send private note to owner'}
             </button>
@@ -116,12 +117,19 @@ export default function ClientReviewCard({
           {showFeedbackForm ? (
             <form
               className="client-warranty-form"
-              action={(formData) => {
+              onSubmit={(event) => {
+                event.preventDefault();
+                const formData = new FormData(event.currentTarget);
+                requestId.current ??= crypto.randomUUID();
+                formData.set('request_id', requestId.current);
                 setError(null);
                 startTransition(async () => {
                   if (rating) formData.set('rating', String(rating));
-                  const result = await submitJobFeedbackAction(token, formData);
+                  let result;
+                  try { result = await submitJobFeedbackAction(token, formData); }
+                  catch { setError('Could not confirm submission. Retry this form.'); return; }
                   if (result.ok) {
+                    requestId.current = null;
                     setDone(true);
                     setShowFeedbackForm(false);
                   } else {
@@ -145,7 +153,7 @@ export default function ClientReviewCard({
                 <button type="submit" className="btn primary" disabled={pending}>
                   {pending ? 'Sending…' : 'Send private feedback'}
                 </button>
-                <button type="button" className="btn ghost" onClick={() => setShowFeedbackForm(false)} disabled={pending}>
+                <button type="button" className="btn ghost" onClick={() => { requestId.current = null; setShowFeedbackForm(false); }} disabled={pending}>
                   Cancel
                 </button>
               </div>

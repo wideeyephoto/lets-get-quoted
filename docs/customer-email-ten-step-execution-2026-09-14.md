@@ -156,3 +156,9 @@ No hosted changes or receiver evidence; step 4 remains in progress.
 - **T16/T17:** Warranty forms retain a request UUID and entered text after uncertain submission. A private scoped receipt atomically commits with the claim and owner notice; matching retries reuse it and changed content is rejected. Deleted claims retain replay tombstones. Attachment paths bind request and file content; completed receipts skip repeat upload.
 - **Verification:** 56 application tests including a rendered form, 112 PostgreSQL checks, full type checking, lint and clean local security advisor passed. Tests cover concurrent requests, changed content, tenant mismatch, lost response, stable attachment paths and deletion.
 - **Remaining:** Hosted capacity, retention and rollout acceptance remain open. Uploads are external to the transaction and interrupted uploads can leave unreferenced files. Other owner families and steps 5–10 remain open.
+
+### Thirty-second-pass implementation — private feedback request notices
+
+- **T16/T17/T19:** Completed-job private feedback now saves its internal timeline event, request receipt and owner notice atomically. Request IDs persist after uncertain responses; changed feedback/rating cannot reuse an ID. Failed saves return an error and deleted events retain replay tombstones.
+- **Verification:** 24 application tests including the rendered retry form, 114 PostgreSQL checks, full type checking and clean local security advisor passed. Lint has no errors and three existing unused-import warnings in the shared action test. Database checks verify internal visibility and unchanged visibility for existing customer questions.
+- **Remaining:** Public review links are unchanged. Review-request campaigns and other private-feedback entry points remain separate families. Other owner alerts, hosted acceptance and steps 5–10 remain open.

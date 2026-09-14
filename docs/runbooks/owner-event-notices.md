@@ -202,3 +202,19 @@ The job timeline remains best effort; replay does not append a duplicate feed it
 Verification: 56 application tests, 112 PostgreSQL checks, type checking, lint
 and clean local security advisor. This closes local formal warranty submission
 retry protection; remaining owner families and hosted release stay open.
+
+## Completed-job private feedback
+
+Apply 20260914182551_private_feedback_owner_requests.sql before updated feedback
+forms/actions. The shared request RPC accepts review_feedback and forces internal
+visibility; other supported request kinds keep client visibility. Only marked
+feed events enqueue, so older unmarked callers retain their existing behavior.
+
+The rating and normalized feedback bind the request hash. Failed persistence is
+reported to the customer; a saved receipt is required before success. A request
+interruption retains pending owner mail. A deleted event remains a replay tombstone.
+The form preserves inputs/ID after uncertainty and resets the ID when reopened.
+
+Verification: 24 application tests, 114 database checks, type checking, lint
+without errors and clean local security advisor. Other private-feedback entry
+points, review campaigns and hosted acceptance remain open.

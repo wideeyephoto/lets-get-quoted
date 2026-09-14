@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     (err as unknown as { digest: string }).digest = `NEXT_REDIRECT;replace;${path};307;;`;
     throw err;
   }),
+  feedbackSave: vi.fn(), ownerNotice: vi.fn(),
   revalidatePath: vi.fn(),
   headers: vi.fn(async () => new Headers({ 'x-forwarded-for': '127.0.0.1' })),
   createAdminClient: vi.fn(),
@@ -40,6 +41,8 @@ const mocks = vi.hoisted(() => ({
   updateClientQuoteOptions: vi.fn(),
 }));
 
+vi.mock('@/lib/client-owner-requests',async original=>({...await original<typeof import('@/lib/client-owner-requests')>(),saveClientRequest:mocks.feedbackSave}));
+vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:mocks.ownerNotice}));
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock('next/headers', () => ({ headers: mocks.headers }));
@@ -392,5 +395,23 @@ describe('Server Actions: Customer Portal & Token Access', () => {
         'unsubscribe_link',
       );
     });
+  });
+});
+
+describe('durable private feedback',()=>{
+  beforeEach(()=>{vi.clearAllMocks();mocks.createAdminClient.mockReturnValue({});mocks.checkRateLimit.mockResolvedValue(true);mocks.resolveJobAccess.mockResolvedValue({accountId:'acc-1',jobId:'job-1'});mocks.feedbackSave.mockResolvedValue({feed_id:'feedback-1',replayed:false});});
+  const form=()=>{const f=new FormData();f.set('feedback','Please call me');f.set('rating','2');f.set('request_id','11111111-1111-4111-8111-111111111111');return f;};
+  it('saves scoped private feedback before dispatch',async()=>{
+    expect(await submitJobFeedbackAction('token',form())).toEqual({ok:true});
+    expect(mocks.feedbackSave).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({accountId:'acc-1',jobId:'job-1',kind:'review_feedback',body:'Please call me',meta:{rating:2}}));
+    expect(mocks.ownerNotice).toHaveBeenCalledWith(expect.anything(),{sourceId:'feedback-1',accountId:'acc-1'});
+  });
+  it('returns failure without notification when the feedback cannot be saved',async()=>{
+    mocks.feedbackSave.mockRejectedValueOnce(new Error('database unavailable'));
+    expect((await submitJobFeedbackAction('token',form())).ok).toBe(false);expect(mocks.ownerNotice).not.toHaveBeenCalled();
+  });
+  it('never recreates a deleted feedback event on retry',async()=>{
+    mocks.feedbackSave.mockResolvedValueOnce({feed_id:null,replayed:true});
+    expect(await submitJobFeedbackAction('token',form())).toEqual({ok:true});expect(mocks.ownerNotice).not.toHaveBeenCalled();
   });
 });

@@ -25,6 +25,8 @@ The complete agreed work, commit progress and push gate are maintained in the
 - [x] **Local formal warranty claim dispatch protection:** Each saved claim now commits its owner notice atomically and cancels obsolete pending alerts. Verification: 52 application tests, 110 database checks, type checking, lint and clean local security advisor.
 - [x] **Local formal warranty submission retry protection:** Scoped request receipts, stable attachment paths, changed-content rejection and deletion tombstones prevent repeated forms from creating duplicate claims. Verification: 56 application tests, 112 database checks, type checking, lint and clean local security advisor. Hosted warranty notice, capacity and retention acceptance remain open.
 
+- [x] **Local completed-job private feedback protection:** Internal feedback, request receipt and owner notice commit together. Retry IDs, changed-content rejection and deletion tombstones are verified. Checks: 24 application tests, 114 database checks, type checking, lint without errors and clean local security advisor. Other feedback entry points and hosted acceptance remain open.
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.
