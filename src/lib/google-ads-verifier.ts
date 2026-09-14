@@ -29,6 +29,7 @@ export type VerifierOptions = {
   customerId?: string;
   clientId?: string;
   clientSecret?: string;
+  /** @deprecated Ignored. API access comes from the OAuth Cloud project. */
   developerToken?: string;
   refreshToken?: string;
   mccCustomerId?: string;
@@ -81,7 +82,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
   const clientId = options.clientId || process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET;
-  const developerToken = options.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const refreshToken = options.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN;
   const mccCustomerId = (options.mccCustomerId || process.env.GOOGLE_ADS_MCC_CUSTOMER_ID || '').replace(/-/g, '').trim();
   const explicitCustomerId = (options.customerId || process.env.GOOGLE_ADS_CLIENT_CUSTOMER_ID || '').replace(/-/g, '').trim();
@@ -114,11 +114,10 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     return report;
   }
 
-  if (!clientId || !clientSecret || !refreshToken || !developerToken) {
+  if (!clientId || !clientSecret || !refreshToken) {
     const missing: string[] = [];
     if (!clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
     if (!clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
-    if (!developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
     if (!refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
 
     const err = `Missing required credentials for live verification: ${missing.join(', ')}.`;
@@ -158,7 +157,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
     const baseHeaders: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
       'Content-Type': 'application/json',
     };
     if (mccCustomerId) {
@@ -171,7 +169,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'developer-token': developerToken,
       },
     });
 
@@ -494,7 +491,6 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
 
   const clientId = options.clientId || process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET;
-  const developerToken = options.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const refreshToken = options.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN;
   const mccCustomerId = (options.mccCustomerId || process.env.GOOGLE_ADS_MCC_CUSTOMER_ID || '').replace(/-/g, '').trim();
   const explicitCustomerId = (options.customerId || process.env.GOOGLE_ADS_CLIENT_CUSTOMER_ID || '').replace(/-/g, '').trim();
@@ -523,11 +519,10 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
     return report;
   }
 
-  if (!clientId || !clientSecret || !refreshToken || !developerToken) {
+  if (!clientId || !clientSecret || !refreshToken) {
     const missing: string[] = [];
     if (!clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
     if (!clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
-    if (!developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
     if (!refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
 
     const err = `Missing required credentials for live verification: ${missing.join(', ')}.`;
@@ -572,7 +567,6 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
       'Content-Type': 'application/json',
     };
     if (mccCustomerId) {
@@ -623,7 +617,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
       if (resText.includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE')) {
         report.requiresDataManagerApi = true;
         report.allowlisted = false;
-        const msg = 'DEVELOPER TOKEN RESTRICTION CONFIRMED: Developer token is NOT allowlisted for ConversionUploadService. Google restricted this endpoint after June 15, 2026. Must migrate to Google Data Manager API.';
+        const msg = 'CONVERSION UPLOAD RESTRICTION CONFIRMED: This integration is NOT allowlisted for ConversionUploadService. Google restricted this endpoint after June 15, 2026. Must migrate to Google Data Manager API.';
         report.error = msg;
         report.steps.push({
           step: 3,
@@ -634,12 +628,12 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
         return report;
       }
 
-      if (resText.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
-        const msg = 'DEVELOPER TOKEN UNAPPROVED: Token is restricted to Test Account Access and cannot operate on production advertiser accounts. Requires Explorer or Basic Access approval in API Center.';
+      if (resText.includes('CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION') || resText.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
+        const msg = 'CLOUD PROJECT UNAPPROVED: The OAuth Cloud project cannot access production advertiser accounts. Review its access level on the Google Ads API Overview page in Google Cloud Console.';
         report.error = msg;
         report.steps.push({
           step: 3,
-          name: 'Developer Token Status',
+          name: 'Cloud Project Access Status',
           status: 'BLOCKED',
           note: msg,
         });
@@ -656,7 +650,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
       step: 3,
       name: 'uploadClickConversions Endpoint Reachability',
       status: 'PASS',
-      note: `HTTP 200 received! ConversionUploadService is active and allowlisted on this developer token. (Partial failure on synthetic data: ${partialErr})`,
+      note: `HTTP 200 received! ConversionUploadService is active and allowlisted for this integration. (Partial failure on synthetic data: ${partialErr})`,
     });
 
     return report;
