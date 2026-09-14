@@ -13,8 +13,8 @@ beforeEach(() => {
   });
 });
 
-function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; rejectFinish?: boolean; messaging?: boolean; jobless?: boolean } = {}) {
-  const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', source_type: options.messaging ? 'messaging_registration_event' : 'job_feed', event_kind: 'client_question', source_payload: { title: 'Question', body: 'Help', job_id: options.jobless ? undefined : 'job-1', recipient_email: 'application@example.test', business_name: 'Application Business' }, attempted_at: '2026-09-14T12:00:00Z' };
+function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; rejectFinish?: boolean; messaging?: boolean; jobless?: boolean; quickStop?: boolean } = {}) {
+  const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', source_type: options.quickStop ? 'quick_stop' : options.messaging ? 'messaging_registration_event' : 'job_feed', event_kind: 'client_question', source_payload: { title: 'Question', body: 'Help', job_id: options.jobless ? undefined : 'job-1', recipient_email: 'application@example.test', business_name: 'Application Business' }, attempted_at: '2026-09-14T12:00:00Z' };
   let state = 'pending';
   const rpc = vi.fn(async (name: string, input: Record<string, unknown>) => {
     if (name === 'claim_owner_event_notices') {
@@ -94,4 +94,9 @@ it('uses the saved messaging contact and dashboard without looking up a differen
 it('links a jobless owner notice to the dashboard',async()=>{
   const db=fixture({jobless:true});await runOwnerEventNotices(db.client);
   expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ctaUrl:expect.stringMatching(/\/dashboard$/),ctaLabel:'Open dashboard'}));
+});
+
+it('uses the Quick Stops dashboard for confirmation notices',async()=>{
+  await runOwnerEventNotices(fixture({quickStop:true}).client);
+  expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ctaLabel:'View Quick Stops',ctaUrl:expect.stringContaining('/dashboard/quick-stops')}));
 });

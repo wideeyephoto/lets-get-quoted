@@ -1,3 +1,5 @@
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
+vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:vi.fn()}));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { sendQuickStopOffer, confirmQuickStopPayment } from '@/lib/quick-stop-payments';
 import * as stripeModule from '@/lib/stripe';
@@ -59,6 +61,13 @@ describe('quick-stop-payments', () => {
   });
 
   describe('confirmQuickStopPayment', () => {
+    it('dispatches only the winning confirmation source',async()=>{
+      db.maybeSingle.mockResolvedValueOnce({data:{id:'request-1',account_id:'account-1',client_name:'Customer'}});
+      await confirmQuickStopPayment(db,'payment-1');
+      expect(runOwnerEventNotices).toHaveBeenCalledWith(db,{sourceId:'request-1',accountId:'account-1'});
+      await confirmQuickStopPayment(db,'payment-1');
+      expect(runOwnerEventNotices).toHaveBeenCalledTimes(1);
+    });
     it('does nothing if payment not found as confirmed', async () => {
       db.maybeSingle.mockResolvedValueOnce({ data: null }); // update returning nothing
       db.maybeSingle.mockResolvedValueOnce({ data: null }); // fallback check returning nothing

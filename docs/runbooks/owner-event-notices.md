@@ -241,3 +241,23 @@ review. Confirmation says the note is saved, not that its email has arrived.
 Verification: 59 application tests, 116 PostgreSQL checks, full type checking,
 production-file lint and clean local security advisor. Hosted acceptance remains
 open; no provider delivery or canary evidence is implied by these local checks.
+
+## Quick Stop confirmations
+
+Drain legacy confirmation email producers before applying
+20260914183134_quick_stop_confirmation_notices.sql and deploying the new caller.
+The awaiting_customer_payment to confirmed transition creates one notice per
+Quick Stop. The trigger requires a paid payment belonging to the same account,
+and a saved paid timestamp. No historical backfill or provider mutation is added.
+
+The saved payment, paid timestamp, customer/address and arrival details must
+still match before sending. Canceled, disputed, refunded or rescheduled sources
+stop pending confirmation; progress to en_route/arrived/completed remains valid.
+The recipient is the current owner and the link opens the Quick Stops dashboard.
+The copy reports confirmation and directs the owner to review the appointment,
+without claiming downstream calendar work already succeeded.
+
+Verification: 19 application tests, 118 PostgreSQL checks, type checking, lint
+and clean local security advisor. Refund/cancellation messages remain open:
+intended refund cents written before a provider result cannot serve as proof
+that money was refunded. Hosted payment and receiver acceptance remain open.

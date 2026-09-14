@@ -4,7 +4,7 @@ import { createDepositRequest, refundPayment } from '@/lib/payments';
 import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { centsToDollars } from '@/lib/quick-stop';
 import { sendQuickStopOfferSms, sendQuickStopConfirmedSms } from '@/lib/sms';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -182,25 +182,7 @@ export async function confirmQuickStopPayment(admin: SupabaseClient, paymentId: 
 
   // Owner receipt/notification.
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject: '✅ Quick Stop confirmed & paid',
-        heading: 'A Quick Stop is confirmed',
-        bodyLines: [
-          `${confirmed.client_name} paid the Quick Stop fee.`,
-          `Arrival: ${when}.`,
-          confirmed.address ? `Location: ${confirmed.address}` : 'No address on file.',
-          'It’s locked on your calendar. Mark “I’ve Arrived” when you get there.',
-        ],
-        ctaLabel: 'View Quick Stops',
-        ctaUrl: `${APP_ORIGIN}/dashboard/quick-stops`,
-        tone: 'info',
-      });
-    }
+    await runOwnerEventNotices(admin, {sourceId: confirmed.id as string, accountId});
   } catch (error) {
     console.error('Quick Stop confirm owner email failed:', error instanceof Error ? error.message : error);
   }
