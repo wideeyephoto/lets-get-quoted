@@ -113,7 +113,7 @@ describe('Durable webhook inspections and approval queue', () => {
 
   it('lists persisted approvals after a cold start and refuses new inspection approval cards', async () => {
     const db = database([], [inspection('real-recovery', { action_type: 'replay_failed_webhook' })]);
-    const ctx = { supabase: db.client, source: 'admin_dashboard' };
+    const ctx = { supabase: db.client, source: 'admin_dashboard' as const };
     const result = await executeOperatorTool('list_pending_action_requests', {}, ctx);
     expect(result.data).toMatchObject({ count: 1, actions: [{ id: 'real-recovery' }] });
     const blocked = await executeOperatorTool('create_hitl_action_request', { actionType: 'sre.inspect_webhook_failure' }, ctx);
