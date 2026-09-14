@@ -1,5 +1,29 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Workstream Updates (2026-09-14)
+
+- [x] **Permit Intelligence & Jurisdiction Portal Audit (50 States, Municipalities, Canada & Mexico):**
+  - **Defunct AccessMyGov Deprecation Migration:** Fully deprecated `www.accessmygov.com` across the codebase following total DNS failure. Migrated all portals to `bsaonline.com`. Researched and verified official BS&A UIDs: Royal Oak (`uid=1652`, was dead `1349`), Troy (`uid=250`), Birmingham (`uid=241`), and Oakland Township (`uid=657`).
+  - **Michigan Municipal UID & Service URL Audit:** Audited and corrected inaccurate municipal UIDs across all Michigan jurisdictions: Southfield (`272`, was `380`), Pontiac (`825`, was `364`), Westland (`294`, was `396`), Clinton Township (`2622`, was `323`), and Shelby Township (`300`, was `376`). Resolved broken TLS certificate error on Grand Rapids Citizen Access (`https://inspections.grcity.us/citizenaccess`), corrected Pittsfield Township to Washtenaw County EnerGov portal (`https://www.washtenaw.org/1007/Online-Permitting`), and repointed Ann Arbor from non-existent OpenGov permit portal to official STREAM portal (`https://stream.a2gov.org`).
+  - **50-State Licensing Boards Live Verification:** Probed all 51 US state licensing boards (50 states + DC). Remediated broken paths and redirected links:
+    - **Arkansas:** Updated to official `https://labor.arkansas.gov/licensing/arkansas-contractors-licensing-board/`.
+    - **Florida:** Fixed 404 path to `https://www.myfloridalicense.com/DBPR/construction-industry/`.
+    - **Iowa:** Canonicalized to `https://dial.iowa.gov/` (DIAL portal).
+    - **Kansas:** Fixed 404 to active registration directory `https://www.ag.ks.gov/divisions/public-protection/resources/roofing-registration-directory`.
+    - **Louisiana:** Canonicalized to `https://lslbc.gov/`.
+    - **Maine:** Corrected MUBEC oversight from DACF to Dept. of Public Safety `https://www.maine.gov/dps/fmo/building-codes`.
+    - **Maryland:** Migrated from deprecated DLLR domain to `https://labor.maryland.gov/license/mhic/`.
+    - **Nevada:** Canonicalized to `https://www.nvcontractorsboard.com/`.
+    - **New Hampshire:** Updated to live fire marshal portal `https://www.nh.gov/safety/divisions/firesafety/boards/bcrb.html`.
+    - **New Mexico:** Fixed 404 path to `https://www.rld.nm.gov/construction-industries/`.
+    - **Oklahoma:** Canonicalized to `https://oklahoma.gov/cib.html`.
+    - **Pennsylvania:** Updated to dedicated HIC portal `https://hic.attorneygeneral.gov/`.
+    - **Utah:** Canonicalized to `https://commerce.utah.gov/dopl/`.
+  - **International (Canada & Mexico) Verification:**
+    - **Canada:** Repaired Nova Scotia to `https://www.novascotia.ca/building-code-forms-and-documents`, New Brunswick to `https://www.gnb.ca/en/org/justice-public-safety.html`, and Newfoundland to `https://www.gov.nl.ca/gs`.
+    - **Mexico:** Canonicalized Monterrey to `https://www.monterrey.gob.mx/` and Guadalajara to `https://guadalajara.gob.mx/`.
+  - **Verification:** All 18 permit tests passing across 7 suites (`permit-providers`, `permit-workspace-tabs`, `permit-customer-portal`, `permit-history-api`, `permit-customer-api`, `permit-pay-embed`, `permit-tracking-embed`). 12/12 state rules and 50-state coverage tests passing.
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.
