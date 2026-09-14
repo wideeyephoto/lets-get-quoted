@@ -125,6 +125,22 @@ function mapDbToAuditLog(row: Record<string, unknown>): OperatorAuditLogEntry {
   };
 }
 
+function mapAuditLogToDb(entry: OperatorAuditLogEntry) {
+  return {
+    id: entry.id,
+    timestamp: entry.timestamp,
+    category: entry.category,
+    action_name: entry.actionName,
+    severity: entry.severity,
+    tool_name: entry.toolName,
+    input_payload: entry.inputPayload,
+    output_result: entry.outputResult,
+    reasoning_summary: entry.reasoningSummary,
+    account_id: entry.accountId,
+    status: entry.status,
+  };
+}
+
 
 /**
  * Strict action safety classifications
@@ -238,19 +254,7 @@ export function recordOperatorAudit(
     try {
       const q = client.from('ai_operator_logs');
       if (typeof q?.insert === 'function') {
-        trackWrite(Promise.resolve(q.insert({
-          id: fullEntry.id,
-          timestamp: fullEntry.timestamp,
-          category: fullEntry.category,
-          action_name: fullEntry.actionName,
-          severity: fullEntry.severity,
-          tool_name: fullEntry.toolName,
-          input_payload: fullEntry.inputPayload,
-          output_result: fullEntry.outputResult,
-          reasoning_summary: fullEntry.reasoningSummary,
-          account_id: fullEntry.accountId,
-          status: fullEntry.status,
-        })));
+        trackWrite(Promise.resolve(q.insert(mapAuditLogToDb(fullEntry))));
       }
     } catch {
       // Mock client or unconfigured
@@ -258,6 +262,57 @@ export function recordOperatorAudit(
   }
 
   return fullEntry;
+}
+
+/** Persist an event once across cold starts and concurrent workers. */
+export async function recordOperatorAuditOnce(
+  entry: OperatorAuditLogEntry,
+  supabase: SupabaseClient,
+): Promise<boolean> {
+  const { data, error } = await supabase.from('ai_operator_logs')
+    .upsert(mapAuditLogToDb(entry), { onConflict: 'id', ignoreDuplicates: true })
+    .select('id');
+  if (error) throw new Error(`Operator audit persistence failed: ${error.message}`);
+  if (!data?.length) return false;
+  auditLogsStore.unshift(entry);
+  if (auditLogsStore.length > 500) auditLogsStore.pop();
+  return true;
+}
+
+/** Read-only webhook inspection cards never represented an executable recovery. */
+export async function retireWebhookInspectionApprovals(supabase: SupabaseClient): Promise<number> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase.from('ai_operator_action_requests')
+    .update({
+      status: 'expired',
+      expires_at: now,
+      resolved_at: now,
+      resolved_by: 'system:webhook-inspection',
+      resolution_reason: 'Read-only inspection does not require approval. Any unresolved failure remains in webhook monitoring; no recovery was executed.',
+    })
+    .eq('status', 'pending')
+    .eq('action_type', 'sre.inspect_webhook_failure')
+    .eq('category', 'sre_platform')
+    .eq('is_financial_mutation', false)
+    .select('*');
+  if (error) throw new Error(`Webhook inspection approval cleanup failed: ${error.message}`);
+  for (const row of data ?? []) {
+    const action = mapDbToHitlAction(row);
+    hitlActionStore.set(action.id, action);
+  }
+  if (data?.length) {
+    await recordOperatorAuditOnce({
+      id: `audit-webhook-approvals-retired-${randomUUID()}`,
+      timestamp: now,
+      category: 'sre_platform',
+      actionName: 'sre.webhook_inspection_approvals_retired',
+      severity: 'info',
+      reasoningSummary: `Retired ${data.length} obsolete read-only inspection approvals. No recovery was executed.`,
+      outputResult: { actionIds: data.map((row) => row.id) },
+      status: 'success',
+    }, supabase);
+  }
+  return data?.length ?? 0;
 }
 
 /**
@@ -468,6 +523,7 @@ export async function listPendingHitlActionsAsync(
   now = new Date(),
   supabase?: SupabaseClient,
 ): Promise<OperatorHitlActionRequest[]> {
+  await flushOperatorWrites();
   const client = getAdminClientSafe(supabase);
   if (!client) return listPendingHitlActions(now);
 
@@ -478,8 +534,13 @@ export async function listPendingHitlActionsAsync(
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       const items: OperatorHitlActionRequest[] = [];
+      // A successful empty query is authoritative; do not resurrect cached cards.
+      const pendingIds = new Set(data.map((row) => String(row.id)));
+      for (const [id, action] of hitlActionStore) {
+        if (action.status === 'pending' && !pendingIds.has(id)) hitlActionStore.delete(id);
+      }
       for (const row of data) {
         const action = mapDbToHitlAction(row as Record<string, unknown>);
         if (isHitlActionExpired(action, now)) {
