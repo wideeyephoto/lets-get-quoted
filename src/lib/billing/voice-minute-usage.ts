@@ -64,7 +64,8 @@ export const VOICE_CALL_CAP_MINUTES = 60;
  * the credits are visibly there. The fix is a tail on the lot, not a shorter
  * hold — a shorter hold would trade a monthly refusal for a mid-call release.
  */
-const RESERVATION_TTL_MS = 90 * 60 * 1000;
+export const VOICE_RESERVATION_TTL_MS = 90 * 60 * 1000;
+const RESERVATION_TTL_MS = VOICE_RESERVATION_TTL_MS;
 
 const MICROSECONDS_PER_MINUTE = 60_000_000;
 
