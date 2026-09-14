@@ -387,7 +387,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Maryland',
     fips: '24',
     licensingBoard: 'Maryland Home Improvement Commission (MHIC / DLLR)',
-    licensingUrl: 'https://www.dllr.state.md.us/license/mhic',
+    licensingUrl: 'https://labor.maryland.gov/license/mhic/',
     codes: {
       building: { name: 'Maryland Building Performance Standards (2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
