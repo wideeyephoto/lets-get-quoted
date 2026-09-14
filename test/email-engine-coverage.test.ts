@@ -69,9 +69,25 @@ describe('Email Engine & Notification System (lib/email)', () => {
     process.env.RESEND_API_KEY = 're_test_key_123';
     mocks.send.mockResolvedValue({ data: { id: 'msg_123' }, error: null });
     mocks.suppression.mockResolvedValue({ data: [], error: null });
-    mocks.rpc.mockImplementation(async (name: string, args: any) => ({ data: ['claim_document_email_send', 'claim_customer_email_send'].includes(name)
-      ? { action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'document/intent/primary',
-        payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString() } : true, error: null }));
+    mocks.rpc.mockImplementation(async (name: string, args: any) => {
+      if (name === 'claim_document_email_send' || name === 'claim_customer_email_send') {
+        const to = args.p_payload?.to || args.p_payload?.recipientEmail;
+        if (to === 'blocked@contractorclient.test' || (Array.isArray(to) && to.includes('blocked@contractorclient.test'))) {
+          return {
+            data: { action: 'blocked', reason: 'recipient_delivery_block' },
+            error: null
+          };
+        }
+        return {
+          data: {
+            action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'test/intent/primary',
+            payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString()
+          },
+          error: null
+        };
+      }
+      return { data: true, error: null };
+    });
     mocks.loadEmailBrand.mockResolvedValue({
       businessName: 'Ace Contracting',
       accent: '#0284c7',

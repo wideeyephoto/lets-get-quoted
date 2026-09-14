@@ -60,3 +60,4 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
   const outcome = await runPlatformEventNotices(admin, { sourceId, eventFamily: 'auth_link' });
   if (!outcome.ownersNotified) throw new Error('The sign-in email could not be confirmed. Please request a new link.');
 }
+// Emails are sent from hello@letsgetquoted.com via the platform event notice worker.

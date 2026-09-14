@@ -9,11 +9,11 @@
 | Original step | Current position |
 | --- | --- |
 | 1–3: website snapshots, provider identity/keys, signed callback recovery | Implemented and verified locally; hosted acceptance remains required. |
-| 4: remaining domain and owner notices | Substantial local progress; still in progress. |
-| 5: appointment, booking and selection reminders | Open. |
-| 6: campaign, review and rebooking messages | Open. |
-| 7: remaining email families | Open. |
-| 8: operator recovery controls | Open. |
+| 4: remaining domain and owner notices | Implemented and verified locally; hosted acceptance remains required. |
+| 5: appointment, booking and selection reminders | Implemented and verified locally; hosted acceptance remains required. |
+| 6: campaign, review and rebooking messages | Implemented and verified locally; hosted acceptance remains required. |
+| 7: remaining email families | Implemented and verified locally; hosted acceptance remains required. |
+| 8: operator recovery controls | Implemented and verified locally; hosted acceptance remains required. |
 | 9: hosted release and acceptance | Open. |
 | 10: controlled canary and expansion review | Open. |
 
@@ -37,11 +37,11 @@ These are local checks. They do not prove hosted delivery, provider capacity, mi
 #### Remaining work and resume point
 
 - [x] **Operator recovery controls (Step 8):** Authorized detail/closeout and deliberate-resend flows; state, tenancy and duplicate-request verification are complete.
-- [x] **Stream 1 Progress (Step 4):** Finishing remaining owner-alert paths (scheduling, customer plan changes, subcontractor updates, lead notifications, customer confirmation wrappers). Migration 20260914210600_stream_1_owner_triggers applied.
-- [ ] **Stream 2 Progress (Steps 5 & 6):** Working on appointment/booking/selection reminders, campaigns, review, and rebook messages. customer_email_sends schema applied.
-- [ ] **Stream 3 Progress (Step 7):** Working on remaining email families (digests, support, merchandise, auth, reports). Migration 20260914210500_platform_event_notices applied.
-- [ ] Verify migration order and drain legacy senders; collect hosted receiver, callback, suppression, failure, retention, capacity and rollback evidence.
-- [ ] Run the required controlled canary and review expansion. Push only after the agreed full objective is complete; do not treat the current local checkpoint as launch approval.
+- [x] **Stream 1 Progress (Step 4):** Finished remaining owner-alert paths (scheduling, customer plan changes, subcontractor updates, lead notifications, customer confirmation wrappers). Migration 20260914210600_stream_1_owner_triggers applied.
+- [x] **Stream 2 Progress (Steps 5 & 6):** Finished appointment/booking/selection reminders, campaigns, review, and rebook messages. customer_email_sends schema and execution worker applied.
+- [x] **Stream 3 Progress (Step 7):** Finished remaining email families (digests, support, merchandise, auth, reports). Migration 20260914210500_platform_event_notices applied.
+- [ ] **Hosted release and acceptance (Step 9):** Verify migration order and drain legacy senders; collect hosted receiver, callback, suppression, failure, retention, capacity and rollback evidence.
+- [ ] **Controlled canary and expansion review (Step 10):** Run the required controlled canary and review expansion. Push only after the agreed full objective is complete; do not treat the current local checkpoint as launch approval.
 
 For the detailed evidence and per-family limitations, use the [ten-step execution record](docs/customer-email-ten-step-execution-2026-09-14.md) and [owner-event runbook](docs/runbooks/owner-event-notices.md). The dated entries below preserve implementation history; this consolidated checkpoint states the current overall position.
 
