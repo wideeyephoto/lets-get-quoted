@@ -67,7 +67,7 @@ jobs:
         run: npm run test:stock
 
       - name: Type check
-        run: npm run typecheck
+        run: npm run typecheck:all
 
       - name: Lint
         run: npm run lint

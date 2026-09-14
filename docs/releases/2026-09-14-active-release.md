@@ -9,3 +9,7 @@ Verification: all 17,349 tests passed; full application build and test-inclusive
 Apply the ten 20260914 migrations in filename order before the application deploy. Temporarily block Quick Stop writes during this changeover; production had zero Quick Stop requests at preflight. Remove the temporary block only after the new production deployment is ready. Retain all new ledgers on rollback.
 
 Real carrier/receiver acceptance, uncertain historical email reconciliation, scheduled email retry implementation, the missing database-guard functions, and intermittent billing-worker recovery remain separate launch gates. This release does not establish those outcomes or enroll additional email cohorts.
+
+## Native TypeCheck memory follow-up
+
+GitHub CI run 34859203714 passed, including the full test-inclusive TypeScript check. Vercel's independent native TypeCheck was killed with exit 137. A cold local test-inclusive compiler also exhausted 2 GB and 3 GB heaps. The native `typecheck` command now checks the application with a 3 GB heap; required GitHub CI runs `typecheck:all` with the unchanged full application-and-test configuration and 4 GB heap. No source files or tests are removed from the required CI check.
