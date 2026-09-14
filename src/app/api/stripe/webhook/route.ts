@@ -6,12 +6,11 @@ import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { getStripeClient, fromCents, toCents } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
-import { loadBusinessName } from '@/lib/business-name';
+import { reconcileLegacyDispute } from '@/lib/legacy-dispute-reconciliation';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { syncConnectTransferStatus } from '@/lib/connect-owner-notices';
 import { sendPaymentSmsEvent } from '@/lib/sms';
-import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { createPaymentFeedEvent } from '@/lib/job-feed';
 import { storeSavedCardFromSetup } from '@/lib/card-on-file';
 import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
@@ -41,7 +40,6 @@ import {
 // so this route must not be statically optimized or have its body parsed.
 export const dynamic = 'force-dynamic';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 const STRIPE_CHECKOUT_SESSION_PATTERN = /^cs_(?:test_)?[A-Za-z0-9_]+$/;
 const STRIPE_PAYMENT_INTENT_PATTERN = /^pi_[A-Za-z0-9_]+$/;
 const LEGACY_PROVIDER_BINDING_CONTRADICTION =
@@ -55,6 +53,9 @@ const FIXED_LEGACY_WEBHOOK_ERRORS = new Set([
   LEGACY_PROVIDER_BINDING_CONTRADICTION,
   LEGACY_PROVIDER_BINDING_LOOKUP_FAILED,
   LEGACY_PROVIDER_BINDING_MISSING,
+  'legacy_dispute_connected_scope', 'legacy_dispute_identity_missing', 'legacy_dispute_evidence_mismatch',
+  'legacy_dispute_amount_review_required', 'legacy_dispute_identity_conflict', 'legacy_dispute_status_unknown',
+  'legacy_dispute_terminal_conflict', 'legacy_dispute_payment_state_review_required', 'legacy_dispute_concurrent_update',
 ]);
 
 function expandableStripeId(value: unknown): string | null {
@@ -232,39 +233,6 @@ async function coordinateLegacyPaymentSideEffects(input: Readonly<{
     legacy: input.legacy,
     savedCard: input.savedCard,
   });
-}
-
-// Emails the account owner an out-of-band alert. Best-effort by contract: a
-// send failure is swallowed so it can never bubble out of a webhook handler
-// (that would make Stripe retry the whole event and re-run DB mutations).
-async function emailContractorAlert(
-  admin: ReturnType<typeof createAdminClient>,
-  accountId: string,
-  alert: { subject: string; heading: string; bodyLines: string[]; ctaLabel: string; ctaPath: string; tone?: 'warning' | 'info' }
-) {
-  try {
-    const [businessName, ownerEmail] = await Promise.all([
-      loadBusinessName(admin, accountId),
-      getAccountOwnerEmail(admin, accountId),
-    ]);
-    if (!ownerEmail) {
-      console.warn(`No owner email for account ${accountId}; alert "${alert.subject}" not emailed.`);
-      return;
-    }
-    await sendContractorAlertEmail({
-      accountId,
-      recipientEmail: ownerEmail,
-      businessName,
-      subject: alert.subject,
-      heading: alert.heading,
-      bodyLines: alert.bodyLines,
-      ctaLabel: alert.ctaLabel,
-      ctaUrl: `${APP_ORIGIN}${alert.ctaPath}`,
-      tone: alert.tone,
-    });
-  } catch (err) {
-    console.error(`Contractor alert email failed (non-fatal) for account ${accountId}:`, err);
-  }
 }
 
 async function markPaymentPaid(
@@ -1168,144 +1136,7 @@ async function dispatchStripeEvent(
     await syncConnectTransferStatus(admin, event.data.object.id);
   }
 
-  // Chargeback opened — the homeowner's bank is pulling the funds back. Since
-  // this platform is losses_collector, a lost dispute is the platform's money,
-  // so make it a first-class, contractor-visible state rather than a log line.
-  if (event.type === 'charge.dispute.created') {
-    const dispute = event.data.object;
-    const paymentIntentId =
-      typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
-    console.error(
-      `[DISPUTE] Chargeback opened: payment_intent=${paymentIntentId} amount=${dispute.amount} reason=${dispute.reason} status=${dispute.status}`
-    );
-
-    if (paymentIntentId) {
-      // Disputes don't carry our charge metadata, so match on the stored
-      // payment intent id rather than dispute.metadata (which is empty).
-      const { data: payment, error: paymentError } = await admin
-        .from('payments')
-        .select('id, account_id, job_id, status')
-        .eq('stripe_payment_intent', paymentIntentId)
-        .maybeSingle();
-      if (paymentError) throw paymentError;
-
-      if (payment && payment.status === 'paid') {
-        const rail = await inspectLegacyDestinationPaymentRail(admin, payment.id);
-        if (rail.kind !== 'allowed') return;
-        let transition = admin
-          .from('payments')
-          .update({
-            status: 'disputed',
-            disputed_at: new Date().toISOString(),
-            dispute_reason: dispute.reason ?? null,
-            dispute_status: dispute.status ?? null,
-            stripe_dispute_id: dispute.id ?? null,
-            dispute_due_by: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString() : null,
-          })
-          .eq('id', payment.id);
-        if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
-        const { data: transitioned, error: transitionError } = await transition
-          .eq('status', 'paid')
-          .select('id')
-          .maybeSingle();
-        if (transitionError) throw transitionError;
-        if (transitioned) {
-          await createDisputeFeedEvent(
-            admin,
-            payment.id,
-            'payment_disputed',
-            'Chargeback opened',
-            `The homeowner disputed this payment${dispute.reason ? ` (${dispute.reason})` : ''}. Stripe is reviewing it — respond promptly with evidence.`
-          );
-          await emailContractorAlert(admin, payment.account_id, {
-            subject: 'A payment was disputed',
-            heading: 'A homeowner opened a chargeback',
-            bodyLines: [
-              `A homeowner disputed a payment${dispute.reason ? ` (reason: ${dispute.reason})` : ''}. Stripe is reviewing it and the funds are held until it resolves.`,
-              'Respond promptly with evidence — photos, the signed invoice, and any messages help your case.',
-            ],
-            ctaLabel: 'Open the job',
-            ctaPath: `/dashboard/jobs/${payment.job_id}`,
-          });
-        }
-      }
-    }
-  }
-
-  // Chargeback resolved. Won → the payment stands (revert to paid). Lost → the
-  // funds are gone; treat like a refund (mark refunded, void any linked invoice).
-  if (event.type === 'charge.dispute.closed') {
-    const dispute = event.data.object;
-    const paymentIntentId =
-      typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
-    console.error(`[DISPUTE] Chargeback closed: payment_intent=${paymentIntentId} status=${dispute.status}`);
-
-    if (paymentIntentId && (dispute.status === 'won' || dispute.status === 'lost')) {
-      const { data: payment, error: paymentError } = await admin
-        .from('payments')
-        .select('id, account_id, job_id, invoice_id, status')
-        .eq('stripe_payment_intent', paymentIntentId)
-        .maybeSingle();
-      if (paymentError) throw paymentError;
-
-      if (payment && payment.status === 'disputed') {
-        const rail = await inspectLegacyDestinationPaymentRail(admin, payment.id);
-        if (rail.kind !== 'allowed') return;
-        if (dispute.status === 'won') {
-          let transition = admin
-            .from('payments')
-            .update({ status: 'paid', dispute_status: 'won' })
-            .eq('id', payment.id);
-          if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
-          const { data: transitioned, error: transitionError } = await transition
-            .eq('status', 'disputed')
-            .select('id')
-            .maybeSingle();
-          if (transitionError) throw transitionError;
-          if (transitioned) {
-            await createDisputeFeedEvent(admin, payment.id, 'dispute_won', 'Chargeback won', 'Stripe resolved the dispute in your favor. The payment stands.');
-          }
-        } else {
-          let transition = admin
-            .from('payments')
-            .update({ status: 'refunded', dispute_status: 'lost' })
-            .eq('id', payment.id);
-          if (rail.chargeModelColumnPresent) transition = transition.eq('charge_model', 'destination');
-          const { data: transitioned, error: transitionError } = await transition
-            .eq('status', 'disputed')
-            .select('id')
-            .maybeSingle();
-          if (transitionError) throw transitionError;
-          if (transitioned) {
-            if (payment.invoice_id) {
-              await admin.from('invoices').update({ status: 'void' }).eq('id', payment.invoice_id);
-            }
-            // Says what is certainly true, and no more.
-            //
-            // These three strings used to tell the contractor the money came out
-            // of THEIR balance — while the comment on the dispute-created handler
-            // above says this platform is the losses_collector, i.e. it comes out
-            // of OURS. Both can't be right, and a message about whose money moved
-            // is exactly the kind a contractor will act on: reconciling against a
-            // balance that never changed, or chasing us about one that did.
-            //
-            // What holds either way is that the payment is no longer collected
-            // and the invoice is void. Whose balance settles it is a Connect
-            // controller setting, so it doesn't belong in a hardcoded sentence.
-            await createDisputeFeedEvent(admin, payment.id, 'dispute_lost', 'Chargeback lost', 'The dispute was resolved in the homeowner’s favour, so this payment no longer counts as collected.');
-            await emailContractorAlert(admin, payment.account_id, {
-              subject: 'Chargeback lost',
-              heading: 'A chargeback was resolved against you',
-              bodyLines: [
-                'The homeowner’s bank decided the dispute in their favour, so this payment no longer counts as collected.',
-                'Any invoice linked to this payment has been voided.',
-              ],
-              ctaLabel: 'Open the job',
-              ctaPath: `/dashboard/jobs/${payment.job_id}`,
-            });
-          }
-        }
-      }
-    }
+  if (event.type === 'charge.dispute.created' || event.type === 'charge.dispute.closed') {
+    await reconcileLegacyDispute(admin, stripe, event);
   }
 }

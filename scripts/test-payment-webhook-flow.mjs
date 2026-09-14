@@ -192,40 +192,25 @@ try {
   assert(paymentF.status === 'paid', `payment F must remain paid without provider proof, got ${paymentF.status}`);
   console.log('PASS: fabricated charge.refunded cannot claim a completed refund');
 
-  // --- Test G: charge.dispute.created transitions a paid payment to disputed ---
-  // Disputes carry no charge metadata, so the handler matches on the stored
-  // payment intent id — not metadata.payment_id.
-  const g = await makeJobAndPayment({ withInvoice: false });
-  await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: `pi_test_g_${suffix}` }).eq('id', g.paymentId);
-  res = await postWebhook(makeEvent('charge.dispute.created', { id: `dp_test_g_${suffix}`, object: 'dispute', amount: 50000, reason: 'fraudulent', status: 'warning_needs_response', payment_intent: `pi_test_g_${suffix}` }));
-  assert(res.status === 200, `webhook POST G (dispute created) should 200, got ${res.status}`);
-  const { data: paymentG } = await admin.from('payments').select('status, disputed_at, dispute_reason').eq('id', g.paymentId).single();
-  assert(paymentG.status === 'disputed', `payment G should be disputed, got ${paymentG.status}`);
-  assert(paymentG.disputed_at, 'payment G should record disputed_at');
-  assert(paymentG.dispute_reason === 'fraudulent', `payment G should record the dispute reason, got ${paymentG.dispute_reason}`);
-  console.log('PASS: charge.dispute.created -> payment status disputed (matched by payment_intent)');
-
-  // --- Test H: charge.dispute.closed (won) reverts the payment to paid ---
-  res = await postWebhook(makeEvent('charge.dispute.closed', { id: `dp_test_g_${suffix}`, object: 'dispute', status: 'won', payment_intent: `pi_test_g_${suffix}` }));
-  assert(res.status === 200, `webhook POST H (dispute won) should 200, got ${res.status}`);
-  const { data: paymentGWon } = await admin.from('payments').select('status, dispute_status').eq('id', g.paymentId).single();
-  assert(paymentGWon.status === 'paid', `payment G should revert to paid after a won dispute, got ${paymentGWon.status}`);
-  assert(paymentGWon.dispute_status === 'won', 'payment G should record dispute_status won');
-  console.log('PASS: charge.dispute.closed(won) -> payment reverts to paid');
-
-  // --- Test I: charge.dispute.closed (lost) refunds the payment and voids its invoice ---
-  const i = await makeJobAndPayment({ withInvoice: true, invoiceAlreadySigned: false });
-  await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: `pi_test_i_${suffix}` }).eq('id', i.paymentId);
-  res = await postWebhook(makeEvent('charge.dispute.created', { id: `dp_test_i_${suffix}`, object: 'dispute', amount: 50000, reason: 'product_not_received', status: 'needs_response', payment_intent: `pi_test_i_${suffix}` }));
-  assert(res.status === 200, `webhook POST I (dispute created) should 200, got ${res.status}`);
-  res = await postWebhook(makeEvent('charge.dispute.closed', { id: `dp_test_i_${suffix}`, object: 'dispute', status: 'lost', payment_intent: `pi_test_i_${suffix}` }));
-  assert(res.status === 200, `webhook POST I (dispute lost) should 200, got ${res.status}`);
-  const { data: paymentILost } = await admin.from('payments').select('status, dispute_status').eq('id', i.paymentId).single();
-  assert(paymentILost.status === 'refunded', `payment I should be refunded after a lost dispute, got ${paymentILost.status}`);
-  assert(paymentILost.dispute_status === 'lost', 'payment I should record dispute_status lost');
-  const { data: invoiceI } = await admin.from('invoices').select('status').eq('id', i.invoiceId).single();
-  assert(invoiceI.status === 'void', `invoice I should be voided after a lost dispute, got ${invoiceI.status}`);
-  console.log('PASS: charge.dispute.closed(lost) -> payment refunded + linked invoice voided');
+  // --- Tests G-I: signed synthetic dispute events cannot replace provider evidence ---
+  // Positive acceptance requires real test-mode Stripe disputes and is a separate
+  // hosted gate. Fabricated IDs below must never change financial state.
+  for (const status of ['needs_response', 'won', 'lost']) {
+    const item = await makeJobAndPayment({ withInvoice: true, invoiceAlreadySigned: false });
+    const intent = 'pi_synthetic_dispute_' + status + '_' + suffix;
+    await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: intent }).eq('id', item.paymentId);
+    const { data: beforeInvoice } = await admin.from('invoices').select('status').eq('id', item.invoiceId).single();
+    res = await postWebhook(makeEvent(status === 'needs_response' ? 'charge.dispute.created' : 'charge.dispute.closed', {
+      id: 'du_synthetic_' + status + '_' + suffix, object: 'dispute', amount: 50000,
+      currency: 'usd', reason: 'general', status, payment_intent: intent,
+    }));
+    assert(res.status === 500, 'Synthetic dispute without provider proof must return 500');
+    const { data: payment } = await admin.from('payments').select('status,dispute_status').eq('id', item.paymentId).single();
+    assert(payment.status === 'paid' && payment.dispute_status === null, 'Synthetic dispute must not change payment state');
+    const { data: afterInvoice } = await admin.from('invoices').select('status').eq('id', item.invoiceId).single();
+    assert(afterInvoice.status === beforeInvoice.status, 'Synthetic dispute must not void the invoice');
+    console.log('PASS: fabricated dispute ' + status + ' cannot change financial state');
+  }
 
   console.log('\nAll payment webhook flow tests passed.');
 } finally {

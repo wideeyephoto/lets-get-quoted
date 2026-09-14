@@ -456,7 +456,8 @@ describe('legacy Checkout and contractor mutation boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getStripeClient.mockReturnValue({
-      webhooks: { constructEvent: () => mocks.event },
+      webhooks: { constructEvent: () => ({ ...(mocks.event as object), livemode: false }) },
+      disputes: { retrieve: vi.fn(async () => ({ ...((mocks.event as Stripe.Event).data.object as Stripe.Dispute), id: 'dp_guard', amount: 1000, currency: 'usd', livemode: false, created: 1760000000 })) },
     });
   });
 
@@ -596,7 +597,8 @@ describe('legacy platform webhook rail boundary', () => {
     vi.clearAllMocks();
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_rail';
     mocks.getStripeClient.mockReturnValue({
-      webhooks: { constructEvent: () => mocks.event },
+      webhooks: { constructEvent: () => ({ ...(mocks.event as object), livemode: false }) },
+      disputes: { retrieve: vi.fn(async () => ({ ...((mocks.event as Stripe.Event).data.object as Stripe.Dispute), id: 'dp_guard', amount: 1000, currency: 'usd', livemode: false, created: 1760000000 })) },
     });
   });
 
@@ -609,8 +611,8 @@ describe('legacy platform webhook rail boundary', () => {
     ['payment intent failed', { type: 'payment_intent.payment_failed', data: { object: { metadata: { payment_id: 'pay_guard' }, last_payment_error: null } } }, 'processing'],
     ['payment intent succeeded', { type: 'payment_intent.succeeded', data: { object: { id: 'pi_guard', metadata: { payment_id: 'pay_guard' } } } }, 'processing'],
     ['dispute created', { type: 'charge.dispute.created', data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', amount: 1000, reason: 'fraudulent', status: 'needs_response', evidence_details: {} } } }, 'paid'],
-    ['dispute won', { type: 'charge.dispute.closed', data: { object: { payment_intent: 'pi_guard', status: 'won' } } }, 'disputed'],
-    ['dispute lost', { type: 'charge.dispute.closed', data: { object: { payment_intent: 'pi_guard', status: 'lost' } } }, 'disputed'],
+    ['dispute won', { type: 'charge.dispute.closed', data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', status: 'won' } } }, 'disputed'],
+    ['dispute lost', { type: 'charge.dispute.closed', data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', status: 'lost' } } }, 'disputed'],
   ] as const;
 
   it.each(directEvents)('does not let %s mutate a direct row', async (_label, event, status) => {
@@ -841,25 +843,25 @@ describe('legacy platform webhook rail boundary', () => {
         type: 'charge.dispute.created',
         data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', amount: 1000, reason: 'fraudulent', status: 'needs_response', evidence_details: {} } },
       },
-      payment: { id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', status: 'paid' },
+      payment: { amount: 10, stripe_payment_intent: 'pi_guard', stripe_dispute_id: null, dispute_status: null, dispute_notice_event_id: null, id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', status: 'paid' },
     },
     {
       label: 'won',
       event: {
         id: 'evt_dispute_won_retry',
         type: 'charge.dispute.closed',
-        data: { object: { payment_intent: 'pi_guard', status: 'won' } },
+        data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', status: 'won' } },
       },
-      payment: { id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null, status: 'disputed' },
+      payment: { amount: 10, stripe_payment_intent: 'pi_guard', stripe_dispute_id: null, dispute_status: null, dispute_notice_event_id: null, id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null, status: 'disputed' },
     },
     {
       label: 'lost',
       event: {
         id: 'evt_dispute_lost_retry',
         type: 'charge.dispute.closed',
-        data: { object: { payment_intent: 'pi_guard', status: 'lost' } },
+        data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', status: 'lost' } },
       },
-      payment: { id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null, status: 'disputed' },
+      payment: { amount: 10, stripe_payment_intent: 'pi_guard', stripe_dispute_id: null, dispute_status: null, dispute_notice_event_id: null, id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null, status: 'disputed' },
     },
   ] as const;
 
@@ -960,7 +962,8 @@ describe('legacy destination settlement handover to the generation ledger', () =
     process.env.STRIPE_WEBHOOK_SECRET = 'whsec_rail';
     process.env[FLAG] = '1';
     mocks.getStripeClient.mockReturnValue({
-      webhooks: { constructEvent: () => mocks.event },
+      webhooks: { constructEvent: () => ({ ...(mocks.event as object), livemode: false }) },
+      disputes: { retrieve: vi.fn(async () => ({ ...((mocks.event as Stripe.Event).data.object as Stripe.Dispute), id: 'dp_guard', amount: 1000, currency: 'usd', livemode: false, created: 1760000000 })) },
     });
   });
 
@@ -1023,10 +1026,10 @@ describe('legacy destination settlement handover to the generation ledger', () =
     // the same silent-stall shape as the ACH gap, just self-inflicted.
     const db = webhookAdmin({
       id: 'pay_guard', account_id: 'acct_guard', job_id: 'job_guard', invoice_id: null,
-      status: 'disputed', charge_model: 'destination',
+      status: 'disputed', charge_model: 'destination', amount: 10, stripe_payment_intent: 'pi_guard', stripe_dispute_id: 'dp_guard', dispute_status: 'under_review', dispute_notice_event_id: null,
     }, true);
     mocks.admin = db.admin;
-    mocks.event = { type: 'charge.dispute.closed', data: { object: { payment_intent: 'pi_guard', status } } };
+    mocks.event = { type: 'charge.dispute.closed', data: { object: { id: 'dp_guard', payment_intent: 'pi_guard', status } } };
 
     const response = await legacyStripeWebhook(webhookRequest());
 

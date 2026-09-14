@@ -139,6 +139,7 @@ try {
   await (await import('./verify-quick-stop-cancellation-refund-attempts.mjs')).verifyCancellationRefundAttempts(db, other, root, passed);
   await (await import('./verify-quick-stop-refund-outcome-reconciliation.mjs')).verifyQuickStopRefundReconciliation(db, other, root, passed);
   await (await import('./verify-connect-transfer-owner-notices.mjs')).verifyConnectTransferNotices(db, other, root, passed);
+  await (await import('./verify-payment-dispute-owner-notices.mjs')).verifyPaymentDisputeNotices(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',
