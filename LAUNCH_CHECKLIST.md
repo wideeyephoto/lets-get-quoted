@@ -19,10 +19,16 @@
     - **Oklahoma:** Canonicalized to `https://oklahoma.gov/cib.html`.
     - **Pennsylvania:** Updated to dedicated HIC portal `https://hic.attorneygeneral.gov/`.
     - **Utah:** Canonicalized to `https://commerce.utah.gov/dopl/`.
+  - **US Territories (PR, VI, GU, MP, AS) Coverage & Verification:**
+    - **Puerto Rico (PR):** Oficina de Gerencia de Permisos (OGPe) / CIAPR at `https://www.permisos.pr.gov/`.
+    - **U.S. Virgin Islands (VI):** Dept. of Planning and Natural Resources (DPNR) at `https://dpnr.vi.gov/`.
+    - **Guam (GU):** Contractors License Board (CLB) at `https://clb.guam.gov/`.
+    - **Northern Mariana Islands (MP):** CNMI Department of Public Works at `https://dpw.gov.mp/`.
+    - **American Samoa (AS):** Department of Public Works at `https://www.americansamoa.gov/`.
   - **International (Canada & Mexico) Verification:**
     - **Canada:** Repaired Nova Scotia to `https://www.novascotia.ca/building-code-forms-and-documents`, New Brunswick to `https://www.gnb.ca/en/org/justice-public-safety.html`, and Newfoundland to `https://www.gov.nl.ca/gs`.
     - **Mexico:** Canonicalized Monterrey to `https://www.monterrey.gob.mx/` and Guadalajara to `https://guadalajara.gob.mx/`.
-  - **Verification:** All 18 permit tests passing across 7 suites (`permit-providers`, `permit-workspace-tabs`, `permit-customer-portal`, `permit-history-api`, `permit-customer-api`, `permit-pay-embed`, `permit-tracking-embed`). 12/12 state rules and 50-state coverage tests passing.
+  - **Verification:** All 18 permit tests passing across 7 suites (`permit-providers`, `permit-workspace-tabs`, `permit-customer-portal`, `permit-history-api`, `permit-customer-api`, `permit-pay-embed`, `permit-tracking-embed`). 12/12 state rules and 56-profile national coverage tests passing (50 states + DC + 5 territories).
 
 ## Workstream Updates (2026-09-12)
 
