@@ -15,6 +15,10 @@ function env() {
   vi.stubEnv('GOOGLE_ADS_CLIENT_CUSTOMER_ID', config.customerId);
 }
 describe('Data Manager conversion migration', () => {
+  it('declares an explicit source for offline CRM events, including validation probes', () => {
+    expect(buildDataManagerRequest(params, config).events[0].eventSource).toBe('OTHER');
+    expect(buildDataManagerRequest(params, config, true).events[0].eventSource).toBe('OTHER');
+  });
   it('uses the action-owning advertiser, manager login and stable event ID', () => {
     expect(buildDataManagerRequest(params, config)).toMatchObject({ destinations: [{ operatingAccount: { accountType: 'GOOGLE_ADS', accountId: config.customerId }, loginAccount: { accountId: config.managerId }, productDestinationId: '3333333333' }], events: [{ transactionId: 'stable-order', eventTimestamp: '2026-09-14T12:00:00.000Z', adIdentifiers: { gclid: 'click' }, conversionValue: 10 }], validateOnly: false });
   });
