@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createAdminClient } from '@/lib/auth';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { getJob, listCosts, computeMargin, formatMoney, type Cost } from '@/lib/jobs';
 import { marginVerdict, costConfidence, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import {runOwnerEventNotices} from '@/lib/owner-event-notices';

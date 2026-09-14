@@ -44249,3 +44249,16 @@ revoke all on function public.record_lead_owner_event_notice() from public,anon,
 create trigger record_lead_owner_event_notice after insert on public.leads
   for each row when (new.meta->>'owner_email_notice'='v1')
   execute function public.record_lead_owner_event_notice();
+create index if not exists idx_contractor_lifecycle_sends_account_id on public.contractor_lifecycle_sends(account_id);
+create index if not exists idx_contractor_lifecycle_sends_resend_of_id on public.contractor_lifecycle_sends(resend_of_id);
+create index if not exists idx_website_domain_connection_notices_site_id on public.website_domain_connection_notices(site_id);
+create index if not exists idx_email_domain_restoration_notices_domain_id on public.email_domain_restoration_notices(domain_id);
+create index if not exists idx_client_owner_request_receipts_account_id on public.client_owner_request_receipts(account_id);
+create index if not exists idx_client_owner_request_receipts_feed_id on public.client_owner_request_receipts(feed_id);
+create index if not exists idx_warranty_request_receipts_account_id on public.warranty_request_receipts(account_id);
+create index if not exists idx_quick_stop_request_receipts_account_id on public.quick_stop_request_receipts(account_id);
+create index if not exists idx_portal_message_requests_client_id on public.portal_message_requests(client_id);
+create index if not exists idx_quote_option_request_receipts_account_id on public.quote_option_request_receipts(account_id);
+create index if not exists idx_quote_approval_request_receipts_account_id on public.quote_approval_request_receipts(account_id);
+create index if not exists idx_customer_email_sends_account_id on public.customer_email_sends(account_id);
+create index if not exists idx_customer_email_sends_job_id on public.customer_email_sends(job_id);

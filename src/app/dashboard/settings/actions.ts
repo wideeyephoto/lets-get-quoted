@@ -823,7 +823,7 @@ export async function sendReminderTestAction(): Promise<{ ok: boolean; message: 
     ]);
     const businessName = site?.company_name || account?.business_name || 'Your business';
 
-    await sendAppointmentReminderEmail({
+    await sendAppointmentReminderEmail(admin, {
       recipientEmail: ownerEmail,
       businessName,
       clientName: 'there',
@@ -831,6 +831,8 @@ export async function sendReminderTestAction(): Promise<{ ok: boolean; message: 
       address: null,
       jobRef: 'TEST',
       accountId,
+      jobId: '00000000-0000-0000-0000-000000000000',
+      idempotencyKey: `test-reminder:${new Date().toISOString()}`,
     });
 
     revalidatePath('/dashboard/settings');

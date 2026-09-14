@@ -37,7 +37,7 @@ These are local checks. They do not prove hosted delivery, provider capacity, mi
 #### Remaining work and resume point
 
 - [x] **Operator recovery controls (Step 8):** Authorized detail/closeout and deliberate-resend flows; state, tenancy and duplicate-request verification are complete.
-- [ ] **Stream 1 Progress (Step 4):** Finishing remaining owner-alert paths (scheduling, customer plan changes, subcontractor updates, lead notifications, customer confirmation wrappers). Migration 20260914210600_stream_1_owner_triggers applied.
+- [x] **Stream 1 Progress (Step 4):** Finishing remaining owner-alert paths (scheduling, customer plan changes, subcontractor updates, lead notifications, customer confirmation wrappers). Migration 20260914210600_stream_1_owner_triggers applied.
 - [ ] **Stream 2 Progress (Steps 5 & 6):** Working on appointment/booking/selection reminders, campaigns, review, and rebook messages. customer_email_sends schema applied.
 - [ ] **Stream 3 Progress (Step 7):** Working on remaining email families (digests, support, merchandise, auth, reports). Migration 20260914210500_platform_event_notices applied.
 - [ ] Verify migration order and drain legacy senders; collect hosted receiver, callback, suppression, failure, retention, capacity and rollback evidence.
