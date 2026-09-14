@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/auth';
 import { sendAccountScopedEmail } from '../email-send-policy';
+import { sendPlatformTransactionalEmail } from '../platform-transactional-email';
 import type { MerchandiseOrder, ShippingAddress } from './types';
 import { formatUsdExact } from '../money-format';
 
@@ -141,9 +142,10 @@ export async function sendStaffMerchandiseAlert(params: {
   `;
 
   try {
-    const result = await resend.emails.send({
+    const result = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
       from: "Let's Get Quoted Alerts <alerts@letsgetquoted.com>",
       to: alertRecipient,
+      tags: [{name:'kind',value:'merchandise_staff_alert'}],
       subject: `[Merchandise Order] #${params.order.orderNumber} (${formatUsdExact(params.order.totalAmount)})`,
       html,
     });

@@ -134,3 +134,5 @@ describe('the operator digest reports what actually happened', () => {
     errorSpy.mockRestore();
   });
 });
+
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }));

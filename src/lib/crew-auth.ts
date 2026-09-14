@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Resend, type CreateEmailOptions } from 'resend';
 import { sendAccountScopedEmail } from '@/lib/email-send-policy';
+import { sendPlatformTransactionalEmail } from '@/lib/platform-transactional-email';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -87,7 +88,7 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
   };
   const { data, error: emailError } = accountId
     ? await sendAccountScopedEmail(admin, resend, accountId, payload)
-    : await resend.emails.send(payload);
+    : await sendPlatformTransactionalEmail(admin, resend, payload);
   if (emailError || !data?.id) {
     console.error('Crew magic link email error:', emailError);
     throw new Error(`Failed to send the sign-in email: ${emailError?.message || 'provider acceptance was not confirmed'}`);

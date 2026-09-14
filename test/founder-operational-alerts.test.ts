@@ -67,3 +67,5 @@ describe('sendOperationalEmergencyAlert', () => {
     expect(result).toEqual({ dispatched: false, recipient: 'primary@example.com' });
   });
 });
+
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }));

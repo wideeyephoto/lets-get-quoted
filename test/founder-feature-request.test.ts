@@ -62,3 +62,5 @@ describe('POST /api/founder/feature-request', () => {
     expect(result.dispatched).toBe(false);
   });
 });
+
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }));

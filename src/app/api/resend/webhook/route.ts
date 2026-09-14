@@ -237,7 +237,8 @@ export async function POST(request: Request) {
     // So a hard-bouncing address stayed on the list and was re-sent to on every
     // campaign, forever, and the only thing between a contractor's list and a
     // mailbox-provider reputation hit was a syntactic placeholder check.
-    await maybeSuppress(admin, { status, accountId: kind === 'platform_campaign' || kind === 'platform_campaign_test' ? 'platform' : accountId,
+    await maybeSuppress(admin, { status, accountId: kind === 'platform_campaign' || kind === 'platform_campaign_test'
+      || resendTagValue(event.data.tags, 'delivery_scope') === 'platform_transactional' ? 'platform' : accountId,
       recipient, bounce: event.data.bounce ?? null });
   } catch (err) {
     console.error(`Resend webhook handler threw for event ${event.type}:`, err);

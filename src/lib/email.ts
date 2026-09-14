@@ -40,6 +40,7 @@ import { createAdminClient } from '@/lib/auth';
 import { sendDocumentEmail, type DocumentEmailReceipt } from './document-email-sends';
 import { assertEmailSendAllowed } from './email-send-policy';
 import { resendTagValue } from './resend-tags';
+import { sendPlatformTransactionalEmail } from './platform-transactional-email';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -72,6 +73,9 @@ const resend = {
       const client = resendClient;
       return sendWithDomainFallback(async (payload, options) => {
         if (resendTagValue(payload.tags, 'account_id')) await assertEmailSendAllowed(createAdminClient(), payload);
+        else if (['contact_message', 'support_case_staff', 'support_case_customer'].includes(resendTagValue(payload.tags, 'kind') ?? '')) {
+          return sendPlatformTransactionalEmail(createAdminClient(), client, payload, options);
+        }
         return client.emails.send(payload, options);
       }, ...args);
     },
@@ -1458,9 +1462,9 @@ export async function sendContactMessageEmail(input: {
     reply_to: input.fromEmail,
     tags: [{ name: 'kind', value: 'contact_message' }],
   });
-  if (result.error) {
+  if (result.error || !result.data?.id) {
     console.error('Failed to send contact message email:', result.error);
-    throw new Error(result.error.message);
+    throw new Error(result.error?.message || 'Provider acceptance was not confirmed.');
   }
 }
 
@@ -1516,9 +1520,9 @@ export async function sendSupportCaseStaffEmail(input: {
     reply_to: input.requesterEmail,
     tags: [{ name: 'kind', value: 'support_case_staff' }],
   });
-  if (result.error) {
+  if (result.error || !result.data?.id) {
     console.error('Failed to send support case staff email:', result.error);
-    throw new Error(result.error.message);
+    throw new Error(result.error?.message || 'Provider acceptance was not confirmed.');
   }
 }
 
@@ -1575,9 +1579,9 @@ export async function sendSupportCaseCustomerEmail(input: {
     }),
     tags: [{ name: 'kind', value: 'support_case_customer' }],
   });
-  if (result.error) {
+  if (result.error || !result.data?.id) {
     console.error('Failed to send support case customer email:', result.error);
-    throw new Error(result.error.message);
+    throw new Error(result.error?.message || 'Provider acceptance was not confirmed.');
   }
 }
 

@@ -99,6 +99,13 @@ afterEach(() => {
 });
 
 describe('Resend webhook outcome projection', () => {
+  it('persists delivery blocks for tagged platform transactional sends and retries failed writes', async () => {
+    const data=taggedData('platform-login',{tags:{kind:'magic_link',delivery_scope:'platform_transactional'}});
+    expect((await POST(signedRequest('email.complained',data))).status).toBe(200);
+    expect(mocks.suppressEmail).toHaveBeenCalledWith(expect.anything(),'platform',RECIPIENT,'complaint');
+    mocks.suppressEmail.mockResolvedValue(false);
+    expect((await POST(signedRequest('email.complained',data))).status).toBe(500);
+  });
   it.each(['platform_campaign', 'platform_campaign_test'])('records signed %s delivery blocks in platform scope', async kind => {
     const data = taggedData('platform-complaint', { tags: { kind, account_id: ACCOUNT_ID } });
     expect((await POST(signedRequest('email.complained', data))).status).toBe(200);

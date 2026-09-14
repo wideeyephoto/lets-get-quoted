@@ -44,3 +44,5 @@ describe('sendFounderSignupAlert', () => {
     ).resolves.not.toThrow();
   });
 });
+
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }) }) }));

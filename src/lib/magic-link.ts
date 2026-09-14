@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/auth';
 import { Resend } from 'resend';
+import { sendPlatformTransactionalEmail } from './platform-transactional-email';
 import { APP_ORIGIN, safeNextPath } from '@/lib/app-origin';
 import { renderBrandedEmail, FONT_STACK } from '@/emails/brand';
 
@@ -39,7 +40,7 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
   // Send email via Resend
   const resend = new Resend(RESEND_API_KEY);
   
-  const { error: emailError } = await resend.emails.send({
+  const { data, error: emailError } = await sendPlatformTransactionalEmail(admin, resend, {
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: email,
     subject: "Your sign-in link for Let's Get Quoted",
@@ -70,8 +71,8 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
     tags: [{ name: 'kind', value: 'magic_link' }],
   });
 
-  if (emailError) {
+  if (emailError || !data?.id) {
     console.error('Resend magic link error:', emailError);
-    throw new Error(`Failed to send email: ${emailError.message || JSON.stringify(emailError)}`);
+    throw new Error(`Failed to send email: ${emailError?.message || 'provider acceptance was not confirmed'}`);
   }
 }

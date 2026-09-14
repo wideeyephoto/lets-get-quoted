@@ -1,5 +1,7 @@
 import type { ExecutiveBriefing } from './types';
 import { Resend } from 'resend';
+import { createAdminClient } from '@/lib/auth';
+import { sendPlatformTransactionalEmail } from '../platform-transactional-email';
 
 // A hung upstream otherwise holds the whole serverless invocation open.
 const OUTBOUND_TIMEOUT_MS = 10_000;
@@ -115,15 +117,16 @@ export async function dispatchExecutiveBriefingDigest(
       // The Resend SDK returns { data, error } and does NOT throw on an API-level
       // rejection, so the old unchecked `await send(); deliveredVia.push()` reported
       // delivery for sends the provider had refused outright.
-      const { data, error } = await resend.emails.send({
+      const { data, error } = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
         from: "LGQ AI Operator <alerts@letsgetquoted.com>",
         to: recipient,
         subject,
+        tags: [{name:'kind',value:'operator_digest'}],
         html,
       });
 
-      if (error) {
-        failures.push(`email rejected: ${error.message ?? String(error)}`);
+      if (error || !data?.id) {
+        failures.push(`email rejected: ${error?.message ?? 'Provider acceptance was not confirmed.'}`);
         console.error('Failed to send email digest:', error);
       } else {
         deliveredVia.push(`email:${recipient}`);
@@ -195,14 +198,15 @@ export async function dispatchCriticalAnomalyAlert(incident: {
 
   if (resend) {
     try {
-      const { error } = await resend.emails.send({
+      const { data, error } = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
         from: "LGQ SRE Guardian <alerts@letsgetquoted.com>",
         to: recipient,
         subject: `🚨 [CRITICAL ALERT] ${incident.title}`,
+        tags: [{name:'kind',value:'operator_alert'}],
         html: `<p><strong>Incident Alert:</strong> ${incident.title}</p><p>${incident.details}</p><p><a href="https://app.letsgetquoted.com/admin/operator">Open Operator Cockpit</a></p>`,
       });
-      if (error) {
-        console.error('Emergency alert REJECTED by provider:', error.message ?? error);
+      if (error || !data?.id) {
+        console.error('Emergency alert REJECTED by provider:', error?.message ?? 'Provider acceptance was not confirmed.');
       }
     } catch (err) {
       console.error('Failed to send emergency alert email:', err);

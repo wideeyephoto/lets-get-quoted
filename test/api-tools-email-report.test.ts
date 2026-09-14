@@ -33,7 +33,7 @@ describe('Tools Email Report Route', () => {
     process.env.RESEND_API_KEY = 'test_key';
 
     createAdminClientMock = (await import('@/lib/auth')).createAdminClient;
-    createAdminClientMock.mockReturnValue({});
+    createAdminClientMock.mockReturnValue({from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:null,error:null})})})})});
 
     checkRateLimitMock = (await import('@/lib/rate-limit')).checkRateLimit;
     checkRateLimitMock.mockResolvedValue(true);
@@ -86,6 +86,21 @@ describe('Tools Email Report Route', () => {
     resendMock.mockResolvedValue({ error: new Error('resend fail') });
     const res = await POST(makeReq({ email: 'a@a.com' }));
     expect(res.status).toBe(502);
+  });
+
+  it('does not report success when the provider is not configured', async () => {
+    delete process.env.RESEND_API_KEY;
+    expect((await POST(makeReq({email:'a@a.com'}))).status).toBe(503);
+    expect(resendMock).not.toHaveBeenCalled();
+  });
+  it('requires a provider acceptance ID', async () => {
+    resendMock.mockResolvedValue({data:null,error:null});
+    expect((await POST(makeReq({email:'a@a.com'}))).status).toBe(502);
+  });
+  it('stops a recorded delivery block before submission', async () => {
+    createAdminClientMock.mockReturnValue({from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{email:'a@a.com',reason:'complaint'},error:null})})})})});
+    expect((await POST(makeReq({email:'a@a.com'}))).status).toBe(500);
+    expect(resendMock).not.toHaveBeenCalled();
   });
 
   it('handles resend throw', async () => {

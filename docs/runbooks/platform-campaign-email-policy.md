@@ -8,7 +8,7 @@ New platform campaigns, including custom lists and test sends, use platform unsu
 
 `platform_email_suppression` stores platform campaign opt-outs and verified delivery blocks separately from tenant preferences. The normalized email is the primary key. Only service-role code can read/write the table or call its two functions; RLS is enabled, RPCs use invoker rights and an empty search path, and public/anonymous/authenticated grants are revoked.
 
-Existing signed `platform` and `test-preview` unsubscribe links now persist in this table. Existing signed workspace UUID links continue to write only that workspace's preferences. There is no automatic promotion or copy of historical tenant opt-outs to platform scope. Contractor lifecycle onboarding messages retain their existing workspace token and ledger policy; this change does not migrate them or platform login, support, founder/staff alerts and public reports.
+Existing signed `platform` and `test-preview` unsubscribe links now persist in this table. Existing signed workspace UUID links continue to write only that workspace's preferences. There is no automatic promotion or copy of historical tenant opt-outs to platform scope. Contractor lifecycle onboarding messages retain their existing workspace token and ledger policy; this campaign change does not migrate them. The subsequent [platform transactional policy](platform-transactional-email-policy.md) covers platform login, support, founder/staff alerts and public reports.
 
 ## Checks before sending
 

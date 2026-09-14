@@ -17,7 +17,7 @@ describe('merchandise delivery policy', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.RESEND_API_KEY = 'test';
-    const query = { select: vi.fn().mockReturnThis(), eq: mocks.eq, in: mocks.lookup };
+    const query = { select: vi.fn().mockReturnThis(), eq: mocks.eq, in: mocks.lookup, maybeSingle: async () => ({data:null,error:null}) };
     mocks.from.mockReturnValue(query);
     mocks.eq.mockReturnValue(query);
     mocks.lookup.mockResolvedValue({ data: [], error: null });
@@ -50,7 +50,8 @@ describe('merchandise delivery policy', () => {
   });
   it('keeps platform staff alerts outside the customer workspace scope', async () => {
     expect(await sendStaffMerchandiseAlert({ order })).toBe(true);
-    expect(mocks.from).not.toHaveBeenCalled();
-    expect(mocks.send.mock.calls[0][0].tags).toBeUndefined();
+    expect(mocks.from).toHaveBeenCalledWith('platform_email_suppression');
+    expect(mocks.eq).not.toHaveBeenCalledWith('account_id', order.accountId);
+    expect(mocks.send.mock.calls[0][0].tags).toContainEqual({name:'delivery_scope',value:'platform_transactional'});
   });
 });

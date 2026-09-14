@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { sendPlatformTransactionalEmail } from '@/lib/platform-transactional-email';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,10 +58,11 @@ export async function POST(request: NextRequest) {
     .replace(/[<>]/g, '');
 
   try {
+    if (!process.env.RESEND_API_KEY) return NextResponse.json({ error: 'Email provider is unavailable' }, { status: 503 });
     if (process.env.RESEND_API_KEY) {
       const { Resend } = await import('resend');
       const resend = new Resend(process.env.RESEND_API_KEY);
-      const { error } = await resend.emails.send({
+      const { data, error } = await sendPlatformTransactionalEmail(admin, resend, {
         from: "Let's Get Quoted Tools <tools@letsgetquoted.com>",
         to: email,
         subject: `Your ${toolName} Summary • Let’s Get Quoted`,
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
         ],
       });
 
-      if (error) {
+      if (error || !data?.id) {
         console.error('[email-report] Resend delivery error:', error);
         return NextResponse.json(
           { error: 'Failed to deliver diagnostic report email' },

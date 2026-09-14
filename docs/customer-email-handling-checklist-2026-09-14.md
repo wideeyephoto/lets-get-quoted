@@ -158,6 +158,13 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 10 selected files / 155 tests, two standalone dry-run tests and 29 disposable PostgreSQL 17 checks passed. Local security advisor found no issues. Full app/test typecheck passed; lint has zero errors and three pre-existing test warnings. Migration `20260914155952_lifecycle_recipient_suppression.sql` must precede the updated application/preview. No hosted changes or emails performed.
 - **Remaining:** Platform login, founder/staff alerts, digests, support and public reports still need their appropriate delivery-block policy and provider-scope evidence. Campaign opt-outs are not transactional blocks. Other audience/quote/history caps and provider capacity remain separate from this suppression fix.
 
+### Tenth-pass implementation — platform transactional senders
+
+- **T12/T18:** Added a platform delivery-block gate for owner/crew self-login, requested reports, founder/staff alerts, operator digests, merchandise staff notices and shared contact/support messages. Campaign-only opt-outs remain eligible; exact To/Cc/Bcc lookups and fallback rechecks fail closed on uncertainty.
+- **T19:** Explicit callback scope retains newly observed platform delivery blocks and retries failed persistence. Covered success paths require provider acceptance; missing provider configuration no longer reports a report as dispatched. Authentication token destination and expiry behavior remain intact.
+- **Verification:** 16 selected files / 196 tests passed; full application/test type checking and changed-file lint passed without warnings. See the [platform transactional policy](runbooks/platform-transactional-email-policy.md). This uses the existing platform preference migration; no hosted changes or emails were performed.
+- **Remaining:** Provider inventory/history reconciliation, external sender audit, durable identities and hosted acceptance remain open.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

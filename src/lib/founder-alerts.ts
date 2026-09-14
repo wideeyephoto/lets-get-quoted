@@ -1,4 +1,6 @@
 import { Resend } from 'resend';
+import { createAdminClient } from '@/lib/auth';
+import { sendPlatformTransactionalEmail } from './platform-transactional-email';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { escapeHtml, renderBrandedEmail, FONT_STACK } from '@/emails/brand';
 
@@ -69,9 +71,10 @@ export async function sendFounderSignupAlert(input: FounderSignupAlertInput): Pr
       </table>
     `;
 
-    await resend.emails.send({
+    const result = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
       from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <system@letsgetquoted.com>",
       to: recipient,
+      tags: [{name: 'kind', value: 'founder_alert'}],
       subject: `🚀 New Contractor Signup: ${input.businessName} (${input.trade || 'General'} · ${input.postalCode})`,
       html: renderBrandedEmail({
         brand: {
@@ -94,6 +97,7 @@ export async function sendFounderSignupAlert(input: FounderSignupAlertInput): Pr
         footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Automated Founder Alert · Let's Get Quoted Platform System</p>`,
       }),
     });
+    if (result.error || !result.data?.id) throw new Error(result.error?.message || 'Provider acceptance was not confirmed.');
     console.info(`[founder-alerts] Successfully dispatched new contractor signup alert for ${input.businessName}`);
   } catch (err) {
     console.error('[founder-alerts] Failed to send founder alert email:', err);
@@ -159,9 +163,10 @@ export async function sendFounderMessagingApplicationAlert(
       </table>
     `;
 
-    await resend.emails.send({
+    const result = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
       from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <system@letsgetquoted.com>",
       to: recipient,
+      tags: [{name: 'kind', value: 'founder_alert'}],
       subject: `📱 Dedicated Number Application: ${input.businessName} (Area code ${input.desiredAreaCode} · ${feeDisplay})`,
       html: renderBrandedEmail({
         brand: {
@@ -184,6 +189,7 @@ export async function sendFounderMessagingApplicationAlert(
         footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Automated Founder Alert · Let's Get Quoted Platform System</p>`,
       }),
     });
+    if (result.error || !result.data?.id) throw new Error(result.error?.message || 'Provider acceptance was not confirmed.');
     console.info(`[founder-alerts] Successfully dispatched messaging application alert for ${input.businessName}`);
   } catch (err) {
     console.error('[founder-alerts] Failed to send founder messaging application alert email:', err);
@@ -262,9 +268,10 @@ export async function sendOperationalEmergencyAlert(
       ${detailsHtml}
     `;
 
-    const result = await resend.emails.send({
+    const result = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
       from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted Ops <system@letsgetquoted.com>",
       to: recipient,
+      tags: [{name: 'kind', value: 'founder_alert'}],
       subject: `🚨 [${severityBadge}] SRE Alert: ${input.title}`,
       html: renderBrandedEmail({
         brand: {
@@ -337,9 +344,10 @@ export async function sendFounderFeatureRequestAlert(
       </div>
     `;
 
-    const result = await resend.emails.send({
+    const result = await sendPlatformTransactionalEmail(createAdminClient(), resend, {
       from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <system@letsgetquoted.com>",
       to: recipient,
+      tags: [{name: 'kind', value: 'founder_alert'}],
       subject: `💡 Feature Request from Founder Page: ${snippet}`,
       html: renderBrandedEmail({
         brand: {
