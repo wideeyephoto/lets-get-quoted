@@ -7,8 +7,7 @@ import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { resolveJobAccess } from '@/lib/change-order-client';
-import { raiseClaim } from '@/lib/warranties-data';
-import { assertStorageCapacity } from '@/lib/billing/storage-usage';
+import { saveWarrantyRequest } from '@/lib/warranty-client-requests';
 
 
 /**
@@ -32,44 +31,21 @@ export async function raiseWarrantyClaimAction(
   const access = await resolveJobAccess(token);
   if (!access) return { ok: false, message: 'This link is no longer valid. Give us a call instead.' };
 
-  const rawFiles = formData.getAll('photos');
-  const files = rawFiles.slice(0, 3).filter((entry): entry is File =>
-    entry instanceof File && entry.size > 0 && entry.size <= 10 * 1024 * 1024);
+  let request: Awaited<ReturnType<typeof saveWarrantyRequest>>;
   try {
-    if (files.length > 0) {
-      await assertStorageCapacity(admin, access.accountId, files.reduce((total, file) => total + file.size, 0));
-    }
+    request = await saveWarrantyRequest(admin, { ...access, warrantyId,
+      requestId: String(formData.get('request_id') ?? ''), description: String(formData.get('description') ?? ''),
+      files: formData.getAll('photos').filter((entry): entry is File => entry instanceof File),
+    });
   } catch {
-    return { ok: false, message: 'Photos could not be saved. Please submit without photos or contact your contractor.' };
+    return { ok: false, message: 'Request or photos could not be saved. Retry the same form, or reopen it to submit without photos.' };
   }
-  const photoPaths: string[] = [];
-  for (const entry of files) {
-    if (entry instanceof File && entry.size > 0 && entry.size <= 10 * 1024 * 1024) {
-      const ext = entry.type.includes('/') ? entry.type.split('/')[1].replace('quicktime', 'mov') : 'jpg';
-      const path = `${access.accountId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await admin.storage.from('job-photos').upload(path, Buffer.from(await entry.arrayBuffer()), {
-        contentType: entry.type || 'image/jpeg',
-        cacheControl: '31536000',
-        upsert: false,
-      });
-      if (!error) {
-        photoPaths.push(path);
-      }
-    }
-  }
-
-  const result = await raiseClaim(admin, access.accountId, {
-    warrantyId,
-    jobId: access.jobId,
-    description: String(formData.get('description') ?? ''),
-    photoPaths,
-  });
-  if (!result.ok || !result.claim) return { ok: false, message: result.message };
-
-  const claim = result.claim;
+  if (!request.claimId) return { ok: true };
+  const claim = { id: request.claimId, description: request.description };
+  const photoPaths = request.photoPaths;
 
   try {
-    await createJobFeedEvent(admin, access.accountId, access.jobId, {
+    if (!request.replayed) await createJobFeedEvent(admin, access.accountId, access.jobId, {
       kind: 'warranty_claim',
       title: 'Warranty request',
       body: claim.description,

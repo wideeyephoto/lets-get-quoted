@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  save: vi.fn(), lookup: vi.fn(), ownerNotice: vi.fn(), capacity: vi.fn(), upload: vi.fn(), access: vi.fn(), feed: vi.fn(), claim: vi.fn(),
+  warrantyLookup: vi.fn(), save: vi.fn(), lookup: vi.fn(), ownerNotice: vi.fn(), capacity: vi.fn(), upload: vi.fn(), access: vi.fn(), feed: vi.fn(), claim: vi.fn(),
 }));
 vi.mock('@/lib/billing/storage-usage', () => ({ assertStorageCapacity: mocks.capacity }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({
   storage: { from: () => ({ upload: mocks.upload }) },
-  from: () => ({ select: () => ({ eq: () => ({ eq: () => ({
-    maybeSingle: async () => ({ data: { ref: 'J-1', client_name: 'Client' } }),
-  }) }) }) }),
+  rpc: mocks.claim,
+  from: (table: string) => {
+    const q = { select: () => q, eq: () => q, maybeSingle: async () => table === 'warranty_request_receipts' ? {data: await mocks.warrantyLookup(), error:null} : {data:{id:'warranty-a',ref:'J-1',client_name:'Client'},error:null} };
+    return q;
+  },
 }) }));
 vi.mock('@/lib/change-order-client', () => ({ resolveJobAccess: mocks.access }));
 vi.mock('@/lib/job-feed', () => ({ createJobFeedEvent: mocks.feed }));
@@ -31,7 +33,8 @@ beforeEach(() => {
   mocks.save.mockResolvedValue({feed_id:'feed-a',replayed:false});
   mocks.lookup.mockResolvedValue(null);
   mocks.upload.mockResolvedValue({ error: null });
-  mocks.claim.mockResolvedValue({ ok: true, claim: { id: 'claim-a', description: 'Help', inWarrantyAtClaim: true } });
+  mocks.warrantyLookup.mockResolvedValue(null);
+  mocks.claim.mockResolvedValue({ data: { claim_id: 'claim-a', replayed: false }, error: null });
 });
 
 const photo = (bytes: number) => new File([new Uint8Array(bytes)], 'photo.jpg', { type: 'image/jpeg' });
@@ -40,6 +43,7 @@ const submit = {
   warranty: (files: File[]) => {
     const form = new FormData();
     form.set('description', 'Help');
+    form.set('request_id','11111111-1111-4111-8111-111111111111');
     files.forEach((file) => form.append('photos', file));
     return raiseWarrantyClaimAction('token', 'warranty-a', form);
   },
@@ -124,4 +128,29 @@ it('preserves a saved warranty claim after immediate owner notice pickup fails',
   const log=vi.spyOn(console,'error').mockImplementation(()=>{});
   try {expect(await submit.warranty([])).toEqual({ok:true});} finally {log.mockRestore();}
   expect(mocks.claim).toHaveBeenCalledTimes(1);
+});
+
+it('reuses a warranty receipt before uploading and preserves deletion tombstones',async()=>{
+  await submit.warranty([photo(4)]);
+  const hash=mocks.claim.mock.calls[0][1].p_payload_hash;
+  mocks.upload.mockClear();mocks.claim.mockClear();mocks.ownerNotice.mockClear();
+  mocks.warrantyLookup.mockResolvedValueOnce({payload_hash:hash,claim_id:'claim-a'}).mockResolvedValueOnce({payload_hash:hash,claim_id:null});
+  expect(await submit.warranty([photo(4)])).toEqual({ok:true});
+  expect(mocks.ownerNotice).toHaveBeenCalledTimes(1);
+  expect(await submit.warranty([photo(4)])).toEqual({ok:true});
+  expect(mocks.ownerNotice).toHaveBeenCalledTimes(1);
+  expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.claim).not.toHaveBeenCalled();
+});
+it('keeps warranty attachment paths stable and stops on unknown upload failures',async()=>{
+  await submit.warranty([photo(4)]);const path=mocks.upload.mock.calls[0][0];
+  mocks.upload.mockResolvedValueOnce({error:{statusCode:'409'}});
+  expect(await submit.warranty([photo(4)])).toEqual({ok:true});
+  expect(mocks.upload.mock.calls[1][0]).toBe(path);
+  mocks.claim.mockClear();mocks.upload.mockResolvedValueOnce({error:{statusCode:'500'}});
+  expect((await submit.warranty([photo(4)])).ok).toBe(false);expect(mocks.claim).not.toHaveBeenCalled();
+});
+it('rejects changed warranty receipt content before uploading',async()=>{
+  mocks.warrantyLookup.mockResolvedValue({payload_hash:'different',claim_id:'claim-a'});
+  expect((await submit.warranty([photo(4)])).ok).toBe(false);
+  expect(mocks.upload).not.toHaveBeenCalled();expect(mocks.claim).not.toHaveBeenCalled();
 });

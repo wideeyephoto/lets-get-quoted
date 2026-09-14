@@ -23,7 +23,7 @@ The complete agreed work, commit progress and push gate are maintained in the
 - [x] **Local change-order decision owner alerts:** Owner notices commit with approved/declined decisions; concurrent/repeated responses produce one event and changed/deleted decisions cancel pending sends. Verification: 50 application tests, 107 database checks, type checking, lint and clean local security advisor. Legacy response actions must be drained at rollout; hosted acceptance stays open.
 
 - [x] **Local formal warranty claim dispatch protection:** Each saved claim now commits its owner notice atomically and cancels obsolete pending alerts. Verification: 52 application tests, 110 database checks, type checking, lint and clean local security advisor.
-- [ ] **Formal warranty submission retry protection:** Add stable request identities and attachment paths; repeated submissions can still create separate claims. Hosted warranty notice acceptance also remains open.
+- [x] **Local formal warranty submission retry protection:** Scoped request receipts, stable attachment paths, changed-content rejection and deletion tombstones prevent repeated forms from creating duplicate claims. Verification: 56 application tests, 112 database checks, type checking, lint and clean local security advisor. Hosted warranty notice, capacity and retention acceptance remain open.
 
 ## Workstream Updates (2026-09-12)
 

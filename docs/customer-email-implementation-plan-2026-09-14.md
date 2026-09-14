@@ -169,3 +169,9 @@ Production-specific inputs needed before M5/M6: environment identity, internal r
 - **T16/T17/T19:** Claim insertion now saves an owner notice in the same transaction, binding warranty/job ownership, original coverage, description and attachments. One worker claims each notice. Resolved, changed and deleted claims cancel pending alerts; immediate pickup failure leaves the saved claim successful.
 - **Verification:** 52 application tests, 110 PostgreSQL checks, full type checking, changed-file lint and clean local security advisor passed. A failed notice write rolls back its claim.
 - **Remaining:** Formal warranty forms still need request IDs and stable attachment paths so repeated submissions cannot create separate claims. The queue protects one saved claim, not repeated source creation. Drain legacy warranty actions before deployment. Other owner families and hosted acceptance remain open.
+
+### Thirty-first-pass implementation — warranty submission request receipts
+
+- **T16/T17:** Warranty forms retain a request UUID and entered text after uncertain submission. A private scoped receipt atomically commits with the claim and owner notice; matching retries reuse it and changed content is rejected. Deleted claims retain replay tombstones. Attachment paths bind request and file content; completed receipts skip repeat upload.
+- **Verification:** 56 application tests including a rendered form, 112 PostgreSQL checks, full type checking, lint and clean local security advisor passed. Tests cover concurrent requests, changed content, tenant mismatch, lost response, stable attachment paths and deletion.
+- **Remaining:** Hosted capacity, retention and rollout acceptance remain open. Uploads are external to the transaction and interrupted uploads can leave unreferenced files. Other owner families and steps 5–10 remain open.

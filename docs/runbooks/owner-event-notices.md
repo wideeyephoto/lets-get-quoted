@@ -179,3 +179,26 @@ and clean local security advisor. Request IDs and stable attachment paths remain
 required for formal warranty forms: duplicate source creation is not yet covered.
 Other warranty reminder senders remain in their scheduled-message workstream.
 No hosted changes or receiver evidence in this pass.
+
+## Warranty request receipts
+
+Apply 20260914182236_warranty_request_receipts.sql before deploying updated
+warranty forms/actions. Missing request IDs require a refreshed form. The form
+retains its ID and inputs after an uncertain response and starts a new ID when
+explicitly reopened. The action resolves current job access on every request.
+
+A receipt is unique to account/job/warranty/request and binds normalized text and
+attachment names/types/content hashes. The transaction rechecks warranty ownership,
+serializes the request, snapshots coverage on the UTC report date, and commits the
+claim, owner notice and receipt together. Replays return the original claim or a
+null tombstone after deletion. Changed content cannot reuse the same request ID.
+
+Completed receipts skip uploads. Files use stable account/warranty/request/content
+paths with no overwrite; only identical-path 409 is treated as already uploaded.
+Other upload errors stop claim creation. Interrupted storage writes can still
+leave orphan files; storage capacity and retention are hosted acceptance checks.
+The job timeline remains best effort; replay does not append a duplicate feed item.
+
+Verification: 56 application tests, 112 PostgreSQL checks, type checking, lint
+and clean local security advisor. This closes local formal warranty submission
+retry protection; remaining owner families and hosted release stay open.

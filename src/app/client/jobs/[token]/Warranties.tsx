@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import type { ClientWarranty } from '@/lib/warranties';
 import { raiseWarrantyClaimAction } from './warranty-actions';
 
@@ -13,6 +13,7 @@ import { raiseWarrantyClaimAction } from './warranty-actions';
  * decides on the contractor's behalf and costs them both the conversation.
  */
 export default function Warranties({ token, warranties }: { token: string; warranties: ClientWarranty[] }) {
+  const requestId = useRef<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -95,11 +96,18 @@ export default function Warranties({ token, warranties }: { token: string; warra
             ) : open === warranty.id ? (
               <form
                 className="client-warranty-form"
-                action={(formData) => {
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const formData = new FormData(event.currentTarget);
+                  requestId.current ??= crypto.randomUUID();
+                  formData.set('request_id', requestId.current);
                   setError(null);
                   startTransition(async () => {
-                    const result = await raiseWarrantyClaimAction(token, warranty.id, formData);
+                    let result;
+                    try { result = await raiseWarrantyClaimAction(token, warranty.id, formData); }
+                    catch { setError('Could not confirm submission. Retry this form.'); return; }
                     if (result.ok) {
+                      requestId.current = null;
                       setDone(warranty.id);
                       setOpen(null);
                     } else {
@@ -136,14 +144,14 @@ export default function Warranties({ token, warranties }: { token: string; warra
                   <button type="submit" className="btn primary" disabled={pending}>
                     {pending ? 'Sending…' : 'Send to your contractor'}
                   </button>
-                  <button type="button" className="btn ghost" onClick={() => setOpen(null)} disabled={pending}>
+                  <button type="button" className="btn ghost" onClick={() => { requestId.current = null; setOpen(null); }} disabled={pending}>
                     Cancel
                   </button>
                 </div>
               </form>
             ) : warranty.canClaim ? (
               <div className="client-warranty-actions">
-                <button type="button" className="btn secondary" onClick={() => setOpen(warranty.id)}>
+                <button type="button" className="btn secondary" onClick={() => { requestId.current = null; setError(null); setOpen(warranty.id); }}>
                   Something&apos;s gone wrong
                 </button>
                 {warranty.status === 'expired' ? (

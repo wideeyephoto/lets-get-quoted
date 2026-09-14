@@ -127,6 +127,7 @@ try {
   await (await import('./verify-messaging-owner-notices.mjs')).verifyMessagingOwnerNotices(db, root, passed);
   await (await import('./verify-change-order-owner-notices.mjs')).verifyChangeOrderNotices(db, other, root, passed);
   await (await import('./verify-warranty-claim-owner-notices.mjs')).verifyWarrantyClaimNotices(db, other, root, passed);
+  await (await import('./verify-warranty-request-receipts.mjs')).verifyWarrantyReceipts(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',
