@@ -5,6 +5,7 @@ import { join } from 'node:path';
 const { dispatchedKeys, mockAdmin } = vi.hoisted(() => {
   const dispatchedKeys = new Set<string>();
   const mockAdmin = {
+    rpc: async (_name: string, input: { p_recipients: Array<{ email: string; account_id: string | null }> }) => ({ data: input.p_recipients.map(pair => ({ ...pair, blocked: false })), error: null }),
     from: (table: string) => {
       if (table === 'platform_campaign_dispatches') {
         return {
@@ -46,12 +47,12 @@ vi.mock('@/lib/auth', () => ({
   requireMfaPermission: async () => ({ admin: mockAdmin, adminEmail: 'staff@letsgetquoted.com' }),
 }));
 
-vi.mock('@/lib/resend', () => ({
-  getResendClient: () => ({
+vi.mock('resend', () => ({
+  Resend: vi.fn().mockImplementation(() => ({
     emails: {
       send: vi.fn().mockResolvedValue({ data: { id: 'email_123' }, error: null }),
     },
-  }),
+  })),
 }));
 
 import {
@@ -140,7 +141,7 @@ describe('Admin Platform Campaigns Engine', () => {
       expect(html).toContain('New Platform Capabilities');
       expect(html).toContain('Open Dashboard');
       expect(html).toContain('https://letsgetquoted.com/dashboard');
-      expect(html).toContain('Unsubscribe from onboarding tips and platform announcements');
+      expect(html).toContain('Unsubscribe from platform updates and announcements');
       expect(html).toContain('Let&#39;s Get Quoted');
       expect(html).toContain('Faster deposits');
       expect(html).toContain('Direct customer receipt links');

@@ -6,6 +6,7 @@ import { buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
 import { logAdminAction, type AuditActor } from '@/lib/admin';
 import { ownerEmailsForAccounts } from '@/lib/admin-accounts';
+import { assertPlatformCampaignAllowed, platformCampaignEligibility } from './platform-email-policy';
 
 let resendClient: Resend | null = null;
 function getResendClient(): Resend {
@@ -39,7 +40,7 @@ export function renderPlatformCampaignEmailHtml(
   input: Omit<PlatformCampaignInput, 'audience'>,
   recipient?: Partial<PlatformCampaignRecipient>,
 ): string {
-  return renderPlatformEmail(input, recipient);
+  return renderPlatformEmail(input, recipient, 'platform');
 }
 
 export const MAX_PLATFORM_CAMPAIGN_AUDIENCE = 10000;
@@ -105,12 +106,15 @@ export async function resolvePlatformCampaignRecipients(
 ): Promise<PlatformCampaignRecipient[]> {
   if (audience === 'custom') {
     const emails = parseCustomEmailList(customEmails);
-    return emails.map((email) => ({
+    if (emails.length > MAX_PLATFORM_CAMPAIGN_AUDIENCE) throw new Error('Custom audience exceeds the safe campaign limit.');
+    const recipients = emails.map((email) => ({
       email,
       name: null,
       businessName: null,
       accountId: null,
     }));
+    const eligible = await platformCampaignEligibility(admin, recipients);
+    return recipients.filter((_, index) => eligible[index]);
   }
 
   const now = new Date();
@@ -238,38 +242,17 @@ export async function resolvePlatformCampaignRecipients(
   // Hydrate owner login emails
   const ownerEmailMap = await ownerEmailsForAccounts(admin, targetIds);
 
-  // Load suppressions in safe chunks to fail closed on opted out emails
-  const suppressedSet = new Set<string>();
-  for (let i = 0; i < targetIds.length; i += 500) {
-    const chunkIds = targetIds.slice(i, i + 500);
-    const { data: suppressions, error: suppressionError } = await admin
-      .from('email_suppression')
-      .select('email, account_id')
-      .in('account_id', chunkIds);
-
-    if (suppressionError) {
-      console.error('Failed to load email suppression list for platform campaigns (failing closed):', suppressionError.message);
-      throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
-    }
-
-    for (const s of suppressions ?? []) {
-      if (s.email) suppressedSet.add(String(s.email).toLowerCase().trim());
-    }
-  }
-
   const recipients: PlatformCampaignRecipient[] = [];
-  const seenEmails = new Set<string>();
 
   for (const account of targetAccounts) {
     const rawEmail = ownerEmailMap.get(account.id);
     if (!rawEmail) continue;
 
     const email = rawEmail.trim().toLowerCase();
-    if (!isMailable(email) || seenEmails.has(email) || suppressedSet.has(email)) {
+    if (!isMailable(email)) {
       continue;
     }
 
-    seenEmails.add(email);
     const businessName = siteMap.get(account.id) || account.business_name || 'Your business';
 
     recipients.push({
@@ -280,13 +263,20 @@ export async function resolvePlatformCampaignRecipients(
     });
   }
 
-  return recipients;
+  const eligible = await platformCampaignEligibility(admin, recipients);
+  const seenEmails = new Set<string>();
+  return recipients.filter((recipient, index) => {
+    if (!eligible[index] || seenEmails.has(recipient.email)) return false;
+    seenEmails.add(recipient.email);
+    return true;
+  });
 }
 
 /**
  * Send a single test email of the platform campaign to an admin/tester inbox.
  */
 export async function sendTestPlatformCampaignEmail(
+  admin: SupabaseClient,
   input: Omit<PlatformCampaignInput, 'audience'>,
   testEmail: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -303,7 +293,7 @@ export async function sendTestPlatformCampaignEmail(
     email: cleanEmail,
     name: 'Alex Miller',
     businessName: 'Miller Plumbing & HVAC',
-    accountId: 'test-preview',
+    accountId: null,
   };
 
   const senderName = input.senderName?.trim() || "Let's Get Quoted";
@@ -316,12 +306,13 @@ export async function sendTestPlatformCampaignEmail(
   const oneClickUrl = buildUnsubscribeOneClickUrl('platform', cleanEmail);
 
   const resend = getResendClient();
+  await assertPlatformCampaignAllowed(admin, sampleRecipient);
   const result = await resend.emails.send({
     from,
     to: cleanEmail,
     subject: interpolatedSubject,
     html,
-    text: renderPlatformEmailText(input, sampleRecipient),
+    text: renderPlatformEmailText(input, sampleRecipient, 'platform'),
     reply_to: replyTo,
     headers: listUnsubscribeHeaders(oneClickUrl),
     tags: [
@@ -330,9 +321,9 @@ export async function sendTestPlatformCampaignEmail(
     ],
   });
 
-  if (result.error) {
+  if (result.error || !result.data?.id) {
     console.error('[sendTestPlatformCampaignEmail] Resend error:', result.error);
-    return { success: false, error: result.error.message };
+    return { success: false, error: result.error?.message || 'Provider acceptance was not confirmed.' };
   }
 
   return { success: true };
@@ -388,14 +379,15 @@ export async function sendPlatformCampaignBlast(
       try {
         const subject = interpolateTokens(input.subject, recipient);
         const html = renderPlatformCampaignEmailHtml(input, recipient);
-        const oneClickUrl = buildUnsubscribeOneClickUrl(recipient.accountId || 'platform', recipient.email);
+        const oneClickUrl = buildUnsubscribeOneClickUrl('platform', recipient.email);
 
+        await assertPlatformCampaignAllowed(admin, recipient);
         const res = await resend.emails.send({
           from,
           to: recipient.email,
           subject,
           html,
-          text: renderPlatformEmailText(input, recipient),
+          text: renderPlatformEmailText(input, recipient, 'platform'),
           reply_to: replyTo,
           headers: listUnsubscribeHeaders(oneClickUrl),
           tags: [
@@ -406,9 +398,9 @@ export async function sendPlatformCampaignBlast(
           ],
         });
 
-        if (res.error) {
+        if (res.error || !res.data?.id) {
           failedCount++;
-          failures.push({ email: recipient.email, error: res.error.message });
+          failures.push({ email: recipient.email, error: res.error?.message || 'Provider acceptance was not confirmed.' });
         } else {
           sentCount++;
         }
@@ -450,7 +442,7 @@ export async function sendPlatformCampaignBlast(
     action: 'platform_campaign_send',
     targetType: 'platform_campaign',
     targetId: campaignId,
-    reason: `Sent "${input.subject}" to ${input.audience} (${sentCount}/${recipients.length} delivered)`,
+    reason: `Submitted "${input.subject}" to ${input.audience} (${sentCount}/${recipients.length} accepted by provider)`,
     meta: {
       campaign: campaignRecord,
       idempotencyKey: (input as { idempotencyKey?: string }).idempotencyKey || null,

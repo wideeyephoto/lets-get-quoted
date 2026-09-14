@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isPlatformEmailScope, platformCampaignEligibility, suppressPlatformEmail } from './platform-email-policy';
 
 // Marketing opt-outs and provider delivery blocks share storage but have
 // different meanings. Marketing paths consult all these rows. Transactional
@@ -108,6 +109,7 @@ export async function loadSuppressedEmails(supabase: SupabaseClient, accountId: 
 // on database error to protect recipient opt-out preferences.
 export async function isEmailSuppressed(supabase: SupabaseClient, accountId: string, email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
+  if (isPlatformEmailScope(accountId)) return !(await platformCampaignEligibility(supabase, [{ email, accountId: null }]))[0];
   // Exact match on the lowercased address (how suppressEmail stores it, and what
   // the (account_id, lower(email)) unique index keys on). NOT ilike — the address
   // would be treated as a LIKE pattern, so an '_' or '%' in a local-part would act
@@ -163,6 +165,11 @@ export async function suppressEmail(
 ): Promise<boolean> {
   const normalized = email.trim().toLowerCase();
   if (!normalized) return false;
+  // Previously issued platform/test-preview tokens are signed but have no
+  // workspace UUID. Keep them usable without changing genuine tenant tokens.
+  if (isPlatformEmailScope(accountId)) {
+    return suppressPlatformEmail(supabase, normalized, reason);
+  }
   // Not an upsert: the unique index is on the expression lower(email), which
   // on_conflict can't target. A pre-check keeps it idempotent; the unique index is
   // the backstop against a race (duplicate insert simply errors and is ignored).

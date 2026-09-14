@@ -85,7 +85,7 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
 
       expect(html).toContain('LETS GET QUOTED LLC');
       expect(html).toContain('2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864');
-      expect(html).toContain('Unsubscribe from onboarding tips and platform announcements');
+      expect(html).toContain('Unsubscribe from platform updates and announcements');
     });
 
     it('renders valid physical postal address in contractor lifecycle emails', () => {
@@ -178,7 +178,7 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createChain({
-              data: [{ id: 'acc_1', business_name: 'Test Business', plan: 'solo', reply_to_email: 'owner@test.com' }],
+              data: [{ id: 'acc_1', business_name: 'Test Business', plan: 'solo', reply_to_email: 'owner@reliabletrades.com' }],
               error: null,
             });
           }
@@ -208,10 +208,9 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
           }
           return createChain({ data: [], error: null });
         }),
-        rpc: vi.fn().mockResolvedValue({
-          data: [{ account_id: 'acc_1', email: 'owner@test.com' }],
-          error: null,
-        }),
+        rpc: vi.fn(async (name: string) => name === 'platform_campaign_recipient_status'
+          ? { data: null, error: { message: 'Network partition on replica' } }
+          : { data: [{ account_id: 'acc_1', email: 'owner@reliabletrades.com' }], error: null }),
       } as unknown as SupabaseClient;
 
       await expect(

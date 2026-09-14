@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/auth';
 import { parseUnsubscribeToken, isEmailSuppressed } from '@/lib/email-suppression';
+import { isPlatformEmailScope } from '@/lib/platform-email-policy';
 import SaveButton from '@/components/save-button';
 import { unsubscribeAction } from './actions';
 
@@ -10,6 +11,7 @@ export const dynamic = 'force-dynamic';
 // unsubscribe someone by accident); the actual opt-out happens on the POST from
 // that button, or via the one-click List-Unsubscribe header (the API route).
 async function resolveBusinessName(accountId: string): Promise<string> {
+  if (isPlatformEmailScope(accountId)) return "Let's Get Quoted";
   const admin = createAdminClient();
   const [{ data: site }, { data: account }] = await Promise.all([
     admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
@@ -42,15 +44,19 @@ export default async function UnsubscribePage({
   }
 
   const businessName = await resolveBusinessName(decoded.accountId);
+  const platform = isPlatformEmailScope(decoded.accountId);
+  const messageType = platform ? 'platform updates and announcements' : 'marketing emails';
+  const admin = createAdminClient();
+  const already = await isEmailSuppressed(admin, decoded.accountId, decoded.email);
 
-  if (searchParams.done) {
+  if (searchParams.done && already) {
     return (
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card success">
           <p className="eyebrow">Unsubscribed</p>
           <h1 className="workspace-title">You&apos;re unsubscribed</h1>
           <p className="workspace-lead">
-            <strong>{decoded.email}</strong> won&apos;t receive any more marketing emails from {businessName}.
+            <strong>{decoded.email}</strong> won&apos;t receive any more {messageType} from {businessName}.
             You&apos;ll still get messages about your own jobs, quotes, and payments.
           </p>
         </section>
@@ -59,8 +65,6 @@ export default async function UnsubscribePage({
   }
 
   // If they've already opted out, say so instead of showing the button again.
-  const admin = createAdminClient();
-  const already = await isEmailSuppressed(admin, decoded.accountId, decoded.email);
   if (already) {
     return (
       <main className="wide-shell workspace-shell">
@@ -68,7 +72,7 @@ export default async function UnsubscribePage({
           <p className="eyebrow">Unsubscribed</p>
           <h1 className="workspace-title">You&apos;re already unsubscribed</h1>
           <p className="workspace-lead">
-            <strong>{decoded.email}</strong> is not receiving marketing emails from {businessName}.
+            <strong>{decoded.email}</strong> is not receiving {messageType} from {businessName}.
           </p>
         </section>
       </main>
@@ -81,8 +85,8 @@ export default async function UnsubscribePage({
         <p className="eyebrow">Unsubscribe</p>
         <h1 className="workspace-title">Unsubscribe from {businessName}?</h1>
         <p className="workspace-lead">
-          Confirm below and <strong>{decoded.email}</strong> will stop receiving marketing emails
-          (special offers, &ldquo;book again&rdquo; reminders, and review requests) from {businessName}.
+          Confirm below and <strong>{decoded.email}</strong> will stop receiving {messageType}
+          {!platform && ' (special offers, “book again” reminders, and review requests)'} from {businessName}.
           You&apos;ll still get messages about your own jobs, quotes, and payments.
         </p>
         <form action={unsubscribeAction} style={{ marginTop: '1rem' }}>

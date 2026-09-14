@@ -49,7 +49,7 @@ jobs:
       - name: Read-only lifecycle preview checks
         run: npm run test:email-dry-run
 
-      - name: Quote, invoice and email recovery database checks
+      - name: Document, recovery and platform email database checks
         run: npm run test:pg17:document-email
 
       - name: Operational alerts and email recovery database checks

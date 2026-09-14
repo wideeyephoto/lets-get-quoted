@@ -144,6 +144,13 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 10 selected files / 90 tests passed, including 11 query-contract cases using the installed Supabase client and local HTTP fixtures. These cover 1,201 records, lower API caps, tenant isolation, concurrent deletion and later-page failures. Full app/test typecheck passed; lint has zero errors and four pre-existing test warnings. No hosted changes or real email.
 - **Remaining:** Independent lifecycle/platform scans are still open. Platform campaigns also require separate opt-out persistence and consistent footer/header scope: the existing literal `platform` cannot fit the workspace UUID foreign key. Their cross-workspace union of suppression addresses needs correction with the final per-recipient policy.
 
+### Eighth-pass implementation — platform campaign preferences
+
+- **T12/T13/T14:** Added private platform preference storage and atomic reason promotion. Platform campaigns, custom lists and test emails use exact recipient/workspace checks at audience selection and immediately before submission. Preferences are no longer unioned across unrelated workspaces.
+- **T18/T19:** HTML/text/header unsubscribe tokens now agree. Existing signed `platform`/`test-preview` links persist correctly; workspace links keep their original scope. The public page reads the appropriate storage and verifies persisted status before showing completion. GET requests remain read-only. Signed platform delivery callbacks retain delivery blocks and retry failed persistence.
+- **Verification:** 16 selected files / 236 tests and 26 disposable PostgreSQL 17 checks passed. Local security advisor reported no issues. Full app/test typecheck passed; lint has zero errors and three pre-existing test warnings. See the [platform campaign policy](runbooks/platform-campaign-email-policy.md). Migration `20260914152829_platform_campaign_preferences.sql` must precede deploying these paths; no hosted changes or real email were performed.
+- **Remaining:** Other platform senders, lifecycle suppression scans, provider-region/history reconciliation, durable platform send identities and hosted acceptance remain open.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

@@ -99,6 +99,18 @@ afterEach(() => {
 });
 
 describe('Resend webhook outcome projection', () => {
+  it.each(['platform_campaign', 'platform_campaign_test'])('records signed %s delivery blocks in platform scope', async kind => {
+    const data = taggedData('platform-complaint', { tags: { kind, account_id: ACCOUNT_ID } });
+    expect((await POST(signedRequest('email.complained', data))).status).toBe(200);
+    expect(mocks.suppressEmail).toHaveBeenCalledWith(expect.anything(), 'platform', RECIPIENT, 'complaint');
+    mocks.suppressEmail.mockResolvedValue(false);
+    expect((await POST(signedRequest('email.complained', data))).status).toBe(500);
+  });
+  it('persists custom campaign delivery blocks without an account tag', async () => {
+    const data = taggedData('custom-bounce', { tags: { kind: 'platform_campaign' }, bounce: { type: 'Permanent' } });
+    expect((await POST(signedRequest('email.bounced', data))).status).toBe(200);
+    expect(mocks.suppressEmail).toHaveBeenCalledWith(expect.anything(), 'platform', RECIPIENT, 'hard_bounce');
+  });
   it('retains a late callback for a deleted document as a routing review', async () => {
     mocks.rpc.mockResolvedValue({ data: false, error: null });
     mocks.intentLookup.mockResolvedValue({ data: null, error: null });

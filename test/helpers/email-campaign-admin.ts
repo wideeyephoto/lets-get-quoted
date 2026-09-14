@@ -5,6 +5,11 @@ export function emailCampaignAdmin(tables: Record<string, any[]> = {}, failures:
     rpc: async (name: string, input: any) => {
       if (name === 'owner_emails_for_accounts') return { data: tables.owners ?? [], error: failures.owners ? { message: failures.owners } : null };
       if (failures[name]) return { data: null, error: { message: failures[name] } };
+      if (name === 'platform_campaign_recipient_status') return {
+        data: input.p_recipients.map((pair: any) => ({ ...pair, blocked:
+          (tables.platform_email_suppression ?? []).some(row => row.email === pair.email)
+          || (tables.email_suppression ?? []).some(row => row.account_id === pair.account_id && row.email === pair.email) })), error: null,
+      };
       const sends = tables.contractor_lifecycle_sends ??= [];
       if (name === 'claim_contractor_lifecycle_send') {
         const existing = sends.find(row => row.account_id === input.p_account_id && row.step_id === input.p_step_id);

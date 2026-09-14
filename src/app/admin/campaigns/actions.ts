@@ -106,7 +106,7 @@ export async function sendTestPlatformEmailAction(
       return { success: false, error: 'A valid destination email is required for test sends.' };
     }
 
-    const result = await sendTestPlatformCampaignEmail(campaign, cleanEmail);
+    const result = await sendTestPlatformCampaignEmail(context.admin, campaign, cleanEmail);
     if (result.success) {
       await logAdminAction(context.admin, context, {
         action: 'campaign_send_test_email',
