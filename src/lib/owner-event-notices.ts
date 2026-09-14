@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { getAccountOwnerEmail, sendOwnerEventNoticeEmail, sendLeadNotificationEmail } from '@/lib/email';
 
-type Notice = { id: string; account_id: string; source_id: string; source_type?: string; event_kind: string; source_payload: { title: string | null; body: string; job_id?: string; client_id?: string; recipient_email?: string; business_name?: string; application_id?: string }; attempted_at: string };
+type Notice = { id: string; account_id: string; source_id: string; source_type?: string; event_kind: string; source_payload: { title: string | null; body: string; job_id?: string; client_id?: string; recipient_email?: string; business_name?: string; application_id?: string; highValue?: boolean; estimate?: any; request_id?: string }; attempted_at: string };
 
 /** One attempt per committed source event. Uncertain outcomes require review. */
 export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sourceId: string; accountId: string }) {

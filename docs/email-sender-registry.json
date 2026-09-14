@@ -277,7 +277,7 @@
       "remaining": "Provider delivery",
       "signatures": {
         "<module>:provider-import:resend": 1,
-        "executeCustomerEmailClaim:provider-email-request": 1
+        "submit:provider-email-request": 1
       }
     }
   }

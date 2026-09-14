@@ -67,6 +67,7 @@ async function notifyOwner(
     }
 
     // Urgent text to the owner's own mobile — high-value leads only, opt-in.
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com'}/dashboard/leads`;
     if (alert.highValue && alert.smsEnabled && alert.alertPhone) {
       await sendOwnerHighValueLeadSms({
         // Needed for the opt-out check inside: consent rows are keyed

@@ -106,21 +106,34 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
         supabase.auth.getUser(),
         loadBusinessName(supabase, accountId, 'Your business'),
       ]);
-      if (user?.email) {
-        const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-        const job = await getJob(supabase, accountId, jobId);
-        await sendPaymentRequestedConfirmationEmail({
-          accountId,
-          recipientEmail: user.email,
-          businessName,
-          clientName: job?.client_name || 'your customer',
-          label,
-          amount,
-          channel: sendSms && homeownerPhone ? 'sms' : 'none',
-          sentTo: sendSms ? homeownerPhone : null,
-          jobUrl: `${origin}/dashboard/jobs/${jobId}`,
-        });
-      }
+        if (user?.email) {
+          const job = await getJob(supabase, accountId, jobId);
+          const clientName = job?.client_name || 'your customer';
+          const delivered = (sendSms && homeownerPhone) ? true : false;
+          const amountStr = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+          const deliveryStr = delivered ? `Texted to ${homeownerPhone}.` : 'Not delivered — there was no mobile or email on file for them, so nothing was sent.';
+
+          await supabase.from('owner_event_notices').insert({
+            account_id: accountId,
+            source_type: 'job',
+            source_id: jobId,
+            event_kind: 'transactional_confirmation',
+            source_payload: {
+              title: delivered
+                ? `Payment request sent to ${clientName} — ${amountStr}`
+                : `Payment request for ${clientName} is waiting to be sent`,
+              body: [
+                `${label} • ${amountStr}`,
+                deliveryStr,
+                delivered
+                  ? 'You\'ll be notified as soon as they pay.'
+                  : 'Add a mobile or an email on the job, then send it again.',
+              ].join('\n\n'),
+              job_id: jobId,
+              recipient_email: user.email,
+            }
+          });
+        }
     }
   } catch (err) {
     console.error(`Payment confirmation email failed for job ${jobId}:`, err);

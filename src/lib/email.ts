@@ -724,7 +724,7 @@ export async function sendSelectionRequestEmail(
   
   const receipt = await sendCustomerEmail(
     admin,
-    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    { key: process.env.RESEND_API_KEY, fetchRequest: (...args) => new Resend(process.env.RESEND_API_KEY!).fetchRequest(...args) },
     {
       accountId: input.accountId,
       jobId: input.jobId,
@@ -797,7 +797,7 @@ export async function sendReviewRequestEmail(
 
   const receipt = await sendCustomerEmail(
     admin,
-    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    { key: process.env.RESEND_API_KEY, fetchRequest: (...args) => new Resend(process.env.RESEND_API_KEY!).fetchRequest(...args) },
     {
       accountId: input.accountId,
       jobId: input.jobId,
@@ -856,7 +856,7 @@ export async function sendRebookInviteEmail(
 
   const receipt = await sendCustomerEmail(
     admin,
-    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    { key: process.env.RESEND_API_KEY, fetchRequest: (...args) => new Resend(process.env.RESEND_API_KEY!).fetchRequest(...args) },
     {
       accountId: input.accountId,
       jobId: input.jobId,
@@ -923,7 +923,7 @@ export async function sendAppointmentReminderEmail(
 
   const receipt = await sendCustomerEmail(
     admin,
-    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    { key: process.env.RESEND_API_KEY, fetchRequest: (...args) => new Resend(process.env.RESEND_API_KEY!).fetchRequest(...args) },
     {
       accountId: input.accountId,
       jobId: input.jobId,
@@ -1230,7 +1230,7 @@ export async function sendCampaignEmail(
 
   const receipt = await sendCustomerEmail(
     admin,
-    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    { key: process.env.RESEND_API_KEY, fetchRequest: (...args) => new Resend(process.env.RESEND_API_KEY!).fetchRequest(...args) },
     {
       accountId: input.accountId,
       kind: 'campaign',
