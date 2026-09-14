@@ -20,6 +20,31 @@ function forwardTimeout(seconds: number): number {
   return Number.isFinite(seconds) ? Math.max(5, Math.min(60, Math.floor(seconds))) : 20;
 }
 
+/**
+ * SignalWire AI microphone sensitivity threshold (energy_level).
+ * SignalWire's default is 52 (dB, 0-100 scale). Ambient vehicle/jobsite/office noise
+ * trips speech detection prematurely at 52; raising to 62 provides solid noise immunity
+ * while keeping normal conversational speech clear and responsive.
+ */
+export const DEFAULT_VOICE_ENERGY_LEVEL = 62;
+
+export function voiceEnergyLevel(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_ENERGY_LEVEL);
+  return Number.isFinite(custom) && custom >= 0 && custom <= 100 ? custom : DEFAULT_VOICE_ENERGY_LEVEL;
+}
+
+/**
+ * Minimum words required to interrupt/barge the AI agent while speaking.
+ * Default SignalWire is 1; setting to 2 prevents brief background sounds, coughs,
+ * or breathing from cutting the agent off mid-sentence.
+ */
+export const DEFAULT_VOICE_BARGE_MIN_WORDS = 2;
+
+export function voiceBargeMinWords(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_BARGE_MIN_WORDS);
+  return Number.isSafeInteger(custom) && custom >= 1 && custom <= 99 ? custom : DEFAULT_VOICE_BARGE_MIN_WORDS;
+}
+
 /** A completed bridge must not fall through into an unanswered-call recording. */
 function failedTransferVoicemail(message: string, recordingStatusUrl?: string) {
   return {
@@ -854,6 +879,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
+            energy_level: voiceEnergyLevel(),
+            barge_min_words: voiceBargeMinWords(),
             end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
             enable_turn_detection: true,
             turn_detection_timeout: 250,
