@@ -698,15 +698,20 @@ export async function sendQuoteFollowupEmail(input: {
  * can start. Named in the subject rather than hidden behind "an update on your
  * job", because the whole point is that it needs an action from them.
  */
-export async function sendSelectionRequestEmail(input: {
-  recipientEmail: string;
-  businessName: string;
-  clientName: string;
-  count: number;
-  overdue: boolean;
-  url: string;
-  accountId: string;
-}): Promise<void> {
+export async function sendSelectionRequestEmail(
+  admin: SupabaseClient,
+  input: {
+    recipientEmail: string;
+    businessName: string;
+    clientName: string;
+    count: number;
+    overdue: boolean;
+    url: string;
+    accountId: string;
+    jobId: string;
+    idempotencyKey: string;
+  }
+): Promise<{ id: string | null }> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -714,33 +719,42 @@ export async function sendSelectionRequestEmail(input: {
   const brand = await brandFor(input);
   const first = input.clientName.trim().split(/\s+/)[0] || 'there';
   const what = input.count === 1 ? 'a choice' : `${input.count} choices`;
-  const result = await resend.emails.send({
-    from: contractorFrom(brand),
-    to: input.recipientEmail,
-    subject: input.overdue
-      ? `We're waiting on ${what} from you — ${input.businessName}`
-      : `${input.count === 1 ? 'A choice' : `${input.count} choices`} to make on your job with ${input.businessName}`,
-    html: renderBrandedEmail({
-      brand,
-      preheader: `${what} to make before we can order`,
-      eyebrow: 'Your choices',
-      heading: input.overdue ? `${first}, we're held up waiting on you` : `${first}, ${what} to make`,
-      paragraphs: [
-        input.overdue
-          ? `We need ${what} from you before we can order and get on with the job. It only takes a minute — everything is priced against what your quote already allows for, so you can see exactly what each one costs.`
-          : `There ${input.count === 1 ? 'is' : 'are'} ${what} to make on your job with ${input.businessName}. Everything is priced against what your quote already allows for, so you can see exactly what each one costs before you decide.`,
-      ],
-      cta: { label: input.count === 1 ? 'Make your choice' : 'Make your choices', url: input.url },
-    }),
-    reply_to: replyAddress(brand),
-    tags: defaultTags('selection_request', brand, input.accountId),
-  });
+  
+  const { sendCustomerEmail } = await import('@/lib/customer-email-sends');
+  
+  const receipt = await sendCustomerEmail(
+    admin,
+    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    {
+      accountId: input.accountId,
+      jobId: input.jobId,
+      kind: 'selection_request',
+      idempotencyKey: input.idempotencyKey,
+    },
+    {
+      from: contractorFrom(brand),
+      to: input.recipientEmail,
+      subject: input.overdue
+        ? `We're waiting on ${what} from you — ${input.businessName}`
+        : `${input.count === 1 ? 'A choice' : `${input.count} choices`} to make on your job with ${input.businessName}`,
+      html: renderBrandedEmail({
+        brand,
+        preheader: `${what} to make before we can order`,
+        eyebrow: 'Your choices',
+        heading: input.overdue ? `${first}, we're held up waiting on you` : `${first}, ${what} to make`,
+        paragraphs: [
+          input.overdue
+            ? `We need ${what} from you before we can order and get on with the job. It only takes a minute — everything is priced against what your quote already allows for, so you can see exactly what each one costs.`
+            : `There ${input.count === 1 ? 'is' : 'are'} ${what} to make on your job with ${input.businessName}. Everything is priced against what your quote already allows for, so you can see exactly what each one costs before you decide.`,
+        ],
+        cta: { label: input.count === 1 ? 'Make your choice' : 'Make your choices', url: input.url },
+      }),
+      reply_to: replyAddress(brand),
+      tags: defaultTags('selection_request', brand, input.accountId),
+    }
+  );
 
-  if (result.error) {
-    console.error('Failed to send selection request email:', result.error);
-    throw new Error(result.error.message);
-  }
-  console.log('Selection request email sent');
+  return { id: receipt.id };
 }
 
 // Post-job ask for a Google review, over email — the fallback channel when the
@@ -874,15 +888,20 @@ export async function sendRebookInviteEmail(
 // Day-before reminder for a scheduled job, over email — the fallback channel
 // when the client has no textable mobile. Sent by the reminders cron. Throws on
 // provider rejection so the caller can count it as failed.
-export async function sendAppointmentReminderEmail(input: {
-  recipientEmail: string;
-  businessName: string;
-  clientName: string;
-  whenLabel: string;
-  address: string | null;
-  jobRef: string;
-  accountId: string;
-}): Promise<void> {
+export async function sendAppointmentReminderEmail(
+  admin: SupabaseClient,
+  input: {
+    recipientEmail: string;
+    businessName: string;
+    clientName: string;
+    whenLabel: string;
+    address: string | null;
+    jobRef: string;
+    accountId: string;
+    jobId: string;
+    idempotencyKey: string;
+  }
+): Promise<{ id: string | null }> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -894,25 +913,34 @@ export async function sendAppointmentReminderEmail(input: {
     email.endsWith('@example.net')
   ) {
     console.warn(`[email] Skipping appointment reminder email to placeholder address: ${input.recipientEmail}`);
-    return;
+    return { id: null };
   }
 
   const brand = await brandFor(input);
   const html = renderAppointmentReminderEmailHtml({ ...input, brand });
+  
+  const { sendCustomerEmail } = await import('@/lib/customer-email-sends');
 
-  const result = await resend.emails.send({
-    from: contractorFrom(brand),
-    to: input.recipientEmail,
-    subject: `Reminder: your appointment with ${input.businessName}`,
-    html,
-    reply_to: replyAddress(brand),
-    tags: defaultTags('appointment_reminder', brand, input.accountId),
-  });
+  const receipt = await sendCustomerEmail(
+    admin,
+    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    {
+      accountId: input.accountId,
+      jobId: input.jobId,
+      kind: 'appointment_reminder',
+      idempotencyKey: input.idempotencyKey,
+    },
+    {
+      from: contractorFrom(brand),
+      to: input.recipientEmail,
+      subject: `Reminder: your appointment with ${input.businessName}`,
+      html,
+      reply_to: replyAddress(brand),
+      tags: defaultTags('appointment_reminder', brand, input.accountId),
+    }
+  );
 
-  if (result.error) {
-    console.error('Failed to send appointment reminder email:', result.error);
-    throw new Error(result.error.message);
-  }
+  return { id: receipt.id };
 }
 
 /**
@@ -1583,6 +1611,7 @@ export async function sendLeadNotificationEmail(input: {
   });
   if (result.error) throw new Error(result.error.message);
   return result.data?.id || '';
+}
 
 // Inbound "contact us" message from the public /contact form, routed to our own
 // support inbox (never displayed on the site). reply_to is the sender so we can

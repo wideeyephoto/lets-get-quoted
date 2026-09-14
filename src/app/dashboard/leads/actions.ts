@@ -699,32 +699,6 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     });
   }
 
-  // Receipt to the contractor: the quote left their hands, here's where it went.
-  // Opt-out via Settings → Automations; a quote goes out on every won lead, so
-  // some contractors will want the confirmation and some will find it noise.
-  // Defensive read — a pre-migration row has no column and defaults to on.
-  try {
-    const wanted = await wantsConfirmation(supabase, accountId, 'quote_confirmation_email');
-    const { data: { user } } = await supabase.auth.getUser();
-    if (wanted && user?.email) {
-      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-      await sendQuoteSentConfirmationEmail({
-        accountId,
-        recipientEmail: user.email,
-        businessName,
-        clientName: job.client_name,
-        jobRef: job.ref,
-        quotedAmount,
-        channel: delivery === 'sms' ? 'sms' : emailedTo ? 'email' : 'none',
-        sentTo: delivery === 'sms' ? job.client_phone : emailedTo,
-        jobUrl: `${origin}/dashboard/jobs/${job.id}`,
-      });
-    }
-  } catch (err) {
-    // A confirmation must never break sending the quote itself.
-    console.error(`Quote confirmation email failed for job ${job.id}:`, err);
-  }
-
   /**
    * Texting the start dates on their own.
    *

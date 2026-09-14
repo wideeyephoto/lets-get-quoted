@@ -27,7 +27,6 @@ import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } fro
 import { createPaymentFeedEvent, createJobFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
-import { sendPaymentRequestedConfirmationEmail } from '@/lib/email';
 import { recordSmsConsent, retryFailedPaymentSmsEvent, sendPaymentSmsEvent } from '@/lib/sms';
 
 async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOfficeContext>>['supabase'], accountId: string, jobId: string) {

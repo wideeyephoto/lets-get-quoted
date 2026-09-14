@@ -3,7 +3,6 @@ import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { createLead, getLeadTriage, type Lead, type LeadSource, type LeadTriage } from '@/lib/leads';
 import { dispatchSpeedToLeadSms } from '@/lib/ad-speed-to-lead';
-import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
 import { sendOwnerHighValueLeadSms } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { MarketplaceInboundLead, MarketplaceRoutingResult } from './types';
@@ -127,17 +126,21 @@ async function notifyOwnerOfMarketplaceLead(
     const alertPhone = (account?.alert_phone as string | null) || null;
     const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
 
-    const recipientEmail = await getAccountOwnerEmail(admin, accountId);
-    if (recipientEmail) {
-      await sendLeadNotificationEmail({
-        accountId,
-        recipientEmail,
-        businessName,
-        lead,
-        dashboardUrl,
-        highValue: isHighValue,
-        estimate: lead.triage?.estimate ?? null,
+    try {
+      await admin.from('owner_event_notices').insert({
+        account_id: accountId,
+        source_type: 'lead',
+        source_id: lead.id,
+        event_kind: 'lead_notification',
+        source_payload: {
+          title: `New lead: ${lead.name}`,
+          body: lead.message,
+          highValue: isHighValue,
+          estimate: lead.triage?.estimate ?? null,
+        }
       });
+    } catch (dbErr) {
+      console.error('Failed to enqueue owner event notice for lead:', dbErr);
     }
 
     if (smsEnabled && alertPhone) {

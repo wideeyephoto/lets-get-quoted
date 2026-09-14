@@ -15,7 +15,8 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
     let failure: string | null = null;
     try {
       const messaging = notice.source_type === 'messaging_registration_event';
-      const recipient = (messaging ? notice.source_payload.recipient_email : await getAccountOwnerEmail(admin, notice.account_id))?.trim().toLowerCase();
+      const customRecipient = notice.source_payload.recipient_email?.trim().toLowerCase();
+      const recipient = customRecipient || (await getAccountOwnerEmail(admin, notice.account_id))?.trim().toLowerCase();
       if (!recipient) throw new Error('owner_email_missing');
       const site = messaging ? { data: { company_name: notice.source_payload.business_name }, error: null }
         : await admin.from('sites').select('company_name').eq('account_id', notice.account_id).maybeSingle();

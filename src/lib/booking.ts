@@ -12,7 +12,7 @@ import {
 } from '@/lib/jobs';
 import { loadBusinessName } from '@/lib/business-name';
 import { createLead, type Lead, type LeadAttribution } from '@/lib/leads';
-import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
+import { sendBookingConfirmationEmail } from '@/lib/email';
 import { sendBookingRequestCustomerConfirmationSms, sendOwnerBookingRequestAlertSms, ensureSmsConsentBaseline } from '@/lib/sms';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { bookingAvailabilityFromAccount, windowsForTimes, outsideWorkdayWindowTimes, type BookingAvailability } from '@/lib/booking-availability';
@@ -503,16 +503,16 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
 
   // Owner: notified like any website lead (email + urgent SMS alert)
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      await sendLeadNotificationEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        lead,
-        dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
-      });
-    }
+    await admin.from('owner_event_notices').insert({
+      account_id: accountId,
+      source_type: 'lead',
+      source_id: lead.id,
+      event_kind: 'lead_notification',
+      source_payload: {
+        title: `New lead: ${lead.name}`,
+        body: lead.message,
+      }
+    });
   } catch (error) {
     console.error(`Booking owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);
   }
@@ -650,16 +650,18 @@ export async function createBookingRequestLead(
     const alertPhone = (accountSettings?.alert_phone as string | null) || null;
     const accountTimeZone = (accountSettings?.timezone as string | null) || null;
 
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      await sendLeadNotificationEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        lead,
-        dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
+    try {
+      await admin.from('owner_event_notices').insert({
+        account_id: accountId,
+        source_type: 'lead',
+        source_id: lead.id,
+        event_kind: 'lead_notification',
+        source_payload: {
+          title: `New lead: ${lead.name}`,
+          body: lead.message,
+        }
       });
-    }
+    } catch (dbErr) {}
 
     if (alertPhone) {
       await sendOwnerBookingRequestAlertSms({

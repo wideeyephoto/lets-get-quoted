@@ -3,7 +3,6 @@ import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { HONEYPOT_FIELD } from '@/components/honeypot-field';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
 import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { parseAttribution, sanitizeAttribution } from '@/lib/attribution';
@@ -49,24 +48,22 @@ async function notifyOwner(
     if (alert.muteLow && lead.triage?.score === 'low') return;
 
     const estimate = lead.triage?.estimate ?? null;
-    // APP_ORIGIN, never request.nextUrl.origin. This request arrives on the
-    // TENANT's public marketing host (thisisit.letsgetquoted.com), which does
-    // not serve /dashboard — so deriving the link from the request produced a
-    // dead URL in both the owner's alert text and the lead email. booking.ts
-    // has always used APP_ORIGIN for the identical link; this was the outlier.
-    const dashboardUrl = `${APP_ORIGIN}/dashboard/leads/${lead.id}`;
 
-    const recipientEmail = await getAccountOwnerEmail(admin, site.account_id);
-    if (recipientEmail) {
-      await sendLeadNotificationEmail({
-        accountId: site.account_id,
-        recipientEmail,
-        businessName: site.company_name,
-        lead,
-        dashboardUrl,
-        highValue: alert.highValue,
-        estimate,
+    try {
+      await admin.from('owner_event_notices').insert({
+        account_id: site.account_id,
+        source_type: 'lead',
+        source_id: lead.id,
+        event_kind: 'lead_notification',
+        source_payload: {
+          title: `New lead: ${lead.name}`,
+          body: lead.message,
+          highValue: alert.highValue,
+          estimate,
+        }
       });
+    } catch (dbErr) {
+      console.error('Failed to enqueue owner event notice for lead:', dbErr);
     }
 
     // Urgent text to the owner's own mobile — high-value leads only, opt-in.
