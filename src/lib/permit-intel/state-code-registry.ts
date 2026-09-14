@@ -531,7 +531,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Nevada',
     fips: '32',
     licensingBoard: 'Nevada State Contractors Board (NSCB)',
-    licensingUrl: 'https://www.nscb.nv.gov',
+    licensingUrl: 'https://www.nvcontractorsboard.com/',
     codes: {
       building: { name: '2018/2021 Northern/Southern Nevada Building Code Amendments (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
