@@ -148,17 +148,16 @@ export async function createQuickStopRequest(
   accountId: string,
   input: QuickStopRequestInput,
   qualification: QuickStopQualification,
-  opts: { responseDeadlineMins: number; lat: number | null; lng: number | null; businessName: string; requestedDate?: string | null },
-): Promise<QuickStopRequest> {
+  opts: { responseDeadlineMins: number; lat: number | null; lng: number | null; businessName: string; requestedDate?: string | null; requestId: string; payloadHash: string },
+): Promise<{ quick_stop_id: string | null; replayed: boolean }> {
   const phone = input.phone ? normalizeUsPhone(input.phone) : null;
   const email = input.email ? input.email.trim().toLowerCase() : null;
   const clientId = await findOrCreateClientId(admin, accountId, { name: input.name, phone, email, address: input.address });
 
   const responseDeadlineAt = new Date(Date.now() + opts.responseDeadlineMins * 60_000).toISOString();
 
-  const { data, error } = await admin
-    .from('extra_stop_requests')
-    .insert({
+  const { data, error } = await admin.rpc('submit_quick_stop_request', {
+    p_account_id: accountId, p_request_id: opts.requestId, p_payload_hash: opts.payloadHash, p_request: {
       account_id: accountId,
       client_id: clientId,
       status: 'awaiting_contractor',
@@ -194,17 +193,16 @@ export async function createQuickStopRequest(
       ai_exclusions: qualification.exclusions,
       availability: input.availability ? [input.availability] : [],
       response_deadline_at: responseDeadlineAt,
-    })
-    .select('*')
-    .single();
-  if (error || !data) throw new Error(error?.message || 'Could not create the Quick Stop request.');
+    } });
+  if (error || !data || typeof data.replayed !== 'boolean' || (data.quick_stop_id !== null && typeof data.quick_stop_id !== 'string')) throw new Error(error?.message || 'Could not create the Quick Stop request.');
 
-  const request = data as QuickStopRequest;
-  await logQuickStopEvent(admin, accountId, request.id, { actor: 'customer', to: 'awaiting_contractor', meta: { source: '/book' } });
+  const request = data as { quick_stop_id: string | null; replayed: boolean };
+  if (request.replayed || !request.quick_stop_id) return request;
+  await logQuickStopEvent(admin, accountId, request.quick_stop_id, { actor: 'customer', to: 'awaiting_contractor', meta: { source: '/book' } });
 
   // Alert the owner. Best-effort — a notification failure never fails the request.
   try {
-    await runOwnerEventNotices(admin,{sourceId:request.id,accountId});
+    await runOwnerEventNotices(admin,{sourceId:request.quick_stop_id,accountId});
   } catch (error) {
     console.error('Quick Stop owner alert failed:', error instanceof Error ? error.message : error);
   }

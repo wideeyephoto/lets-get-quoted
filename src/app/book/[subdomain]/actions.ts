@@ -1,5 +1,8 @@
 'use server';
 
+import { validClientRequestId } from '@/lib/client-owner-requests';
+import { findQuickStopReceipt, quickStopRequestHash, QuickStopRequestChangedError } from '@/lib/quick-stop-request-receipts';
+
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
@@ -452,14 +455,21 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     const timeZone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
     const rawRequestedDate = (formData.get('requestedDate') ?? '').toString().trim();
     const requestedDate = rawRequestedDate || null;
-    if (requestedDate && !isAllowedQuickStopDay(requestedDate, settings, { timeZone })) {
-      return { ok: false, error: 'That day isn’t available any more. Reload the page and pick another.' };
-    }
+
 
     // Photos are validated by type/size inside uploadLeadPhoto; count is gated here.
     const files = formData.getAll('photos').filter((f): f is File => f instanceof File && f.size > 0);
     if (settings.requiredPhotos > 0 && files.length < settings.requiredPhotos) {
       return { ok: false, error: `Please attach at least ${settings.requiredPhotos} photo${settings.requiredPhotos === 1 ? '' : 's'} of the issue.` };
+    }
+
+    const requestId = (formData.get('request_id') ?? '').toString().toLowerCase();
+    if (!validClientRequestId(requestId)) return { ok: false, error: 'Please refresh the page before sending your request.' };
+    const payloadHash = await quickStopRequestHash({name,phone,email,address,issue,startedWhen,worsening,propertyType,availability,requestedDate,ref:(formData.get('ref') ?? '').toString()},files);
+    if (await findQuickStopReceipt(admin,site.account_id,requestId,payloadHash)) return {ok:true};
+
+    if (requestedDate && !isAllowedQuickStopDay(requestedDate, settings, { timeZone })) {
+      return { ok: false, error: 'That day isn’t available any more. Reload the page and pick another.' };
     }
 
     // Duplicate guard before doing any real work.
@@ -503,14 +513,11 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
       return { ok: false, notAFit: true, error: qualification.reason || 'This job needs longer than a single short visit on an existing route.' };
     }
 
-    // Upload photos (best-effort per file) and geocode the address (precise-only).
+    // Reuse content-bound attachment paths after an uncertain upload response.
+    // Do not save a request claiming attachments whose upload failed.
     const photoPaths: string[] = [];
-    for (const file of files.slice(0, 6)) {
-      try {
-        photoPaths.push(await uploadLeadPhoto(site.account_id, file, 'public_visitor'));
-      } catch (error) {
-        console.error('Quick Stop photo upload failed:', error instanceof Error ? error.message : error);
-      }
+    for (const [fileIndex,file] of files.entries()) {
+      photoPaths.push(await uploadLeadPhoto(site.account_id,file,'public_visitor',{requestId,fileIndex}));
     }
     const geo = await geocodeAddress(address);
 
@@ -535,6 +542,7 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
       },
       qualification,
       {
+        requestId, payloadHash,
         responseDeadlineMins: settings.responseDeadlineMins,
         lat: geo?.precise ? geo.lat : null,
         lng: geo?.precise ? geo.lng : null,
@@ -547,6 +555,7 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
 
     return { ok: true };
   } catch (error) {
+    if (error instanceof QuickStopRequestChangedError) return {ok:false,error:error.message};
     console.error('submitQuickStopRequestAction failed:', error instanceof Error ? error.message : error);
     return { ok: false, error: 'Something went wrong creating your request. Please try again.' };
   }

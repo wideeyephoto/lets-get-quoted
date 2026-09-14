@@ -1,4 +1,5 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
+import { validClientRequestId } from '@/lib/client-owner-requests';
 import { createAdminClient } from '@/lib/auth';
 import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
@@ -50,7 +51,9 @@ export async function uploadLeadPhoto(
   accountId: string,
   file: File,
   uploader: LeadPhotoUploader,
+  identity?: { requestId: string; fileIndex: number },
 ): Promise<string> {
+  if (identity && (!validClientRequestId(identity.requestId) || !Number.isInteger(identity.fileIndex) || identity.fileIndex < 0 || identity.fileIndex > 5)) throw new Error('Invalid attachment request.');
   if (!ALLOWED_TYPES.has(file.type)) throw new Error('Files must be JPG, PNG, WebP, MP4, MOV, or WebM.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each file must be 35 MB or smaller.');
   if (uploader === 'workspace') {
@@ -61,15 +64,18 @@ export async function uploadLeadPhoto(
   let extension = file.type.split('/')[1] || 'bin';
   if (file.type === 'image/jpeg') extension = 'jpg';
   if (file.type === 'video/quicktime') extension = 'mov';
-  const path = `${accountId}/${randomUUID()}.${extension}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const path = identity
+    ? `${accountId}/requests/${identity.requestId.toLowerCase()}/${identity.fileIndex}-${createHash('sha256').update(bytes).digest('hex')}.${extension}`
+    : `${accountId}/${randomUUID()}.${extension}`;
   const { error } = await createAdminClient().storage
     .from(LEAD_PHOTOS_BUCKET)
-    .upload(path, Buffer.from(await file.arrayBuffer()), {
+    .upload(path, bytes, {
       contentType: file.type,
       cacheControl: '31536000',
       upsert: false,
     });
-  if (error) throw error;
+  if (error && !(identity && String((error as { statusCode?: string | number }).statusCode) === '409')) throw error;
   return path;
 }
 

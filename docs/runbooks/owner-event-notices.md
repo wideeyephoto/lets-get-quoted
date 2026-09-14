@@ -316,3 +316,11 @@ form request IDs and receipts remain necessary after a prior request closes.
 Verification: 36 application tests, 124 PostgreSQL checks, full type checking,
 lint and clean local security advisor. Hosted release and receiver acceptance,
 form replay receipts and confirmed refund-outcome notices remain open.
+
+### Quick Stop submission receipts
+
+Deploy migration 20260914184145_quick_stop_request_receipts.sql before the new public action. Continue to drain legacy new-request email producers before enabling the request-notice trigger. Old forms without a request UUID must refresh.
+
+The action hashes normalized customer input and attachment content, then looks up the private account/request receipt before active-contact checks, date checks, qualification or upload. The submission transaction serializes that identity, checks client ownership, inserts the request (which queues its owner notice), and inserts its receipt. Matching retries return the original identity or a deletion tombstone; different input cannot reuse a completed identity. The form keeps its identity after a lost response.
+
+Attachment paths include account, request, file index and SHA-256 content. Only a conflict at this deterministic path is accepted as an already-uploaded file; other upload errors prevent request creation. Public visitors retain the existing storage-cap exemption. No attachment deletion occurs on an uncertain submission: another attempt may already reference those files. Hosted retention, orphan cleanup and delivery acceptance remain open.

@@ -41,9 +41,12 @@ const mocks = vi.hoisted(() => ({
   recordQuickStopScreening: vi.fn(),
   createQuickStopRequest: vi.fn(),
   hasActiveQuickStopRequest: vi.fn(),
+  findQuickStopReceipt: vi.fn().mockResolvedValue(null),
   uploadLeadPhoto: vi.fn(),
   referrerFromCode: vi.fn().mockReturnValue(null),
 }));
+
+vi.mock('@/lib/quick-stop-request-receipts', async importOriginal => ({...await importOriginal<object>(),findQuickStopReceipt:mocks.findQuickStopReceipt}));
 
 vi.mock('next/navigation', () => ({
   redirect: mocks.redirect,
@@ -492,9 +495,35 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
   });
 
   describe('submitQuickStopRequestAction', () => {
+    it('acknowledges a saved replay before active-contact, date, qualification or upload work', async () => {
+      mocks.quickStopSettingsFromAccount.mockReturnValueOnce({available:true,requiredPhotos:0});
+      mocks.findQuickStopReceipt.mockResolvedValueOnce({payload_hash:'saved',quick_stop_id:null});
+      const fd=new FormData();
+      for(const [key,value] of Object.entries({subdomain:TEST_SUBDOMAIN,request_id:'e7390b32-9c62-4d9e-bc50-d4033aa63141',name:'Alex',phone:'5552223333',address:'1 Main',issue:'Leaking tap',requestedDate:'2026-01-01'}))fd.set(key,value);
+      expect(await submitQuickStopRequestAction(fd)).toEqual({ok:true});
+      expect(mocks.isAllowedQuickStopDay).not.toHaveBeenCalled();
+      expect(mocks.hasActiveQuickStopRequest).not.toHaveBeenCalled();
+      expect(mocks.qualifyQuickStop).not.toHaveBeenCalled();
+      expect(mocks.uploadLeadPhoto).not.toHaveBeenCalled();
+      expect(mocks.createQuickStopRequest).not.toHaveBeenCalled();
+    });
+    it('does not create a request with a failed attachment upload', async () => {
+      mocks.quickStopSettingsFromAccount.mockReturnValueOnce({available:true,requiredPhotos:0});
+      mocks.hasActiveQuickStopRequest.mockResolvedValueOnce(false);
+      mocks.readQuickStopVerdictToken.mockReturnValueOnce(null);
+      mocks.qualifyQuickStop.mockResolvedValueOnce({eligible:true,exclusions:[]});
+      mocks.uploadLeadPhoto.mockRejectedValueOnce(new Error('Upload response lost'));
+      const fd=new FormData();
+      for(const [key,value] of Object.entries({subdomain:TEST_SUBDOMAIN,request_id:'e7390b32-9c62-4d9e-bc50-d4033aa63141',name:'Alex',phone:'5552223333',address:'1 Main',issue:'Leaking tap'}))fd.set(key,value);
+      fd.append('photos',new File(['photo'],'tap.jpg',{type:'image/jpeg'}));
+      expect((await submitQuickStopRequestAction(fd)).ok).toBe(false);
+      expect(mocks.createQuickStopRequest).not.toHaveBeenCalled();
+    });
+
     it('returns error when rate limited', async () => {
       mocks.checkRateLimit.mockResolvedValueOnce(false);
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       const res = await submitQuickStopRequestAction(fd);
       expect(res).toEqual({
         ok: false,
@@ -505,6 +534,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
     it('returns error when site is missing', async () => {
       mocks.getPublicSiteBySubdomain.mockResolvedValueOnce(null);
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', 'missing');
       const res = await submitQuickStopRequestAction(fd);
       expect(res).toEqual({
@@ -516,6 +546,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
     it('returns error when Quick Stop is not available or connect not onboarded', async () => {
       mocks.quickStopSettingsFromAccount.mockReturnValueOnce({ available: false });
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
 
       const res = await submitQuickStopRequestAction(fd);
@@ -528,6 +559,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
     it('returns error when required fields are missing', async () => {
       mocks.quickStopSettingsFromAccount.mockReturnValueOnce({ available: true });
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
       fd.append('name', 'Alex');
       // missing phone
@@ -544,6 +576,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
       mocks.isAllowedQuickStopDay.mockReturnValueOnce(false);
 
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
       fd.append('name', 'Alex');
       fd.append('phone', '(555) 111-2222');
@@ -563,6 +596,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
       mocks.hasActiveQuickStopRequest.mockResolvedValueOnce(true);
 
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
       fd.append('name', 'Alex');
       fd.append('phone', '(555) 111-2222');
@@ -589,6 +623,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
       });
 
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
       fd.append('name', 'Alex');
       fd.append('phone', '(555) 111-2222');
@@ -622,6 +657,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
       });
 
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
       fd.append('name', 'Alex');
       fd.append('phone', '(555) 111-2222');
@@ -656,6 +692,7 @@ describe('Public Booking Actions (book/[subdomain]/actions.ts)', () => {
       mocks.uploadLeadPhoto.mockResolvedValueOnce('photos/lead-photo-1.jpg');
 
       const fd = new FormData();
+      fd.set('request_id','e7390b32-9c62-4d9e-bc50-d4033aa63141');
       fd.append('subdomain', TEST_SUBDOMAIN);
       fd.append('name', 'Alex Smith');
       fd.append('phone', '(555) 222-3333');

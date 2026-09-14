@@ -64,7 +64,7 @@ describe('the uploader argument cannot be forgotten', () => {
   it('is required, with no default', () => {
     // A default would make the NEXT public caller enforce silently, which is
     // exactly the failure this whole file exists to prevent.
-    expect(lib).toMatch(/uploader: LeadPhotoUploader,\s*\n\s*\): Promise<string>/);
+    expect(lib).toMatch(/uploader: LeadPhotoUploader,/);
     expect(lib).not.toMatch(/uploader: LeadPhotoUploader = /);
   });
 

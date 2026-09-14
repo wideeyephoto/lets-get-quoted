@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRadioGroup } from '@/components/use-radio-group';
 import { submitQuickStopRequestAction } from './actions';
 import type { QuickStopDayOption } from '@/lib/quick-stop';
@@ -65,6 +65,7 @@ export default function QuickStopFlow({
    *  already closed. Never assume "today": at 9pm it isn't one. */
   days: QuickStopDayOption[];
 }) {
+  const requestId = useRef<string | null>(null);
   const [open, setOpen] = useState(startOpen);
   const [checking, setChecking] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -157,7 +158,9 @@ export default function QuickStopFlow({
     }
     setSubmitting(true);
     try {
+      requestId.current ??= crypto.randomUUID();
       const fd = new FormData();
+      fd.set('request_id', requestId.current);
       fd.set('subdomain', subdomain);
       fd.set('issue', issue);
       fd.set('startedWhen', startedWhen);
