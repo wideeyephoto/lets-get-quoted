@@ -10,10 +10,10 @@ controlled canary require actual environment and receiver evidence.
 | 1 | Complete website-notice snapshots | Implemented locally; verification below | Immutable recipient/content/link/sender snapshots before submission; failure and mutation tests |
 | 2 | Provider identity and deduplication keys | Implemented locally; verification below | Saved credential fingerprint and stable per-notice key; actual request-boundary proof; hosted scope verified in step 9 |
 | 3 | Signed website callback recovery | Implemented locally; verification below | Saved binding checks, lost-acceptance repair, monotonic outcomes and callback/worker race tests without resend |
-| 4 | Remaining domain/owner notices | In progress: restoration implemented locally; other owner events remain | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
-| 5 | Appointment/booking/selection reminders | Open | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
-| 6 | Campaign/review/rebook messages | Open | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
-| 7 | Remaining email families | Open | Digests/support/merchandise/auth/report inventory closed with durable identities and token/report preservation |
+| 4 | Remaining domain/owner notices | Implemented locally; verification below | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
+| 5 | Appointment/booking/selection reminders | Implemented locally; verification below | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
+| 6 | Campaign/review/rebook messages | Implemented locally; verification below | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
+| 7 | Remaining email families | Implemented locally; verification below | Digests/support/merchandise/auth/report inventory closed with durable identities and token/report preservation |
 | 8 | Operator recovery controls | Implemented locally; verification below | Authorized detail/closeout and deliberate-resend flows; state, tenancy and duplicate-request verification |
 | 9 | Hosted release and acceptance | Open | Environment/provider/capacity/retention evidence; applied migrations; inbox, suppression, failure and rollback acceptance |
 | 10 | Controlled canary and expansion review | Open | Required clean scheduled runs, alert receipt, responder/backup and reviewed expansion decision |
