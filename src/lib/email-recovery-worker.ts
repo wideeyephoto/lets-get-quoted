@@ -3,9 +3,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from './auth';
 import { executeDocumentEmailClaim } from './document-email-sends';
 import { executeLifecycleEmailClaim } from './contractor-lifecycle-sends';
+import { executeCustomerEmailClaim } from './customer-email-sends';
 import type { EmailAttemptResult, EmailProvider } from './email-recovery-execution';
 
-type Work = { source: 'document' | 'lifecycle'; send_id: string; account_id: string; work: 'resume' | 'review' | 'reconcile' };
+type Work = { source: 'document' | 'lifecycle' | 'customer'; send_id: string; account_id: string; work: 'resume' | 'review' | 'reconcile' };
 type Options = { dryRun?: boolean; fetcher?: typeof fetch; now?: () => number; sleep?: (ms: number) => Promise<void> };
 
 export function retryAfterSeconds(value: string | null, now: number): number | undefined {
@@ -73,7 +74,7 @@ export async function runEmailRecovery(admin?: SupabaseClient, options: Options 
     for (const [index, item] of work.entries()) {
       // Leave time for two bounded provider requests (primary and definitive fallback).
       if (now() - started >= 50_000) { summary.deferred += work.length - index; break; }
-      if (!['document', 'lifecycle'].includes(item.source) || !['resume', 'review', 'reconcile'].includes(item.work)) {
+      if (!['document', 'lifecycle', 'customer'].includes(item.source) || !['resume', 'review', 'reconcile'].includes(item.work)) {
         throw new Error('Invalid recovery work record');
       }
       const { data: allowed, error: pauseError } = await db.rpc('email_recovery_can_submit', {
@@ -102,6 +103,11 @@ export async function runEmailRecovery(admin?: SupabaseClient, options: Options 
       try {
         if (item.source === 'document') {
           await executeDocumentEmailClaim(db, provider, item.account_id, claim, { runToken });
+          const { data: repaired, error: repairError } = await db.rpc('reconcile_email_recovery_acceptance', { p_id: item.send_id, p_run_token: runToken });
+          if (repairError) throw new Error('Email acceptance reconciliation unavailable');
+          if (repaired) summary.reconciled++;
+        } else if (item.source === 'customer') {
+          await executeCustomerEmailClaim(db, provider, item.account_id, claim, { runToken });
           const { data: repaired, error: repairError } = await db.rpc('reconcile_email_recovery_acceptance', { p_id: item.send_id, p_run_token: runToken });
           if (repairError) throw new Error('Email acceptance reconciliation unavailable');
           if (repaired) summary.reconciled++;
