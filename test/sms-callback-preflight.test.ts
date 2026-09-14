@@ -37,6 +37,17 @@ afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 const context = { accountId: '11111111-1111-4111-8111-111111111111', category: 'customer_message' } as const;
 
 describe('production SMS callback preflight', () => {
+  it.each(['+447700900123', '+12425550140', '+17875550140', '+15555550140'])
+    ('blocks an unsupported direct or legacy queued destination before billing: %s', async (phone) => {
+      const beforeRequest = vi.fn();
+      await expect(sendProviderMessage(phone, 'Test', context, { beforeRequest }))
+        .rejects.toThrow('SMS destinations are limited to supported US and Canada numbers.');
+      expect(fetch).not.toHaveBeenCalled();
+      expect(beforeRequest).not.toHaveBeenCalled();
+      expect(mocks.begin).not.toHaveBeenCalled();
+      expect(mocks.admin).not.toHaveBeenCalled();
+    });
+
   it.each(['', 'http://localhost:3010', 'not a URL', 'https://attacker.example',
     'https://user:secret@letsgetquoted.com', 'https://letsgetquoted.com/unexpected',
     'https://letsgetquoted.com?next=elsewhere', 'https://letsgetquoted.com#fragment',

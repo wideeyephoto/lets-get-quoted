@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
+import { assertSupportedSmsDestination } from '@/lib/sms-destination-policy';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PHONE = /^\+[1-9][0-9]{7,14}$/;
@@ -99,6 +100,7 @@ export async function enqueueSmsDelivery(
 ): Promise<EnqueuedSmsDelivery> {
   const accountId = requiredUuid(input.accountId, 'SMS account id');
   if (!PHONE.test(input.phoneNumber)) throw new Error('SMS destination must be E.164.');
+  assertSupportedSmsDestination(input.phoneNumber);
   if (!input.body || input.body.length > 5000) throw new Error('SMS body length is invalid.');
   const messageKind = requiredName(input.messageKind, 'SMS message kind');
   const eventType = requiredName(input.eventType ?? messageKind.replace(/-/g, '_'), 'SMS event type');

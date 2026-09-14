@@ -51,7 +51,7 @@ const carrierRejects = () => vi.spyOn(globalThis, 'fetch').mockImplementation(()
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 
 const send = (category: SmsBillingCategory = 'customer_message') =>
-  sendProviderMessage('+15551230000', 'On my way.', { accountId: ACCOUNT, category });
+  sendProviderMessage('+12485550140', 'On my way.', { accountId: ACCOUNT, category });
 
 const rpcNames = () => rpc.mock.calls.map((c) => c[0]);
 
@@ -97,7 +97,7 @@ describe('with the meter on', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
     await expect(sendProviderMessage(
-      '+15551230000',
+      '+12485550140',
       'On my way.',
       { accountId: ACCOUNT, category: 'customer_message' },
       { beforeRequest },
@@ -110,7 +110,7 @@ describe('with the meter on', () => {
     rpc.mockResolvedValue({ data: 'res-1', error: null });
     const fetchSpy = carrierAccepts();
     await expect(sendProviderMessage(
-      '+15551230000',
+      '+12485550140',
       'On my way.',
       { accountId: ACCOUNT, category: 'customer_message' },
       { beforeRequest: async () => { throw new Error('claim expired'); } },
@@ -226,7 +226,7 @@ describe('with the gate on as well', () => {
     const fetchSpy = carrierAccepts();
     const beforeRequest = vi.fn(async () => {});
     const error = await sendProviderMessage(
-      '+15551230000',
+      '+12485550140',
       'On my way.',
       { accountId: ACCOUNT, category: 'customer_message' },
       { beforeRequest },

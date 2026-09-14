@@ -12,6 +12,7 @@ import { billsTextCredits, type SmsSendContext } from '@/lib/sms-billing-policy'
 import { releaseUsageOverage } from '@/lib/billing/usage-overage';
 import type { TextCreditOverage } from '@/lib/billing/text-credit-usage';
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
+import { assertSupportedSmsDestination } from '@/lib/sms-destination-policy';
 
 /**
  * EVERY provider-shaped fact in the application lives in this file.
@@ -628,6 +629,10 @@ export async function sendProviderMessage(
     console.info(`Outbound SMS suppressed (${suppressed}).`);
     return SIMULATED_PROVIDER_ID;
   }
+
+  // Repeat the enqueue boundary for legacy queued rows and direct senders,
+  // before any circuit-breaker read, credit reservation, or carrier request.
+  assertSupportedSmsDestination(to);
 
   try {
     const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');

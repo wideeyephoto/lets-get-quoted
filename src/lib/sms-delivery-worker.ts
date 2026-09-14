@@ -7,6 +7,7 @@ import { quoteFollowupDeliveryEligibility } from '@/lib/quote-followup-delivery'
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import { lgqSmsDeliveryHold } from '@/lib/sms-brand';
 import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
+import { SmsDestinationNotSupportedError } from '@/lib/sms-destination-policy';
 import {
   outboundSmsSuppression,
   sendProviderMessage,
@@ -338,6 +339,11 @@ export class ProviderSmsDeliveryMessenger implements SmsDeliveryMessenger {
 export function classifySmsDeliveryFailure(
   error: unknown,
 ): Readonly<{ code: string; retryable: boolean; providerRejection: boolean }> {
+  if (error instanceof SmsDestinationNotSupportedError) {
+    return Object.freeze({
+      code: 'sms_destination_not_supported', retryable: false, providerRejection: false,
+    });
+  }
   if (error instanceof SmsCallbackConfigurationError) {
     return Object.freeze({
       code: 'sms_callback_not_configured', retryable: true, providerRejection: false,

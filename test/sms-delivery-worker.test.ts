@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SmsDestinationNotSupportedError } from '@/lib/sms-destination-policy';
 
 import {
   runSmsDeliveryBatch,
@@ -100,6 +101,14 @@ function preflightFailure(error: Error) {
 }
 
 describe('durable SMS delivery worker', () => {
+  it('does not retry an unsupported destination or cross the request boundary', async () => {
+    const fake = store();
+    await runSmsDeliveryBatch(1, fake.value, preflightFailure(new SmsDestinationNotSupportedError()), runtime());
+    expect(fake.value.fail).toHaveBeenCalledWith(CLAIM, 'sms_destination_not_supported', false);
+    expect(fake.value.markRequestStarted).not.toHaveBeenCalled();
+    expect(fake.value.complete).not.toHaveBeenCalled();
+  });
+
   it('records missing callback configuration as safely retryable before request start', async () => {
     const fake = store();
     await runSmsDeliveryBatch(1, fake.value, preflightFailure(new SmsCallbackConfigurationError()), runtime());
