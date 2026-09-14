@@ -72,6 +72,19 @@ export async function POST(request: Request) {
     });
 
     if (ingressResult.smsEventId) {
+      if (status.providerErrorCode === '21610'
+          && ['failed', 'undelivered'].includes(status.providerStatus)) {
+        // The receipt transaction projects this already. Retry the idempotent
+        // RPC for pre-migration receipts and duplicate HTTP attempts; never
+        // rewrite account consent from a later callback's payload or clock.
+        const { data, error } = await admin.rpc('apply_sms_carrier_opt_out_receipt', {
+          p_receipt_id: ingressResult.receiptId,
+        });
+        if (error || !['applied', 'ignored_newer_preference', 'review_unbound_sender'].includes(data)) {
+          throw new Error(`SMS carrier opt-out projection unavailable (${error?.code || 'invalid_result'}).`);
+        }
+      }
+
       // Retry this even for duplicate receipts: ingress may have committed before
       // a previous history write failed. The RPC deduplicates by canonical event
       // and appends to the current database value, without stale triage snapshots.
@@ -80,22 +93,6 @@ export async function POST(request: Request) {
       });
       if (error) throw new Error(`SMS lead history unavailable (${error.code || 'unknown'}).`);
 
-      if (status.providerErrorCode === '21610') {
-        const { data: event } = await admin
-          .from('sms_events')
-          .select('account_id, phone_number')
-          .eq('id', ingressResult.smsEventId)
-          .single();
-        
-        if (event) {
-          await admin.from('sms_consent').update({
-            status: 'opted_out',
-            opted_out_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            source: 'carrier_21610'
-          }).eq('account_id', event.account_id).eq('phone_number', event.phone_number);
-        }
-      }
     }
   } catch (error) {
     console.error('SMS status webhook handler threw:', error);

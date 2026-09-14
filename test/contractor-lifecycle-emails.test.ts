@@ -135,8 +135,9 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
 
     const res = await runContractorLifecycleSweep(mockAdmin as any, { dryRun: true });
     expect(res.checked).toBe(1);
-    expect(res.sent).toBe(1);
-    expect(res.details[0].status).toBe('sent');
+    expect(res.sent).toBe(0);
+    expect(res.planned).toBe(1);
+    expect(res.details[0].status).toBe('planned');
     // Because account has never received welcome_day0, it must receive welcome_day0 first
     expect(res.details[0].stepId).toBe('welcome_day0');
     expect(res.details[0].note).toContain('[DRY-RUN]');
@@ -181,11 +182,12 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
     });
 
     expect(res.dryRun).toBe(true);
-    expect(res.sent).toBe(2);
+    expect(res.sent).toBe(0);
+    expect(res.planned).toBe(2);
     expect(res.skipped).toBe(0);
     expect(res.errors).toBe(0);
     expect(res.details.length).toBe(2);
-    expect(res.details[0].status).toBe('sent');
+    expect(res.details[0].status).toBe('planned');
     expect(res.details[0].note).toContain('[DRY-RUN]');
     expect(res.details[0].note).toContain('apex@apexframing.com');
   });
@@ -250,7 +252,7 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
     ];
 
     const mockAdmin: any = {
-      from: (table: string) => ({
+      from: (_table: string) => ({
         select: () => ({
           in: () => ({
             eq: () =>

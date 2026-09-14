@@ -76,7 +76,8 @@ describe('Supabase Security Advisor Verification Suite', () => {
         const trimmed = line.trim();
         // PostgreSQL creates an index for an inline primary key. Count that
         // index rather than requiring a duplicate CREATE INDEX on the same key.
-        const primaryKey = trimmed.match(/^([a-zA-Z0-9_]+)\s+.*\bprimary\s+key\b/i);
+        const primaryKey = trimmed.match(/^([a-zA-Z0-9_]+)\s+.*\b(?:primary\s+key|unique)\b/i)
+          ?? trimmed.match(/^(?:constraint\s+\w+\s+)?unique\s*\(\s*([a-zA-Z0-9_]+)/i);
         if (primaryKey) {
           if (!tableIndexes.has(tableName)) tableIndexes.set(tableName, new Set());
           tableIndexes.get(tableName)!.add(primaryKey[1].toLowerCase());

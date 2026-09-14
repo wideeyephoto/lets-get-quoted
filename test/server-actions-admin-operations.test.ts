@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   }),
   revalidatePath: vi.fn(),
   requireMfaPermission: vi.fn(),
+  requireMfaPermissions: vi.fn(),
   requirePermission: vi.fn(),
   requireAdmin: vi.fn(),
   logAdminAction: vi.fn(),
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   refundPayment: vi.fn(),
   logQuickStopEvent: vi.fn(),
   resolveQuickStopCancellation: vi.fn(),
+  reconcileQuickStopRefund: vi.fn(),
   getPaymentForAdmin: vi.fn(),
   refundBlockedReason: vi.fn(),
   addSupportCaseNote: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock('next/navigation', () => ({ redirect: mocks.redirect }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock('@/lib/auth', () => ({
   requireMfaPermission: mocks.requireMfaPermission,
+  requireMfaPermissions: mocks.requireMfaPermissions,
   requirePermission: mocks.requirePermission,
   requireAdmin: mocks.requireAdmin,
 }));
@@ -52,6 +55,9 @@ vi.mock('@/lib/quick-stop-refunds', () => ({
 }));
 vi.mock('@/lib/payments', () => ({
   refundPayment: mocks.refundPayment,
+}));
+vi.mock('@/lib/quick-stop-refund-recovery', () => ({
+  reconcileQuickStopRefund: mocks.reconcileQuickStopRefund,
 }));
 vi.mock('@/lib/admin-payments', () => ({
   getPaymentForAdmin: mocks.getPaymentForAdmin,
@@ -91,7 +97,7 @@ import {
   resolveIncidentAction,
   togglePublishIncidentAction,
 } from '@/app/admin/incidents/actions';
-import { adminRefundQuickStopAction } from '@/app/admin/quick-stops/[id]/actions';
+import { adminRefundQuickStopAction, adminReconcileQuickStopRefundAction, adminResolveQuickStopAction } from '@/app/admin/quick-stops/[id]/actions';
 import { dispatchTestPageAction, runCronJobNowAction } from '@/app/admin/health/actions';
 import { logManualResolutionAction, requestDualApprovalAction } from '@/app/admin/manual/actions';
 import { refundPaymentAction } from '@/app/admin/payments/[id]/actions';
@@ -130,6 +136,7 @@ describe('Server Actions: Admin Operations & Governance', () => {
     };
     adminContext.admin = fakeAdmin;
     mocks.requireMfaPermission.mockResolvedValue(adminContext);
+    mocks.requireMfaPermissions.mockResolvedValue(adminContext);
     mocks.requirePermission.mockResolvedValue(adminContext);
     mocks.requireAdmin.mockResolvedValue(adminContext);
   });
@@ -183,12 +190,12 @@ describe('Server Actions: Admin Operations & Governance', () => {
 
   describe('quick-stops actions', () => {
     it('refunds a Quick Stop request payment', async () => {
-      mocks.getQuickStopRequestById.mockResolvedValue({
+      mocks.getQuickStopRequestById.mockResolvedValueOnce({
         account_id: 'acc-1',
         payment_id: 'pay-1',
         paid_at: '2026-09-12T00:00:00Z',
         refund_cents: 0,
-      });
+      }).mockResolvedValueOnce({ account_id: 'acc-1', payment_id: 'pay-1', refund_cents: 15000 });
       mocks.refundPayment.mockResolvedValue({ refundedTotal: 150, isFull: true });
 
       const form = new FormData();
@@ -201,6 +208,32 @@ describe('Server Actions: Admin Operations & Governance', () => {
       expect(mocks.refundPayment).toHaveBeenCalledWith(fakeAdmin, 'acc-1', 'pay-1', 150);
       expect(mocks.logQuickStopEvent).toHaveBeenCalled();
       expect(mocks.logAdminAction).toHaveBeenCalled();
+    });
+
+    it('blocks manual refunds while cancellation recovery is pending', async () => {
+      mocks.getQuickStopRequestById.mockResolvedValue({ account_id: 'acc-1', payment_id: 'pay-1', paid_at: '2026-09-12', refund_state: 'retry' });
+      await expect(adminRefundQuickStopAction('req-123', new FormData()))
+        .rejects.toThrow('error=refund_pending');
+      expect(mocks.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('reconciles a review without starting a manual refund', async () => {
+      mocks.getQuickStopRequestById.mockResolvedValue({ account_id: 'acc-1', refund_state: 'review' });
+      mocks.reconcileQuickStopRefund.mockResolvedValue({ completed: 1, pending: 0, review: 0 });
+      await expect(adminReconcileQuickStopRefundAction('req-123')).rejects.toThrow('done=refunded');
+      expect(mocks.requireMfaPermission).toHaveBeenCalledWith('money.refund');
+      expect(mocks.reconcileQuickStopRefund).toHaveBeenCalledWith(fakeAdmin, 'acc-1', 'req-123');
+      expect(mocks.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it.each(['completed', 'disputed'])('rejects unpaid requests for %s adjudication', async (outcome) => {
+      mocks.getQuickStopRequestById.mockResolvedValue({ account_id: 'acc-1', status: 'awaiting_customer_payment', payment_id: 'pay-1', paid_at: null });
+      const form = new FormData();
+      form.set('outcome', outcome);
+      form.set('reason', 'Staff review of request');
+      await expect(adminResolveQuickStopAction('req-123', form)).rejects.toThrow('error=state');
+      expect(fakeAdmin.from).not.toHaveBeenCalled();
+      expect(mocks.resolveQuickStopCancellation).not.toHaveBeenCalled();
     });
   });
 

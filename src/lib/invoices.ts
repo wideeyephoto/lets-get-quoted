@@ -6,6 +6,7 @@ import { CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 export type InvoiceStatus = 'draft' | 'sent' | 'signed' | 'paid' | 'void';
 
 export type Invoice = {
+  document_email_revision?: string;
   id: string;
   account_id: string;
   job_id: string;
@@ -429,20 +430,28 @@ export async function updateInvoiceStatus(
   accountId: string,
   jobId: string,
   invoiceId: string,
-  status: InvoiceStatus
+  status: InvoiceStatus,
+  expectedEmailRevision?: string,
 ): Promise<void> {
   const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
   if (!existing) {
     throw new Error('Invoice not found for this job.');
   }
 
-  const { error } = await supabase
+  const query = supabase
     .from('invoices')
     .update({ status })
     .eq('account_id', accountId)
     .eq('job_id', existing.invoice.job_id)
     .eq('id', invoiceId);
 
+  if (expectedEmailRevision) {
+    const { data, error } = await query.eq('document_email_revision', expectedEmailRevision).select('id').maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('The invoice changed during sending. Reload it to review the latest version.');
+    return;
+  }
+  const { error } = await query;
   if (error) {
     throw error;
   }

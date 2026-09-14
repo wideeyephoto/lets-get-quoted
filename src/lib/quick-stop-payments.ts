@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { createDepositRequest, refundPayment } from '@/lib/payments';
+import { queueQuickStopRefund, processQuickStopRefunds } from '@/lib/quick-stop-refund-recovery';
 import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { centsToDollars } from '@/lib/quick-stop';
 import { sendQuickStopOfferSms, sendQuickStopConfirmedSms } from '@/lib/sms';
@@ -35,65 +35,17 @@ async function businessNameFor(admin: SupabaseClient, accountId: string): Promis
   return (account?.business_name as string) || 'your contractor';
 }
 
-// Turn a sent offer into a live payment request: create the Stripe-backed
-// payment row against the tentative job, stamp the 15-minute payment deadline
-// (enforced app-side — see createCheckoutSessionForPayment; Stripe's own minimum
-// is 30 min), move the request to awaiting_customer_payment, and text the
-// customer the pay link. Called at the end of the offer action. Throws if the
-// contractor hasn't finished Stripe payout setup (can't collect otherwise).
+// The atomic offer RPC already linked the job/payment and started expiration.
+// Delivery may be retried; this helper never creates another payment or changes
+// the reservation, so a delivery failure cannot leave an incomplete offer.
 export async function sendQuickStopOffer(supabase: SupabaseClient, accountId: string, requestId: string): Promise<void> {
-  const request = await getQuickStopRequest(supabase, accountId, requestId);
-  if (!request) throw new Error('Request not found.');
-  if (request.status !== 'contractor_offer_sent') throw new Error('This offer is no longer pending.');
-  if (!request.job_id || !request.fee_cents) throw new Error('The offer is missing its job or fee.');
-
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('connect_onboarded, stripe_connect_id, extra_stop_payment_deadline_mins')
-    .eq('id', accountId)
-    .single();
-  if (!account?.connect_onboarded || !account?.stripe_connect_id) {
-    throw new Error('Finish your Stripe payout setup (Settings → Payouts) before sending Quick Stop offers.');
-  }
-  const minutes = Number(account.extra_stop_payment_deadline_mins) || 15;
-
-  /* THE LABEL IS WHAT THE HOMEOWNER SEES ON CHECKOUT AND ON THE RECEIPT.
-     "Quick Stop fee" told them the amount and nothing about what it buys, and
-     "Quick Stop" is our word, not theirs — so a homeowner paying $145 could
-     reasonably think it covered the repair. It names the visit now, which is
-     what the money actually reserves. The service is invoiced separately and
-     the offer text below says so. */
-  const payment = await createDepositRequest(supabase, accountId, request.job_id, {
-    label: 'Quick Stop priority visit fee',
-    amount: centsToDollars(request.fee_cents),
-    kind: 'deposit',
-    homeownerPhone: request.client_phone,
-    smsConsent: Boolean(request.client_phone),
-  });
-
-  const now = Date.now();
-  const deadlineIso = new Date(now + minutes * 60_000).toISOString();
-  await supabase
-    .from('extra_stop_requests')
-    .update({
-      status: 'awaiting_customer_payment',
-      payment_id: payment.id,
-      payment_deadline_at: deadlineIso,
-      hold_expires_at: deadlineIso,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .eq('status', 'contractor_offer_sent');
-
-  await logQuickStopEvent(supabase, accountId, requestId, {
-    actor: 'contractor',
-    from: 'contractor_offer_sent',
-    to: 'awaiting_customer_payment',
-    meta: { paymentId: payment.id, minutes },
-  });
-
-  if (request.client_phone) {
+  try {
+    const request = await getQuickStopRequest(supabase, accountId, requestId);
+    if (!request || request.status !== 'awaiting_customer_payment' || !request.job_id
+      || !request.payment_id || !request.fee_cents || !request.client_phone) return;
+    const deadline = new Date(request.payment_deadline_at ?? '').getTime();
+    if (!Number.isFinite(deadline) || deadline <= Date.now()) return;
+    const minutes = Math.max(1, Math.ceil((deadline - Date.now()) / 60_000));
     const admin = createAdminClient();
     const businessName = await businessNameFor(admin, accountId);
     const feeLabel = `${fmtMoneyCents(request.fee_cents)} priority visit fee${request.diagnostic_fee_cents ? ` (+ ${fmtMoneyCents(request.diagnostic_fee_cents)} diagnostic)` : ''}`;
@@ -103,10 +55,12 @@ export async function sendQuickStopOffer(supabase: SupabaseClient, accountId: st
       businessName,
       whenLabel: whenLabel(request.arrival_date, request.arrival_start, request.arrival_end),
       feeLabel,
-      payUrl: `${APP_ORIGIN}/pay/${payment.id}`,
+      payUrl: `${APP_ORIGIN}/pay/${request.payment_id}`,
       minutes,
-      idempotencyKey: `quick-stop:${requestId}:offer:${payment.id}`,
+      idempotencyKey: `quick-stop:${requestId}:offer:${request.payment_id}`,
     });
+  } catch (error) {
+    console.error('Quick Stop offer notification failed:', error instanceof Error ? error.message : error);
   }
 }
 
@@ -114,50 +68,26 @@ export async function sendQuickStopOffer(supabase: SupabaseClient, accountId: st
 // atomic compare-and-set on the request so an at-least-once webhook can't
 // double-confirm. No-op for any payment that isn't a live Quick Stop offer.
 export async function confirmQuickStopPayment(admin: SupabaseClient, paymentId: string): Promise<void> {
-  const nowIso = new Date().toISOString();
-  const { data: confirmed } = await admin
-    .from('extra_stop_requests')
-    .update({ status: 'confirmed', paid_at: nowIso, updated_at: nowIso })
-    .eq('payment_id', paymentId)
-    .eq('status', 'awaiting_customer_payment')
-    .select('*')
-    .maybeSingle();
+  const { data: confirmations, error: confirmationError } = await admin.rpc('confirm_quick_stop_payment', { p_payment_id: paymentId });
+  if (confirmationError) throw new Error(confirmationError.message);
+  const confirmed = confirmations?.[0];
   if (!confirmed) {
-    // Money-safety race: the sweep expired this offer (failing the pending
-    // payment) but the charge still landed a moment later. Never keep money
-    // without an appointment — refund it in full and mark it refunded.
-    const { data: stale } = await admin
+    const { data: stale, error: staleError } = await admin
       .from('extra_stop_requests')
-      .select('id, account_id, status, fee_cents, refund_cents')
+      .select('id, account_id, status')
       .eq('payment_id', paymentId)
       .maybeSingle();
-    if (stale && stale.status === 'offer_expired' && !stale.refund_cents) {
-      try {
-        await refundPayment(admin, stale.account_id as string, paymentId);
-        await admin
-          .from('extra_stop_requests')
-          .update({ status: 'refunded', refund_cents: stale.fee_cents ?? 0, updated_at: nowIso })
-          .eq('id', stale.id)
-          .eq('status', 'offer_expired');
-        await logQuickStopEvent(admin, stale.account_id as string, stale.id as string, {
-          actor: 'system',
-          from: 'offer_expired',
-          to: 'refunded',
-          meta: { reason: 'late_payment_after_expiry', paymentId },
-        });
-      } catch (error) {
-        console.error('Quick Stop late-payment refund failed:', error instanceof Error ? error.message : error);
-      }
+    if (staleError) throw new Error(staleError.message);
+    if (stale && ['offer_expired', 'customer_canceled', 'customer_declined', 'contractor_canceled',
+      'contractor_declined', 'no_show_confirmed', 'refunded'].includes(stale.status)) {
+      // A redelivered webhook preserves any existing partial/zero cancellation
+      // obligation. A never-booked late charge owes the entire visit fee.
+      await queueQuickStopRefund(admin, stale.id as string);
+      await processQuickStopRefunds(admin, 1, stale.account_id as string, stale.id as string);
     }
-    return; // not a live Quick Stop payment (or handled above)
+    return;
   }
-
   const accountId = confirmed.account_id as string;
-
-  // Make the tentative placeholder a live, confirmed appointment on the calendar.
-  if (confirmed.job_id) {
-    await admin.from('jobs').update({ status: 'in_progress' }).eq('id', confirmed.job_id).eq('account_id', accountId);
-  }
 
   await logQuickStopEvent(admin, accountId, confirmed.id as string, {
     actor: 'stripe',

@@ -80,9 +80,19 @@ const stillProvisioning = {
  * Records every filter and patch the worker applies, and can make a row vanish
  * mid-run the way a concurrent disconnect would.
  */
-function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[] } = {}) {
+type ReadFailure = { message: string; status?: number };
+
+function makeDb(rows: Row[], opts: {
+  vanishing?: Set<string>;
+  claimed?: string[];
+  pendingReadFailures?: ReadFailure[];
+  claimedReadFailures?: ReadFailure[];
+  writeFailure?: ReadFailure;
+} = {}) {
   const updates: Array<{ patch: Record<string, unknown>; filters: Record<string, unknown>; nullFilters: string[] }> = [];
   const selects: Array<{ cols: string; nullFilters: string[]; notNull: string[] }> = [];
+  let pendingReads = 0;
+  let claimedReads = 0;
 
   function builder(table: string) {
     const ctx = {
@@ -98,6 +108,9 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[]
     const resolve = () => {
       if (ctx.op === 'update') {
         updates.push({ patch: ctx.patch ?? {}, filters: ctx.filters, nullFilters: ctx.nullFilters });
+        if (opts.writeFailure) {
+          return { data: null, error: { message: opts.writeFailure.message }, status: opts.writeFailure.status };
+        }
         const id = String(ctx.filters.id);
         if (opts.vanishing?.has(id)) return { data: null, error: null };
         return { data: { id }, error: null };
@@ -105,9 +118,13 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string>; claimed?: string[]
       selects.push({ cols: ctx.cols, nullFilters: ctx.nullFilters, notNull: ctx.notNull });
       // The orphan sweep's read: every claimed domain, no other columns.
       if (ctx.cols.trim() === 'custom_domain') {
+        const failure = opts.claimedReadFailures?.[claimedReads++];
+        if (failure) return { data: null, error: { message: failure.message }, status: failure.status };
         const claimed = opts.claimed ?? rows.map((r) => r.custom_domain);
         return { data: claimed.map((custom_domain) => ({ custom_domain })), error: null };
       }
+      const failure = opts.pendingReadFailures?.[pendingReads++];
+      if (failure) return { data: null, error: { message: failure.message }, status: failure.status };
       return { data: rows, error: null };
     };
 
@@ -290,6 +307,86 @@ describe('Custom domain certificate reconciler', () => {
       const summary = await runCustomDomainReconcile(db.client);
 
       expect(summary.orphanedAtProject).toBe(0);
+    });
+  });
+
+  describe('transient site reads', () => {
+    it('recovers a pending-site Gateway Timeout and promotes and notifies only once', async () => {
+      verifyDomain.mockResolvedValue(connected);
+      const db = makeDb([pendingRow()], {
+        pendingReadFailures: [{ message: 'Gateway Timeout' }],
+      });
+
+      const summary = await runCustomDomainReconcile(db.client);
+
+      expect(summary).toMatchObject({ checked: 1, connected: 1, ownersNotified: 1, errors: 0, readRetries: 1 });
+      expect(db.selects.filter((s) => s.cols !== 'custom_domain')).toHaveLength(2);
+      expect(db.selects[1].nullFilters).toContain('custom_domain_verified_at');
+      expect(db.updates).toHaveLength(1);
+      expect(verifyDomain).toHaveBeenCalledTimes(1);
+      expect(sendCustomDomainConnectedEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([502, 503, 504])('retries an orphan-site HTTP %s read without repeating promotion or notification', async (status) => {
+      verifyDomain.mockResolvedValue(connected);
+      listProjectDomains.mockResolvedValue(['www.eliteelectricians.com', 'www.unclaimed.com']);
+      const db = makeDb([pendingRow()], {
+        claimedReadFailures: [{ message: 'Temporary upstream failure', status }],
+      });
+
+      const summary = await runCustomDomainReconcile(db.client);
+
+      expect(summary).toMatchObject({ connected: 1, ownersNotified: 1, orphanedAtProject: 1, errors: 0, readRetries: 1 });
+      expect(db.selects.filter((s) => s.cols === 'custom_domain')).toHaveLength(2);
+      expect(db.updates).toHaveLength(1);
+      expect(verifyDomain).toHaveBeenCalledTimes(1);
+      expect(listProjectDomains).toHaveBeenCalledTimes(1);
+      expect(sendCustomDomainConnectedEmail).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops after two failed pending reads without processing domains', async () => {
+      const failure = { message: 'Gateway Timeout', status: 504 };
+      const db = makeDb([pendingRow()], { pendingReadFailures: [failure, failure, failure] });
+
+      await expect(runCustomDomainReconcile(db.client)).rejects.toThrow('Could not load pending custom domains: Gateway Timeout');
+
+      expect(db.selects).toHaveLength(2);
+      expect(db.updates).toHaveLength(0);
+      expect(verifyDomain).not.toHaveBeenCalled();
+      expect(sendCustomDomainConnectedEmail).not.toHaveBeenCalled();
+    });
+
+    it('keeps an exhausted orphan read unhealthy without treating unknown ownership as empty', async () => {
+      const failure = { message: 'Gateway Timeout', status: 504 };
+      listProjectDomains.mockResolvedValue(['www.claimed.com']);
+      const db = makeDb([], { claimed: ['www.claimed.com'], claimedReadFailures: [failure, failure, failure] });
+
+      const summary = await runCustomDomainReconcile(db.client);
+
+      expect(summary).toMatchObject({ errors: 1, readRetries: 1, orphanedAtProject: 0 });
+      expect(cronSummaryHasFailures(summary as unknown as Record<string, unknown>)).toBe(true);
+      expect(db.selects.filter((s) => s.cols === 'custom_domain')).toHaveLength(2);
+      expect(db.updates).toHaveLength(0);
+    });
+
+    it.each([400, 401, 403])('does not retry a non-transient HTTP %s read', async (status) => {
+      const db = makeDb([], { pendingReadFailures: [{ message: 'Query or permission failure', status }] });
+
+      await expect(runCustomDomainReconcile(db.client)).rejects.toThrow('Query or permission failure');
+
+      expect(db.selects).toHaveLength(1);
+    });
+
+    it('does not retry a promotion write whose outcome is unknown', async () => {
+      verifyDomain.mockResolvedValue(connected);
+      const db = makeDb([pendingRow()], { writeFailure: { message: 'Gateway Timeout', status: 504 } });
+
+      const summary = await runCustomDomainReconcile(db.client);
+
+      expect(summary).toMatchObject({ checked: 1, connected: 0, errors: 1 });
+      expect(db.updates).toHaveLength(1);
+      expect(verifyDomain).toHaveBeenCalledTimes(1);
+      expect(sendCustomDomainConnectedEmail).not.toHaveBeenCalled();
     });
   });
 });

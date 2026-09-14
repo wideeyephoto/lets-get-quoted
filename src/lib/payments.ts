@@ -819,6 +819,20 @@ export async function refundPayment(
     throw new Error('No Stripe payment intent found for this payment.');
   }
 
+  // Automatic Quick Stop repayment has an immutable provider operation. A
+  // separate manual refund must wait for its reconciliation to finish. Read the
+  // tenant-visible request projection, not the service-only worker task table.
+  const { data: quickStopRefund, error: quickStopRefundError } = await supabase
+    .from('extra_stop_requests')
+    .select('refund_state')
+    .eq('account_id', accountId)
+    .eq('payment_id', paymentId)
+    .maybeSingle();
+  if (quickStopRefundError) throw new Error('Could not verify whether a Quick Stop refund is already in progress.');
+  if (quickStopRefund?.refund_state && ['pending', 'processing', 'retry', 'review'].includes(quickStopRefund.refund_state)) {
+    throw new Error('A Quick Stop refund is already pending reconciliation. Review it before issuing another refund.');
+  }
+
   // Work in integer cents throughout so partial amounts never drift.
   const totalCents = toCents(Number(payment.amount));
   const alreadyCents = toCents(Number(payment.refunded_amount) || 0);
@@ -837,9 +851,18 @@ export async function refundPayment(
   }
   const isFull = requestedCents >= remainingCents;
 
-  const stripe = getStripeClient();
+  // Claim a durable per-payment operation while locked against automatic Quick
+  // Stop recovery. A preflight read alone cannot stop manual/automatic overlap.
+  // Authorization above used the caller's account-scoped payment read.
+  const refundAdmin = createAdminClient();
+  const { data: manualToken, error: manualClaimError } = await refundAdmin.rpc('begin_quick_stop_manual_refund', {
+    p_account_id: accountId, p_payment_id: paymentId, p_target_cents: alreadyCents + requestedCents,
+    p_expected_refunded_cents: alreadyCents,
+  });
+  if (manualClaimError) throw new Error(`Refund could not be reserved: ${manualClaimError.message}`);
 
   try {
+    const stripe = getStripeClient();
     // Stripe emits a charge.refunded webhook automatically; that handler reconciles
     // the same numbers idempotently. Omitting `amount` refunds the full remaining
     // balance; a partial refund sends the exact cents.
@@ -884,6 +907,12 @@ export async function refundPayment(
       },
       { idempotencyKey: `refund_${paymentId}_${alreadyCents}_${requestedCents}` },
     );
+
+    if (manualToken && (refund.status !== 'succeeded' || refund.amount !== requestedCents)) {
+      // A provider acknowledgement can still be pending or failed. Preserve the
+      // reservation for reconciliation without reporting unreturned money.
+      throw new Error('The Quick Stop refund needs provider reconciliation before it can be marked issued.');
+    }
 
     console.log(`Refund created: ${refund.id} for payment ${paymentId} (${isFull ? 'full' : 'partial'} ${formatMoneyCents(requestedCents)})`);
 
@@ -934,8 +963,27 @@ export async function refundPayment(
       }
     }
 
+    if (manualToken) {
+      const { data: released, error: releaseError } = await refundAdmin.rpc('finish_quick_stop_manual_refund', {
+        p_account_id: accountId, p_payment_id: paymentId, p_token: manualToken, p_succeeded: true,
+      });
+      if (releaseError || !released) throw new Error('The refund needs reconciliation before another refund can be issued.');
+    }
     return { amount: fromCents(requestedCents), isFull, refundedTotal };
   } catch (err) {
+    if (manualToken) {
+      // An exception can follow provider success. Preserve the reservation and
+      // review obligation; never unlock uncertain money for automatic replay.
+      try {
+        await refundAdmin.rpc('finish_quick_stop_manual_refund', {
+          p_account_id: accountId, p_payment_id: paymentId, p_token: manualToken, p_succeeded: false,
+        });
+      } catch (recordError) {
+        // The durable reservation still blocks new refunds and the sweep will
+        // move its stale marker to review. Preserve the original failure.
+        console.error('Refund review could not be recorded:', recordError);
+      }
+    }
     console.error('Refund failed:', err);
     throw new Error(err instanceof Error ? err.message : 'Refund failed');
   }

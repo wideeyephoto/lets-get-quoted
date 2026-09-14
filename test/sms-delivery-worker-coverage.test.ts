@@ -20,7 +20,8 @@ vi.mock('@/lib/quote-followup-delivery', () => ({
   quoteFollowupDeliveryEligibility: vi.fn(),
 }));
 
-vi.mock('@/lib/sms-provider', () => ({
+vi.mock('@/lib/sms-provider', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/sms-provider')>(),
   sendProviderMessage: vi.fn(),
   SmsBillingRefusalError: class SmsBillingRefusalError extends Error {},
   SmsProviderRejectedError: class SmsProviderRejectedError extends Error {

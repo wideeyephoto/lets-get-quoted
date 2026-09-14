@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
+import { loadEmailSendRecovery } from '@/lib/email-send-recovery';
 import {
   CRON_JOBS,
   CRON_HEALTH_LABEL,
@@ -27,6 +28,7 @@ import { getOnCallRoster, getRecentPagingEvents } from '@/lib/on-call-paging';
 import { listCircuitBreakers } from '@/lib/circuit-breaker';
 import { CircuitBreakerPanel } from './CircuitBreakerPanel';
 import { RunCronButton } from './RunCronButton';
+import { EmailRecoveryPanel } from './EmailRecoveryPanel';
 import { dispatchTestPageAction } from './actions';
 import styles from '../admin.module.css';
 
@@ -109,6 +111,7 @@ export default async function AdminHealthPage({
     uptimeReport,
     circuitBreakers,
     monitorState,
+    emailRecovery,
   ] = await Promise.all([
     loadCronStatus(admin, CRON_JOBS.map((j) => j.job)),
     getUnresolvedWebhookFailures(admin, { diagnostics }),
@@ -118,6 +121,7 @@ export default async function AdminHealthPage({
     runSyntheticUptimeProbe(admin),
     listCircuitBreakers(admin),
     admin.from('operational_monitor_state').select('*').eq('id', 'primary').maybeSingle().then((r) => r.data ?? null, () => null),
+    loadEmailSendRecovery(admin),
   ]);
 
   // On-Call data
@@ -175,7 +179,7 @@ export default async function AdminHealthPage({
         </div>
       ) : (
         <div className={`${styles.banner} ${styles.ok}`}>
-          Every background cron job, quoting engine rail, and communication provider is reporting healthy on schedule.
+          Scheduled workers are reporting on time. Review the delivery and recovery checks below.
         </div>
       )}
 
@@ -492,8 +496,8 @@ export default async function AdminHealthPage({
                     <>Attached to every send.</>
                   ) : (
                     <span style={{ color: '#ffd166' }}>
-                      Off — NEXT_PUBLIC_APP_URL is missing or is not a trusted bare HTTPS LGQ origin, so no delivery result is ever reported back and
-                      &ldquo;Failed texts&rdquo; cannot rise above zero.
+                      Sending blocked in production — the delivery callback must use a trusted HTTPS LGQ origin.
+                      Correct the provider callback configuration to restore sending and delivery receipts.
                     </span>
                   )}
                 </td>
@@ -593,7 +597,7 @@ export default async function AdminHealthPage({
             <span className={styles.statValue} style={failedEmails.length ? { color: '#ffd166' } : undefined}>
               {diagnostics.failed.includes('failedEmails') ? '—' : failedEmails.length}
             </span>
-            <span className={styles.statLabel}>Bounced or complained emails</span>
+            <span className={styles.statLabel}>Failed, blocked or complained emails</span>
           </div>
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={failedSms.length ? { color: '#ffd166' } : undefined}>
@@ -606,6 +610,8 @@ export default async function AdminHealthPage({
           </div>
         </div>
       </section>
+
+      <EmailRecoveryPanel emailRecovery={emailRecovery} />
 
       {/* 8. Observability & Reliability Architecture Summary */}
       <section className={styles.panel}>
