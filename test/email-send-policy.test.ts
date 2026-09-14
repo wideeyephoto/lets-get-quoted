@@ -57,8 +57,9 @@ describe('last-moment shared email policy', () => {
     await assertEmailSendAllowed(admin, { ...payload(), tags: [{ name: 'kind', value: 'support_case_staff' }] });
     expect(from).not.toHaveBeenCalled();
   });
-  it.each([null, Array.from({ length: 1000 }, () => ({ email: 'opted-out@example.com' }))])('refuses an unavailable or capped marketing suppression list', async data => {
-    const admin = { from: () => ({ select: () => ({ eq: async () => ({ data, error: null }) }) }) } as unknown as SupabaseClient;
-    await expect(loadSuppressedEmails(admin, 'workspace-a')).rejects.toThrow('unavailable or potentially truncated');
+  it.each([null, [{ email: 'opted-out@example.com' }]])('refuses unavailable or malformed marketing suppression rows', async data => {
+    const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data, error: null }) };
+    const admin = { from: () => query } as unknown as SupabaseClient;
+    await expect(loadSuppressedEmails(admin, 'workspace-a')).rejects.toThrow('unavailable or incomplete');
   });
 });

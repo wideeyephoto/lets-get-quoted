@@ -10,7 +10,9 @@ The account-tagged transport in `src/lib/email.ts` now checks `email_suppression
 
 For transactional sends, `hard_bounce`, `complaint` and `provider_suppressed` block submission. Marketing opt-outs alone remain eligible for transactional mail. For the shared `campaign`, `review_request` and `rebook_invite` kinds, every suppression reason blocks submission. A definitive domain rejection cannot bypass a suppression recorded before the fallback attempt. This application check is not atomic with the external provider request; a concurrent suppression can still arrive after the last local read.
 
-The marketing suppression-list helper now refuses null or potentially capped results (1,000 rows). Pagination remains necessary before exceeding that limit. No historical suppression reason backfill or provider-region inventory was performed.
+The shared marketing suppression-list helper now reads ordered pages of up to 500 records, continuing from the last UUID until an empty page. It continues after short pages because the API may have a lower configured row cap. Missing/malformed data, repeated records, query failures and reaching the 200-query budget throw instead of returning a partial list. This covers the shared campaign and rebook audience lookup; independent lifecycle/platform scans still need their own completeness work. No historical suppression reason backfill or provider-region inventory was performed.
+
+Paging is not a transactional snapshot: concurrent inserts behind the cursor may be absent from the audience snapshot. The exact-recipient final send check remains required. Cursor paging avoids skipping later records when earlier records are deleted.
 
 ## Sender inventory and remaining work
 
@@ -35,6 +37,10 @@ Inventory covers the application transport call sites reviewed in `src/lib` and 
 The independent workspace transports use `sendAccountScopedEmail`: reject missing/conflicting scope, attach the authoritative account tag, then check immediately before submission. These three families are transactional; marketing opt-outs alone do not block them. Crew tokens are generated before the final delivery check so a block recorded during token generation is observed; a blocked token is not emailed. This does not introduce retries or a durable send identity. As with the shared gate, the database read and external request are not atomic.
 
 September 14 M2 verification: 10 selected regression files / 182 tests passed, covering actual crew/theme/merchandise paths, account scope, late suppression, failed lookups, provider rejection and related caller behavior. Hosted email receipt and provider-wide enforcement remain unverified.
+
+Subsequent pagination pass: 10 selected files / 90 tests passed. Eleven new cases use the installed Supabase query builder with local HTTP fixtures, including 1,201 records, a lower API cap, workspace isolation, deletions between pages, later-page failure and scan-budget exhaustion. These are local query-contract checks, not hosted database acceptance.
+
+Platform follow-up findings: the platform campaign audience currently unions suppression addresses across its selected workspaces, which can let one workspace's preference exclude another's recipient. Its custom/test unsubscribe header uses the literal `platform`, while `email_suppression.account_id` is a UUID foreign key and the unsubscribe handler writes directly to that table. The test HTML also uses a sample account identifier. Resolve platform opt-out persistence and both footer/header token scopes together, then enforce the same policy at audience selection and immediately before each submission. Do not declare platform unsubscribe or delivery protection complete based on the shared helper.
 
 ## Recovery queue and existing monitor
 

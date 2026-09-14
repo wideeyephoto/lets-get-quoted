@@ -73,16 +73,35 @@ export function buildUnsubscribeOneClickUrl(accountId: string, email: string): s
 // send. Fail-closed: an un-migrated DB or query error throws so marketing sends
 // never proceed with an empty suppression list by mistake.
 export async function loadSuppressedEmails(supabase: SupabaseClient, accountId: string): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from('email_suppression')
-    .select('email')
-    .eq('account_id', accountId);
-  if (error) {
-    console.error('Failed to load email suppression list (failing closed):', error.message);
-    throw new Error(`Failed to load email suppression list: ${error.message}`);
+  if (!accountId?.trim()) throw new Error('Email suppression workspace is required.');
+  const suppressed = new Set<string>();
+  const seenIds = new Set<string>();
+  let cursor: string | undefined;
+  // Keyset pages avoid offset shifts after deletions. Continue until an empty
+  // page, even when the API's configured row cap is lower than our page size.
+  // This is an audience snapshot, not a replacement for the final send gate.
+  for (let page = 0; page < 200; page++) {
+    let query = supabase.from('email_suppression').select('id, email')
+      .eq('account_id', accountId).order('id', { ascending: true }).limit(500);
+    if (cursor) query = query.gt('id', cursor);
+    const { data, error } = await query;
+    if (error) {
+      console.error('Failed to load email suppression list (failing closed):', error.message);
+      throw new Error(`Failed to load email suppression list: ${error.message}`);
+    }
+    if (!Array.isArray(data)) throw new Error('Email suppression list unavailable or incomplete; no marketing emails sent.');
+    if (!data.length) return suppressed;
+    for (const row of data) {
+      if (typeof row.id !== 'string' || !row.id || seenIds.has(row.id)
+        || typeof row.email !== 'string' || !row.email.trim()) {
+        throw new Error('Email suppression list unavailable or incomplete; no marketing emails sent.');
+      }
+      seenIds.add(row.id);
+      suppressed.add(row.email.trim().toLowerCase());
+    }
+    cursor = data[data.length - 1].id;
   }
-  if (!data || data.length >= 1000) throw new Error('Email suppression list unavailable or potentially truncated; no marketing emails sent.');
-  return new Set(data.map((row) => String(row.email).trim().toLowerCase()));
+  throw new Error('Email suppression scan limit reached; no marketing emails sent.');
 }
 
 // Single-address opt-out check for the one-off send paths (rebook, review). Fail-closed

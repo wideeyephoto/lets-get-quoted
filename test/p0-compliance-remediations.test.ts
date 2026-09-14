@@ -44,7 +44,9 @@ describe('P0 Compliance & Migration Remediations', () => {
       const mockSupabase = {
         from: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockResolvedValue({
               data: null,
               error: { message: 'Database unreachable' },
             }),

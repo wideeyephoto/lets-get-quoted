@@ -138,6 +138,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **T19:** Crew/theme and customer/staff merchandise paths require a provider acceptance ID before reporting success. Provider rejection or missing acceptance is not a successful send.
 - **Verification:** 10 selected regression files / 182 tests passed. Full app/test typecheck passed; lint has zero errors and four pre-existing test warnings. No hosted changes or real email. Platform login, founder/operator/staff mail, public reports and platform campaigns still require their appropriate policy; durable identities remain separate work.
 
+### Seventh-pass implementation — complete shared suppression reads
+
+- **T12/T19:** Shared campaign/rebook audience checks now read suppression records in ordered UUID pages until an empty page, including when the API returns fewer than the requested 500 rows. Errors, malformed/repeated data and the 200-query limit fail closed; no partial set is returned.
+- **Verification:** 10 selected files / 90 tests passed, including 11 query-contract cases using the installed Supabase client and local HTTP fixtures. These cover 1,201 records, lower API caps, tenant isolation, concurrent deletion and later-page failures. Full app/test typecheck passed; lint has zero errors and four pre-existing test warnings. No hosted changes or real email.
+- **Remaining:** Independent lifecycle/platform scans are still open. Platform campaigns also require separate opt-out persistence and consistent footer/header scope: the existing literal `platform` cannot fit the workspace UUID foreign key. Their cross-workspace union of suppression addresses needs correction with the final per-recipient policy.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.
