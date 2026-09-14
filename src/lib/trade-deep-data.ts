@@ -2162,7 +2162,7 @@ export const TOP_20_DEFINITIVE_TRADES: Record<string, DefinitiveTradeData> = {
       },
       {
         question: 'Can I include utility energy efficiency rebates in my quotes?',
-        answer: 'Yes. You can itemize utility rebate discounts and federal energy tax credits (Inflation Reduction Act Section 25C) directly in your Good/Better/Best tiers.',
+        answer: 'Yes. You can itemize local utility energy efficiency rebates and qualifying clean energy incentives directly in your Good/Better/Best tiers.',
       },
       {
         question: 'How do upfront deposits protect insulation contractors?',
