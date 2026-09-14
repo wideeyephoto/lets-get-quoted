@@ -59,6 +59,8 @@ export function buildDataManagerRequest(params: OfflineConversionParams, config 
       productDestinationId: action[2],
     }],
     events: [{
+      // CRM status changes are offline events; Google requires an explicit source.
+      eventSource: 'OTHER',
       eventTimestamp: new Date(iso).toISOString(), conversionValue: value, currency,
       ...(params.orderId ? { transactionId: params.orderId } : {}),
       ...(Object.keys(adIdentifiers).length ? { adIdentifiers } : {}),
