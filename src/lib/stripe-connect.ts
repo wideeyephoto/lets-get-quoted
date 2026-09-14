@@ -118,17 +118,8 @@ export async function refreshAccountOnboardingStatus(
   accountId: string,
   stripeAccountId: string
 ): Promise<boolean> {
-  const status = await getRecipientTransferStatus(stripeAccountId);
-  const onboarded = status === 'active';
-
-  const { error } = await supabase
-    .from('accounts')
-    .update({ connect_onboarded: onboarded })
-    .eq('id', accountId);
-
-  if (error) {
-    throw error;
-  }
-
+  const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+  const onboarded = await syncConnectTransferStatus(supabase, stripeAccountId, accountId);
+  if (onboarded === undefined) throw new Error('Connected account no longer matches onboarding return');
   return onboarded;
 }

@@ -38,8 +38,8 @@ export async function runOwnerEventNotices(admin: SupabaseClient, source?: { sou
         accountId: notice.account_id,
         subject: notice.source_payload.title || 'New customer request',
         heading: notice.source_payload.title || 'New customer request',
-        bodyLines: [notice.source_payload.body], ctaLabel: notice.source_type === 'payment_refund' ? 'View payments' : notice.source_type === 'quick_stop' ? 'View Quick Stops' : messaging ? 'Open messaging dashboard' : notice.source_payload.job_id ? 'Open the job' : 'Open dashboard',
-        ctaUrl: notice.source_type === 'payment_refund' ? `${APP_ORIGIN}/dashboard/payments` : notice.source_type === 'quick_stop' ? `${APP_ORIGIN}/dashboard/quick-stops` : messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : notice.source_payload.job_id ? `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}` : `${APP_ORIGIN}/dashboard`, tone: 'info',
+        bodyLines: [notice.source_payload.body], ctaLabel: notice.source_type === 'account_connect' ? 'Review payment setup' : notice.source_type === 'payment_refund' ? 'View payments' : notice.source_type === 'quick_stop' ? 'View Quick Stops' : messaging ? 'Open messaging dashboard' : notice.source_payload.job_id ? 'Open the job' : 'Open dashboard',
+        ctaUrl: notice.source_type === 'account_connect' ? `${APP_ORIGIN}/dashboard/settings` : notice.source_type === 'payment_refund' ? `${APP_ORIGIN}/dashboard/payments` : notice.source_type === 'quick_stop' ? `${APP_ORIGIN}/dashboard/quick-stops` : messaging ? `${APP_ORIGIN}/dashboard/messages/dedicated-number` : notice.source_payload.job_id ? `${APP_ORIGIN}/dashboard/jobs/${notice.source_payload.job_id}` : `${APP_ORIGIN}/dashboard`, tone: 'info',
       });
     } catch (error) {
       failure = error instanceof Error && ['owner_email_missing','owner_brand_unavailable','notice_prepare_failed'].includes(error.message)

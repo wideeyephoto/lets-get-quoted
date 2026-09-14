@@ -8,7 +8,7 @@ import { getStripeClient, fromCents, toCents } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { logWebhookFailure } from '@/lib/webhook-failures';
-import { getRecipientTransferStatus } from '@/lib/stripe-connect';
+import { syncConnectTransferStatus } from '@/lib/connect-owner-notices';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
@@ -1165,65 +1165,7 @@ async function dispatchStripeEvent(
 
   // Connect account updated — capabilities may have changed
   if (event.type === 'account.updated') {
-    const stripeAccount = event.data.object;
-    const stripeAccountId = stripeAccount.id;
-
-    // Legacy account.updated events contain a v1 Account shape. Retrieve the
-    // authoritative Recipient capability through Accounts v2 before updating.
-    const transferStatus = await getRecipientTransferStatus(stripeAccountId);
-    if (transferStatus === null) {
-      // Status couldn't be read (missing/unavailable in the API response) —
-      // don't let an ambiguous read force a working contractor's account
-      // offline. Only flip `connect_onboarded` on a concrete status value;
-      // Stripe will redeliver this event, so a transient read failure isn't lost.
-      console.warn(`Connect account ${stripeAccountId}: stripe_transfers status unavailable, skipping connect_onboarded update.`);
-    } else {
-      const isActive = transferStatus === 'active';
-      const { data: current } = await admin
-        .from('accounts')
-        .select('id, connect_onboarded, connect_disabled_at')
-        .eq('stripe_connect_id', stripeAccountId)
-        .maybeSingle();
-
-      if (current) {
-        if (isActive) {
-          // Active (first activation or a recovery) — clear any prior disabled
-          // stamp so the dashboard alert goes away.
-          await admin
-            .from('accounts')
-            .update({ connect_onboarded: true, connect_disabled_at: null })
-            .eq('id', current.id);
-        } else {
-          // Transfers are not active. Only stamp `connect_disabled_at` when a
-          // PREVIOUSLY working account is being disabled — this distinguishes a
-          // real revocation (contractor can no longer get paid, needs an alert)
-          // from an account that simply never finished onboarding. Keep the
-          // first disabled timestamp on redelivery.
-          const wasWorking = current.connect_onboarded && !current.connect_disabled_at;
-          await admin
-            .from('accounts')
-            .update({
-              connect_onboarded: false,
-              ...(wasWorking ? { connect_disabled_at: new Date().toISOString() } : {}),
-            })
-            .eq('id', current.id);
-          if (wasWorking) {
-            console.error(`[CONNECT] Account ${current.id} (${stripeAccountId}) transfers disabled: status=${transferStatus}`);
-            await emailContractorAlert(admin, current.id, {
-              subject: 'Your payouts are paused',
-              heading: 'Stripe paused your payments',
-              bodyLines: [
-                'Stripe has turned off transfers for your account, so homeowner deposits and stage payments can’t be collected right now.',
-                'This usually means Stripe needs more information to keep your account verified. Reconnect to see what’s required and restore payouts.',
-              ],
-              ctaLabel: 'Resolve payout issue',
-              ctaPath: '/dashboard/settings',
-            });
-          }
-        }
-      }
-      console.log(`Connect account ${stripeAccountId} stripe_transfers status: ${transferStatus}`);
-    }
+    await syncConnectTransferStatus(admin, event.data.object.id);
   }
 
   // Chargeback opened — the homeowner's bank is pulling the funds back. Since

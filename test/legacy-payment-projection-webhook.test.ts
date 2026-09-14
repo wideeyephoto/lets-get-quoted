@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   sendPaymentSmsEvent: vi.fn(),
   createPaymentFeedEvent: vi.fn(),
   logWebhookFailure: vi.fn(),
+  transferStatus: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -72,7 +73,7 @@ vi.mock('@/lib/invoices', () => ({ markInvoicePaidForPayment: vi.fn() }));
 vi.mock('@/lib/webhook-failures', () => ({ logWebhookFailure: mocks.logWebhookFailure }));
 vi.mock('@/lib/card-on-file', () => ({ storeSavedCardFromSetup: vi.fn() }));
 vi.mock('@/lib/dunning', () => ({ rescheduleDunningAfterCardUpdate: vi.fn() }));
-vi.mock('@/lib/stripe-connect', () => ({ getRecipientTransferStatus: vi.fn() }));
+vi.mock('@/lib/stripe-connect', () => ({ getRecipientTransferStatus: mocks.transferStatus }));
 vi.mock('@/lib/business-name', () => ({ loadBusinessName: vi.fn() }));
 vi.mock('@/lib/email', () => ({
   getAccountOwnerEmail: vi.fn(),
@@ -328,6 +329,23 @@ describe('legacy Stripe webhook projection cutover', () => {
         else await input.legacy.quickStop();
       }
     });
+  });
+
+  it.each(['unavailable', 'write_failed', 'competing_update'])('returns retryable 500 for Connect %s instead of acknowledging a lost status update', async failure => {
+    mocks.event = { id: 'evt_connect', type: 'account.updated', data: { object: { id: 'acct_connect' } } };
+    mocks.transferStatus.mockResolvedValue(failure === 'unavailable' ? null : 'active');
+    let writing = false;
+    const q = {
+      select: () => q, eq: () => q, is: () => q,
+      update: () => { writing = true; return q; },
+      maybeSingle: async () => writing
+        ? { data: null, error: failure === 'write_failed' ? {} : null }
+        : { data: { id: 'account-connect', connect_onboarded: false, connect_disabled_at: null, connect_notice_event_id: null, connect_status_version: null }, error: null },
+    };
+    mocks.admin = { from: () => q };
+    const response = await legacyStripeWebhook(request());
+    expect(response.status).toBe(500);
+    expect(mocks.logWebhookFailure).toHaveBeenCalled();
   });
 
   it('does no database or coordinator work before exact signature verification', async () => {

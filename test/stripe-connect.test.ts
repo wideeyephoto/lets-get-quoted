@@ -180,6 +180,20 @@ describe('stripe-connect', () => {
   });
 
   describe('refreshAccountOnboardingStatus', () => {
+    let writeError = false;
+    beforeEach(() => {
+      writeError = false;
+      let writing = false;
+      const q = {
+        select: () => q, eq: () => q, is: () => q,
+        update: (value: unknown) => { writing = true; mockUpdate(value); return q; },
+        maybeSingle: async () => writing
+          ? { data: { id: 'acc_1' }, error: writeError ? {} : null }
+          : { data: { id: 'acc_1', connect_onboarded: false, connect_disabled_at: null, connect_notice_event_id: null, connect_status_version: null }, error: null },
+      };
+      mockSupabase.from.mockReturnValue(q);
+    });
+
     it('updates connect_onboarded to true when status is active', async () => {
       mockStripe.v2.core.accounts.retrieve.mockResolvedValue({
         configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: 'active' } } } } }
@@ -188,7 +202,7 @@ describe('stripe-connect', () => {
       const result = await refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe');
       
       expect(result).toBe(true);
-      expect(mockUpdate).toHaveBeenCalledWith({ connect_onboarded: true });
+      expect(mockUpdate).toHaveBeenCalledWith({ connect_onboarded: true, connect_disabled_at: null, connect_status_version: expect.any(String) });
     });
 
     it('updates connect_onboarded to false when status is pending', async () => {
@@ -199,18 +213,18 @@ describe('stripe-connect', () => {
       const result = await refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe');
       
       expect(result).toBe(false);
-      expect(mockUpdate).toHaveBeenCalledWith({ connect_onboarded: false });
+      expect(mockUpdate).toHaveBeenCalledWith({ connect_onboarded: false, connect_status_version: expect.any(String) });
     });
 
     it('throws if update fails', async () => {
       mockStripe.v2.core.accounts.retrieve.mockResolvedValue({
         configuration: { recipient: { capabilities: { stripe_balance: { stripe_transfers: { status: 'active' } } } } }
       });
-      mockUpdate.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: new Error('Refresh update error') }) });
+      writeError = true;
 
       await expect(
         refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe')
-      ).rejects.toThrow('Refresh update error');
+      ).rejects.toThrow('Could not save connected account');
     });
   });
 });
