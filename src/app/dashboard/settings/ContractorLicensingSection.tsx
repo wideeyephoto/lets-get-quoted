@@ -265,14 +265,14 @@ export default function ContractorLicensingSection({
               type="text"
               value={fein}
               onFocus={() => {
-                if (fein.includes('�')) {
+                if (fein.includes('•')) {
                   setFein('');
                 }
               }}
               onChange={(e) => setFein(e.target.value)}
               placeholder="12-3456789"
               className="input"
-              pattern="^\d{2}-?\d{7}$|^�.*"
+              pattern="^\d{2}-?\d{7}$|^•.*"
               title="FEIN must be a 9-digit Federal Employer Identification Number (XX-XXXXXXX)"
             />
           </div>
@@ -283,7 +283,7 @@ export default function ContractorLicensingSection({
               disabled={complianceSaving}
               className="btn primary"
             >
-              {complianceSaving ? 'Saving�' : 'Save Compliance Settings'}
+              {complianceSaving ? 'Saving...' : 'Save Compliance Settings'}
             </button>
           </div>
         </form>
