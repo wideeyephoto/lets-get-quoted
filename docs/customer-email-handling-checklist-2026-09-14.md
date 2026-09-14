@@ -151,6 +151,13 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 16 selected files / 236 tests and 26 disposable PostgreSQL 17 checks passed. Local security advisor reported no issues. Full app/test typecheck passed; lint has zero errors and three pre-existing test warnings. See the [platform campaign policy](runbooks/platform-campaign-email-policy.md). Migration `20260914152829_platform_campaign_preferences.sql` must precede deploying these paths; no hosted changes or real email were performed.
 - **Remaining:** Other platform senders, lifecycle suppression scans, provider-region/history reconciliation, durable platform send identities and hosted acceptance remain open.
 
+### Ninth-pass implementation — bounded lifecycle suppression checks
+
+- **T12/T19:** Lifecycle sweep and approved activation batches now check only intended workspace/address pairs, in batches of 100 with a 500-unique-recipient limit. Unrelated suppression rows no longer stop a batch at the REST response cap. Mixed-case records and literal wildcard characters match correctly; incomplete/mismatched results stop the batch.
+- **T03/T18:** Standalone preview permits the new private read-only RPC while retaining its ban on sends and writes. The durable send ledger's final checks remain unchanged.
+- **Verification:** 10 selected files / 155 tests, two standalone dry-run tests and 29 disposable PostgreSQL 17 checks passed. Local security advisor found no issues. Full app/test typecheck passed; lint has zero errors and three pre-existing test warnings. Migration `20260914155952_lifecycle_recipient_suppression.sql` must precede the updated application/preview. No hosted changes or emails performed.
+- **Remaining:** Platform login, founder/staff alerts, digests, support and public reports still need their appropriate delivery-block policy and provider-scope evidence. Campaign opt-outs are not transactional blocks. Other audience/quote/history caps and provider capacity remain separate from this suppression fix.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

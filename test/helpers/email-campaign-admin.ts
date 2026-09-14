@@ -5,6 +5,10 @@ export function emailCampaignAdmin(tables: Record<string, any[]> = {}, failures:
     rpc: async (name: string, input: any) => {
       if (name === 'owner_emails_for_accounts') return { data: tables.owners ?? [], error: failures.owners ? { message: failures.owners } : null };
       if (failures[name]) return { data: null, error: { message: failures[name] } };
+      if (name === 'lifecycle_recipient_suppression') return {
+        data: input.p_recipients.map((pair: any) => ({...pair,blocked:(tables.email_suppression??[]).some(row=>row.account_id===pair.account_id && row.email.toLowerCase()===pair.email)})),
+        error: failures.email_suppression ? {message:failures.email_suppression} : null,
+      };
       if (name === 'platform_campaign_recipient_status') return {
         data: input.p_recipients.map((pair: any) => ({ ...pair, blocked:
           (tables.platform_email_suppression ?? []).some(row => row.email === pair.email)

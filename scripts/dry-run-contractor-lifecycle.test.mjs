@@ -13,6 +13,7 @@ test('read-only transport permits reviewed reads and rejects writes, foreign ori
   });
   await fetch(`${origin}/rest/v1/accounts?select=id`);
   await fetch(`${origin}/rest/v1/rpc/owner_emails_for_accounts`, { method: 'POST', body: '{"ids":[]}' });
+  await fetch(`${origin}/rest/v1/rpc/lifecycle_recipient_suppression`, { method: 'POST', body: '{"p_recipients":[]}' });
   for (const [url, method] of [
     [`${origin}/rest/v1/account_events`, 'POST'],
     [`${origin}/rest/v1/email_suppression`, 'PATCH'],
@@ -23,7 +24,7 @@ test('read-only transport permits reviewed reads and rejects writes, foreign ori
   ]) {
     await assert.rejects(fetch(url, { method }), /Dry-run blocked request/);
   }
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
   assert.ok(calls.every(request => request.redirect === 'error'));
 });
 
@@ -47,6 +48,10 @@ test('compiled application sweep previews with real Supabase query construction 
         if (path === '/rest/v1/rpc/owner_emails_for_accounts') return Response.json([
           { account_id: 'workspace-one', email: 'morgan@reliabletrades.com' },
         ]);
+        if (path === '/rest/v1/rpc/lifecycle_recipient_suppression') {
+          const {p_recipients}=await request.json();
+          return Response.json(p_recipients.map(pair=>({...pair,blocked:false})));
+        }
         return Response.json([]);
       }) },
     });

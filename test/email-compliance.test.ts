@@ -276,10 +276,9 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
           }
           return createChain({ data: [], error: null });
         }),
-        rpc: vi.fn().mockResolvedValue({
-          data: [{ account_id: 'acc_1', email: 'plumber@example.com' }],
-          error: null,
-        }),
+        rpc: vi.fn(async (name: string) => name === 'lifecycle_recipient_suppression'
+          ? {data:null,error:{message:'Suppression table lock timeout'}}
+          : {data:[{account_id:'acc_1',email:'plumber@reliabletrades.com'}],error:null}),
       } as unknown as SupabaseClient;
 
       await expect(runContractorLifecycleSweep(mockAdmin)).rejects.toThrow(

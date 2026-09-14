@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { renderPlatformEmail, renderPlatformEmailText } from '@/emails/platform';
 import { buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
+import { loadLifecycleSuppressedRecipients } from './lifecycle-suppression';
 import { isMailable } from '@/lib/email-quality';
 import { recordAccountEvent } from '@/lib/account-events';
 import { ownerEmailsForAccounts } from '@/lib/account-owner-emails';
@@ -255,25 +256,10 @@ export async function runContractorLifecycleSweep(
     }
   }
 
-  // Load suppressions (fail-closed on error)
-  const { data: suppressions, error: suppressionError } = await admin
-    .from('email_suppression')
-    .select('account_id, email')
-    .in('account_id', accountIds);
-
-  if (suppressionError) {
-    console.error('Failed to load email suppression list for contractor lifecycle sweep (failing closed):', suppressionError.message);
-    throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
-  }
-  if (!suppressions || suppressions.length >= 1000) {
-    throw new Error('Lifecycle suppression list unavailable or truncated; no emails sent.');
-  }
-
-  const suppressedSet = new Set<string>();
-  for (const s of suppressions ?? []) {
-    if (s.email) suppressedSet.add(`${s.account_id}:${String(s.email).toLowerCase().trim()}`);
-  }
-
+  const suppressedSet = await loadLifecycleSuppressedRecipients(admin, accounts.flatMap(account => {
+    const email = ownerEmailMap.get(account.id);
+    return email && isMailable(email) ? [{ accountId: account.id, email }] : [];
+  }));
   const now = Date.now();
 
   for (const account of accounts) {
@@ -495,27 +481,8 @@ export async function sendActivationNudgeBatch(
 
   const accountIds = [...new Set(recipients.map((r) => r.accountId))];
 
-  // 1. Re-check suppressions fail-closed
-  const { data: suppressions, error: suppressionError } = await admin
-    .from('email_suppression')
-    .select('account_id, email')
-    .in('account_id', accountIds);
-
-  if (suppressionError) {
-    console.error('[activation-nudges] Failed to check suppression list:', suppressionError.message);
-    throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
-  }
-  if (!suppressions || suppressions.length >= 1000) {
-    throw new Error('Activation suppression list unavailable or truncated; no nudges sent.');
-  }
-
-  const suppressedSet = new Set<string>();
-  for (const s of suppressions ?? []) {
-    if (s.email) {
-      suppressedSet.add(`${s.account_id}:${String(s.email).toLowerCase().trim()}`);
-    }
-  }
-
+  const suppressedSet = await loadLifecycleSuppressedRecipients(admin,
+    recipients.filter(recipient => isMailable(recipient.email)));
   // 2. Re-check already-sent ledger
   const sentEvents = await loadLifecycleSendHistory(admin, accountIds);
 

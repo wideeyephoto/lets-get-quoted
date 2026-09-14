@@ -78,9 +78,11 @@ describe('Lifecycle send boundaries', () => {
     expect(mocks.record).not.toHaveBeenCalled();
   });
 
-  it('fails closed when the lifecycle suppression response might be truncated', async () => {
+  it.each([false, true])('checks the owner beyond 1,000 unrelated suppression rows (suppressed=%s)', async blocked => {
     const email_suppression = Array.from({ length: 1000 }, (_, i) => ({ account_id: account.id, email: `other${i}@example.com` }));
-    await expect(runContractorLifecycleSweep(emailCampaignAdmin(tables({ email_suppression })) as any)).rejects.toThrow('suppression list unavailable or truncated');
+    if (blocked) email_suppression.push({account_id:account.id,email:owner.email.toUpperCase()});
+    const result = await runContractorLifecycleSweep(emailCampaignAdmin(tables({ email_suppression })) as any, {dryRun:true});
+    expect(result.planned).toBe(blocked ? 0 : 1);
     expect(mocks.send).not.toHaveBeenCalled();
   });
 
@@ -148,9 +150,11 @@ describe('Lifecycle send boundaries', () => {
 });
 
 describe('Approved activation batches', () => {
-  it('fails closed when the batch suppression response might be truncated', async () => {
+  it.each([false, true])('checks the approved recipient beyond 1,000 unrelated suppression rows (suppressed=%s)', async blocked => {
     const email_suppression = Array.from({ length: 1000 }, (_, i) => ({ account_id: account.id, email: `other${i}@example.com` }));
-    await expect(sendActivationNudgeBatch(emailCampaignAdmin(tables({ email_suppression })) as any, { recipients: [recipient] })).rejects.toThrow('suppression list unavailable or truncated');
+    if (blocked) email_suppression.push({account_id:account.id,email:owner.email});
+    const result=await sendActivationNudgeBatch(emailCampaignAdmin(tables({ email_suppression })) as any, { recipients: [recipient],dryRun:true });
+    expect(result.planned).toBe(blocked ? 0 : 1);
     expect(mocks.send).not.toHaveBeenCalled();
   });
 

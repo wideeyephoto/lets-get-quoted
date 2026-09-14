@@ -24,7 +24,7 @@ export function createReadOnlyFetch(supabaseUrl, upstream = globalThis.fetch) {
     const table = url.pathname.match(/^\/rest\/v1\/([^/]+)$/)?.[1];
     const allowed = url.origin === origin && (
       (request.method === 'GET' && tables.has(table)) ||
-      (request.method === 'POST' && url.pathname === '/rest/v1/rpc/owner_emails_for_accounts')
+      (request.method === 'POST' && ['/rest/v1/rpc/owner_emails_for_accounts', '/rest/v1/rpc/lifecycle_recipient_suppression'].includes(url.pathname))
     );
     if (!allowed) throw new Error(`Dry-run blocked request: ${request.method} ${url.pathname}`);
     return upstream(new Request(request, { redirect: 'error' }));

@@ -71,3 +71,15 @@ Payloads contain private message content and signed unsubscribe links. Keep ledg
 - Supabase security advisor against the disposable local database: no issues reported. This does not assess the hosted database. Optional local advisor invocation uses `LGQ_SUPABASE_CLI` to specify the installed CLI path; TLS is disabled only for the disposable loopback fixture.
 
 Both standalone checks are included in CI. No live messages or hosted migrations were executed for this verification.
+
+## Subsequent suppression preflight update
+
+Migration `20260914155952_lifecycle_recipient_suppression.sql` adds a private, stable, invoker-rights read RPC with an empty search path. Apply it before deploying the updated sweep, approved batch sender or standalone preview. The existing ledger still performs the final suppression/account/source checks; this RPC neither claims nor sends an email.
+
+The preflight queries at most 100 exact workspace/address pairs per request and at most 500 unique pairs per invocation, deduplicating normalized addresses. Calls are sequential, so the helper makes at most five requests. Larger approved batches must be split. The sweep already selects at most 500 accounts. All responses must match the requested pairs and contain explicit boolean outcomes; errors, missing rows or mismatches throw before the sending loop. There is no partial-set fallback.
+
+The database compares `lower(email)` with the normalized address using the existing workspace/email expression index. It handles older mixed-case records and literal `%`, `_`, `*` and backslash characters without pattern matching. More than 1,000 unrelated suppression rows cannot prevent the exact lookup. Platform campaign preferences remain a separate scope; tenant lifecycle preferences are not unioned across workspaces. Other audience/history/quote caps and provider capacity limits remain unchanged.
+
+The standalone dry-run allowlist includes only the new reviewed read RPC in addition to its existing reads. It still forbids arbitrary RPCs, mutations, foreign origins and provider requests. The RPC is stable and contains no writes. Preview remains a point-in-time estimate, and the durable send path rechecks eligibility later.
+
+Local verification: 10 selected files / 155 tests, two standalone dry-run tests and 29 disposable PostgreSQL 17 checks passed. Database checks include actual migration/schema agreement, private permissions, stable/invoker configuration, more than 1,200 suppression records, mixed case, literal wildcard characters, workspace/platform isolation and bounds. Local security advisor reported no issues; full app/test typecheck passed. Lint has zero errors and three pre-existing compliance-test warnings. No hosted changes or messages were performed.

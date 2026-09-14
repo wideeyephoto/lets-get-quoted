@@ -126,7 +126,7 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
     };
 
     const mockAdmin = {
-      rpc: async () => ({
+      rpc: async (name: string, args: any) => name === 'lifecycle_recipient_suppression' ? {data:args.p_recipients.map((pair:object)=>({...pair,blocked:false})),error:null} : ({
         data: [{ account_id: 'acc-test-1', email: 'builder@acmebuilders.com' }],
         error: null,
       }),
@@ -212,6 +212,7 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
     ];
 
     const mockAdmin: any = {
+      rpc: async (_name: string,args: any) => ({data:args.p_recipients.map((pair:object)=>({...pair,blocked:true})),error:null}),
       from: (table: string) => ({
         select: () => ({
           in: () => ({
@@ -252,6 +253,7 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
     ];
 
     const mockAdmin: any = {
+      rpc: async (_name: string,args: any) => ({data:args.p_recipients.map((pair:object)=>({...pair,blocked:false})),error:null}),
       from: (_table: string) => ({
         select: () => ({
           in: () => ({
