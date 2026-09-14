@@ -12,6 +12,8 @@ import {
   getNextScheduleDate,
   batchQueuePlatformBlogPosts,
   SEED_BLOG_POSTS,
+  DRAFT_BLOG_POSTS,
+  ALL_INITIAL_BLOG_POSTS,
   BLOG_CATEGORIES,
   DEFAULT_AUTHOR,
 } from '@/lib/platform-blog';
@@ -263,6 +265,77 @@ describe('Platform Blog System', () => {
       );
       expect(someTokensPresent).toBe(true);
     }
+  });
+
+  it('loads 17 comprehensive draft articles into memory store, totaling 26 platform blog articles', async () => {
+    expect(DRAFT_BLOG_POSTS.length).toBe(17);
+    expect(ALL_INITIAL_BLOG_POSTS.length).toBe(26);
+
+    const drafts = await getPlatformBlogPosts({ status: 'draft' });
+    expect(drafts.length).toBeGreaterThanOrEqual(17);
+
+    const all = await getPlatformBlogPosts({ status: 'all' });
+    expect(all.length).toBeGreaterThanOrEqual(26);
+
+    // Verify all 17 drafts have status: 'draft'
+    for (const draft of DRAFT_BLOG_POSTS) {
+      expect(draft.status).toBe('draft');
+      expect(draft.blocks.length).toBeGreaterThanOrEqual(3);
+      expect(draft.slug).toBeDefined();
+      expect(draft.title).toBeDefined();
+      expect(draft.excerpt).toBeDefined();
+    }
+  });
+
+  it('validates all 17 draft posts have high-converting SEO metadata and keywords', () => {
+    expect(DRAFT_BLOG_POSTS.length).toBe(17);
+
+    for (const post of DRAFT_BLOG_POSTS) {
+      // Keyword validation
+      expect(post.targetKeyword).toBeDefined();
+      expect(post.targetKeyword!.length).toBeGreaterThanOrEqual(10);
+
+      // Meta Title validation (under 70 chars for SERP display)
+      expect(post.metaTitle).toBeDefined();
+      expect(post.metaTitle!.length).toBeGreaterThanOrEqual(30);
+      expect(post.metaTitle!.length).toBeLessThanOrEqual(70);
+
+      // Meta Description validation (100 to 175 chars for Google SERP snippet)
+      expect(post.metaDescription).toBeDefined();
+      expect(post.metaDescription!.length).toBeGreaterThanOrEqual(100);
+      expect(post.metaDescription!.length).toBeLessThanOrEqual(175);
+
+      // Categorization and tagging
+      expect(BLOG_CATEGORIES).toContain(post.category as any);
+      expect(post.tags.length).toBeGreaterThanOrEqual(3);
+
+      // Verify keyword is represented in tags or title
+      const keywordTokens = post.targetKeyword!.toLowerCase().split(' ');
+      const titleLower = post.title.toLowerCase();
+      const tagsString = post.tags.join(' ').toLowerCase();
+      const someTokensPresent = keywordTokens.some(
+        (token) => token.length > 3 && (titleLower.includes(token) || tagsString.includes(token))
+      );
+      expect(someTokensPresent).toBe(true);
+    }
+  });
+
+  it('allows staff preview of draft articles while keeping them hidden from the public published index', async () => {
+    const firstDraft = DRAFT_BLOG_POSTS[0];
+
+    // 1) Must NOT be in the public published listing
+    const publicPosts = await getPlatformBlogPosts({ status: 'published' });
+    expect(publicPosts.some((p) => p.slug === firstDraft.slug)).toBe(false);
+
+    // 2) Public slug fetch returns undefined
+    const publicView = await getPlatformBlogPostBySlug(firstDraft.slug);
+    expect(publicView).toBeUndefined();
+
+    // 3) Staff preview returns the complete article
+    const staffPreview = await getPlatformBlogPostBySlug(firstDraft.slug, { preview: true });
+    expect(staffPreview).toBeDefined();
+    expect(staffPreview?.title).toBe(firstDraft.title);
+    expect(staffPreview?.blocks.length).toBeGreaterThanOrEqual(3);
   });
 });
 

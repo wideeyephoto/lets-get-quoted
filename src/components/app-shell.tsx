@@ -45,6 +45,7 @@ export const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
   { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
   { href: '/dashboard/text-to-job', icon: '/dashboard/text-to-job', label: 'Voice / SMS memo' },
+  { href: '/dashboard/voice-calls', icon: '/dashboard/voice-calls', label: 'AI Voice Receptionist' },
   // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },

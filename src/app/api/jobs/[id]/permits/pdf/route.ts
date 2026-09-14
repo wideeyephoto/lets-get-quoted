@@ -2,20 +2,16 @@ import { NextResponse } from 'next/server';
 import { getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { compilePermitApplication, generatePermitApplicationPdf } from '@/lib/permit-intel';
+import { safeSignaturePath } from '@/lib/signature';
 
 export const dynamic = 'force-dynamic';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * GET /api/jobs/:id/permits/pdf
- * Generates and streams an official Municipal Permit Application Packet PDF for the job.
- */
-export async function GET(
-  _request: Request,
-  { params: paramsPromise }: { params: Promise<{ id: string }> },
+async function handleGeneratePdf(
+  jobId: string,
+  signaturePath?: string | null,
 ) {
-  const params = await paramsPromise;
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -44,7 +40,7 @@ export async function GET(
     return NextResponse.json({ error: 'Permission jobs.read required.' }, { status: 403 });
   }
 
-  if (!UUID_REGEX.test(params.id)) {
+  if (!UUID_REGEX.test(jobId)) {
     return NextResponse.json({ error: 'Invalid job id format.' }, { status: 400 });
   }
 
@@ -52,11 +48,27 @@ export async function GET(
     const packetData = await compilePermitApplication(
       supabase,
       membership.accountId,
-      params.id,
+      jobId,
     );
 
     if (!packetData) {
       return NextResponse.json({ error: 'Unable to compile permit application data for this job.' }, { status: 404 });
+    }
+
+    if (packetData?.readiness && !packetData.readiness.complete) {
+      return NextResponse.json(
+        {
+          error: 'Permit packet PDF export blocked: missing required attested credentials.',
+          missingFields: packetData.readiness.missing,
+        },
+        { status: 409 },
+      );
+    }
+
+    const validSig = safeSignaturePath(signaturePath);
+    if (validSig) {
+      packetData.certification.applicantSignaturePath = validSig;
+      packetData.certification.signatureMethod = 'drawn';
     }
 
     const pdfBuffer = await generatePermitApplicationPdf(packetData);
@@ -74,4 +86,37 @@ export async function GET(
     const message = error instanceof Error ? error.message : 'Failed to generate PDF.';
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * GET /api/jobs/:id/permits/pdf
+ * Generates and streams an official Municipal Permit Application Packet PDF for the job.
+ */
+export async function GET(
+  request: Request,
+  { params: paramsPromise }: { params: Promise<{ id: string }> },
+) {
+  const params = await paramsPromise;
+  const url = new URL(request.url);
+  const sigParam = url.searchParams.get('sig');
+  return handleGeneratePdf(params.id, sigParam);
+}
+
+/**
+ * POST /api/jobs/:id/permits/pdf
+ * Generates and streams an official Municipal Permit Application Packet PDF with custom signature body.
+ */
+export async function POST(
+  request: Request,
+  { params: paramsPromise }: { params: Promise<{ id: string }> },
+) {
+  const params = await paramsPromise;
+  let signaturePath: string | null = null;
+  try {
+    const body = await request.json();
+    signaturePath = body?.signaturePath || null;
+  } catch {
+    // Body is optional
+  }
+  return handleGeneratePdf(params.id, signaturePath);
 }

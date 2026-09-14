@@ -22,6 +22,8 @@ export type StateCodeProfile = {
   specialRules: string[];
   basePermitFee: number;
   estAverageFee: number;
+  certificationNoticeTitle?: string;
+  certificationNotice?: string;
 };
 
 /**
@@ -89,7 +91,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Arkansas',
     fips: '05',
     licensingBoard: 'Arkansas Contractors Licensing Board',
-    licensingUrl: 'https://aclb.arkansas.gov',
+    licensingUrl: 'https://labor.arkansas.gov/licensing/arkansas-contractors-licensing-board/',
     codes: {
       building: { name: '2021 Arkansas Fire Prevention Code (IRC based)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -184,7 +186,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Florida',
     fips: '12',
     licensingBoard: 'Florida Department of Business and Professional Regulation (DBPR / CILB)',
-    licensingUrl: 'https://www.myfloridalicense.com/DBPR',
+    licensingUrl: 'https://www.myfloridalicense.com/DBPR/construction-industry/',
     codes: {
       building: { name: 'Florida Building Code (FBC 8th Edition - Residential)', edition: '2023', model: 'FBC' },
       electrical: { name: '2020/2023 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -297,7 +299,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Iowa',
     fips: '19',
     licensingBoard: 'Iowa Division of Labor / Plumbing and Mechanical Systems Board',
-    licensingUrl: 'https://www.iowadivisionoflabor.gov',
+    licensingUrl: 'https://dial.iowa.gov/',
     codes: {
       building: { name: '2021 International Residential Code (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -315,7 +317,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Kansas',
     fips: '20',
     licensingBoard: 'Kansas Local Municipalities / Kansas Roofing Registration',
-    licensingUrl: 'https://ag.ks.gov/business/roofing-contractor-registration',
+    licensingUrl: 'https://www.ag.ks.gov/divisions/public-protection/resources/roofing-registration-directory',
     codes: {
       building: { name: '2018/2021 International Residential Code (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -351,7 +353,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Louisiana',
     fips: '22',
     licensingBoard: 'Louisiana State Licensing Board for Contractors (LSLBC)',
-    licensingUrl: 'https://lslbc.louisiana.gov',
+    licensingUrl: 'https://lslbc.gov/',
     codes: {
       building: { name: '2021 Louisiana State Uniform Construction Code (2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -369,7 +371,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Maine',
     fips: '23',
     licensingBoard: 'Maine Uniform Building and Energy Code Board (MUBEC)',
-    licensingUrl: 'https://www.maine.gov/dacf/php/mubec',
+    licensingUrl: 'https://www.maine.gov/dps/fmo/building-codes',
     codes: {
       building: { name: '2021 Maine Uniform Building and Energy Code (2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -387,7 +389,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Maryland',
     fips: '24',
     licensingBoard: 'Maryland Home Improvement Commission (MHIC / DLLR)',
-    licensingUrl: 'https://www.dllr.state.md.us/license/mhic',
+    licensingUrl: 'https://labor.maryland.gov/license/mhic/',
     codes: {
       building: { name: 'Maryland Building Performance Standards (2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -435,6 +437,9 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     specialRules: ['pa_230_section_23a_statutory_notice', 'ice_barrier_24_inch_past_wall_line', 'two_roof_layers_max'],
     basePermitFee: 85,
     estAverageFee: 125,
+    certificationNoticeTitle: 'Michigan Public Act 230 § 23a Statutory Notice',
+    certificationNotice:
+      'Section 23a of the state construction code act of 1972, 1972 PA 230, MCL 125.1523a, prohibits a person from conspiring to circumvent the licensing requirements of this state relating to persons who are to perform work on a residential building or a residential structure. Violators of section 23a are subjected to civil fines.',
   },
   MN: {
     stateCode: 'MN',
@@ -531,7 +536,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Nevada',
     fips: '32',
     licensingBoard: 'Nevada State Contractors Board (NSCB)',
-    licensingUrl: 'https://www.nscb.nv.gov',
+    licensingUrl: 'https://www.nvcontractorsboard.com/',
     codes: {
       building: { name: '2018/2021 Northern/Southern Nevada Building Code Amendments (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -549,7 +554,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'New Hampshire',
     fips: '33',
     licensingBoard: 'New Hampshire State Building Code Review Board / Electricians & Plumbers Boards',
-    licensingUrl: 'https://www.nh.gov/safety/boardsandcommissions/bcrb',
+    licensingUrl: 'https://www.nh.gov/safety/divisions/firesafety/boards/bcrb.html',
     codes: {
       building: { name: '2018/2021 New Hampshire State Building Code (IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -585,7 +590,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'New Mexico',
     fips: '35',
     licensingBoard: 'New Mexico Regulation and Licensing Department (Construction Industries Division / CID)',
-    licensingUrl: 'https://www.rld.nm.gov/construction-industries-division',
+    licensingUrl: 'https://www.rld.nm.gov/construction-industries/',
     codes: {
       building: { name: '2021 New Mexico Residential Building Code (NMRBC / 2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 New Mexico Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -675,7 +680,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Oklahoma',
     fips: '40',
     licensingBoard: 'Oklahoma Construction Industries Board (CIB)',
-    licensingUrl: 'https://cib.ok.gov',
+    licensingUrl: 'https://oklahoma.gov/cib.html',
     codes: {
       building: { name: '2018/2021 Oklahoma Uniform Building Code Commission (OUBCC / IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -711,7 +716,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Pennsylvania',
     fips: '42',
     licensingBoard: 'Pennsylvania Office of Attorney General (HIC Registration) / Dept of Labor & Industry (UCC)',
-    licensingUrl: 'https://www.attorneygeneral.gov/protect-yourself/home-improvement-contractor',
+    licensingUrl: 'https://hic.attorneygeneral.gov/',
     codes: {
       building: { name: 'Pennsylvania Uniform Construction Code (UCC / 2018/2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
@@ -823,7 +828,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Utah',
     fips: '49',
     licensingBoard: 'Utah Division of Professional Licensing (DOPL)',
-    licensingUrl: 'https://dopl.utah.gov',
+    licensingUrl: 'https://commerce.utah.gov/dopl/',
     codes: {
       building: { name: '2021 Utah Residential Code (2021 IRC with UT Amendments)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },

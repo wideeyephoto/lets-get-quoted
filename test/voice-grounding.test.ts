@@ -455,5 +455,29 @@ describe('loadVoiceGroundingContext', () => {
     const prompt = buildVoiceSystemPrompt(context);
     expect(prompt).toContain('Hey Clara, what job or lead are you updating today?');
   });
+
+  it('instructs homeowner AI receptionist to speak phone numbers as 10 digits without +1', () => {
+    const prompt = buildVoiceSystemPrompt({
+      companyName: 'BrokePipes',
+      trade: 'plumbing',
+      serviceNames: [],
+      serviceAreas: 'Royal Oak',
+      availableSlots: [],
+    });
+    expect(prompt).toContain('NEVER say "plus one", "+1", or prefix it with "1"');
+    expect(prompt).toContain('810-304-2061');
+  });
+
+  it('instructs contractor voice assistant to speak phone numbers as 10 digits without +1', () => {
+    const prompt = buildVoiceSystemPrompt({
+      companyName: 'BrokePipes',
+      trade: 'plumbing',
+      serviceNames: [],
+      serviceAreas: 'Royal Oak',
+      availableSlots: [],
+      contractorStaffCaller: { name: 'Brett', role: 'owner' },
+    });
+    expect(prompt).toContain('without "+1" or country code prefix');
+  });
 });
 

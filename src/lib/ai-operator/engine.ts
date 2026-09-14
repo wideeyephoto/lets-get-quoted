@@ -309,12 +309,17 @@ Invariants:
 
       if (functionCalls.length === 0) break;
 
-      formattedContents.push({
-        role: 'model',
-        parts: functionCalls.map((call) => ({
-          functionCall: { name: call.name, args: call.args },
-        })),
-      });
+      const candidateContent = response.candidates?.[0]?.content;
+      if (candidateContent) {
+        formattedContents.push(candidateContent);
+      } else {
+        formattedContents.push({
+          role: 'model',
+          parts: functionCalls.map((call) => ({
+            functionCall: { name: call.name, args: call.args },
+          })),
+        });
+      }
 
       const responseParts = [];
       for (const call of functionCalls) {
@@ -339,6 +344,7 @@ Invariants:
           functionResponse: {
             name: call.name,
             response: { result: toolOutput },
+            ...(call.id ? { id: call.id } : {}),
           },
         });
       }
@@ -503,6 +509,23 @@ export async function executeHitlDecision(
             },
           );
           executionResult = toolRes.data;
+          break;
+        }
+
+        case 'sre.inspect_webhook_failure': {
+          const failureId = action.payload?.failureId ? String(action.payload.failureId) : null;
+          if (failureId && supabase) {
+            const q = supabase.from('webhook_failures');
+            if (typeof q?.update === 'function') {
+              await q
+                .update({
+                  resolved_at: new Date().toISOString(),
+                  resolved_by: resolver || 'admin (operator hitl)',
+                })
+                .eq('id', failureId);
+            }
+          }
+          executionResult = { failureId, status: 'inspected_and_resolved' };
           break;
         }
 

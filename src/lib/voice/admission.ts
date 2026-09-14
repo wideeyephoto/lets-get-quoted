@@ -337,9 +337,12 @@ export async function planInboundCall(
   const callerKind = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.role
     : 'customer';
-  const callerNumber = effectiveIdentity.status === 'staff'
+  const rawCallerNumber = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.normalizedPhone
     : normalizeUsPhone(call.fromNumber || '');
+  // Anonymous / *67 / invalid numbers (e.g. +10000000000) must be treated as null
+  // so claim_voice_call_admission_v2 does not throw error 22023 on area code regex.
+  const callerNumber = rawCallerNumber && /^\+1[2-9]\d{9}$/.test(rawCallerNumber) ? rawCallerNumber : null;
 
   // After-hours is the homeowner answering schedule. Registered staff keep
   // access to Dispatch all day; off/paused and entitlement gates still apply.

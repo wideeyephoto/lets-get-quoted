@@ -171,7 +171,7 @@ export function CircuitBreakerPanel({
                       disabled={isPending}
                       onClick={() => handleClear(srv, active.id)}
                       className={styles.btnSecondary}
-                      style={{ width: '100%', fontSize: '0.78rem', padding: '0.4rem', color: '#34d399', borderColor: '#10b981' }}
+                      style={{ width: '100%', color: 'var(--good, #34d399)', borderColor: 'rgba(52, 211, 153, 0.4)' }}
                     >
                       {isPending ? 'Processing…' : '✓ Restore Service'}
                     </button>
@@ -181,7 +181,7 @@ export function CircuitBreakerPanel({
                       disabled={isPending}
                       onClick={() => handleTrip(srv)}
                       className={styles.btnDanger}
-                      style={{ width: '100%', fontSize: '0.78rem', padding: '0.4rem' }}
+                      style={{ width: '100%' }}
                     >
                       {isPending ? 'Processing…' : '⚠ Trip Kill Switch'}
                     </button>

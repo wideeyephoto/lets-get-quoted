@@ -4,6 +4,12 @@ import type {
   ParsedAddress,
 } from '../location-context/types';
 
+export type {
+  JurisdictionDiscipline,
+  JurisdictionMatch,
+  ParsedAddress,
+};
+
 export type PermitRequirementVerdict = 'required' | 'not_required' | 'verify';
 
 export type PermitConfidence = 'verified' | 'high' | 'medium' | 'low';
@@ -198,4 +204,13 @@ export type PermitWorkspaceDto = {
     canDraftApplication: boolean;
     canSubmitOnline: boolean;
   };
+};
+
+export type AttestedField<T = string> =
+  | { status: 'provided'; value: T; sourceId: string }
+  | { status: 'missing'; label: string };
+
+export type PermitReadiness = {
+  complete: boolean;
+  missing: string[];
 };

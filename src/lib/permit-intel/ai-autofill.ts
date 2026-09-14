@@ -127,25 +127,27 @@ export function synthesizeMunicipalScopeDescription(
 
   if (trade === 'roofing') {
     const squaresMatch = combined.match(/(\d+(?:\.\d+)?)\s*(?:squares|sq\b)/i);
-    const squares = squaresMatch ? squaresMatch[1] : '22';
+    const squares = squaresMatch ? squaresMatch[1] : '';
+    const squaresLabel = squares ? ` (${squares} squares)` : '';
+    const squaresM2Label = squares ? ` (${squares} m² aprox)` : '';
 
     const isFlorida = jurisdictionState === 'FL';
     const isCanada = ['ON', 'BC', 'AB', 'QC', 'MB', 'SK', 'NS', 'NB', 'NL', 'PE', 'YT', 'NT', 'NU'].includes(jurisdictionState || '');
     const isMexico = ['CDMX', 'NL', 'JAL', 'MEX', 'BCN', 'BCS', 'ROO', 'YUC'].includes(jurisdictionState || '');
 
     if (isFlorida) {
-      return `Remove existing asphalt roof covering down to plywood deck. Inspect sheathing for moisture/rot; fasten deck with 8d ring shank nails per FBC 2023. Install secondary water barrier (sealed roof deck / self-adhering modified bitumen underlayment per FBC R905.1.1), metal drip edge, and Class A asphalt fiberglass architectural shingles (${squares} squares) per Miami-Dade NOA / Florida Product Approval specifications.${formattedValuation}`;
+      return `Remove existing asphalt roof covering down to plywood deck. Inspect sheathing for moisture/rot; fasten deck with 8d ring shank nails per FBC 2023. Install secondary water barrier (sealed roof deck / self-adhering modified bitumen underlayment per FBC R905.1.1), metal drip edge, and Class A asphalt fiberglass architectural shingles${squaresLabel} per Miami-Dade NOA / Florida Product Approval specifications.${formattedValuation}`;
     }
 
     if (isCanada) {
-      return `Remove existing shingle layers down to wood roof deck substrate. Install self-adhering modified bituminous eave protection membrane extending minimum 900mm (36") past interior wall line per NBC Part 9.26.5 / OBC. Install synthetic underlayment, aluminum drip edge, and Class A fiberglass asphalt architectural shingles (${squares} squares) with 6-nail high-wind fastening.${formattedValuation}`;
+      return `Remove existing shingle layers down to wood roof deck substrate. Install self-adhering modified bituminous eave protection membrane extending minimum 900mm (36") past interior wall line per NBC Part 9.26.5 / OBC. Install synthetic underlayment, aluminum drip edge, and Class A fiberglass asphalt architectural shingles${squaresLabel} with 6-nail high-wind fastening.${formattedValuation}`;
     }
 
     if (isMexico) {
-      return `Retiro de impermeabilización dañada y preparación de losa de azotea con pendiente pluvial del 2%. Aplicación de sellador primario, sistema impermeabilizante prefabricado termofusionado SBS de 4.0 mm con gravilla y aislamiento térmico conforme a la NOM-018-ENER y NOM-020-ENER (${squares} m² aprox).${formattedValuation}`;
+      return `Retiro de impermeabilización dañada y preparación de losa de azotea con pendiente pluvial del 2%. Aplicación de sellador primario, sistema impermeabilizante prefabricado termofusionado SBS de 4.0 mm con gravilla y aislamiento térmico conforme a la NOM-018-ENER y NOM-020-ENER${squaresM2Label}.${formattedValuation}`;
     }
 
-    return `Tear off existing roof covering (1 layer) down to wood sheathing. Inspect deck sheathing for damage; install ASTM D226 / synthetic underlayment with code-compliant self-adhering ice barrier membrane extending 24" past exterior wall line per IRC R905.1.2. Install aluminum drip edge, flashing, and Class A fiberglass asphalt architectural shingles (${squares} squares) with code-compliant fastener pattern.${formattedValuation}`;
+    return `Tear off existing roof covering (1 layer) down to wood sheathing. Inspect deck sheathing for damage; install ASTM D226 / synthetic underlayment with code-compliant self-adhering ice barrier membrane extending 24" past exterior wall line per IRC R905.1.2. Install aluminum drip edge, flashing, and Class A fiberglass asphalt architectural shingles${squaresLabel} with code-compliant fastener pattern.${formattedValuation}`;
   }
 
   if (trade === 'electrical') {
@@ -219,13 +221,13 @@ export function autofillPermitWithAI(input: PermitAutofillInput): AutofilledPerm
         source: 'assessor_records',
       },
       parcelId: {
-        value: input.propertyData?.parcelNumber || '25-14-302-019',
+        value: input.propertyData?.parcelNumber || '',
         confidence: input.propertyData?.parcelNumber ? 'verified' : 'medium',
         source: 'assessor_records',
       },
       subdivision: {
-        value: input.propertyData?.subdivision || 'Oak Ridge Estates Lot 42',
-        confidence: 'medium',
+        value: input.propertyData?.subdivision || '',
+        confidence: input.propertyData?.subdivision ? 'verified' : 'medium',
         source: 'assessor_records',
       },
       occupancyClass: {
@@ -271,24 +273,24 @@ export function autofillPermitWithAI(input: PermitAutofillInput): AutofilledPerm
         },
       },
       squaresOrUnits: {
-        value: workContext.roofSquares || 22,
-        confidence: 'high',
+        value: workContext.roofSquares || 0,
+        confidence: workContext.roofSquares ? 'verified' : 'high',
         source: 'ai_synthesis',
       },
     },
     ownerInfo: {
       name: {
-        value: input.owner?.name || 'Property Owner',
+        value: input.owner?.name || '',
         confidence: input.owner?.name ? 'verified' : 'medium',
         source: 'assessor_records',
       },
       phone: {
-        value: input.owner?.phone || '(555) 000-0000',
+        value: input.owner?.phone || '',
         confidence: input.owner?.phone ? 'verified' : 'medium',
         source: 'assessor_records',
       },
       email: {
-        value: input.owner?.email || 'owner@example.com',
+        value: input.owner?.email || '',
         confidence: input.owner?.email ? 'verified' : 'medium',
         source: 'assessor_records',
       },
@@ -300,43 +302,67 @@ export function autofillPermitWithAI(input: PermitAutofillInput): AutofilledPerm
     },
     contractorInfo: {
       businessName: {
-        value: input.contractor?.businessName || "Let's Get Quoted Partner Contractor",
-        confidence: 'verified',
+        value: input.contractor?.businessName || '',
+        confidence: input.contractor?.businessName ? 'verified' : 'medium',
         source: 'credentials_vault',
       },
       contactName: {
-        value: input.contractor?.contactName || 'Lead Qualifying Officer',
-        confidence: 'high',
+        value: input.contractor?.contactName || '',
+        confidence: input.contractor?.contactName ? 'high' : 'medium',
         source: 'credentials_vault',
       },
       phone: {
-        value: input.contractor?.phone || '(248) 555-0199',
-        confidence: 'high',
+        value: input.contractor?.phone || '',
+        confidence: input.contractor?.phone ? 'high' : 'medium',
         source: 'credentials_vault',
       },
       email: {
-        value: input.contractor?.email || 'permits@contractor.com',
-        confidence: 'high',
+        value: input.contractor?.email || '',
+        confidence: input.contractor?.email ? 'high' : 'medium',
         source: 'credentials_vault',
       },
       stateLicense: {
-        value: input.contractor?.licenseNumber || 'MI-BLD-2101234567',
-        confidence: input.contractor?.licenseNumber ? 'verified' : 'high',
+        value: input.contractor?.licenseNumber || '',
+        confidence: input.contractor?.licenseNumber ? 'verified' : 'medium',
         source: 'credentials_vault',
       },
       liabilityInsurance: {
-        value: `${input.contractor?.insuranceCarrier || 'Travelers Insurance'} Policy #${input.contractor?.policyNumber || 'TRV-8849201'}`,
-        confidence: 'verified',
+        value:
+          input.contractor?.insuranceCarrier && input.contractor?.policyNumber
+            ? `${input.contractor.insuranceCarrier} Policy #${input.contractor.policyNumber}`
+            : input.contractor?.insuranceCarrier
+            ? `${input.contractor.insuranceCarrier}`
+            : input.contractor?.policyNumber
+            ? `Policy #${input.contractor.policyNumber}`
+            : '',
+        confidence: input.contractor?.insuranceCarrier && input.contractor?.policyNumber ? 'verified' : 'medium',
         source: 'credentials_vault',
       },
       workersComp: {
-        value: `${input.contractor?.workersCompCarrier || 'State Fund / Accident Fund'} Policy #${input.contractor?.workersCompPolicy || 'WC-9940122'}`,
-        confidence: 'verified',
+        value:
+          input.contractor?.workersCompCarrier && input.contractor?.workersCompPolicy
+            ? `${input.contractor.workersCompCarrier} Policy #${input.contractor.workersCompPolicy}`
+            : input.contractor?.workersCompCarrier
+            ? `${input.contractor.workersCompCarrier}`
+            : input.contractor?.workersCompPolicy
+            ? `Policy #${input.contractor.workersCompPolicy}`
+            : '',
+        confidence: input.contractor?.workersCompCarrier && input.contractor?.workersCompPolicy ? 'verified' : 'medium',
         source: 'credentials_vault',
       },
       tradeSpecificLicense: {
-        value: trade === 'electrical' ? input.contractor?.masterElectricianLicense || 'ME-778291' : trade === 'plumbing' ? input.contractor?.masterPlumberLicense || 'MP-662910' : null,
-        confidence: 'high',
+        value:
+          trade === 'electrical'
+            ? input.contractor?.masterElectricianLicense || null
+            : trade === 'plumbing'
+            ? input.contractor?.masterPlumberLicense || null
+            : null,
+        confidence:
+          trade === 'electrical' && input.contractor?.masterElectricianLicense
+            ? 'verified'
+            : trade === 'plumbing' && input.contractor?.masterPlumberLicense
+            ? 'verified'
+            : 'high',
         source: 'credentials_vault',
       },
     },

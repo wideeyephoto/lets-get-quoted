@@ -84,6 +84,7 @@
     "test:email-dry-run": "node --test scripts/dry-run-contractor-lifecycle.test.mjs",
     "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
     "test:pg17:job-access": "node scripts/verify-job-access-boundary.mjs",
+    "test:pg17:function-acl": "node scripts/verify-function-acl-runtime.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
     "verify:tenant-office": "node scripts/verify-tenant-office-suite.mjs",
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",

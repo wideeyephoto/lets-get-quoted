@@ -17,6 +17,9 @@ vi.mock('@/lib/permit-intel', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/permit-intel')>();
   return {
     ...actual,
+    listContractorCredentials: vi.fn().mockResolvedValue([
+      { licenseNumber: '2101234567' },
+    ]),
     executePermitSubmission: vi.fn().mockResolvedValue({
       success: true,
       submissionId: 'case-1',
@@ -140,5 +143,47 @@ describe('Permit Submission API Route - POST /api/jobs/:id/permits/submit', () =
     expect(body.success).toBe(true);
     expect(body.result.status).toBe('submitted');
     expect(body.result.externalReferenceNumber).toContain('SUB-');
+  });
+
+  it('rejects submission with 400 if license number is not found in contractor vault or site settings', async () => {
+    vi.mocked(createSupabaseServerClient).mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: mockUserId, email: 'builder@example.com' } } }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+      }),
+    } as any);
+
+    vi.mocked(getCurrentMembership).mockResolvedValue({
+      accountId: mockAccountId,
+      role: 'owner',
+    });
+
+    vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set());
+    vi.mocked(getJob).mockResolvedValue({ id: validJobId, account_id: mockAccountId } as any);
+
+    const { listContractorCredentials } = await import('@/lib/permit-intel');
+    vi.mocked(listContractorCredentials).mockResolvedValueOnce([]);
+
+    const res = await POST(
+      new Request('http://localhost/api/jobs/foo/permits/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractorAuthorized: true,
+          agreedToSection23a: true,
+          authorizedByName: 'Master Builder',
+          qualifyingLicenseNumber: '9999999999',
+        }),
+      }),
+      { params: Promise.resolve({ id: validJobId }) },
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain('does not match any registered contractor credential');
   });
 });

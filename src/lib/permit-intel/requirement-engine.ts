@@ -1040,7 +1040,7 @@ export function evaluatePermitRequirement(
  */
 export function classifyWorkScope(
   rawScopeText: string | null | undefined,
-  defaultTrade: PermitWorkContext['trade'] = 'roofing',
+  defaultTrade: PermitWorkContext['trade'] = 'general',
 ): PermitWorkContext {
   const text = (rawScopeText || '').toLowerCase();
 
@@ -1129,7 +1129,7 @@ export function classifyWorkScope(
     scope,
     occupancy: 'one_family_residential',
     structure: 'existing',
-    roofSquares: roofSquares || 22,
+    roofSquares,
     freeTextDescription: rawScopeText || undefined,
   };
 }
