@@ -274,14 +274,14 @@ export async function runTopUpProjectionBatch(
     let claim: TopUpProjectorClaim | null;
     try {
       claim = await dependencies.queue.claimNext();
-    } catch {
+    } catch (err) {
       return Object.freeze({
         status: 'claim_failed',
         requestedBatchSize,
         selectedCount,
         claimedCount,
         results: Object.freeze(results),
-        errorCode: 'projection_worker_claim_error',
+        errorCode: err instanceof Error ? err.message : String(err),
       });
     }
     if (!claim) break;

@@ -51,6 +51,11 @@ export type ParkedCronRoute = {
 
 export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
   {
+    job: 'audit-log-retention',
+    reason:
+      'Parked temporarily to keep Vercel cron count at 50 limit. Needs consolidation or removal of another cron before it can be re-scheduled.',
+  },
+  {
     job: 'db-guard',
     reason:
       'RPC public.get_long_running_queries does not exist in the production database schema or repository migrations, causing 285 guaranteed failures/day.',
@@ -65,13 +70,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'housekeeping',
     consequence: 'AI Operator trend history becomes stale and the get_ops_trend_history tool returns empty results.',
   },
-  {
-    job: 'audit-log-retention',
-    label: 'AI operator audit log archival',
-    schedule: '30 5 * * 0',
-    importance: 'housekeeping',
-    consequence: 'AI operator audit log table grows unbounded, slowing admin console queries.',
-  },
+
   {
     job: 'operational-alerts', label: 'Operational failure alerts', schedule: '*/5 * * * *',
     importance: 'money', consequence: 'Webhook, billing, messaging and dispute failures stop reaching the operator by email.',
