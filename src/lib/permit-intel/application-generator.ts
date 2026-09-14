@@ -5,6 +5,7 @@ import { resolveJurisdiction } from '../location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement, classifyWorkScope } from './requirement-engine';
 import { getCredentialsForAuthority } from './credentials-vault';
 import type { PermitWorkContext } from './types';
+import { safeSignaturePath } from '../signature';
 
 export type UniversalPermitApplicationData = {
   authority: {
@@ -60,6 +61,8 @@ export type UniversalPermitApplicationData = {
   };
   certification: {
     applicantSignatureText: string;
+    applicantSignaturePath?: string | null;
+    signatureMethod?: 'drawn' | 'typed';
     signatureDate: string;
     section23aNotice: string;
   };
@@ -237,7 +240,11 @@ export function generatePermitApplicationHtml(
 
     .notice { font-size: 7.5pt; color: #334155; line-height: 1.25; margin-top: 6px; text-align: justify; }
     .signature-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 16px; }
-    .sig-box { width: 45%; border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 8.5pt; }
+    .sig-box { width: 45%; text-align: center; font-size: 8.5pt; }
+    .sig-mark-slot { height: 44px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; }
+    .sig-mark-slot.date-slot { align-items: center; }
+    .sig-line-label { border-top: 1px solid #000; padding-top: 4px; }
+    .sig-svg { width: 160px; height: 42px; stroke: #0f172a; fill: none; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
   </style>
 </head>
 <body>
@@ -374,12 +381,20 @@ export function generatePermitApplicationHtml(
 
       <div class="signature-row">
         <div class="sig-box">
-          <strong>${data.applicant.companyName}</strong><br>
-          Signature of Contractor / Authorized Agent
+          <div class="sig-mark-slot">
+            ${
+              safeSignaturePath(data.certification.applicantSignaturePath)
+                ? `<svg viewBox="0 0 600 200" class="sig-svg" role="img" aria-label="Contractor Signature"><path d="${safeSignaturePath(data.certification.applicantSignaturePath)}" /></svg>`
+                : `<strong>${data.applicant.companyName}</strong>`
+            }
+          </div>
+          <div class="sig-line-label">Signature of Contractor / Authorized Agent</div>
         </div>
         <div class="sig-box">
-          <strong>Date: ${data.certification.signatureDate}</strong><br>
-          Application Date
+          <div class="sig-mark-slot date-slot">
+            <strong>Date: ${data.certification.signatureDate}</strong>
+          </div>
+          <div class="sig-line-label">Application Date</div>
         </div>
       </div>
     </div>

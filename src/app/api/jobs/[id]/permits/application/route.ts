@@ -8,6 +8,7 @@ import {
   registerPermitDocument,
   updatePermitCase,
 } from '@/lib/permit-intel';
+import { safeSignaturePath } from '@/lib/signature';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,11 +141,15 @@ export async function POST(
       },
     );
 
+    const sigPath = safeSignaturePath(payload?.signaturePath || payload?.data?.certification?.applicantSignaturePath);
     await updatePermitCase(
       supabase,
       membership.accountId,
       params.id,
-      { applicationStatus: 'ready_for_review' },
+      {
+        applicationStatus: 'ready_for_review',
+        ...(sigPath ? { notes: 'Signed by contractor (finger/touch signature)' } : {}),
+      },
       user.email || 'Office',
     );
 

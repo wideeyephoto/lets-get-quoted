@@ -68,4 +68,20 @@ describe('Permit PDF Generator Engine', () => {
     const header = pdfBuffer.subarray(0, 5).toString('ascii');
     expect(header).toBe('%PDF-');
   });
+
+  it('generates a valid PDF when contractor supplies drawn finger signature', async () => {
+    const dataWithSig: UniversalPermitApplicationData = {
+      ...sampleData,
+      certification: {
+        ...sampleData.certification,
+        applicantSignaturePath: 'M10 20 Q50 60 100 20 L200 80',
+        signatureMethod: 'drawn',
+      },
+    };
+
+    const pdfBuffer = await generatePermitApplicationPdf(dataWithSig);
+    expect(pdfBuffer).toBeDefined();
+    expect(pdfBuffer.length).toBeGreaterThan(1000);
+    expect(pdfBuffer.subarray(0, 5).toString('ascii')).toBe('%PDF-');
+  });
 });

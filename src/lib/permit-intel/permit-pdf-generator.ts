@@ -1,5 +1,6 @@
 import PDFDocument from 'pdfkit';
 import type { UniversalPermitApplicationData } from './application-generator';
+import { safeSignaturePath, SIGNATURE_VIEWBOX } from '../signature';
 
 const PAGE_MARGIN = 36;
 
@@ -183,7 +184,23 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
 
       const signLineY = sigY + 36;
       doc.font('Helvetica-Bold').fontSize(8.5).fillColor('#0f172a').text('Authorized Signature: ', PAGE_MARGIN + 6, signLineY);
-      doc.font('Helvetica-Oblique').text(data.certification.applicantSignatureText, PAGE_MARGIN + 110, signLineY);
+
+      const validSigPath = safeSignaturePath(data.certification.applicantSignaturePath);
+      if (validSigPath) {
+        doc.save();
+        const sigWidth = 160;
+        const scale = sigWidth / SIGNATURE_VIEWBOX.width;
+        doc.translate(PAGE_MARGIN + 110, signLineY + 10 - (SIGNATURE_VIEWBOX.height * scale));
+        doc.scale(scale);
+        doc.path(validSigPath)
+          .lineWidth(2.5)
+          .strokeColor('#0f172a')
+          .stroke();
+        doc.restore();
+      } else {
+        doc.font('Helvetica-Oblique').text(data.certification.applicantSignatureText, PAGE_MARGIN + 110, signLineY);
+      }
+
       doc.moveTo(PAGE_MARGIN + 105, signLineY + 10).lineTo(PAGE_MARGIN + 280, signLineY + 10).strokeColor('#0f172a').lineWidth(0.75).stroke();
 
       doc.font('Helvetica-Bold').text('Date: ', PAGE_MARGIN + 320, signLineY);

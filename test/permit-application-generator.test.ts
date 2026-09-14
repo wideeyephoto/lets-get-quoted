@@ -96,12 +96,36 @@ describe('Permit Application Pre-fill Generator', () => {
 
     const data = await compilePermitApplication(mockSupabase, mockAccountId, mockJobId);
     const html = generatePermitApplicationHtml(data);
-
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('City of Royal Oak');
     expect(html).toContain('211 S Williams St');
     expect(html).toContain('2015 MRC § R905.1.2');
     expect(html).toContain('Section 23a of the state construction code act');
+    expect(html).toContain('Signature of Contractor / Authorized Agent');
+    expect(html).toContain('<strong>Licensed Builder</strong>');
+  });
+
+  it('renders drawn vector signature SVG when applicantSignaturePath is provided', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const data = await compilePermitApplication(mockSupabase, mockAccountId, mockJobId);
+    const validSamplePath = 'M10 20 Q50 60 100 20 L200 80';
+    data.certification.applicantSignaturePath = validSamplePath;
+    data.certification.signatureMethod = 'drawn';
+
+    const html = generatePermitApplicationHtml(data);
+
+    expect(html).toContain('<svg viewBox="0 0 600 200" class="sig-svg"');
+    expect(html).toContain(`d="${validSamplePath}"`);
     expect(html).toContain('Signature of Contractor / Authorized Agent');
   });
 });
