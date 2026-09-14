@@ -422,3 +422,11 @@ Local evidence: 69 application tests, 163 PostgreSQL checks, full type checking,
 Customer quote-option changes now stop when job, account settings, payment-plan or payment-history reads fail. Unavailable history cannot be interpreted as zero paid. Invalid payment amounts, overflow and invalid new quote totals also stop before writes or notices. Local verification: 54 quote-option tests, full type checking and lint passed.
 
 The quote-option owner alert remains inline. This guard does not close the family: transactionally saved quote/history/notice records, concurrent payment/plan/quote protection, stable request/revision binding and interrupted follow-up recovery are still required. No hosted changes were made.
+
+### Atomic quote-option changes
+
+Apply 20260914200123_quote_option_owner_notices.sql before the updated caller; drain old inline quote-option writers. save_client_quote_options is service-only and locks the job before comparing expected status, start/schedule, quote items and amount. It locks the current account and existing plan/payment rows, rechecks the option window in the account timezone, rejects authorized plans and totals below current paid amounts, then saves the quote, client-financial feed revision and owner notice in one transaction. Failed history/notice storage rolls back the quote. Unchanged saves produce no new notice.
+
+The owner worker uses the saved feed ID. Source validation requires original title/body/amount and current matching quote items/total; changed or deleted evidence stops pending delivery. Titles lead with removals when work was removed, and the body directs the owner to review existing invoices. Failed immediate pickup leaves the notice available for background processing. No invoice rewrite is implied.
+
+Local evidence: 65 application tests, 167 PostgreSQL checks, full type checking, lint, registry and clean local security advisor. This protects one read/save attempt; the form still needs stable request and rendered-revision binding so a delayed HTTP retry after another edit cannot become a new change. Audit all payment/plan writer lock ordering and test hosted quote/history/inbox behavior before acceptance. Other owner families and the full ten-step goal remain open.

@@ -1,3 +1,4 @@
+vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:vi.fn().mockResolvedValue({})}));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -91,6 +92,7 @@ describe('Estimate and Reschedule Offers Core Business Logic', () => {
     vi.clearAllMocks();
     fakeAdmin = {
       from: vi.fn(() => createFluentBuilder()),
+      rpc: vi.fn().mockResolvedValue({data:{event_id:"event-1",total:1200},error:null}),
     };
     mocks.createAdminClient.mockReturnValue(fakeAdmin);
   });
@@ -344,6 +346,7 @@ describe('Estimate and Reschedule Offers Core Business Logic', () => {
             business_name: 'Pink Floyd Roofing',
           });
         }
+        if (table === 'payments') return createFluentBuilder([]);
         if (table === 'sites') {
           return createFluentBuilder({ company_name: 'Pink Floyd Roofing' });
         }

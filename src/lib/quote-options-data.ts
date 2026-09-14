@@ -1,11 +1,7 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { createAdminClient } from '@/lib/auth';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { computeQuoteTotal, parseQuoteItems, formatMoneyExact } from '@/lib/jobs';
-import { createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
-import { pickBusinessName } from '@/lib/business-name';
-import { APP_ORIGIN } from '@/lib/app-origin';
 import {
   applyOptionChoice,
   describeOptionChange,
@@ -25,14 +21,6 @@ import {
  */
 
 export type OptionUpdateResult = { ok: true; total: number } | { ok: false; message: string };
-
-async function loadBusinessName(admin: SupabaseClient, accountId: string): Promise<string> {
-  const [{ data: account }, { data: site }] = await Promise.all([
-    admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-  ]);
-  return pickBusinessName(site, account);
-}
 
 export async function updateClientQuoteOptions(token: string, addonIds: string[]): Promise<OptionUpdateResult> {
   const access = await resolveJobAccess(token);
@@ -125,63 +113,23 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
     };
   }
 
-  const { error } = await admin
-    .from('jobs')
-    .update({ quote_items: finalized, quoted_amount: newTotal })
-    .eq('account_id', accountId)
-    .eq('id', jobId);
-  if (error) return { ok: false, message: 'We could not save that. Please try again.' };
-
   const sentence = optionChangeSentence(change);
   const clientName = (job.client_name as string) || 'The customer';
-
-  // Client-visible, and financial: the number on this page moved, and a page
-  // whose total changes with nothing in the record saying so is the thing the
-  // revision gate exists to prevent. Best-effort — the save has happened, and a
-  // failed note must not undo it.
-  try {
-    await createJobFeedEvent(admin, accountId, jobId, {
-      kind: 'quote_revised',
-      title: `${clientName} changed their options`,
-      body: `${sentence} The total changed from ${formatMoneyExact(previousTotal)} to ${formatMoneyExact(newTotal)}.`,
-      visibility: 'client_financial',
-      amount: newTotal,
-      author: 'Client',
-    });
-  } catch (error) {
-    console.error(`Could not record an option change on job ${jobId}:`, error instanceof Error ? error.message : error);
+  const title = change.removed.length > 0
+    ? `${clientName} removed work from ${job.ref ?? 'their job'}`
+    : `${clientName} added work to ${job.ref ?? 'their job'}`;
+  const body = `${sentence} The total changed from ${formatMoneyExact(previousTotal)} to ${formatMoneyExact(newTotal)}. Check any existing invoice before sending it.`;
+  const saved = await admin.rpc('save_client_quote_options', {
+    p_account_id: accountId, p_job_id: jobId,
+    p_expected: {status:job.status,started_at:job.started_at??null,scheduled_for:job.scheduled_for??null,quote_items:job.quote_items??null,quoted_amount:job.quoted_amount??null},
+    p_items: finalized, p_total: newTotal, p_title: title, p_body: body,
+  });
+  if (saved.error || !saved.data || saved.data.total !== newTotal) {
+    return {ok:false,message:'We could not save these options. Refresh the quote and check your choices before trying again.'};
   }
-
-  // The contractor finds out immediately, because they may have bought
-  // materials for the thing that was just removed. Removals lead the subject
-  // line for the same reason.
-  try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      const businessName = await loadBusinessName(admin, accountId);
-      await sendContractorAlertEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName,
-        subject:
-          change.removed.length > 0
-            ? `${clientName} removed work from ${job.ref ?? 'their job'}`
-            : `${clientName} added work to ${job.ref ?? 'their job'}`,
-        heading: `${clientName} changed their options`,
-        bodyLines: [
-          sentence,
-          `New total: ${formatMoneyExact(newTotal)} (was ${formatMoneyExact(previousTotal)}).`,
-          ...(paidToDate > 0 ? [`${formatMoneyExact(paidToDate)} has already been paid against this job.`] : []),
-          'Any invoice you have already raised still shows the old total — check it before you send it.',
-        ],
-        ctaLabel: 'Open the job',
-        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${jobId}`,
-        tone: change.removed.length > 0 ? 'warning' : 'info',
-      });
-    }
-  } catch (error) {
-    console.error(`Could not email the owner about an option change on job ${jobId}:`, error instanceof Error ? error.message : error);
+  if (saved.data.event_id) {
+    try { await runOwnerEventNotices(admin,{sourceId:saved.data.event_id,accountId}); }
+    catch { console.error('Quote option owner notice remains saved for pickup'); }
   }
-
   return { ok: true, total: newTotal };
 }

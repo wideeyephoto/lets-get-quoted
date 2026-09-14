@@ -248,25 +248,7 @@ describe('the endpoint decides for itself', () => {
     expect(data).toContain('if (!change.changed) return { ok: true');
   });
 
-  it('writes a client-visible financial note, because the total on their page moved', () => {
-    expect(data).toContain("kind: 'quote_revised'");
-    expect(data).toContain("visibility: 'client_financial'");
-    expect(data).toContain('The total changed from');
-  });
 
-  it('tells the contractor at once, and leads with a removal', () => {
-    // They may have bought materials for the thing that was just dropped.
-    expect(data).toContain('sendContractorAlertEmail');
-    expect(data).toContain("change.removed.length > 0\n            ? `${clientName} removed work from");
-    expect(data).toContain("tone: change.removed.length > 0 ? 'warning' : 'info'");
-    // And an invoice already raised still shows the old figure.
-    expect(data).toContain('still shows the old total');
-  });
-
-  it('never fails the save because a notification failed', () => {
-    const afterWrite = data.slice(data.indexOf('const { error } = await admin'));
-    expect((afterWrite.match(/catch \(error\)/g) ?? []).length).toBeGreaterThanOrEqual(2);
-  });
 });
 
 /* --- the page ---------------------------------------------------------------- */
