@@ -66,7 +66,7 @@ export async function executeCustomerEmailClaim(
       await assertRecoveryMaySubmit(admin, accountId, recovery);
       if (Date.now() >= Date.parse(claim.retry_before)) throw new Error('Email retry window expired before submission');
       return await resend.fetchRequest<{ id: string }>('/emails', {
-        method: 'POST', headers: { Authorization: Bearer , 'Content-Type': 'application/json', 'Idempotency-Key': claim.key },
+        method: 'POST', headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': claim.key },
         body: JSON.stringify(claim.payload), signal: AbortSignal.timeout(30_000),
       });
     } catch (cause) {

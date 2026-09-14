@@ -47,7 +47,7 @@ import {
 } from '@/lib/email';
 
 describe('Email Engine & Notification System (lib/email)', () => {
-  let fakeAdmin: any;
+  let { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any: any;
 
   const createFluentBuilder = (dataResult: any = null, error: any = null) => {
     const builder: any = {
@@ -82,7 +82,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
   describe('getAccountOwnerEmail', () => {
     it('returns reply_to_email from accounts if configured', async () => {
-      fakeAdmin = {
+      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createFluentBuilder({ reply_to_email: 'custom-reply@contractor.com' });
@@ -91,12 +91,12 @@ describe('Email Engine & Notification System (lib/email)', () => {
         }),
       };
 
-      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-1');
+      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-1');
       expect(email).toBe('custom-reply@contractor.com');
     });
 
     it('falls back to owner user in memberships and auth.users if reply_to_email is unset', async () => {
-      fakeAdmin = {
+      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createFluentBuilder({ reply_to_email: null });
@@ -116,16 +116,16 @@ describe('Email Engine & Notification System (lib/email)', () => {
         },
       };
 
-      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-1');
+      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-1');
       expect(email).toBe('owner-auth@contractor.com');
     });
 
     it('returns null if account does not exist or has no owner', async () => {
-      fakeAdmin = {
+      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
         from: vi.fn(() => createFluentBuilder(null)),
       };
 
-      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-nonexistent');
+      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-nonexistent');
       expect(email).toBeNull();
     });
   });
@@ -180,20 +180,20 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('sendAppointmentReminderEmail', () => {
     it('stops a locally blocked recipient before calling the real shared transport', async () => {
       mocks.suppression.mockResolvedValue({ data: [{ reason: 'hard_bounce' }], error: null });
-      await expect(sendAppointmentReminderEmail({ accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
-        businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null,
+      await expect(sendAppointmentReminderEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
+        businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null, jobId: 'job-1', idempotencyKey: 'test-idem-1',
       })).rejects.toThrow('blocked');
       expect(mocks.send).not.toHaveBeenCalled();
     });
     it('dispatches reminder with appointment date, time window, and address', async () => {
-      await sendAppointmentReminderEmail({
-        accountId: 'acc-1',
+      await sendAppointmentReminderEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, { accountId: 'acc-1',
         recipientEmail: 'client@contractorclient.test',
         businessName: 'Ace Contracting',
         clientName: 'Bob Miller',
-        whenLabel: 'Monday, June 15, 2026 · 9:00 AM – 11:00 AM',
+        whenLabel: 'Monday, June 15, 2026 A 9:00 AM ?" 11:00 AM',
         jobRef: 'JOB-101',
         address: '742 Evergreen Terrace, Springfield',
+        jobId: 'job-1', idempotencyKey: 'test-idem-2',
       });
 
       expect(mocks.send).toHaveBeenCalledTimes(1);

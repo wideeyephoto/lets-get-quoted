@@ -295,3 +295,9 @@ No hosted changes or receiver evidence; step 4 remains in progress.
 - **T16/T17:** Rebuilt quote acceptance to use an atomic RPC transaction. Quote approvals now record a request receipt and bind the final add-on choices, typed/drawn signature, job status promotion, lead status promotion and job feed history together. Interrupted deposits or offline conversion outbox dispatches can now safely retry without duplicating the feed row or owner notice, as they observe the `replayed` flag from the atomic transaction.
 - **Verification:** 9 application tests (including updated `quote-acceptance.test.ts`), 180 actual PostgreSQL checks, full type checking, and changed-file lint pass. Tests explicitly cover that atomic approval receipts decouple side effects safely, and that deposit retries occur via the idempotent receipt identity.
 - **Remaining:** Apply `20260914202500_quote_approval_request_receipts.sql` before updated callers. Remaining tasks include concurrent payment-plan changes, durable charge/refund attempts, authoritative reconciliation of uncertain provider outcomes and interrupted financial customer notifications (Stream 2), as well as Steps 5–10.
+
+## September 14 - Platform Event Notices (Step 7)
+
+Steps 5, 6, and 7 committed as 022768237. Mapped support cases, merchandise receipts, and magic link authentication to the platform_event_notices ledger queue. Replaced direct inline sends with enqueues, built a cron handler, and preserved existing suppression rules and token generation boundaries. Shared digests and crew magic links are left intact per Stream 4 instructions.
+
+Observed local verification: 539 application tests passed via vitest, full TypeScript validation succeeded. Local security advisor passing.

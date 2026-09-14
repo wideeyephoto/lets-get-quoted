@@ -166,7 +166,7 @@ export async function sendSelectionRequest(
       if (smsEventId === null) return { ok: false, reason: 'opted_out' };
       channel = 'sms';
     } else {
-      await sendSelectionRequestEmail({
+      await sendSelectionRequestEmail(admin, {
         recipientEmail: contact.email as string,
         businessName,
         clientName: contact.clientName,
