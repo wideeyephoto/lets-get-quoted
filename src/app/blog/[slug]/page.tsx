@@ -22,6 +22,16 @@ interface BlogArticlePageProps {
 
 export const dynamic = 'force-dynamic';
 
+function getCategoryBadgeClass(category: string): string {
+  const cat = category.toLowerCase();
+  if (cat.includes('pricing') || cat.includes('cash')) return styles.badgePricing;
+  if (cat.includes('software') || cat.includes('tech')) return styles.badgeSoftware;
+  if (cat.includes('marketing') || cat.includes('lead') || cat.includes('growth')) return styles.badgeMarketing;
+  if (cat.includes('operation') || cat.includes('crew') || cat.includes('dispatch')) return styles.badgeOperations;
+  if (cat.includes('review') || cat.includes('trust') || cat.includes('brand')) return styles.badgeTrust;
+  return styles.badgeMarketing;
+}
+
 export async function generateStaticParams() {
   const posts = await getPlatformBlogPosts({ status: 'published' });
   return posts.map((post) => ({ slug: post.slug }));
@@ -277,7 +287,7 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
               <Link
                 href={`/blog?category=${encodeURIComponent(post.category)}`}
                 className={styles.breadcrumbLink}
-                style={{ color: 'var(--orange)' }}
+                style={{ color: 'var(--orange-light)' }}
               >
                 {post.category}
               </Link>
@@ -286,9 +296,11 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
             {/* Article Header */}
             <header className={styles.articleHeader}>
               <div className={styles.featuredTag}>
-                <span>{post.category}</span>
+                <span className={`${styles.featuredTagBadge} ${getCategoryBadgeClass(post.category)}`}>
+                  {post.category}
+                </span>
                 <span>·</span>
-                <span>{post.readMinutes} min read</span>
+                <span>⏱ {post.readMinutes} min read</span>
                 <span>·</span>
                 <time dateTime={post.datePublished}>
                   {formatDate(post.datePublished)}
@@ -314,7 +326,7 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '12px',
+                      gap: '14px',
                       textDecoration: 'none',
                       color: 'inherit',
                     }}
@@ -323,8 +335,8 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                       src={post.author.avatarUrl || '/apple-icon.png'}
                       alt={post.author.name}
                       className={styles.authorAvatar}
-                      width={44}
-                      height={44}
+                      width={46}
+                      height={46}
                     />
                     <div>
                       <p className={styles.authorName}>{post.author.name}</p>
@@ -354,10 +366,21 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
             {/* Table of Contents */}
             {tocItems.length > 1 && (
               <aside className={styles.tocBox} aria-label="Table of contents">
-                <p className={styles.tocTitle}>In this guide</p>
+                <p className={styles.tocTitle}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                  </svg>
+                  In this guide
+                </p>
                 <ol className={styles.tocList}>
-                  {tocItems.map((item) => (
-                    <li key={item.id}>
+                  {tocItems.map((item, idx) => (
+                    <li key={item.id} className={styles.tocItem}>
+                      <span className={styles.tocNum}>{String(idx + 1).padStart(2, '0')}</span>
                       <a href={`#${item.id}`} className={styles.tocLink}>
                         {item.text}
                       </a>
@@ -380,7 +403,10 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                       block.text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                     return (
                       <h2 key={index} id={id}>
-                        {block.text}
+                        <span>{block.text}</span>
+                        <a href={`#${id}`} className={styles.headingAnchor} aria-label={`Section link for ${block.text}`}>
+                          #
+                        </a>
                       </h2>
                     );
                   }
@@ -414,8 +440,29 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                         : styles.calloutInfo;
                     return (
                       <div key={index} className={`${styles.callout} ${kindClass}`}>
-                        {block.title && <h4 className={styles.calloutTitle}>{block.title}</h4>}
-                        <p className={styles.calloutText}>{block.text}</p>
+                        <div className={styles.calloutIcon} aria-hidden="true">
+                          {block.kind === 'tip' ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                            </svg>
+                          ) : block.kind === 'warning' ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+                              <line x1="12" y1="9" x2="12" y2="13" />
+                              <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                          ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="16" x2="12" y2="12" />
+                              <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                          )}
+                        </div>
+                        <div className={styles.calloutContent}>
+                          {block.title && <h4 className={styles.calloutTitle}>{block.title}</h4>}
+                          <p className={styles.calloutText}>{block.text}</p>
+                        </div>
                       </div>
                     );
                   }
@@ -433,6 +480,27 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                 }
               })}
             </article>
+
+            {/* Author Bio Box */}
+            <section className={styles.authorBioBox} aria-label="About the Author">
+              <img
+                src={post.author.avatarUrl || '/apple-icon.png'}
+                alt={post.author.name}
+                className={styles.authorBioAvatar}
+                width={72}
+                height={72}
+              />
+              <div>
+                <p className={styles.authorBioTitle}>Written by</p>
+                <h3 className={styles.authorBioName}>{post.author.name}</h3>
+                <p className={styles.authorBioLead}>
+                  Founder of Let’s Get Quoted. Former trade operator and software engineer obsessed with eliminating software bloat, per-seat taxes, and lead broker middleman fees for local contractors.
+                </p>
+                <Link href="/founder" className={styles.authorBioLink}>
+                  Read Founder’s Story &rarr;
+                </Link>
+              </div>
+            </section>
 
             {/* Article Tags Cloud */}
             {post.tags && post.tags.length > 0 && (
@@ -457,7 +525,10 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                 <div className={styles.featureLinksGrid}>
                   {post.featureLinks.map((link, idx) => (
                     <Link key={idx} href={link.href} className={styles.featureLinkCard}>
-                      <h4 className={styles.featureLinkLabel}>{link.label} &rarr;</h4>
+                      <h4 className={styles.featureLinkLabel}>
+                        <span>{link.label}</span>
+                        <span>&rarr;</span>
+                      </h4>
                       <p className={styles.featureLinkBlurb}>{link.blurb}</p>
                     </Link>
                   ))}
@@ -466,11 +537,37 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
             )}
 
             {/* Bottom CTA Card */}
-            <section className={styles.ctaBanner} style={{ marginTop: '48px' }}>
+            <section className={styles.ctaBanner}>
               <h2 className={styles.ctaTitle}>Build your contracting business on Let’s Get Quoted</h2>
               <p className={styles.ctaLead}>
                 Get an SEO website with interactive estimate calculators, 24/7 AI call intake, and complete quotes-to-paid management from $0/month.
               </p>
+              <div className={styles.ctaPillsRow}>
+                <span className={styles.ctaPillItem}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Free High-Converting Website
+                </span>
+                <span className={styles.ctaPillItem}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  24/7 AI Call &amp; SMS Intake
+                </span>
+                <span className={styles.ctaPillItem}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Instant Price Calculators
+                </span>
+                <span className={styles.ctaPillItem}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  $0/mo Free Tier · Unlimited Crew
+                </span>
+              </div>
               <a href="https://app.letsgetquoted.com/start?goal=build_site&source=blog_article_cta" className={styles.ctaButton}>
                 Create Free Account &rarr;
               </a>
@@ -491,14 +588,34 @@ export default async function BlogArticlePage({ params }: BlogArticlePageProps) 
                             className={styles.cardImage}
                             loading="lazy"
                           />
+                          <span className={`${styles.cardFloatingBadge} ${getCategoryBadgeClass(rel.category)}`}>
+                            {rel.category}
+                          </span>
+                          <span className={styles.cardReadChip}>
+                            ⏱ {rel.readMinutes}m
+                          </span>
                         </div>
                       )}
-                      <span className={styles.cardCategory}>{rel.category}</span>
                       <h4 className={styles.cardTitle}>{rel.title}</h4>
                       <p className={styles.cardExcerpt}>{rel.excerpt}</p>
                       <div className={styles.cardFooter}>
-                        <span>{rel.readMinutes} min read</span>
-                        <span>{formatDate(rel.datePublished)}</span>
+                        <div className={styles.cardFooterAuthor}>
+                          <img
+                            src={rel.author.avatarUrl || '/apple-icon.png'}
+                            alt={rel.author.name}
+                            className={styles.cardFooterAvatar}
+                            width={20}
+                            height={20}
+                          />
+                          <span>{formatDate(rel.datePublished)}</span>
+                        </div>
+                        <span className={styles.cardReadLink}>
+                          Read Guide
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                            <polyline points="12 5 19 12 12 19" />
+                          </svg>
+                        </span>
                       </div>
                     </Link>
                   ))}

@@ -1,5 +1,14 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Customer SMS gate plan — September 13, 2026
+
+- [x] **Provider guidance received:** Brett supplied SignalWire's September 10 reply permitting one internal LGQ test campaign across BrokePipes and Midwest. Every outbound test message must identify Let's Get Quoted; keyword handling is application-owned. Permission to submit is not campaign approval.
+- [ ] **Execute the [customer SMS gates checklist](docs/customer-sms-gates-checklist-2026-09-13.md):** confirm the separate owner call/voicemail campaign-description amendment; prepare and obtain internal campaign approval and number assignment; verify branding, consent and send-time timezone behavior; complete handset and usage acceptance. Genuine contractor registration and paid dedicated-number lifecycle remain separate rollout gates.
+
+## Workstream Updates (2026-09-14)
+
+- [x] **Platform Blog Catalog Completion & Visual Elevation:** Authored all 17 remaining planned trade guide drafts in `src/lib/platform-blog-drafts.ts` with complete block structures (checklists, customer SMS scripts, follow-up cadences, TCO worksheets, and SEO metadata), completing the 26-article master editorial plan (9 seed published + 17 drafts in memory store). Generated and mapped 17 dedicated photorealistic editorial images under `public/blog/`. Overhauled `/blog` and `/blog/[slug]` styling (`src/app/blog/blog.module.css`, `BlogIndexClient.tsx`, `BlogArticleClient.tsx`, `page.tsx`) with animated floating ambient light orbs, blueprint grid texture overlay, glassmorphic cards, category color-coded badges, floating sticky reading companion with progress indicator and quick-share actions, custom-styled trade checklist bullets, and icon-coded callout blocks. Verified typecheck clean and 22/22 tests passing across `test/platform-blog.test.ts` and `test/api-cron-blog.test.ts`.
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.

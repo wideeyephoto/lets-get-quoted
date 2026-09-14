@@ -161,6 +161,17 @@ export default async function BlogPage() {
               <p className={styles.heroLead}>
                 No corporate fluff, no agency jargon. Math-first breakdowns on cash flow, pricing, crew accountability, and beating shared lead traps.
               </p>
+              <div className={styles.heroStatsRow}>
+                <span className={styles.heroStatChip}>
+                  <span>⚡</span> <b>26</b> Tactical Playbooks
+                </span>
+                <span className={styles.heroStatChip}>
+                  <span>📊</span> <b>Math-First</b> Cash Flow
+                </span>
+                <span className={styles.heroStatChip}>
+                  <span>🛠</span> <b>Zero</b> Per-Seat Software Taxes
+                </span>
+              </div>
               <div className={styles.feedBadges}>
                 <Link href="/blog/rss.xml" className={styles.feedLink} title="Subscribe via RSS">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">

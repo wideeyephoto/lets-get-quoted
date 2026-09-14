@@ -949,11 +949,19 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
   },
 ];
 
+import { DRAFT_BLOG_POSTS } from './platform-blog-drafts';
+export { DRAFT_BLOG_POSTS };
+
+export const ALL_INITIAL_BLOG_POSTS: PlatformBlogPost[] = [
+  ...SEED_BLOG_POSTS,
+  ...DRAFT_BLOG_POSTS,
+];
+
 // In-memory store for runtime post modifications in environments without DB tables
 const memoryPostStore = new Map<string, PlatformBlogPost>();
 
-// Initialize memory store with seed posts
-for (const post of SEED_BLOG_POSTS) {
+// Initialize memory store with seed posts and planned drafts
+for (const post of ALL_INITIAL_BLOG_POSTS) {
   memoryPostStore.set(post.id, { ...post });
 }
 
