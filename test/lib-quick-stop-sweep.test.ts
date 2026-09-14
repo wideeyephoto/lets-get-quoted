@@ -27,6 +27,10 @@ describe('Quick Stop Sweep Lib', () => {
       lt: vi.fn().mockReturnThis(),
       lte: vi.fn().mockReturnThis(),
       in: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
       update: vi.fn().mockReturnThis(),
       maybeSingle: vi.fn(),
       then: vi.fn((resolve) => resolve({ data: [] }))
@@ -101,7 +105,10 @@ describe('Quick Stop Sweep Lib', () => {
             account_id: 'acct3',
             job_id: 'job3',
             arrival_date: '2023-05-01',
-            arrival_end: '10:00', // Ended at 10am UTC, now is 3pm UTC. (5 hours ago, so past 2h grace)
+            // Wall clock in the ACCOUNT's zone, not UTC. With no accounts row in
+            // this fixture the sweep falls back to America/New_York, so 10:00
+            // local is 14:00Z; now is 20:00Z, comfortably past the 2h grace.
+            arrival_end: '10:00',
             no_show_reported_at: null
           }]
         });
@@ -128,7 +135,7 @@ describe('Quick Stop Sweep Lib', () => {
             id: 'req3', 
             account_id: 'acct3',
             arrival_date: '2023-05-01',
-            arrival_end: '23:59', // Very late to ensure it's within grace
+            arrival_end: '23:59', // 03:59Z the next day once zoned -- still within grace
             no_show_reported_at: null
           }]
         });

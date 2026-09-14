@@ -1,8 +1,14 @@
 import type { ReactNode } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getQuickStopRequestById } from '@/lib/quick-stop-requests';
-import { QUICK_STOP_STATUS_LABEL, centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
-import { loadRefundTiers } from '@/lib/quick-stop-refunds';
+import {
+  QUICK_STOP_STATUS_LABEL,
+  QUICK_STOP_NO_SHOW_GRACE_MS,
+  centsToDollars,
+  type QuickStopStatus,
+} from '@/lib/quick-stop';
+import { zonedInstant } from '@/lib/arrival';
+import { loadRefundContext } from '@/lib/quick-stop-refunds';
 import { renderRefundPolicy } from '@/lib/quick-stop-policy';
 import {
   customerCancelQuickStopAction,
@@ -70,12 +76,24 @@ export default async function QuickStopStatusPage({
   // swallows its own error, so a pre-migration account (no
   // extra_stop_refund_tiers column yet) falls back to the built-in defaults
   // rather than taking the customer's status page down.
-  const refundPolicy = renderRefundPolicy(await loadRefundTiers(admin, req.account_id));
+  // loadRefundContext returns the account's zone alongside its tiers, for the
+  // no-show cutoff below.
+  const { tiers: refundTiers, timeZone } = await loadRefundContext(admin, req.account_id);
+  const refundPolicy = renderRefundPolicy(refundTiers);
   const status = req.status as QuickStopStatus;
   const when = req.arrival_date ? `${req.arrival_date}${req.arrival_start ? `, ${fmtTime(req.arrival_start)}–${fmtTime(req.arrival_end)}` : ''}` : null;
 
-  const endMs = req.arrival_date && req.arrival_end ? new Date(`${req.arrival_date}T${req.arrival_end}`).getTime() : NaN;
-  const canReportNoShow = ['confirmed', 'en_route'].includes(status) && !req.arrived_at && (!Number.isFinite(endMs) || Date.now() <= endMs + 2 * 60 * 60 * 1000);
+  /* THE BUTTON HAS TO AGREE WITH THE ACTION BEHIND IT.
+     reportNoShowQuickStopAction enforces the same 2-hour cutoff, and both used to
+     resolve the window's bare date + bare time in the SERVER's zone. On a UTC host
+     that hid this button 4 hours early for an Eastern account and 7 for a Pacific
+     one, so a homeowner whose tech never arrived had no way to say so — the
+     control was gone before the window it is measured from had even closed. */
+  const noShowCutoff = req.arrival_date && req.arrival_end ? zonedInstant(req.arrival_date, req.arrival_end, timeZone) : null;
+  const canReportNoShow =
+    ['confirmed', 'en_route'].includes(status) &&
+    !req.arrived_at &&
+    (!noShowCutoff || Date.now() <= noShowCutoff.getTime() + QUICK_STOP_NO_SHOW_GRACE_MS);
   const canCancel = ['awaiting_customer_payment', 'confirmed', 'en_route'].includes(status);
 
   return (

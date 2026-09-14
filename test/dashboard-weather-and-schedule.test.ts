@@ -581,15 +581,29 @@ describe('dashboard weather and schedule actions', () => {
       });
       mocks.createJob.mockResolvedValue({ id: 'job-new-qs' });
 
-      // 2026-09-16 is a Wednesday (day 3)
-      const formData = new FormData();
-      formData.set('arrivalDate', '2026-09-16');
-      formData.set('arrivalStart', '09:00');
-      formData.set('arrivalEnd', '11:00');
-      formData.set('fee', '99');
-      formData.set('visitMinutes', '30');
+      /* THE CLOCK HAS TO BE PINNED for this to keep meaning what it says.
+         The offer date was a hardcoded future Wednesday, which worked only because
+         createQuickStopOfferAction did not validate the DAY at all -- it checked the
+         weekday and the times and nothing else. Now that the action enforces the
+         account's `daysAhead` horizon (default: today or tomorrow) and refuses a
+         date in the past, a fixed date drifts out of the allowed window as the
+         calendar moves, and this test would have started failing on its own. Frozen
+         so 2026-09-16 really is "today" in the account's zone. */
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-09-16T13:00:00Z')); // 09:00 in America/New_York
+      try {
+        // 2026-09-16 is a Wednesday (day 3)
+        const formData = new FormData();
+        formData.set('arrivalDate', '2026-09-16');
+        formData.set('arrivalStart', '09:00');
+        formData.set('arrivalEnd', '11:00');
+        formData.set('fee', '99');
+        formData.set('visitMinutes', '30');
 
-      await createQuickStopOfferAction('qs-1', formData);
+        await createQuickStopOfferAction('qs-1', formData);
+      } finally {
+        vi.useRealTimers();
+      }
 
       expect(mocks.createJob).toHaveBeenCalled();
       expect(mocks.sendQuickStopOffer).toHaveBeenCalledWith(mockDb, accountId, 'qs-1');

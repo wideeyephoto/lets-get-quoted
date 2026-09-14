@@ -11,15 +11,24 @@ import {
   quickStopSettingsFromAccount,
   clampFeeCents,
   dollarsToCents,
+  isAllowedQuickStopDay,
+  zonedNowParts,
+  DEFAULT_QUICK_STOP_TIME_ZONE,
+  QUICK_STOP_OFFERABLE_STATUSES,
+  QUICK_STOP_DAY_OCCUPYING_STATUSES,
 } from '@/lib/quick-stop';
 import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { geocodeArea } from '@/lib/geocode';
 import { computeQuickStopRoute } from '@/lib/quick-stop-route';
+import { quickStopWindowPhrase } from '@/lib/quick-stop-window';
 import { sendQuickStopOffer } from '@/lib/quick-stop-payments';
 
-const OFFERABLE = ['awaiting_contractor', 'more_information_requested'];
-// Statuses that still occupy a slot on a given arrival day (for the daily cap).
-const DAY_OCCUPYING = ['contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'];
+// Both lists now live in lib/quick-stop, beside QUICK_STOP_TRANSITIONS, so the
+// table and the guards that implement it are pinned together by a test instead of
+// being two copies of one decision that drifted for a year. Aliased locally to
+// keep the call sites below reading the way they did.
+const OFFERABLE: readonly string[] = QUICK_STOP_OFFERABLE_STATUSES;
+const DAY_OCCUPYING: readonly string[] = QUICK_STOP_DAY_OCCUPYING_STATUSES;
 
 // Contractor declines a request outright. Terminal.
 export async function declineQuickStopAction(requestId: string, formData: FormData) {
@@ -80,7 +89,7 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
     .eq('id', accountId)
     .single();
   const settings = quickStopSettingsFromAccount(accountRow as Parameters<typeof quickStopSettingsFromAccount>[0]);
-  const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
+  const timezone = (accountRow as { timezone?: string } | null)?.timezone || DEFAULT_QUICK_STOP_TIME_ZONE;
 
   // Fail early (before creating a placeholder job) if payouts aren't set up —
   // the customer wouldn't be able to pay, so the offer can't stand.
@@ -108,7 +117,31 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
   if (arrivalEnd > settings.latestEnd) throw new Error(`The window can’t end after ${settings.latestEnd}.`);
   if (feeCents <= 0) throw new Error('Enter a Quick Stop fee.');
 
+  /* THE DAY WAS NEVER CHECKED — only the weekday and the times were.
+     Nothing stopped an offer being dated in the past, and a past-dated offer is
+     immediately auto-completable by the sweep and immediately trips the
+     contractorMissedWindow tier, which is a 100% refund. Nothing checked
+     `daysAhead` either, even though the customer-facing picker enforces it, so the
+     contractor could commit to a day their own settings say they do not serve.
+     Both are judged in the contractor's zone — a UTC host's idea of "today" is
+     tomorrow for a good part of every evening. */
+  const { dateKey: todayKey } = zonedNowParts(new Date(), timezone);
+  if (arrivalDate < todayKey) throw new Error('That date has already passed.');
+  if (!isAllowedQuickStopDay(arrivalDate, settings, { timeZone: timezone })) {
+    // The window is READ OFF the setting via quickStopWindowPhrase rather than
+    // asserted, for the reason lib/quick-stop-window exists: an account set to a
+    // week out must not be told its own feature is same-day.
+    const window = quickStopWindowPhrase(settings.daysAhead);
+    throw new Error(
+      arrivalDate === todayKey
+        ? `Today’s last arrival time (${settings.latestEnd}) has passed, so today can no longer be offered.`
+        : `You take Quick Stops ${window}, and that date is outside it.`,
+    );
+  }
+
   // Daily Quick Stop cap for that date (separate from normal booking capacity).
+  // Cheap pre-check so the common rejection is instant and says something useful;
+  // the binding check is the re-count after the claim below.
   const { data: sameDay } = await supabase
     .from('extra_stop_requests')
     .select('id')
@@ -119,16 +152,50 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
     throw new Error(`You’re at your Quick Stop limit (${settings.maxPerDay}) for that day.`);
   }
 
-  // Claim the request in a single update so a double-submit can't create two placeholders.
+  /* THE CLAIM NOW TAKES THE DAY, NOT JUST THE REQUEST.
+     The count above and the claim below were two separate round trips, and the
+     claim only wrote `status` — `arrival_date` was stamped later, in the update
+     after the job was created. So the row did not occupy the day until well after
+     it had been counted, and two DIFFERENT requests offered for the same date at
+     the same time both read a count under the cap and both went through. The old
+     comment was accurate about what the compare-and-set protected (one request
+     against a double submit) and silent about what it did not (the day against
+     two requests). Writing arrival_date here makes the claim the reservation. */
   const { data: claimed } = await supabase
     .from('extra_stop_requests')
-    .update({ status: 'contractor_offer_sent', updated_at: new Date().toISOString() })
+    .update({ status: 'contractor_offer_sent', arrival_date: arrivalDate, updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('id', requestId)
     .in('status', OFFERABLE)
     .select('id')
     .maybeSingle();
   if (!claimed) throw new Error('This request was just updated — reload and try again.');
+
+  /* Re-count now that we are visibly holding the day, and settle any tie the same
+     way on both sides: oldest requests keep the slots. A plain "am I over?" test
+     would make two racing offers BOTH stand down, losing a slot that was free —
+     ordering by created_at means exactly one set of winners, whichever order the
+     two transactions happened to interleave in. */
+  const releaseDay = async () => {
+    await supabase
+      .from('extra_stop_requests')
+      .update({ status: request.status, arrival_date: null, updated_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('id', requestId)
+      .eq('status', 'contractor_offer_sent');
+  };
+  const { data: occupants } = await supabase
+    .from('extra_stop_requests')
+    .select('id, created_at')
+    .eq('account_id', accountId)
+    .eq('arrival_date', arrivalDate)
+    .in('status', DAY_OCCUPYING)
+    .order('created_at', { ascending: true });
+  const keeping = (occupants ?? []).slice(0, settings.maxPerDay).map((row) => (row as { id: string }).id);
+  if ((occupants?.length ?? 0) > settings.maxPerDay && !keeping.includes(requestId)) {
+    await releaseDay();
+    throw new Error(`You’re at your Quick Stop limit (${settings.maxPerDay}) for that day.`);
+  }
 
   // Route cost vs the final scheduled stop that day (best-effort).
   const target = request.lat != null && request.lng != null ? { lat: request.lat, lng: request.lng } : null;
@@ -180,9 +247,43 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
     meta: { feeCents, arrivalDate, arrivalStart, arrivalEnd },
   });
 
-  // Create the payment request, start the 15-minute clock, and text the customer
-  // the pay link — moves the request to awaiting_customer_payment.
-  await sendQuickStopOffer(supabase, accountId, requestId);
+  /* Create the payment request, start the 15-minute clock, and text the customer
+     the pay link — moves the request to awaiting_customer_payment.
+
+     IF THIS THROWS, PUT EVERYTHING BACK. Nothing swept `contractor_offer_sent`, so
+     a Stripe error here used to leave the request stranded in a status no cleanup
+     path looked at, with a live placeholder job on the calendar. And because that
+     status counts in DAY_OCCUPYING, each stranded row silently ate one of the
+     account's daily slots for good and blocked that customer's duplicate guard
+     from ever clearing. The contractor got an error and no way to retry.
+
+     The sweep now has a backstop for the case where the process dies before this
+     catch can run (see step 4 of sweepQuickStopOffers), but the catch is what
+     handles the ordinary failure, immediately and while we still know the job id. */
+  try {
+    await sendQuickStopOffer(supabase, accountId, requestId);
+  } catch (error) {
+    await supabase
+      .from('extra_stop_requests')
+      .update({ status: request.status, job_id: null, arrival_date: null, updated_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('id', requestId)
+      .eq('status', 'contractor_offer_sent');
+    await supabase.from('jobs').update({ status: 'archived' }).eq('id', job.id).eq('account_id', accountId);
+    await logQuickStopEvent(supabase, accountId, requestId, {
+      actor: 'system',
+      from: 'contractor_offer_sent',
+      to: request.status,
+      meta: { reason: 'offer_handoff_failed', error: error instanceof Error ? error.message : String(error) },
+    });
+    revalidatePath('/dashboard/quick-stops');
+    revalidatePath('/dashboard/schedule');
+    throw new Error(
+      `The offer couldn’t be sent, so nothing was charged and the request is back in your queue. ${
+        error instanceof Error ? error.message : 'Please try again.'
+      }`,
+    );
+  }
 
   revalidatePath('/dashboard/quick-stops');
   revalidatePath('/dashboard/schedule');

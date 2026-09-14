@@ -7,10 +7,14 @@ import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
 import { updateJobSchedule } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
 import { sendQuickStopStatusSms } from '@/lib/sms';
+import { DEFAULT_QUICK_STOP_TIME_ZONE, QUICK_STOP_NO_SHOW_GRACE_MS } from '@/lib/quick-stop';
+import { zonedInstant } from '@/lib/arrival';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
-const NO_SHOW_GRACE_MS = 2 * 60 * 60 * 1000; // 2 hours after the window to report
+// Shared with the status page that renders the button for this action, so the
+// control and the rule behind it cannot drift apart. See lib/quick-stop.
+const NO_SHOW_GRACE_MS = QUICK_STOP_NO_SHOW_GRACE_MS;
 
 // Customer cancels their Quick Stop. Refund follows the tier policy (full within
 // 5 min of paying, then decreasing as the visit gets closer). Public — keyed by
@@ -36,8 +40,16 @@ export async function reportNoShowQuickStopAction(requestId: string) {
   if (req.arrived_at || !['confirmed', 'en_route'].includes(req.status)) {
     redirect(`/quick-stop/${requestId}?error=state`);
   }
-  const endMs = req.arrival_date && req.arrival_end ? new Date(`${req.arrival_date}T${req.arrival_end}`).getTime() : NaN;
-  if (Number.isFinite(endMs) && Date.now() > endMs + NO_SHOW_GRACE_MS) {
+  /* THE CUSTOMER'S ONLY REMEDY, AND IT WAS THE FIRST THING TO CLOSE.
+     `arrival_end` is wall clock in the contractor's zone; read with
+     `new Date(`${date}T${time}`)` it resolved in the SERVER's zone, so on a UTC
+     host this window shut 4 hours early for an Eastern account and 7 for a
+     Pacific one — before the visit window it is measured from had even ended. A
+     homeowner whose tech never turned up was told "too late to report". */
+  const { data: account } = await admin.from('accounts').select('timezone').eq('id', req.account_id).maybeSingle();
+  const timeZone = (account as { timezone?: string | null } | null)?.timezone || DEFAULT_QUICK_STOP_TIME_ZONE;
+  const end = req.arrival_date && req.arrival_end ? zonedInstant(req.arrival_date, req.arrival_end, timeZone) : null;
+  if (end && Date.now() > end.getTime() + NO_SHOW_GRACE_MS) {
     redirect(`/quick-stop/${requestId}?error=late`);
   }
   await admin.from('extra_stop_requests').update({ no_show_reported_at: new Date().toISOString() }).eq('id', requestId);

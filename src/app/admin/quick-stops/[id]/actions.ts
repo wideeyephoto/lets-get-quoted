@@ -9,6 +9,17 @@ import { getQuickStopRequestById, logQuickStopEvent } from '@/lib/quick-stop-req
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
 import { refundPayment } from '@/lib/payments';
 
+/**
+ * A visit can only be marked done if it ever started.
+ *
+ * This path had no status precondition at all, so staff could force `completed`
+ * onto a request that had been declined or had expired unpaid. That is not just an
+ * untidy record: `completed` is inside RESOLVABLE_FROM.no_show, so a forced
+ * completion put an unpaid request back within reach of the escalating account
+ * lock on a second click.
+ */
+const COMPLETABLE_FROM: readonly string[] = ['confirmed', 'en_route', 'arrived', 'no_show_reported', 'disputed'];
+
 function backTo(id: string, query: string): never {
   redirect(`/admin/quick-stops/${id}?${query}`);
 }
@@ -95,7 +106,10 @@ export async function adminResolveQuickStopAction(requestId: string, formData: F
       actor: ctx,
     });
   } else if (outcome === 'completed') {
-    const { error } = await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId);
+    if (!COMPLETABLE_FROM.includes(req.status)) backTo(requestId, 'error=state');
+    // Compare-and-set on the status we read, so a concurrent resolution cannot be
+    // silently overwritten by this one.
+    const { error } = await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId).eq('status', req.status);
     if (error) {
       console.error('Quick Stop completed resolution failed:', error);
       backTo(requestId, 'error=state');

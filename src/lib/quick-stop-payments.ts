@@ -2,11 +2,36 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { createDepositRequest, refundPayment } from '@/lib/payments';
 import { getQuickStopRequest, logQuickStopEvent } from '@/lib/quick-stop-requests';
-import { centsToDollars } from '@/lib/quick-stop';
+import { centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
 import { sendQuickStopOfferSms, sendQuickStopConfirmedSms } from '@/lib/sms';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+
+/**
+ * Statuses from which a LATE charge must be handed straight back.
+ *
+ * This was `offer_expired` alone, which covered only the sweep's own race. But the
+ * pay link stops being valid the moment the request leaves
+ * `awaiting_customer_payment` by ANY route — the customer declining, either side
+ * cancelling, the contractor withdrawing — and Stripe can still deliver a charge
+ * that was already in flight. On every one of those the money was simply kept
+ * against no appointment, which is the one thing the code around this says must
+ * never happen.
+ *
+ * `confirmed` and everything past it is deliberately absent: those have an
+ * appointment, so the charge is correct and the compare-and-set above already took
+ * it. Terminal money states (`refunded`, `disputed`) are absent too — they have
+ * their own resolution and must not be overwritten by this path.
+ */
+export const LATE_PAYMENT_REFUNDABLE: readonly string[] = [
+  'offer_expired',
+  'customer_declined',
+  'contractor_declined',
+  'customer_canceled',
+  'contractor_canceled',
+  'no_show_confirmed',
+];
 
 function fmtTime(hhmm: string | null): string {
   if (!hhmm) return '';
@@ -123,29 +148,34 @@ export async function confirmQuickStopPayment(admin: SupabaseClient, paymentId: 
     .select('*')
     .maybeSingle();
   if (!confirmed) {
-    // Money-safety race: the sweep expired this offer (failing the pending
-    // payment) but the charge still landed a moment later. Never keep money
-    // without an appointment — refund it in full and mark it refunded.
+    // Money-safety race: the offer stopped being payable (the sweep expired it, or
+    // either side walked away) but the charge still landed a moment later. Never
+    // keep money without an appointment — refund it in full and mark it refunded.
     const { data: stale } = await admin
       .from('extra_stop_requests')
       .select('id, account_id, status, fee_cents, refund_cents')
       .eq('payment_id', paymentId)
       .maybeSingle();
-    if (stale && stale.status === 'offer_expired' && !stale.refund_cents) {
+    if (stale && LATE_PAYMENT_REFUNDABLE.includes(stale.status as string) && !stale.refund_cents) {
       try {
         await refundPayment(admin, stale.account_id as string, paymentId);
         await admin
           .from('extra_stop_requests')
           .update({ status: 'refunded', refund_cents: stale.fee_cents ?? 0, updated_at: nowIso })
           .eq('id', stale.id)
-          .eq('status', 'offer_expired');
+          .eq('status', stale.status as string)
+          .eq('refund_cents', 0);
         await logQuickStopEvent(admin, stale.account_id as string, stale.id as string, {
           actor: 'system',
-          from: 'offer_expired',
+          from: stale.status as QuickStopStatus,
           to: 'refunded',
-          meta: { reason: 'late_payment_after_expiry', paymentId },
+          meta: { reason: 'late_payment_after_close', paymentId },
         });
       } catch (error) {
+        // Loud, because this is money we are holding against no appointment. The
+        // request keeps its current status and a non-zero refund is never recorded,
+        // so a retry (admin refund, or the legacy late-refund worker) still sees it
+        // as outstanding rather than as settled.
         console.error('Quick Stop late-payment refund failed:', error instanceof Error ? error.message : error);
       }
     }
