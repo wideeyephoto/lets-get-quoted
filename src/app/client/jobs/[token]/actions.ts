@@ -159,9 +159,11 @@ export async function approveClientJobQuoteAction(token: string, formData: FormD
  */
 export async function updateQuoteOptionsAction(token: string, formData: FormData) {
   const addonIds = formData.getAll('addon').map((value) => value.toString());
-  const result = await updateClientQuoteOptions(token, addonIds);
-  revalidatePath(`/client/jobs/${token}`);
-  redirect(`/client/jobs/${token}?${result.ok ? 'options-updated=1' : 'options-failed=1'}`);
+  const result = await updateClientQuoteOptions(token, addonIds, {
+    requestId:String(formData.get('request_id')??''),revision:String(formData.get('quote_revision')??''),
+  });
+  if(result.ok) revalidatePath(`/client/jobs/${token}`);
+  return result;
 }
 
 // The other thing a person can want to do with a quote. See lib/client-question.

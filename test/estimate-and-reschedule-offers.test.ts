@@ -1,3 +1,5 @@
+vi.mock('@/lib/quote-option-requests',async(importOriginal)=>({...await importOriginal<typeof import('@/lib/quote-option-requests')>(),quoteOptionRevision:vi.fn().mockReturnValue('a'.repeat(64)),findQuoteOptionReceipt:vi.fn().mockResolvedValue(null)}));
+const request={requestId:'10000000-0000-4000-8000-000000000099',revision:'a'.repeat(64)};
 vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:vi.fn().mockResolvedValue({})}));
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -353,7 +355,7 @@ describe('Estimate and Reschedule Offers Core Business Logic', () => {
         return createFluentBuilder();
       });
 
-      const result = await updateClientQuoteOptions('valid-token-123', ['opt-1']);
+      const result = await updateClientQuoteOptions('valid-token-123', ['opt-1'], request);
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.total).toBe(1200);
@@ -362,7 +364,7 @@ describe('Estimate and Reschedule Offers Core Business Logic', () => {
 
     it('returns error when token is invalid or expired', async () => {
       mocks.resolveJobAccess.mockResolvedValue(null);
-      const result = await updateClientQuoteOptions('expired-token', []);
+      const result = await updateClientQuoteOptions('expired-token', [], request);
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.message).toContain('no longer valid');

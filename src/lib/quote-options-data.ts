@@ -1,4 +1,5 @@
 import { runOwnerEventNotices } from '@/lib/owner-event-notices';
+import {findQuoteOptionReceipt,quoteOptionRequestHash,quoteOptionRevision,type QuoteOptionRequest} from '@/lib/quote-option-requests';
 import { createAdminClient } from '@/lib/auth';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { computeQuoteTotal, parseQuoteItems, formatMoneyExact } from '@/lib/jobs';
@@ -22,12 +23,21 @@ import {
 
 export type OptionUpdateResult = { ok: true; total: number } | { ok: false; message: string };
 
-export async function updateClientQuoteOptions(token: string, addonIds: string[]): Promise<OptionUpdateResult> {
+export async function updateClientQuoteOptions(token: string, addonIds: string[], request: QuoteOptionRequest): Promise<OptionUpdateResult> {
   const access = await resolveJobAccess(token);
   if (!access) return { ok: false, message: 'This link is no longer valid. Ask your contractor to resend it.' };
 
   const admin = createAdminClient();
   const { accountId, jobId } = access;
+  let payloadHash:string;
+  try {
+    payloadHash=quoteOptionRequestHash(jobId,addonIds,request);
+    const receipt=await findQuoteOptionReceipt(admin,accountId,request,payloadHash);
+    if(receipt){
+      if(receipt.event_id)try{await runOwnerEventNotices(admin,{sourceId:receipt.event_id,accountId});}catch{/* Retained for background pickup. */}
+      return {ok:true,total:Number(receipt.total)};
+    }
+  } catch(error){return {ok:false,message:error instanceof Error?error.message:'Could not check your saved change.'};}
 
   const { data: job, error: jobError } = await admin
     .from('jobs')
@@ -37,6 +47,9 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
     .maybeSingle();
   if (jobError) return { ok: false, message: 'We could not check your quote. Please try again.' };
   if (!job) return { ok: false, message: 'We could not find this job.' };
+  if(quoteOptionRevision(job.quote_items,job.quoted_amount)!==request.revision){
+    return {ok:false,message:'This quote changed since you opened it. Reload the latest quote and review your choices.'};
+  }
 
   // The contractor's switch and their timezone, read defensively: the switch
   // ships behind its own migration, and a database without it means "off",
@@ -94,11 +107,10 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
   const chosen = addonIds.filter((id) => validIds.has(id));
 
   const change = describeOptionChange(items, chosen);
-  if (!change.changed) return { ok: true, total: Number(job.quoted_amount) || 0 };
 
   const finalized = applyOptionChoice(items, chosen);
   const previousTotal = Number(job.quoted_amount) || 0;
-  const newTotal = computeQuoteTotal(finalized);
+  const newTotal = change.changed ? computeQuoteTotal(finalized) : previousTotal;
   if (!Number.isFinite(newTotal) || newTotal < 0) {
     return { ok: false, message: 'We could not verify the updated quote total. Please contact your contractor.' };
   }
@@ -119,10 +131,11 @@ export async function updateClientQuoteOptions(token: string, addonIds: string[]
     ? `${clientName} removed work from ${job.ref ?? 'their job'}`
     : `${clientName} added work to ${job.ref ?? 'their job'}`;
   const body = `${sentence} The total changed from ${formatMoneyExact(previousTotal)} to ${formatMoneyExact(newTotal)}. Check any existing invoice before sending it.`;
-  const saved = await admin.rpc('save_client_quote_options', {
+  const saved = await admin.rpc('save_client_quote_option_request', {
     p_account_id: accountId, p_job_id: jobId,
+    p_request_id:request.requestId,p_payload_hash:payloadHash,
     p_expected: {status:job.status,started_at:job.started_at??null,scheduled_for:job.scheduled_for??null,quote_items:job.quote_items??null,quoted_amount:job.quoted_amount??null},
-    p_items: finalized, p_total: newTotal, p_title: title, p_body: body,
+    p_items: change.changed ? finalized : job.quote_items, p_total: newTotal, p_title: title, p_body: body,
   });
   if (saved.error || !saved.data || saved.data.total !== newTotal) {
     return {ok:false,message:'We could not save these options. Refresh the quote and check your choices before trying again.'};

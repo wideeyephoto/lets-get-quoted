@@ -1,4 +1,6 @@
 'use client';
+import {useRef,useState,useTransition} from 'react';
+import type {OptionUpdateResult} from '@/lib/quote-options-data';
 
 import SaveButton from '@/components/save-button';
 import SignaturePad from '@/components/signature-pad';
@@ -244,23 +246,44 @@ export default function QuoteAcceptance({
  */
 export function QuoteOptionsUpdate({
   updateAction,
+  revision,
   until,
   businessName,
 }: {
-  updateAction: (formData: FormData) => void;
+  updateAction: (formData: FormData) => Promise<OptionUpdateResult>;
+  revision: string;
   /** The last day changes are taken, already formatted. Null when unscheduled. */
   until: string | null;
   businessName: string;
 }) {
   const { hasOptionChanges, committedTotal, total, addons, selected } = useQuoteDeck();
+  const attempt=useRef<{id:string;revision:string}|null>(null);
+  const [pending,startTransition]=useTransition();
+  const [message,setMessage]=useState<string|null>(null);
+  const [failed,setFailed]=useState(false);
 
   const added = addons.filter((addon) => selected[addon.id] && !addon.selected);
   const removed = addons.filter((addon) => !selected[addon.id] && addon.selected);
   const difference = total - committedTotal;
 
   return (
-    <form action={updateAction} id={QUOTE_FORM_ID} className="quote-rail-card quote-options-update">
+    <form action={formData=>{
+      if(pending)return;
+      attempt.current??={id:crypto.randomUUID(),revision};
+      formData.set('request_id',attempt.current.id);
+      formData.set('quote_revision',attempt.current.revision);
+      setMessage(null);setFailed(false);
+      startTransition(async()=>{
+        try{
+          const result=await updateAction(formData);
+          if(result.ok){attempt.current=null;setMessage('Your option change was saved.');}
+          else {setFailed(true);setMessage(result.message);}
+        }catch{setFailed(true);setMessage('We could not confirm the save. Retry the same choices.');}
+      });
+    }} id={QUOTE_FORM_ID} className="quote-rail-card quote-options-update">
       <p className="quote-rail-eyebrow">Change your options</p>
+      {message?<p role="status">{message}</p>:null}
+      {failed?<button type="button" onClick={()=>window.location.reload()}>Reload latest quote</button>:null}
 
       {hasOptionChanges ? (
         <>
@@ -290,11 +313,11 @@ export function QuoteOptionsUpdate({
               </dd>
             </div>
           </dl>
-          <SaveButton className="btn primary quote-rail-approve" pendingLabel="Updating…" savedLabel="Updated ✓">
-            Confirm change · {formatUsd(total)}
-          </SaveButton>
+          <button type="submit" disabled={pending} className="btn primary quote-rail-approve">
+            {pending?'Updating…':<>Confirm change · {formatUsd(total)}</>}
+          </button>
           <p className="quote-doc-fineprint">
-            {businessName} is told straight away. Anything already invoiced or paid is settled against the new total.
+            Your saved change includes a notice for {businessName}. Existing invoices may need to be updated by your contractor.
           </p>
         </>
       ) : (

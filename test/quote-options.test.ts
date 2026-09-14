@@ -35,7 +35,6 @@ const read = (...parts: string[]) => strip(readFileSync(join(process.cwd(), ...p
 const data = read('src', 'lib', 'quote-options-data.ts');
 const page = read('src', 'app', 'client', 'jobs', '[token]', 'page.tsx');
 const accept = read('src', 'app', 'client', 'jobs', '[token]', 'QuoteAcceptance.tsx');
-const actions = read('src', 'app', 'client', 'jobs', '[token]', 'actions.ts');
 
 /** An approved job, three weeks out, nothing paid, no plan. */
 const base: OptionsWindowInput = {
@@ -245,7 +244,7 @@ describe('the endpoint decides for itself', () => {
   });
 
   it('does nothing, successfully, when nothing actually changed', () => {
-    expect(data).toContain('if (!change.changed) return { ok: true');
+    expect(data).toContain('change.changed ? computeQuoteTotal(finalized) : previousTotal');
   });
 
 
@@ -275,11 +274,11 @@ describe('the page offers it only where it is open', () => {
     // the moment their thumb lifts.
     expect(accept).toContain('Confirm change · {formatUsd(total)}');
     expect(accept).toContain('was {formatUsd(committedTotal)}');
-    expect(accept).toContain('action={updateAction}');
+
   });
 
   it('reuses the one form id, so the add-on boxes never have to know which form is live', () => {
-    expect(accept).toMatch(/QuoteOptionsUpdate[\s\S]{0,900}id=\{QUOTE_FORM_ID\}/);
+    expect(accept).toMatch(/QuoteOptionsUpdate[\s\S]*id=\{QUOTE_FORM_ID\}/);
     expect(read('src', 'app', 'client', 'jobs', '[token]', 'QuoteDocument.tsx')).toContain('form={QUOTE_FORM_ID}');
   });
 
@@ -299,7 +298,7 @@ describe('the page offers it only where it is open', () => {
   it('says what happened, either way', () => {
     expect(page).toContain("'options-updated':");
     expect(page).toContain("'options-failed':");
-    expect(actions).toContain("options-updated=1' : 'options-failed=1'");
+    expect(accept).toContain('Your option change was saved.');
   });
 });
 

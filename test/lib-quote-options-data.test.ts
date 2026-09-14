@@ -1,3 +1,5 @@
+vi.mock('@/lib/quote-option-requests',async(importOriginal)=>({...await importOriginal<typeof import('@/lib/quote-option-requests')>(),quoteOptionRevision:vi.fn().mockReturnValue('a'.repeat(64)),findQuoteOptionReceipt:vi.fn().mockResolvedValue(null)}));
+const request={requestId:'10000000-0000-4000-8000-000000000099',revision:'a'.repeat(64)};
 vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:vi.fn().mockResolvedValue({})}));
 import {runOwnerEventNotices} from '@/lib/owner-event-notices';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -67,14 +69,14 @@ describe('Quote Options Data Lib', () => {
 
   it('returns error if access fails', async () => {
     (resolveJobAccess as any).mockResolvedValue(null);
-    const res = await updateClientQuoteOptions('token', ['1']);
+    const res = await updateClientQuoteOptions('token', ['1'], request);
     expect(res).toEqual({ ok: false, message: expect.any(String) });
   });
 
   it('returns error if job not found', async () => {
     (resolveJobAccess as any).mockResolvedValue({ accountId: 'a1', jobId: 'j1' });
     queryMock.maybeSingle.mockResolvedValueOnce({ data: null }); // job query
-    const res = await updateClientQuoteOptions('token', ['1']);
+    const res = await updateClientQuoteOptions('token', ['1'], request);
     expect(res.ok).toBe(false);
   });
 
@@ -88,7 +90,7 @@ describe('Quote Options Data Lib', () => {
     (jobsModule.parseQuoteItems as any).mockReturnValue([{ id: 'add1', kind: 'addon' }]);
     (quoteOptionsModule.quoteOptionsWindow as any).mockReturnValue({ open: false });
 
-    const res = await updateClientQuoteOptions('token', ['add1']);
+    const res = await updateClientQuoteOptions('token', ['add1'], request);
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.message).toMatch(/no longer open/);
@@ -127,10 +129,10 @@ describe('Quote Options Data Lib', () => {
     (quoteOptionsModule.optionChangeSentence as any).mockReturnValue('They added a thing.');
     (getAccountOwnerEmail as any).mockResolvedValue('owner@example.com');
 
-    const res = await updateClientQuoteOptions('token', ['add1']);
+    const res = await updateClientQuoteOptions('token', ['add1'], request);
     
     expect(res).toEqual({ ok: true, total: 200 });
-    expect(supabaseMock.rpc).toHaveBeenCalledWith('save_client_quote_options',expect.objectContaining({p_account_id:'a1',p_job_id:'j1',p_total:200}));
+    expect(supabaseMock.rpc).toHaveBeenCalledWith('save_client_quote_option_request',expect.objectContaining({p_account_id:'a1',p_job_id:'j1',p_total:200}));
     expect(runOwnerEventNotices).toHaveBeenCalledWith(supabaseMock,{sourceId:'saved-event',accountId:'a1'});
     expect(createJobFeedEvent).not.toHaveBeenCalled();expect(sendContractorAlertEmail).not.toHaveBeenCalled();
   });
@@ -148,9 +150,9 @@ describe('Quote Options Data Lib', () => {
     vi.mocked(quoteOptionsModule.optionChangeSentence).mockReturnValue('Removed Gate.');
     if(failSave)supabaseMock.rpc.mockResolvedValue({data:null,error:{message:'conflict'}});
     else vi.mocked(runOwnerEventNotices).mockRejectedValueOnce(new Error('pickup unavailable'));
-    const result=await updateClientQuoteOptions('token',[]);
+    const result=await updateClientQuoteOptions('token',[], request);
     expect(result.ok).toBe(!failSave);
-    expect(supabaseMock.rpc).toHaveBeenCalledWith('save_client_quote_options',expect.objectContaining({
+    expect(supabaseMock.rpc).toHaveBeenCalledWith('save_client_quote_option_request',expect.objectContaining({
       p_title:'Client removed work from JOB-1',p_body:expect.stringContaining('Check any existing invoice'),
       p_expected:{status:'in_progress',started_at:null,scheduled_for:null,quote_items:[],quoted_amount:100}
     }));
@@ -165,7 +167,7 @@ describe('Quote Options Data Lib', () => {
       .mockResolvedValueOnce({data:{client_quote_changes:true},error:failedTable==='settings'?{message:'unavailable'}:null})
       .mockResolvedValueOnce({data:null,error:failedTable==='plan'?{message:'unavailable'}:null});
     queryMock.then.mockImplementation((resolve:any)=>resolve({data:[],error:failedTable==='payments'?{message:'unavailable'}:null}));
-    expect((await updateClientQuoteOptions('token',['add1'])).ok).toBe(false);
+    expect((await updateClientQuoteOptions('token',['add1'], request)).ok).toBe(false);
     expect(queryMock.update).not.toHaveBeenCalled();
     expect(supabaseMock.rpc).not.toHaveBeenCalled();
     expect(createJobFeedEvent).not.toHaveBeenCalled();
@@ -179,7 +181,7 @@ describe('Quote Options Data Lib', () => {
       .mockResolvedValueOnce({data:{client_quote_changes:true}})
       .mockResolvedValueOnce({data:null});
     queryMock.then.mockImplementation((resolve:any)=>resolve({data:paidRows,error:null}));
-    expect((await updateClientQuoteOptions('token',['add1'])).ok).toBe(false);
+    expect((await updateClientQuoteOptions('token',['add1'], request)).ok).toBe(false);
     expect(queryMock.update).not.toHaveBeenCalled();
     expect(supabaseMock.rpc).not.toHaveBeenCalled();
     expect(createJobFeedEvent).not.toHaveBeenCalled();
@@ -198,7 +200,7 @@ describe('Quote Options Data Lib', () => {
     vi.mocked(quoteOptionsModule.describeOptionChange).mockReturnValue({changed:true,removed:[],added:['add1']});
     vi.mocked(quoteOptionsModule.applyOptionChoice).mockReturnValue([]);
     vi.mocked(jobsModule.computeQuoteTotal).mockReturnValue(total);
-    expect((await updateClientQuoteOptions('token',['add1'])).ok).toBe(false);
+    expect((await updateClientQuoteOptions('token',['add1'], request)).ok).toBe(false);
     expect(queryMock.update).not.toHaveBeenCalled();
     expect(supabaseMock.rpc).not.toHaveBeenCalled();
     expect(createJobFeedEvent).not.toHaveBeenCalled();

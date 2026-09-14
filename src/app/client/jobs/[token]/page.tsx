@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import {quoteOptionRevision} from '@/lib/quote-option-requests';
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import SaveButton from '@/components/save-button';
@@ -968,6 +969,7 @@ export default async function ClientJobDashboardPage({
                         screen while it is being changed. */}
                     {optionsWindow.open ? (
                       <QuoteOptionsUpdate
+                        revision={quoteOptionRevision(items,signatureRow?.quoted_amount)}
                         updateAction={updateQuoteOptionsAction.bind(null, params.token)}
                         until={optionsWindow.until ? formatDay(optionsWindow.until) : null}
                         businessName={dashboard.businessName}

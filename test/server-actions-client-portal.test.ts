@@ -146,6 +146,16 @@ describe('Server Actions: Customer Portal & Token Access', () => {
     mocks.homeownerReply.mockReturnValue(true);
   });
 
+  it.each([true,false])('returns quote-option results without redirecting or losing the form: %s',async ok=>{
+    const {updateQuoteOptionsAction}=await import('@/app/client/jobs/[token]/actions');
+    const result=ok?{ok:true,total:150}:{ok:false,message:'Reload the quote'};
+    mocks.updateClientQuoteOptions.mockResolvedValueOnce(result);
+    const form=new FormData();form.set('addon','extra');form.set('request_id','request-1');form.set('quote_revision','revision-1');
+    expect(await updateQuoteOptionsAction('token',form)).toEqual(result);
+    expect(mocks.updateClientQuoteOptions).toHaveBeenCalledWith('token',['extra'],{requestId:'request-1',revision:'revision-1'});
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   describe('portal/view/[token]/actions', () => {
     const TOKEN = 'valid-portal-token';
 
