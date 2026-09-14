@@ -1,232 +1,121 @@
-/**
- * The guards around resolving a Quick Stop, and the sentences it sends afterwards.
- *
- * Covers four separate holes, all in the same neighbourhood:
- *   - resolveQuickStopCancellation had NO status precondition, so the admin
- *     console (the one caller with no guard of its own) could record a no-show
- *     against a request that was declined or expired unpaid — moving no money, but
- *     still applying the escalating account lock, whose third tier is 3650 days.
- *   - a failed Stripe refund reset refund_cents to 0 and then read that zero back
- *     to text the customer "No charge was refunded.", which is the opposite of
- *     what had happened to somebody owed a full refund.
- *   - a charge that landed after the offer closed was only handed back from
- *     `offer_expired`, so the same race after a decline or a cancel kept the money
- *     against no appointment.
- *   - the transition table had drifted away from the guards that implement it, and
- *     nothing held them together.
- */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { makeFakeAdmin, type Row } from './helpers/fake-supabase';
-import {
-  QUICK_STOP_TRANSITIONS,
-  QUICK_STOP_CLOSED_STATUSES,
-  QUICK_STOP_OFFERABLE_STATUSES,
-  QUICK_STOP_DAY_OCCUPYING_STATUSES,
-  QUICK_STOP_STATUSES,
-  type QuickStopStatus,
-} from '@/lib/quick-stop';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { QUICK_STOP_ACTIVE_STATUSES, QUICK_STOP_TERMINAL_STATUSES, QUICK_STOP_STATUSES,
+  QUICK_STOP_TRANSITIONS, getQuickStopTransitionSources } from '@/lib/quick-stop';
 
-const refundPayment = vi.fn();
-const sendQuickStopStatusSms = vi.fn();
-const sendContractorAlertEmail = vi.fn();
-const logAdminAction = vi.fn();
+const mocks = vi.hoisted(() => ({ request: vi.fn(), processRefunds: vi.fn(), queueRefund: vi.fn(), sms: vi.fn(), email: vi.fn(), audit: vi.fn(), ownerEmail: vi.fn() }));
+vi.mock('@/lib/quick-stop-requests', () => ({ getQuickStopRequest: mocks.request, logQuickStopEvent: vi.fn() }));
+vi.mock('@/lib/quick-stop-refund-recovery', () => ({ processQuickStopRefunds: mocks.processRefunds, queueQuickStopRefund: mocks.queueRefund }));
+vi.mock('@/lib/sms', () => ({ sendQuickStopStatusSms: mocks.sms, sendQuickStopConfirmedSms: vi.fn() }));
+vi.mock('@/lib/email', () => ({ getAccountOwnerEmail: mocks.ownerEmail, sendContractorAlertEmail: mocks.email }));
+vi.mock('@/lib/admin', () => ({ logAdminAction: mocks.audit, systemActor: () => ({ adminEmail: 'system' }) }));
+vi.mock('@/lib/auth', () => ({ createAdminClient: vi.fn() }));
+import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
+import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
 
-vi.mock('@/lib/payments', () => ({ refundPayment: (...a: unknown[]) => refundPayment(...a) }));
-vi.mock('@/lib/sms', () => ({ sendQuickStopStatusSms: (...a: unknown[]) => sendQuickStopStatusSms(...a) }));
-vi.mock('@/lib/email', () => ({
-  getAccountOwnerEmail: vi.fn().mockResolvedValue('owner@example.com'),
-  sendContractorAlertEmail: (...a: unknown[]) => sendContractorAlertEmail(...a),
-}));
-vi.mock('@/lib/admin', () => ({
-  logAdminAction: (...a: unknown[]) => logAdminAction(...a),
-  systemActor: () => ({ kind: 'system' }),
-}));
-vi.mock('@/lib/quick-stop-requests', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/quick-stop-requests')>('@/lib/quick-stop-requests');
-  return {
-    ...actual,
-    logQuickStopEvent: vi.fn(),
-    // A copy, like the real client returns — never the live row.
-    getQuickStopRequest: async (admin: { tables: Record<string, Row[]> }, accountId: string, id: string) => {
-      const row = admin.tables.extra_stop_requests.find((r) => r.id === id && r.account_id === accountId);
-      return row ? { ...row } : null;
-    },
-  };
-});
-
-const { resolveQuickStopCancellation, RESOLVABLE_FROM } = await import('@/lib/quick-stop-refunds');
-
-const ACCOUNT = 'acct1';
-const PAID_AT = '2026-07-29T12:00:00.000Z';
-
-function world(overrides: Row = {}) {
-  return makeFakeAdmin({
-    extra_stop_requests: [
-      {
-        id: 'req1',
-        account_id: ACCOUNT,
-        status: 'confirmed',
-        client_name: 'Dana',
-        client_phone: '+15550001111',
-        job_id: 'job1',
-        payment_id: 'pay1',
-        fee_cents: 12000,
-        refund_cents: 0,
-        paid_at: PAID_AT,
-        arrival_date: '2026-07-29',
-        arrival_end: '15:00',
-        arrived_at: null,
-        en_route_at: null,
-        no_show_reported_at: null,
-        ...overrides,
-      },
-    ],
-    accounts: [{ id: ACCOUNT, timezone: 'America/New_York', extra_stop_refund_tiers: null, extra_stop_locked_until: null }],
-    jobs: [{ id: 'job1', account_id: ACCOUNT, status: 'in_progress' }],
-  });
+const request = { id: 'request', account_id: 'account', status: 'confirmed', job_id: 'job', payment_id: 'payment',
+  client_name: 'Customer', client_phone: '+15555550100', fee_cents: 12000, refund_cents: 0,
+  paid_at: '2026-07-29T12:00:00Z', arrival_date: '2026-07-29', arrival_end: '15:00', arrived_at: null, en_route_at: null };
+function client() {
+  const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: { timezone: 'America/New_York', result: { changed: false } }, error: null }) };
+  return { from: vi.fn().mockReturnValue(query), rpc: vi.fn().mockResolvedValue({ data: true, error: null }), query };
 }
-
 beforeEach(() => {
-  vi.clearAllMocks();
-  refundPayment.mockResolvedValue({ refundedTotal: 120, isFull: true });
+  vi.clearAllMocks(); vi.useFakeTimers(); vi.setSystemTime('2026-07-29T18:00:00Z');
+  mocks.request.mockReset().mockResolvedValue(request);
+  mocks.ownerEmail.mockResolvedValue('owner@example.test');
+  mocks.processRefunds.mockReset().mockResolvedValue({ completed: 0, pending: 0, review: 0 });
 });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
-describe('a resolution has to be legal for the status it is aimed at', () => {
-  it.each(['offer_expired', 'contractor_declined', 'customer_declined', 'refunded', 'no_show_confirmed'])(
-    'refuses to record a no-show against a %s request',
-    async (status) => {
-      const admin = world({ status, paid_at: null, payment_id: null });
-      await expect(
-        resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' }),
-      ).rejects.toThrow(/can't be recorded/i);
-
-      // The point of the guard: no lock, no audit row, no status change.
-      expect(admin.tables.accounts[0].extra_stop_locked_until).toBeNull();
-      expect(logAdminAction).not.toHaveBeenCalled();
-      expect(admin.tables.extra_stop_requests[0].status).toBe(status);
-    },
-  );
-
-  it('still lets staff record a no-show against an auto-completed visit', async () => {
-    // The sweep completes on an assumption — window elapsed, nobody complained —
-    // so `completed` is not proof the tech arrived, and this must stay possible.
-    const admin = world({ status: 'completed' });
-    const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' });
-    expect(out.refundCents).toBe(12000); // noShow tier is a fixed 100%
-    expect(admin.tables.extra_stop_requests[0].status).toBe('no_show_confirmed');
-    expect(admin.tables.accounts[0].extra_stop_locked_until).toBeTruthy();
+describe('cancellation status and paid-visit guards', () => {
+  it.each(['offer_expired', 'contractor_declined', 'customer_declined', 'refunded'])(
+    'rejects no-show resolution from %s before any mutation', async (status) => {
+      mocks.request.mockResolvedValue({ ...request, status, paid_at: null, payment_id: null });
+      const admin = client();
+      await expect(resolveQuickStopCancellation(admin as never, 'account', 'request', { kind: 'no_show' })).rejects.toThrow(/cannot be resolved/);
+      expect(admin.rpc).not.toHaveBeenCalled(); expect(mocks.audit).not.toHaveBeenCalled();
+      expect(mocks.processRefunds).not.toHaveBeenCalled(); expect(mocks.sms).not.toHaveBeenCalled();
+    });
+  it('returns an already confirmed no-show outcome without applying it twice', async () => {
+    mocks.request.mockResolvedValue({ ...request, status: 'no_show_confirmed', refund_due_cents: 12000, refund_cents: 12000, refund_state: 'completed' });
+    const admin = client();
+    await expect(resolveQuickStopCancellation(admin as never, 'account', 'request', { kind: 'no_show' })).resolves.toMatchObject({ refundCents: 12000, refundPending: false });
+    expect(admin.rpc).not.toHaveBeenCalled(); expect(mocks.audit).not.toHaveBeenCalled(); expect(mocks.sms).not.toHaveBeenCalled();
   });
-
-  it('never locks an account over a request nobody paid for', async () => {
-    // Reachable because the admin console can force `completed` from anywhere; the
-    // lock is gated on the money rather than inferred from the lifecycle.
-    const admin = world({ status: 'completed', paid_at: null, payment_id: null, fee_cents: null });
-    await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'no_show' });
-    expect(admin.tables.accounts[0].extra_stop_locked_until).toBeNull();
-    expect(logAdminAction).not.toHaveBeenCalled();
+  it('allows staff adjudication of a completed visit through the guarded transaction', async () => {
+    mocks.request.mockResolvedValue({ ...request, status: 'no_show_confirmed', refund_due_cents: 12000, refund_cents: 12000 })
+      .mockResolvedValueOnce({ ...request, status: 'completed' });
+    const admin = client();
+    await expect(resolveQuickStopCancellation(admin as never, 'account', 'request', { kind: 'no_show' })).resolves.toMatchObject({ refundCents: 12000, refundPending: false });
+    expect(admin.rpc).toHaveBeenCalledWith('cancel_quick_stop_request', expect.objectContaining({ p_expected_status: 'completed', p_kind: 'no_show', p_refund_pct: 100 }));
   });
-
-  it('every RESOLVABLE_FROM entry is a transition the table actually allows', () => {
-    const target: Record<string, QuickStopStatus> = {
-      customer_cancel: 'customer_canceled',
-      contractor_cancel: 'contractor_canceled',
-      no_show: 'no_show_confirmed',
-    };
-    for (const [kind, froms] of Object.entries(RESOLVABLE_FROM)) {
-      for (const from of froms) {
-        expect(QUICK_STOP_TRANSITIONS[from], `${from} -> ${target[kind]}`).toContain(target[kind]);
-      }
-    }
+  it('stops enforcement, refunds and notifications when SQL rejects an unpaid visit', async () => {
+    mocks.request.mockResolvedValue({ ...request, status: 'completed', paid_at: null, payment_id: null });
+    const admin = client(); admin.rpc.mockResolvedValue({ data: null, error: { message: 'No-show requires a paid scheduled visit' } });
+    await expect(resolveQuickStopCancellation(admin as never, 'account', 'request', { kind: 'no_show' })).rejects.toThrow('paid scheduled visit');
+    expect(mocks.audit).not.toHaveBeenCalled(); expect(mocks.processRefunds).not.toHaveBeenCalled(); expect(mocks.sms).not.toHaveBeenCalled();
   });
 });
-
-describe('a refund that did not happen is never reported as one that did', () => {
-  it('tells the customer the money is still coming, and the owner to go and fix it', async () => {
-    refundPayment.mockRejectedValue(new Error('card_declined'));
-    const admin = world({ paid_at: new Date().toISOString() }); // inside grace -> 100%
-
-    const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
-
-    expect(out.refundFailed).toBe(true);
-    expect(out.refundCents).toBe(0);
-    // The row must never claim money that did not move.
-    expect(admin.tables.extra_stop_requests[0].refund_cents).toBe(0);
-
-    const sms = sendQuickStopStatusSms.mock.calls[0][0].message as string;
-    expect(sms).not.toMatch(/no charge was refunded/i);
-    expect(sms).toMatch(/\$120/);
-    expect(sms).toMatch(/didn't complete|finishing it by hand/i);
-
-    const email = sendContractorAlertEmail.mock.calls[0][0];
-    expect(email.subject).toMatch(/action needed/i);
-    expect(email.bodyLines.join(' ')).toMatch(/has NOT been sent/);
+describe('refund messages use durable provider-confirmed amounts', () => {
+  it('reports a pending obligation when processing fails without claiming money moved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.request.mockResolvedValue({ ...request, status: 'customer_canceled', refund_due_cents: 12000, refund_cents: 0 })
+      .mockResolvedValueOnce({ ...request, paid_at: '2026-07-29T17:59:00Z' });
+    mocks.processRefunds.mockRejectedValue(new Error('provider unavailable'));
+    expect(await resolveQuickStopCancellation(client() as never, 'account', 'request', { kind: 'customer_cancel' })).toMatchObject({ refundPending: true, refundCents: 0 });
+    expect(mocks.sms.mock.calls[0][0].message).toMatch(/refund is pending/i);
+    expect(mocks.sms.mock.calls[0][0].message).not.toMatch(/no charge was refunded|a refund of \$[\d.]+ has been issued/i);
+    expect(mocks.email.mock.calls[0][0].bodyLines.join(' ')).toMatch(/refund is pending/i);
   });
-
-  it('says so plainly when there was genuinely nothing to refund', async () => {
-    const admin = world({ status: 'arrived', arrived_at: new Date().toISOString(), paid_at: PAID_AT });
-    const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
-    expect(out.pct).toBe(0); // afterArrived tier
-    expect(out.refundFailed).toBe(false);
-    expect(refundPayment).not.toHaveBeenCalled();
-    expect(sendQuickStopStatusSms.mock.calls[0][0].message).toMatch(/no charge was refunded/i);
+  it('reports no refund for an arrived visit with a zero-percent obligation', async () => {
+    mocks.request.mockResolvedValue({ ...request, status: 'customer_canceled', refund_due_cents: 0 })
+      .mockResolvedValueOnce({ ...request, status: 'arrived', arrived_at: '2026-07-29T17:00:00Z' });
+    const admin = client();
+    expect(await resolveQuickStopCancellation(admin as never, 'account', 'request', { kind: 'customer_cancel' })).toMatchObject({ pct: 0, refundPending: false, refundCents: 0 });
+    expect(admin.rpc).toHaveBeenCalledWith('cancel_quick_stop_request', expect.objectContaining({ p_refund_pct: 0 }));
+    expect(mocks.sms.mock.calls[0][0].message).toMatch(/no charge was refunded/i);
   });
-
-  it('reports a successful refund as issued', async () => {
-    const admin = world({ paid_at: new Date().toISOString() });
-    const out = await resolveQuickStopCancellation(admin as never, ACCOUNT, 'req1', { kind: 'customer_cancel' });
-    expect(out.refundFailed).toBe(false);
-    expect(out.refundCents).toBe(12000);
-    expect(sendQuickStopStatusSms.mock.calls[0][0].message).toMatch(/refund of \$120 has been issued/i);
-    expect(admin.tables.jobs[0].status).toBe('archived');
+  it('reports an issued refund only after its persisted amount is confirmed', async () => {
+    mocks.request.mockResolvedValue({ ...request, status: 'customer_canceled', refund_due_cents: 12000, refund_cents: 12000 })
+      .mockResolvedValueOnce({ ...request, paid_at: '2026-07-29T17:59:00Z' });
+    expect(await resolveQuickStopCancellation(client() as never, 'account', 'request', { kind: 'customer_cancel' })).toMatchObject({ refundPending: false, refundCents: 12000 });
+    expect(mocks.sms.mock.calls[0][0].message).toMatch(/refund of \$120 has been issued/i);
   });
 });
-
-describe('a late charge is handed back from every state that closed the offer', () => {
-  it('covers the ways an offer stops being payable, and nothing that has an appointment', async () => {
-    const { LATE_PAYMENT_REFUNDABLE } = await import('@/lib/quick-stop-payments');
-
-    // Every closed status that can hold a payment must be rescuable. `refunded`
-    // and `disputed` are excluded on purpose: they have their own resolution and
-    // this path must not overwrite it.
-    for (const status of QUICK_STOP_CLOSED_STATUSES) {
-      if (status === 'refunded' || status === 'disputed' || status === 'completed') continue;
-      expect(LATE_PAYMENT_REFUNDABLE, `${status} can hold a late charge`).toContain(status);
-    }
-    for (const status of ['confirmed', 'en_route', 'arrived', 'completed', 'refunded', 'disputed']) {
-      expect(LATE_PAYMENT_REFUNDABLE, `${status} has an appointment or its own resolution`).not.toContain(status);
-    }
-    // And each one is a transition the table admits, since the rescue writes
-    // `refunded` from whichever status it found.
-    for (const status of LATE_PAYMENT_REFUNDABLE) {
-      expect(QUICK_STOP_TRANSITIONS[status as QuickStopStatus]).toContain('refunded');
-    }
-  });
+describe('late-payment reconciliation follows the closed booking outcome', () => {
+  it.each(['offer_expired', 'customer_canceled', 'customer_declined', 'contractor_canceled', 'contractor_declined', 'no_show_confirmed', 'refunded'])(
+    'queues reconciliation from %s without reopening the appointment', async (status) => {
+      const admin = client(); admin.rpc.mockResolvedValue({ data: [], error: null });
+      admin.query.maybeSingle.mockResolvedValue({ data: { ...request, status }, error: null });
+      await confirmQuickStopPayment(admin as never, 'payment');
+      expect(mocks.queueRefund).toHaveBeenCalledWith(admin, 'request');
+      expect(mocks.processRefunds).toHaveBeenCalledWith(admin, 1, 'account', 'request'); expect(mocks.sms).not.toHaveBeenCalled();
+    });
+  it.each(['confirmed', 'en_route', 'arrived', 'completed', 'disputed'])(
+    'does not queue a late-offer refund from %s', async (status) => {
+      const admin = client(); admin.rpc.mockResolvedValue({ data: [], error: null });
+      admin.query.maybeSingle.mockResolvedValue({ data: { ...request, status }, error: null });
+      await confirmQuickStopPayment(admin as never, 'payment');
+      expect(mocks.queueRefund).not.toHaveBeenCalled(); expect(mocks.processRefunds).not.toHaveBeenCalled();
+    });
 });
-
-describe('the transition table and the guards that implement it stay together', () => {
-  it('every status in every guard list is a real status', () => {
-    const known = new Set<string>(QUICK_STOP_STATUSES);
-    for (const list of [QUICK_STOP_CLOSED_STATUSES, QUICK_STOP_OFFERABLE_STATUSES, QUICK_STOP_DAY_OCCUPYING_STATUSES]) {
-      for (const status of list) expect(known.has(status), status).toBe(true);
+describe('lifecycle vocabulary remains consistent', () => {
+  it('contains only known statuses and has no duplicate transitions', () => {
+    const known = new Set(QUICK_STOP_STATUSES);
+    expect(Object.keys(QUICK_STOP_TRANSITIONS).sort()).toEqual([...known].sort());
+    for (const status of [...QUICK_STOP_ACTIVE_STATUSES, ...QUICK_STOP_TERMINAL_STATUSES]) expect(known.has(status)).toBe(true);
+    for (const targets of Object.values(QUICK_STOP_TRANSITIONS)) {
+      for (const target of targets) expect(known.has(target)).toBe(true);
+      expect(new Set(targets).size).toBe(targets.length);
     }
   });
-
-  it('the table names every status, and points only at real ones', () => {
-    expect(Object.keys(QUICK_STOP_TRANSITIONS).sort()).toEqual([...QUICK_STOP_STATUSES].sort());
-    const known = new Set<string>(QUICK_STOP_STATUSES);
-    for (const [from, tos] of Object.entries(QUICK_STOP_TRANSITIONS)) {
-      for (const to of tos) expect(known.has(to), `${from} -> ${to}`).toBe(true);
-      expect(new Set(tos).size, `${from} lists a duplicate`).toBe(tos.length);
-    }
-  });
-
-  it('an offerable request can always reach an offer, and a day-occupying one is never closed', () => {
-    for (const status of QUICK_STOP_OFFERABLE_STATUSES) {
-      expect(QUICK_STOP_TRANSITIONS[status]).toContain('contractor_offer_sent');
-    }
-    const closed = new Set<string>(QUICK_STOP_CLOSED_STATUSES);
-    for (const status of QUICK_STOP_DAY_OCCUPYING_STATUSES) {
-      expect(closed.has(status), `${status} holds a slot, so it cannot be closed`).toBe(false);
+  it('keeps published offers active and prevents closed bookings from reopening an offer', () => {
+    expect(getQuickStopTransitionSources('awaiting_customer_payment')).toEqual(['awaiting_contractor', 'more_information_requested', 'contractor_offer_sent']);
+    expect(QUICK_STOP_ACTIVE_STATUSES).toContain('awaiting_customer_payment');
+    for (const status of QUICK_STOP_TERMINAL_STATUSES) {
+      expect(QUICK_STOP_ACTIVE_STATUSES).not.toContain(status);
+      expect(QUICK_STOP_TRANSITIONS[status]).not.toContain('awaiting_customer_payment');
     }
   });
 });

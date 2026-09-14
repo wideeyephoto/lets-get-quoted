@@ -40,6 +40,13 @@ jobs:
       - name: Office Data API boundary on PostgreSQL 17
         run: npm run test:pg17:job-access
 
+      - name: Quick Stop concurrent reservations and recovery on PostgreSQL 17
+        run: |
+          npm run test:pg17:quick-stop-offers
+          npm run test:pg17:quick-stop-sweep
+          npm run test:pg17:quick-stop-no-show
+          npm run test:pg17:quick-stop-refunds
+
       - name: Account closure domain database checks
         run: npm run test:pg17:closure-domains
 

@@ -20,21 +20,13 @@
  * These tests hold the three sites to it, and the last one stops the pattern
  * coming back anywhere in the feature.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { PGlite } from '@electric-sql/pglite';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeCustomerRefundPercent } from '@/lib/quick-stop-refunds';
-import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { zonedInstant } from '@/lib/arrival';
 import type { QuickStopRequest } from '@/lib/quick-stop-requests';
-import { makeFakeAdmin } from './helpers/fake-supabase';
-
-vi.mock('@/lib/quick-stop-requests', () => ({ logQuickStopEvent: vi.fn() }));
-vi.mock('@/lib/email', () => ({
-  getAccountOwnerEmail: vi.fn().mockResolvedValue(null),
-  sendContractorAlertEmail: vi.fn(),
-}));
-
 const DAY = '2026-07-29';
 const END = '15:00'; // 3 PM, in the contractor's own zone
 
@@ -62,75 +54,89 @@ describe('the missed-window refund tier respects the contractor’s zone', () =>
     ['America/Los_Angeles', 7],
   ])('does not pay contractorMissedWindow mid-window in %s (was %ih early)', (tz) => {
     // Still inside the window, so this is an ordinary customer cancellation.
-    expect(computeCustomerRefundPercent(req({}), tz, MID_WINDOW)).toBe(75);
-    expect(computeCustomerRefundPercent(req({ en_route_at: new Date(MID_WINDOW).toISOString() }), tz, MID_WINDOW)).toBe(25);
+    expect(computeCustomerRefundPercent(req({}), MID_WINDOW, undefined, tz)).toBe(75);
+    expect(computeCustomerRefundPercent(req({ en_route_at: new Date(MID_WINDOW).toISOString() }), MID_WINDOW, undefined, tz)).toBe(25);
   });
 
   it('still pays contractorMissedWindow once the zoned window really has passed', () => {
     const tz = 'America/New_York';
     const justAfter = zonedInstant(DAY, END, tz)!.getTime() + 60_000;
-    expect(computeCustomerRefundPercent(req({}), tz, justAfter)).toBe(100);
+    expect(computeCustomerRefundPercent(req({}), justAfter, undefined, tz)).toBe(100);
   });
 
   it('an arrival beats the window — a tech who showed up is never at fault', () => {
     const tz = 'America/New_York';
     const justAfter = zonedInstant(DAY, END, tz)!.getTime() + 60_000;
-    expect(computeCustomerRefundPercent(req({ arrived_at: new Date(justAfter).toISOString() }), tz, justAfter)).toBe(0);
+    expect(computeCustomerRefundPercent(req({ arrived_at: new Date(justAfter).toISOString() }), justAfter, undefined, tz)).toBe(0);
   });
 });
 
-describe('auto-complete waits for the zoned window, not the server’s', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  const requestRow = {
-    id: 'req1',
-    account_id: 'acct-la',
-    job_id: 'job1',
-    status: 'confirmed',
-    arrival_date: DAY,
-    arrival_end: END,
-    no_show_reported_at: null,
-    payment_id: 'pay1',
-    updated_at: '2026-07-29T10:00:00.000Z',
-  };
-  // 3 PM Los Angeles is 22:00Z; +2h grace means nothing may complete before 00:00Z.
-  const accounts = [{ id: 'acct-la', timezone: 'America/Los_Angeles' }];
-
-  it('leaves the visit alone while the window is still open in its own zone', async () => {
-    // 18:00Z = 11:00 Pacific. The old code read the window as ending at 15:00Z and
-    // auto-completed here, three hours before the tech was even due.
-    vi.setSystemTime(new Date('2026-07-29T18:00:00Z'));
-    const admin = makeFakeAdmin({ extra_stop_requests: [requestRow], accounts, jobs: [{ id: 'job1', account_id: 'acct-la', status: 'in_progress' }] });
-    const summary = await sweepQuickStopOffers(admin as never);
-    expect(summary.autoCompleted).toBe(0);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('confirmed');
-    expect(admin.tables.jobs[0].status).toBe('in_progress');
+// Completion now runs inside PostgreSQL. Exercise the actual migration instead
+// of a query-builder fake that cannot execute or validate its predicates.
+describe('auto-complete waits for the account-local window in SQL', () => {
+  let db: PGlite;
+  const account = '10000000-0000-4000-8000-000000000001';
+  const request = '20000000-0000-4000-8000-000000000001';
+  beforeAll(async () => {
+    db = new PGlite();
+    await db.exec(`
+      create role anon; create role authenticated; create role service_role;
+      create table accounts(id uuid primary key, timezone text);
+      create table jobs(id uuid primary key, account_id uuid, status text);
+      create table payments(id uuid primary key, account_id uuid, status text, paid_at timestamptz, failed_at timestamptz);
+      create table extra_stop_requests(id uuid primary key, account_id uuid, client_name text,
+        status text, payment_id uuid, job_id uuid, paid_at timestamptz,
+        arrival_date date, arrival_start time, arrival_end time,
+        response_deadline_at timestamptz, payment_deadline_at timestamptz,
+        hold_expires_at timestamptz, no_show_reported_at timestamptz,
+        completed_at timestamptz, arrived_at timestamptz, updated_at timestamptz);
+      create table extra_stop_events(account_id uuid, request_id uuid, actor text, from_status text, to_status text, meta jsonb);
+    `);
+    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914132825_quick_stop_atomic_sweep.sql'), 'utf8'));
+    await db.query('insert into accounts values($1,$2)', [account, 'America/Los_Angeles']);
+  }, 30_000);
+  afterAll(async () => { await db?.close(); });
+  beforeEach(async () => {
+    await db.exec('truncate extra_stop_requests, jobs, payments, extra_stop_events');
   });
-
-  it('does not complete during the 2-hour no-show grace either', async () => {
-    vi.setSystemTime(new Date('2026-07-29T23:00:00Z')); // window closed, grace running
-    const admin = makeFakeAdmin({ extra_stop_requests: [requestRow], accounts, jobs: [] });
-    expect((await sweepQuickStopOffers(admin as never)).autoCompleted).toBe(0);
+  async function seed(hoursAfterEnd: number, reported = false) {
+    await db.query("insert into jobs values($1,$2,'in_progress')", [request, account]);
+    await db.query("insert into payments values($1,$2,'paid',now()-interval '3 days',null)", [request, account]);
+    // Set the fixture relative to the database clock; JavaScript fake timers do
+    // not control PostgreSQL. The arrival fields are still account-local values.
+    await db.query(`insert into extra_stop_requests(id,account_id,client_name,status,payment_id,job_id,paid_at,
+        arrival_date,arrival_start,arrival_end,no_show_reported_at)
+      select $1,$2,'Customer','confirmed',$1,$1,now()-interval '3 days',
+        wall::date,'00:00',wall::time,case when $4 then now() end
+      from (select (now()-make_interval(hours=>$3)) at time zone 'America/Los_Angeles' as wall) w`,
+      [request, account, hoursAfterEnd, reported]);
+  }
+  const sweep = () => db.query('select * from sweep_quick_stop_requests($1,25)', [account]);
+  async function expectStatus(status: string, jobStatus: string) {
+    expect((await db.query('select status from extra_stop_requests')).rows).toEqual([{ status }]);
+    expect((await db.query('select status from jobs')).rows).toEqual([{ status: jobStatus }]);
+  }
+  it('leaves a paid visit alone before its account-local window ends', async () => {
+    await seed(-1);
+    expect((await sweep()).rows).toEqual([]);
+    await expectStatus('confirmed', 'in_progress');
   });
-
-  it('completes once the zoned window plus grace has really elapsed', async () => {
-    vi.setSystemTime(new Date('2026-07-30T00:30:00Z'));
-    const admin = makeFakeAdmin({ extra_stop_requests: [requestRow], accounts, jobs: [{ id: 'job1', account_id: 'acct-la', status: 'in_progress' }] });
-    const summary = await sweepQuickStopOffers(admin as never);
-    expect(summary.autoCompleted).toBe(1);
-    expect(admin.tables.extra_stop_requests[0].status).toBe('completed');
-    expect(admin.tables.jobs[0].status).toBe('complete');
+  it('does not complete during the two-hour no-show grace period', async () => {
+    await seed(1);
+    expect((await sweep()).rows).toEqual([]);
+    await expectStatus('confirmed', 'in_progress');
   });
-
-  it('never steals a visit whose no-show is already being reported', async () => {
-    vi.setSystemTime(new Date('2026-07-30T00:30:00Z'));
-    const admin = makeFakeAdmin({
-      extra_stop_requests: [{ ...requestRow, no_show_reported_at: '2026-07-30T00:00:00.000Z' }],
-      accounts,
-      jobs: [],
-    });
-    expect((await sweepQuickStopOffers(admin as never)).autoCompleted).toBe(0);
+  it('completes the visit and job once the window and grace have elapsed', async () => {
+    await seed(3);
+    expect((await sweep()).rows).toEqual([expect.objectContaining({ kind: 'auto_completed', request_id: request })]);
+    await expectStatus('completed', 'complete');
+    expect((await sweep()).rows).toEqual([]);
+    expect((await db.query('select from_status,to_status from extra_stop_events')).rows).toEqual([{ from_status: 'confirmed', to_status: 'completed' }]);
+  });
+  it('does not complete a visit with a no-show report in progress', async () => {
+    await seed(3, true);
+    expect((await sweep()).rows).toEqual([]);
+    await expectStatus('confirmed', 'in_progress');
   });
 });
 
