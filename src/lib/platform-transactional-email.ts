@@ -7,6 +7,12 @@ const MARKETING_ONLY = new Set(['unsubscribe_link', 'one_click_unsubscribe']);
 /** Explicit platform recipients, never an inferred tenant or marketing scope. */
 export async function sendPlatformTransactionalEmail(admin: SupabaseClient, client: Pick<Resend, 'emails'>, payload: CreateEmailOptions,
   options?: Parameters<Resend['emails']['send']>[1]) {
+  const message = await preparePlatformTransactionalEmail(admin, payload);
+  return options ? client.emails.send(message, options) : client.emails.send(message);
+}
+
+/** Run immediately before submission, including for bounded HTTP transports. */
+export async function preparePlatformTransactionalEmail(admin: SupabaseClient, payload: CreateEmailOptions) {
   if (payload.tags?.some(tag => tag.name === 'account_id'
     || (tag.name === 'delivery_scope' && tag.value !== 'platform_transactional'))) {
     throw new Error('Platform email scope could not be verified.');
@@ -24,7 +30,6 @@ export async function sendPlatformTransactionalEmail(admin: SupabaseClient, clie
     }
     if (data && DELIVERY_BLOCKS.has(data.reason)) throw new Error('Email delivery is blocked for a recipient.');
   }
-  const message = { ...payload, tags: [...(payload.tags ?? []).filter(tag => tag.name !== 'delivery_scope'),
+  return { ...payload, tags: [...(payload.tags ?? []).filter(tag => tag.name !== 'delivery_scope'),
     { name: 'delivery_scope', value: 'platform_transactional' }] };
-  return options ? client.emails.send(message, options) : client.emails.send(message);
 }

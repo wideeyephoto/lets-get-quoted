@@ -10,6 +10,7 @@ Local implementation, September 14, 2026. No hosted changes, email sends or roll
 - Operator executive digests and critical incident emails. Existing optional webhook channels remain independent.
 - Internal merchandise staff alerts. Customer receipts retain the order workspace gate.
 - Shared contact-message, support-staff and support-customer messages, including any domain fallback attempt.
+- Support auto-responder direct HTTP submission, with the same final platform check and callback scope; its existing ten-second timeout remains bounded and redirects are rejected.
 
 These paths use the shared application Resend configuration. Their recipients are platform recipients; mentioning a customer account in the content does not grant that account ownership of the recipient's preferences.
 
@@ -34,3 +35,9 @@ The table contains local recorded evidence. This change does not inventory provi
 ## Local verification
 
 16 selected regression files / 196 tests passed. Tests cover the real login and report paths, support/contact sends, staff paths, To/Cc/Bcc lookups with the installed Supabase client, literal wildcard addresses, campaign-only opt-outs, failed lookups, missing acceptance, signed callback persistence and the final fallback recheck. Full application/test type checking and changed-file lint passed without warnings. Hosted database/provider receipt was not tested in this pass.
+
+### Subsequent support auto-reply audit
+
+The raw HTTP sender previously treated any completed HTTP response as success and resolved eligible tickets even without a recipient or provider key. It now uses `preparePlatformTransactionalEmail`, the same checked-payload preparation as the SDK wrapper. HTTP success and a nonempty provider ID are required before attempting resolution. Failed or missing sends leave the ticket for human review. Returned results separate `eligibleForAutoReply`, `replyDispatched`, `replyProviderId` and `autoResolved`; dry-run reports eligibility with no dispatch or resolution. A failed, thrown or zero-row resolution update retains acceptance in the result and audit, with an instruction to repair status without resending.
+
+Local verification: 18 files / 224 tests passed; full application/test type checking passed, including 17 targeted support cases and existing platform/webhook/operator regressions. Lint has zero errors and two pre-existing unused-import warnings in the autopilot test. No production caller was found for this exported auto-responder. It has no durable send identity: reruns, concurrent execution and ambiguous timeouts are not deduplicated by this change. Do not enable automatic retries until that separate contract exists. Audit output is not a replacement for a durable acceptance ledger. No hosted changes or actual emails were performed.

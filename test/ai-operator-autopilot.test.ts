@@ -44,7 +44,7 @@ describe('AI Operator Autopilot Engines', () => {
   });
 
   describe('1. Support Ticket Auto-Responder & Deflection', () => {
-    it('auto-resolves high-confidence safe inquiries with instant replies', async () => {
+    it('previews eligibility without claiming a ticket was resolved', async () => {
       const mockSupabase = createChainableSupabase([]);
 
       const ticket = {
@@ -56,7 +56,8 @@ describe('AI Operator Autopilot Engines', () => {
       };
 
       const result = await processInboundSupportTicket(mockSupabase, ticket, { dryRun: true });
-      expect(result.autoResolved).toBe(true);
+      expect(result.autoResolved).toBe(false);
+      expect(result.eligibleForAutoReply).toBe(true);
       expect(result.confidenceScore).toBeGreaterThanOrEqual(85);
       expect(result.topic).toBe('stripe_connect_onboarding');
       expect(result.replyText).toContain('Stripe Connect');

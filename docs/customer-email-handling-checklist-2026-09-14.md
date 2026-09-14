@@ -165,6 +165,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 16 selected files / 196 tests passed; full application/test type checking and changed-file lint passed without warnings. See the [platform transactional policy](runbooks/platform-transactional-email-policy.md). This uses the existing platform preference migration; no hosted changes or emails were performed.
 - **Remaining:** Provider inventory/history reconciliation, external sender audit, durable identities and hosted acceptance remain open.
 
+### Eleventh-pass implementation — support auto-reply audit
+
+- **T12/T18/T19:** Found and repaired the direct HTTP support sender omitted by the earlier SDK inventory. It uses platform delivery blocks and callback scope, preserves its timeout, rejects redirects and requires provider acceptance before ticket resolution. Failed status persistence retains acceptance for review; dry-run reports eligibility only.
+- **Verification:** 18 files / 224 tests passed; full application/test type checking passed. Changed-file lint has zero errors and two existing unused-import warnings. The sender inventory now includes the independent seed script and its unresolved policy/evidence gaps. No production caller was found for the support auto-responder; no live sending was enabled.
+- **Remaining:** Durable support reply identity, uncertain acceptance recovery, seed-script guards, provider inventory/history and hosted acceptance. See the [platform transactional policy](runbooks/platform-transactional-email-policy.md).
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.
