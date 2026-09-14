@@ -379,6 +379,11 @@ alter table accounts add column if not exists extra_stop_required_photos integer
 -- Require the AI eligibility check to pass before Extra Stop is offered.
 alter table accounts add column if not exists extra_stop_require_ai_approval boolean not null default true;
 
+-- Contractor compliance & tax identification fields for municipal permit applications.
+alter table accounts add column if not exists fein text;
+alter table accounts add column if not exists state_employer_number text;
+alter table accounts add column if not exists license_type text;
+
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
 -- This IS the Owner/Crew split, enforced in data instead of UI.
@@ -638,6 +643,9 @@ create index if not exists jobs_client_id_idx on jobs (client_id);
 
 -- Set when a client texts "C" back to an appointment reminder to confirm.
 alter table jobs add column if not exists appointment_confirmed_at timestamptz;
+
+-- Permanent parcel number / tax ID for municipal permit applications and property identification.
+alter table jobs add column if not exists parcel_number text;
 
 -- ----------------------------------------------------------------------------
 -- JOB_TASKS  — per-job checklist / punch list. Owner sets the list; crew tick
