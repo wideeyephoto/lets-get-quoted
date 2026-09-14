@@ -275,6 +275,16 @@ has been silent past a threshold.
 
 ### C1. `StatusCallback` is attached conditionally and fails open
 
+**Implementation closed September 14, 2026:** production request construction
+now throws before credit reservation and before the durable request marker when
+the callback origin is missing or untrusted. The worker preserves a safely
+retryable `sms_callback_not_configured` failure, and the existing health check
+exposes callback readiness with corrected operator guidance. Twelve provider
+preflight tests and a worker retry regression pass. Deployment and live callback
+acceptance remain separately open. See
+[the verification record](prelaunch-closeout-2026-09-14.md). The excerpt below
+records the original finding.
+
 ```ts
 const origin = trustedProviderCallbackOrigin();
 if (origin) data.set('StatusCallback', `${origin}/api/sms/status`);

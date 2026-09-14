@@ -12,6 +12,7 @@ import {
 import {
   SIMULATED_PROVIDER_ID,
   SmsBillingRefusalError,
+  SmsCallbackConfigurationError,
   SmsProviderRejectedError,
   type SmsProviderId,
 } from '@/lib/sms-provider';
@@ -99,6 +100,15 @@ function preflightFailure(error: Error) {
 }
 
 describe('durable SMS delivery worker', () => {
+  it('records missing callback configuration as safely retryable before request start', async () => {
+    const fake = store();
+    await runSmsDeliveryBatch(1, fake.value, preflightFailure(new SmsCallbackConfigurationError()), runtime());
+    expect(fake.value.fail).toHaveBeenCalledWith(CLAIM, 'sms_callback_not_configured', true);
+    expect(fake.value.markRequestStarted).not.toHaveBeenCalled();
+    expect(fake.value.complete).not.toHaveBeenCalled();
+    expect(fake.value.recordProviderRejection).not.toHaveBeenCalled();
+  });
+
   it('does not claim when the deployment gate suppresses outbound SMS', async () => {
     const fake = store();
     const result = await runSmsDeliveryBatch(

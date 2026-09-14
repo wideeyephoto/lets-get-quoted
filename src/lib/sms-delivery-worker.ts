@@ -14,6 +14,7 @@ import {
   smsCanaryAccounts,
   smsSenderPurposeEnabled,
   SmsBillingRefusalError,
+  SmsCallbackConfigurationError,
   SmsProviderRejectedError,
   smsProviderConfig,
   type SmsProviderId,
@@ -337,6 +338,11 @@ export class ProviderSmsDeliveryMessenger implements SmsDeliveryMessenger {
 export function classifySmsDeliveryFailure(
   error: unknown,
 ): Readonly<{ code: string; retryable: boolean; providerRejection: boolean }> {
+  if (error instanceof SmsCallbackConfigurationError) {
+    return Object.freeze({
+      code: 'sms_callback_not_configured', retryable: true, providerRejection: false,
+    });
+  }
   if (error instanceof SmsBillingRefusalError) {
     return Object.freeze({
       code: 'sms_billing_refused', retryable: false, providerRejection: false,

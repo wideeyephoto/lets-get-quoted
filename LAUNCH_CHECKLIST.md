@@ -200,8 +200,13 @@ Regenerate with `npm run test:coverage`; re-measure reachability with
 
 ### Still open from this audit
 
-- [ ] **`/api/export/insights` remains at zero executed lines** — the one export
-  route not covered. It renders through pdfkit, which needs its own fixture.
+- [x] **Insights export execution and authorization verified (2026-09-14):**
+  `test/api-export-insights.test.ts` executes CSV/PDF responses, title fallback,
+  owner denial before reads/rendering, authenticated-workspace scoping despite
+  hostile query parameters, and PDF-render failure propagation (9 tests).
+  `test/insights-export.test.ts` verifies CSV values and generates a real pdfkit
+  PDF from its existing fixture (7 tests). The earlier zero-execution entry was
+  stale. [Evidence](docs/prelaunch-closeout-2026-09-14.md).
 - [ ] **14 of the 17 dark scheduled cron jobs remain** — neither route nor
   worker meaningfully executed. `purge-expired`, `service-reminders` and
   `plan-installments` are closed; still open are `smart-dunning`
@@ -237,7 +242,8 @@ evidence: [sms-setup-gap-audit-2026-09-12.md](docs/sms-setup-gap-audit-2026-09-1
 
 ### Configuration and operations
 
-- [ ] **C1 — `StatusCallback` is attached conditionally and fails open:** `src/lib/sms-provider.ts:415` sets the callback only when `trustedProviderCallbackOrigin()` returns non-null. Close by failing the send or alerting when the origin does not resolve.
+- [x] **C1 — Missing delivery callbacks fail closed (2026-09-14, implementation verified):** production request construction now rejects an untrusted or missing callback origin before reserving credits or marking a carrier request started. The durable worker records `sms_callback_not_configured` as a pre-request retryable failure; the health page explains that sending is blocked. Regression checks cover malformed/missing origins, both provider request shapes, explicit overrides, zero credit/carrier effects on denial, and a valid callback send. [Evidence](docs/prelaunch-closeout-2026-09-14.md).
+- [ ] **C1 production acceptance:** deploy the reviewed callback-preflight change and verify the production health page reports a trusted callback origin. Real delivery/status-callback acceptance remains part of the customer carrier matrix; local tests do not close it.
 - [ ] **C2 — No destination-country allowlist:** `normalizeUsPhone` returns `+<digits>` for any input between 10 and 15 digits; unconstrained destinations risk SMS toll pumping fraud. Close by enforcing an explicit country allowlist (NANP US/CA) at the enqueue boundary.
 - [x] **C3 — No per-workspace outbound volume or spend ceiling:** Exempt traffic had no ceiling. Remediated in commit `47fcb93e0`: implemented per-workspace daily outbound message and spend ceilings.
 - [x] **C4 — The legacy Twilio signing key is a second live credential with no sunset:** Addressed in commit `1cd78df8f`: separated webhook signature verification key dependencies from runtime tokens.

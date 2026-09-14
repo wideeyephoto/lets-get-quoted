@@ -29,6 +29,8 @@ const insufficient = {
 
 /** Credentials that work, and an environment that would really send. */
 function live() {
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://letsgetquoted.com');
+  vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'letsgetquoted.com');
   vi.stubEnv('TWILIO_ACCOUNT_SID', 'AC11111111111111111111111111111111');
   vi.stubEnv('TWILIO_AUTH_TOKEN', 'twilio-secret');
   vi.stubEnv('TWILIO_FROM_NUMBER', '+15550001111');

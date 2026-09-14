@@ -492,8 +492,8 @@ export default async function AdminHealthPage({
                     <>Attached to every send.</>
                   ) : (
                     <span style={{ color: '#ffd166' }}>
-                      Off — NEXT_PUBLIC_APP_URL is missing or is not a trusted bare HTTPS LGQ origin, so no delivery result is ever reported back and
-                      &ldquo;Failed texts&rdquo; cannot rise above zero.
+                      Sending blocked in production — the delivery callback must use a trusted HTTPS LGQ origin.
+                      Correct the provider callback configuration to restore sending and delivery receipts.
                     </span>
                   )}
                 </td>

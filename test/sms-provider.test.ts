@@ -186,6 +186,7 @@ describe('the outbound off switch', () => {
    */
   it('really does reach for the network when nothing is suppressing it', async () => {
     live();
+    useTrustedCallbackOrigin();
     expect(isLiveMessagingEnvironment()).toBe(true);
     // The suite's own socket guard is what stops it here — proof that the
     // suppression, not the absence of an opportunity, is doing the work above.
@@ -415,8 +416,8 @@ describe('buildSendRequest', () => {
   });
 
   /**
-   * No https origin, no callback — which means "Failed texts" on the health
-   * page can only ever read zero. That was silent; the admin card now says it.
+   * Local request previews can omit callbacks. Production rejection is held by
+   * sms-callback-preflight.test.ts, including the no-credit/no-request boundary.
    */
   it('omits the delivery callback when the origin is not https', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3010');
