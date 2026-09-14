@@ -22,7 +22,7 @@ export type GoogleAdsAuth = {
   accessToken: string;
   /** Manager account used to reach a client account. Omit for direct access. */
   loginCustomerId?: string | null;
-  /** Defaults to GOOGLE_ADS_DEVELOPER_TOKEN. */
+  /** @deprecated Ignored. API access comes from the OAuth Cloud project. */
   developerToken?: string;
 };
 
