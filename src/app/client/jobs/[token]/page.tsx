@@ -934,6 +934,7 @@ export default async function ClientJobDashboardPage({
                     return (
                       <QuoteAcceptance
                         approveAction={approveClientJobQuoteAction.bind(null, params.token)}
+                        revision={quoteOptionRevision(items, signatureRow?.quoted_amount)}
                         businessName={dashboard.businessName}
                         scheduleOffered={scheduleOpen}
                         scheduledLabel={scheduledLabel}

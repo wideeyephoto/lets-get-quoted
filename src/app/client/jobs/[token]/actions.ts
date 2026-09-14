@@ -143,7 +143,10 @@ export async function approveClientJobQuoteAction(token: string, formData: FormD
   // through raw: what may be stored is decided by safeSignaturePath, in one
   // place, rather than by whichever endpoint happened to receive it.
   const path = optionalText(formData.get('signaturePath'));
-  await approveClientJobQuote(token, selectedAddonIds, signerName, path ? { path } : null);
+  await approveClientJobQuote(token, selectedAddonIds, signerName, path ? { path } : null, {
+    requestId: String(formData.get('request_id') ?? ''),
+    revision: String(formData.get('quote_revision') ?? ''),
+  });
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?approved=1`);
 }

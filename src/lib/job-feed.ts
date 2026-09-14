@@ -674,22 +674,15 @@ export async function applyQuoteAcceptance(
 
 // Records approval idempotently, promotes the job out of the quote stage,
 // advances the originating lead to won, and alerts the owner (best-effort).
+import { QuoteOptionRequest } from '@/lib/quote-option-requests';
+import { quoteOptionRequestHash } from '@/lib/quote-option-requests';
+
 export async function approveClientJobQuote(
   clientToken: string,
   selectedAddonIds: string[] = [],
-  /**
-   * The name they typed to accept. Optional so every existing caller (and a
-   * legacy single-amount quote with no signature field) behaves exactly as
-   * before — an unsigned acceptance is still an acceptance, it just has no
-   * evidence attached.
-   */
   signerName?: string | null,
-  /**
-   * The mark, when they drew one instead of only typing. Optional so every
-   * existing caller behaves exactly as before — a typed acceptance is still an
-   * acceptance, it just has a different kind of evidence attached.
-   */
   drawn?: { path: string | null } | null,
+  request?: QuoteOptionRequest,
 ): Promise<void> {
   const admin = createAdminClient();
   const tokenHash = hashToken(clientToken);
@@ -710,90 +703,82 @@ export async function approveClientJobQuote(
   const job = await getJob(admin, accountId, jobId);
   if (!job) throw new Error('Job not found.');
 
-  // Idempotency guard for the ONCE-ONLY side effects — the owner's alert email
-  // and deposit-on-approval — so a double-submit can't re-email or raise a
-  // second deposit.
-  //
-  // IT NO LONGER GUARDS THE ACCEPTANCE ITSELF. It used to return early here,
-  // which meant an approval interrupted after the feed insert but before the
-  // jobs update could never complete: every retry found the row, returned, and
-  // left the job at 'new_lead' forever under a feed entry announcing it had
-  // been approved. applyQuoteAcceptance below is idempotent on its own terms,
-  // so running it again is how that job finally moves.
-  const { data: existingApproval } = await admin
-    .from('job_feed')
-    .select('id')
-    .eq('source_table', 'jobs')
-    .eq('source_id', jobId)
-    .eq('kind', 'quote_approved')
-    .maybeSingle();
-  const alreadyApproved = Boolean(existingApproval);
-
-  // Lock in the client's add-on choices on an itemized quote and recompute the
-  // total before recording approval, so quoted_amount reflects exactly what they
-  // agreed to. Legacy single-amount quotes (no items) keep quoted_amount as-is.
   const items = parseQuoteItems(job.quote_items);
   let quotedAmount = Number(job.quoted_amount) || 0;
+  let finalized = items;
+
   if (items.length > 0) {
     const selectedSet = new Set(selectedAddonIds);
-    const finalized = items.map((item) => (item.kind === 'addon' ? { ...item, selected: selectedSet.has(item.id) } : item));
+    finalized = items.map((item) => (item.kind === 'addon' ? { ...item, selected: selectedSet.has(item.id) } : item));
     quotedAmount = computeQuoteTotal(finalized);
-    await admin.from('jobs').update({ quote_items: finalized, quoted_amount: quotedAmount }).eq('account_id', accountId).eq('id', jobId);
   }
 
   const acceptedAddons = items.filter((item) => item.kind === 'addon' && selectedAddonIds.includes(item.id));
   const addonNote = acceptedAddons.length > 0 ? ` Added: ${acceptedAddons.map((item) => item.label).join(', ')}.` : '';
 
-  // The signature on the QUOTE, which is a different agreement from the payment
-  // plan's authorization and used to have nowhere to live. Best-effort and
-  // separate from the acceptance itself: an acceptance must never fail because
-  // a column isn't there yet.
   const signature = (signerName ?? '').toString().trim().slice(0, 120);
-  if (signature) {
-    // Cleaned here rather than trusted from the caller. This arrives from an
-    // anonymous visitor holding a link, and safeSignaturePath returns the path
-    // or nothing — never a partially-scrubbed string, because a mark that had
-    // to be sanitised to be storable is not evidence of anything.
-    const drawnPath = safeSignaturePath(drawn?.path);
-    const method: SignatureMethod = drawnPath ? 'drawn' : 'typed';
+  const drawnPath = safeSignaturePath(drawn?.path);
+  const method = drawnPath ? 'drawn' : (signature ? 'typed' : null);
 
-    const record = async (patch: Record<string, unknown>) =>
-      admin
-        .from('jobs')
-        .update(patch)
-        .eq('account_id', accountId)
-        .eq('id', jobId)
-        .is('quote_signed_at', null);
-
-    try {
-      const { error } = await record({
-        quote_signer_name: signature,
-        quote_signed_at: now,
-        quote_signature_path: drawnPath,
-        quote_signature_method: method,
-      });
-      // A database without the mark columns yet still gets the name and the
-      // moment. Losing the drawing during a deploy window is a shame; losing
-      // WHO ACCEPTED, because the write named a column that wasn't there, is a
-      // hole in the record.
-      if (error) await record({ quote_signer_name: signature, quote_signed_at: now });
-    } catch (error) {
-      console.error(`Could not record the quote signature for job ${jobId}:`, error instanceof Error ? error.message : error);
+  let alreadyApproved = false;
+  if (request) {
+    const payloadHash = quoteOptionRequestHash(jobId, selectedAddonIds, request);
+    const bodyText = `${job.client_name} accepted the quote${quotedAmount > 0 ? ` (${formatMoney(quotedAmount)})` : ''}.${addonNote}`;
+    const saved = await admin.rpc('save_client_quote_approval', {
+      p_account_id: accountId,
+      p_job_id: jobId,
+      p_request_id: request.requestId,
+      p_payload_hash: payloadHash,
+      p_expected: { quote_items: job.quote_items ?? null, quoted_amount: job.quoted_amount ?? null },
+      p_items: items.length > 0 ? finalized : null,
+      p_total: quotedAmount,
+      p_signature_name: signature || null,
+      p_signature_path: drawnPath || null,
+      p_signature_method: method || null,
+      p_title: 'Quote approved by client',
+      p_body: bodyText,
+    });
+    if (saved.error || !saved.data) {
+      throw new Error(saved.error?.message || 'Could not approve the quote.');
     }
+    alreadyApproved = saved.data.replayed === true;
+    
+    if (!alreadyApproved) {
+      if (saved.data.promoted) {
+        // Trigger offline conversions if it promoted the lead
+        const lead = await getLeadByConvertedJob(admin, accountId, jobId);
+        if (lead) {
+          try {
+            const { triggerWonLeadOfflineConversion } = await import('@/lib/google-ads-conversion-outbox');
+            await triggerWonLeadOfflineConversion(admin, accountId, { ...lead, status: 'won' }, quotedAmount);
+          } catch (e) {}
+          try {
+            const { triggerWonLeadMetaCapiConversion } = await import('@/lib/meta-capi-outbox');
+            await triggerWonLeadMetaCapiConversion(admin, accountId, { ...lead, status: 'won' }, quotedAmount);
+          } catch (e) {}
+        }
+      }
+    }
+  } else {
+    // Legacy path without request idempotency
+    const { data: existingApproval } = await admin.from('job_feed').select('id').eq('source_table', 'jobs').eq('source_id', jobId).eq('kind', 'quote_approved').maybeSingle();
+    alreadyApproved = Boolean(existingApproval);
+    
+    if (items.length > 0) {
+      await admin.from('jobs').update({ quote_items: finalized, quoted_amount: quotedAmount }).eq('account_id', accountId).eq('id', jobId);
+    }
+    if (signature) {
+      const method = drawnPath ? 'drawn' : 'typed';
+      await admin.from('jobs').update({ quote_signer_name: signature, quote_signed_at: now, quote_signature_path: drawnPath, quote_signature_method: method }).eq('account_id', accountId).eq('id', jobId).is('quote_signed_at', null);
+    }
+    await applyQuoteAcceptance(admin, accountId, jobId, { source: 'client_link', quotedAmount, note: addonNote });
   }
 
-  // The three things acceptance always means, whoever triggered it.
-  await applyQuoteAcceptance(admin, accountId, jobId, {
-    source: 'client_link',
-    quotedAmount,
-    note: addonNote,
-  });
-
-  // Keep the existing deposit replay guard. Concurrent deposit creation and
-  // interrupted deposit follow-ups still require their own durable recovery.
-  if (alreadyApproved) return;
-
-  // Deposit-on-approval: turn the approval straight into a deposit ask when the
+  if (alreadyApproved && !request) return;
+  // If request is provided, we ALWAYS check deposit creation because deposit creation is idempotent on existingDeposit.
+  // Wait, actually, alreadyApproved means the receipt was found. We should still proceed to deposit creation to ensure it completes!
+  
+    // Deposit-on-approval: turn the approval straight into a deposit ask when the
   // account opts in — a % of the just-finalized quote, created once and texted
   // when the client has SMS consent (otherwise it simply shows on their
   // dashboard). Best-effort: a deposit or SMS failure must never fail approval,

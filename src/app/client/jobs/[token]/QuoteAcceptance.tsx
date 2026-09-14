@@ -36,6 +36,7 @@ export type PaymentSummary = {
 
 export default function QuoteAcceptance({
   approveAction,
+  revision,
   businessName,
   scheduleOffered,
   scheduledLabel,
@@ -50,6 +51,7 @@ export default function QuoteAcceptance({
   financingOption,
 }: {
   approveAction: (formData: FormData) => void;
+  revision: string;
   businessName: string;
   scheduleOffered: boolean;
   scheduledLabel: string | null;
@@ -92,6 +94,9 @@ export default function QuoteAcceptance({
     payMode === 'full' ? payment.full ?? payment.fallback : payMode === 'plan' ? payment.plan ?? payment.fallback : payment.fallback;
   // Compared in cents, because this is a claim about arithmetic.
   const planCovers = planTotal != null && Math.round(planTotal * 100) !== Math.round(total * 100) ? planTotal : null;
+
+  const attemptId = useRef<string | null>(null);
+  if (!attemptId.current) attemptId.current = crypto.randomUUID();
 
   return (
     <div className="quote-rail-card">
@@ -152,6 +157,8 @@ export default function QuoteAcceptance({
           quote is the other agreement, and it had no signature at all. Two
           agreements, two signatures, in the order they are made. */}
       <form action={approveAction} id={QUOTE_FORM_ID} className="quote-rail-form quote-doc-sign">
+        <input type="hidden" name="request_id" value={attemptId.current} />
+        <input type="hidden" name="quote_revision" value={revision} />
         <label htmlFor="quote-signer">Your name</label>
         <input
           id="quote-signer"

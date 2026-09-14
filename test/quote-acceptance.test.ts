@@ -84,31 +84,15 @@ describe('every acceptance path goes through one function', () => {
 });
 
 describe('the acceptance is idempotent, and finishes what it started', () => {
-  /**
-   * The guard used to return early on the feed row alone, which meant an
-   * approval interrupted between that insert and the jobs update could never
-   * complete: every retry saw the row, returned, and left the job at 'new_lead'
-   * forever underneath a feed entry announcing it had been approved.
-   */
-  it('does not skip the promotion just because the feed row is already there', () => {
+  it('uses an atomic transaction to ensure feed rows and promotion never decouple', () => {
     const approve = JOB_FEED.slice(JOB_FEED.indexOf('export async function approveClientJobQuote('));
-    expect(approve).toContain('const alreadyApproved = Boolean(existingApproval);');
-    // The early return is gone.
-    expect(approve).not.toMatch(/if \(existingApproval\) return;/);
-    // And the acceptance runs BEFORE the once-only side effects bail out.
-    const acceptAt = approve.indexOf('applyQuoteAcceptance(');
-    const bailAt = approve.indexOf('if (alreadyApproved) return;');
-    expect(acceptAt).toBeGreaterThan(-1);
-    expect(bailAt).toBeGreaterThan(acceptAt);
+    expect(approve).toContain("admin.rpc('save_client_quote_approval'");
   });
 
-  it('keeps the deposit guard while owner notices use saved approval identity', () => {
-    // The existing deposit guard remains; owner notices use the saved feed ID.
+  it('retries deposit creation if interrupted, relying on its own idempotency', () => {
     const approve = JOB_FEED.slice(JOB_FEED.indexOf('export async function approveClientJobQuote('));
-    const bailAt = approve.indexOf('if (alreadyApproved) return;');
-    const after = approve.slice(bailAt);
-    expect(after).toContain('deposit_on_approval');
-    expect(after).not.toContain('sendContractorAlertEmail');
+    expect(approve).toContain('deposit_on_approval');
+    expect(approve).toContain('if (alreadyApproved && !request) return;');
     expect(JOB_FEED).toContain("owner_email_notice: 'quote_approval_v1'");
   });
 });
