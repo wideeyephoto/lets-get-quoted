@@ -1,11 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-admin';
-
-export interface PlatformBlogAuthor {
-  name: string;
-  role: string;
-  avatarUrl?: string;
-  bio?: string;
-}
+import { DEFAULT_AUTHOR, type PlatformBlogAuthor } from './platform-blog-author';
+export { DEFAULT_AUTHOR, type PlatformBlogAuthor } from './platform-blog-author';
 
 export type PlatformBlogBlock =
   | { type: 'p'; text: string }
@@ -54,13 +49,6 @@ export const BLOG_CATEGORIES = [
 ] as const;
 
 export type BlogCategory = (typeof BLOG_CATEGORIES)[number];
-
-export const DEFAULT_AUTHOR: PlatformBlogAuthor = {
-  name: 'Brett',
-  role: "Founder, Let's Get Quoted",
-  avatarUrl: '/apple-icon.png',
-  bio: 'Building modern business tools for independent trade contractors without monthly subscription bloat.',
-};
 
 /**
  * High-impact Wave 1 editorial articles pre-loaded for the public blog.
