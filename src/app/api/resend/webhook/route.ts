@@ -202,6 +202,34 @@ export async function POST(request: Request) {
       if (confirmError || confirmed !== true) throw new Error('Could not reconcile lifecycle send callback');
     }
 
+    const documentSendId = resendTagValue(event.data.tags, 'document_send_id');
+    if ((kind === 'client_quote' || kind === 'invoice') && documentSendId) {
+      const phase = resendTagValue(event.data.tags, 'send_phase');
+      if (!accountId || !recipient || !phase) throw new Error('Document callback is missing its binding');
+      const { data: confirmed, error: confirmError } = await admin.rpc('confirm_document_email_send', {
+        p_id: documentSendId, p_account_id: accountId, p_recipient: recipient, p_provider_id: providerId, p_phase: phase,
+      });
+      if (!confirmError && confirmed === false) {
+        const { data: intent, error: intentError } = await admin.from('document_email_sends')
+          .select('id').eq('id', documentSendId).maybeSingle();
+        if (intentError) throw new Error('Could not inspect missing document send');
+        if (!intent) {
+          // Deleted documents cascade their ledger. Retain an actionable
+          // routing record instead of endlessly retrying an absent intent.
+          const { error: quarantineError } = await admin.from('webhook_failures').insert({
+            source: 'resend', event_type: event.type, reference_id: providerId,
+            error_message: 'DOCUMENT_SEND_QUARANTINE: document send is absent; check deletion or environment routing.',
+            payload_excerpt: JSON.stringify({ document_send_id: documentSendId, account_id: accountId,
+              provider_id: providerId, send_phase: phase, svix_id: request.headers.get('svix-id') }),
+          });
+          if (quarantineError) throw new Error('Could not retain missing document send callback');
+          await maybeSuppress(admin, { status, accountId, recipient, bounce: event.data.bounce ?? null });
+          return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
+        }
+      }
+      if (confirmError || confirmed !== true) throw new Error('Could not reconcile document send callback');
+    }
+
     // Recording the bounce was never the point — not sending again was.
     //
     // Until now this handler wrote email_events and stopped there, and

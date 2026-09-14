@@ -49,6 +49,9 @@ jobs:
       - name: Read-only lifecycle preview checks
         run: npm run test:email-dry-run
 
+      - name: Quote and invoice email ledger database checks
+        run: npm run test:pg17:document-email
+
       - name: SEO tests
         run: npm run test:seo
 

@@ -17,7 +17,16 @@ This checklist tracks work; an unchecked live acceptance item is not satisfied b
 - [x] Preserve exact retry payload/key, bound attempts and recover lost acceptance through signed callbacks (T16/T17/T19 local subchecks).
 - [x] Verify concurrent workers and access restrictions in PostgreSQL; document evidence-based recovery and deployment order in the [lifecycle send runbook](runbooks/contractor-lifecycle-email-sends.md).
 - [ ] Apply the migration and deploy through the approved release process; hosted/live acceptance remains open.
-- [ ] Extend durable intent protection to quote and invoice sends; T16 is not complete for all email paths.
+- [x] Extend durable intent protection to quote and invoice sends in the third local pass; T16 still has remaining rollout and other-path gates.
+
+## Third implementation pass
+
+- [x] Save quote/invoice send intents against database-managed document revisions; reuse exact links, content and PDF bytes on retries.
+- [x] Save a separate fallback phase/key after an exact sender-domain rejection and resume that phase after a crash.
+- [x] Require durable provider acceptance before reporting emailed invoices sent; guard status writes against concurrent invoice edits.
+- [x] Make concurrent lead conversions choose one winner before downstream sends; avoid deleting a possibly committed conversion after a lost acknowledgement.
+- [x] Test database concurrency, revision changes, suppression, callbacks and action behavior; add the [document email recovery runbook](runbooks/document-email-sends.md).
+- [ ] Apply migrations and complete hosted acceptance under the existing rollout gates.
 
 ## Phase 1 — Canary and infrastructure
 
@@ -95,9 +104,19 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 36 regression files / **392 tests passed**, plus **2 standalone dry-run tests** and **14 actual PostgreSQL 17 checks**. Full app/test typecheck, changed-file lint and schema-order check passed. Supabase security advisor reported no issues against the disposable local database; hosted advisors were not run.
 - Migration prepared at `migrations/20260914133327_contractor_lifecycle_send_ledger.sql`; mirrored in `schema.sql`. Neither hosted migration nor deployment performed. Deployment sequencing, historical reconciliation and recovery are in the [runbook](runbooks/contractor-lifecycle-email-sends.md). CI now includes the database and standalone preview checks.
 
+### Third-pass verification and scope
+
+- **T16:** Added a private `document_email_sends` ledger shared by all three customer quote-email call sites and the invoice sender. Database-managed job/invoice revisions distinguish actual edits from duplicate submissions. The first intent saves exact recipient/content/links and base64 PDF bytes; retries use the saved message. Existing accepted records stay authoritative beyond provider-key expiry.
+- **T06/T16:** Exact domain rejection now saves a separate fallback payload, phase and key before sending. A resumed attempt uses that phase; it never switches sender after an ambiguous timeout or general provider error. Fallback rechecks document/recipient eligibility and local delivery blocks.
+- **T12:** Quote/invoice claims now enforce hard-bounce, complaint and provider-suppressed reasons locally while keeping marketing opt-outs eligible for transactional mail. Other transactional paths and historical reason reconciliation remain open.
+- **T19:** Signed quote/invoice callbacks reconcile exact intent/workspace/recipient/provider/phase. Deleted-document callbacks are durably quarantined for review and still apply relevant suppression. Invoice status updates require confirmed acceptance and the same invoice revision. Repeated accepted sends avoid duplicate owner receipts/feed rows. Acceptance still does not mean delivery.
+- **T16:** Concurrent lead conversions condition the winning update on `converted_job IS NULL`; the loser stops before downstream sends. An uncertain write response no longer deletes a possibly committed job. This does not make the entire conversion/payment workflow atomic or deduplicate separately created documents.
+- **Verification:** 52 selected regression files / **629 tests passed**, followed by **18 passing webhook tests** after adding the deleted-document case (**630 distinct tests**). **14 actual PostgreSQL 17 checks passed**, and the local Supabase security advisor reported no issues. Full app/test typecheck passed, including the final incremental check after callback changes. Lint: zero errors, six unchanged warnings verified against the previous commit. Schema-order and diff checks passed.
+- Migration prepared at `migrations/20260914135714_document_email_send_ledger.sql`, mirrored in `schema.sql`, with `test:pg17:document-email` added to CI. No hosted migration, deployment or real email occurred. See the [document email runbook](runbooks/document-email-sends.md) for release order, privacy, recovery and remaining scope.
+
 ### Next work and live gates
 
-1. **T16:** Extend durable claims and uncertain-outcome recovery to quote/invoice sends. Lifecycle now has a persistent ledger locally; migrate before deploying it and reconcile uncertain historical sends while old producers are paused. Quote/invoice sender fallback still needs an explicit stable identity for its changed payload. Provider keys alone do not close those gaps.
+1. **T16/T17:** Deploy and verify the prepared lifecycle and quote/invoice ledgers after reconciling uncertain historical sends. Audit remaining email families and owner notifications; add actionable retry/review monitoring. A retry scheduler, explicit unchanged-document resend workflow, and atomic creation/payment workflow remain separate work. Migrations must precede enabling the new senders.
 2. **T12/T19:** Audit every transactional path and provider-region scope; reconcile historical delivery-block evidence before claiming local enforcement across tenants or providers.
 3. **T03:** Run the repaired read-only runner in the intended hosted environment after review of environment identity. No live recipient preview has been fetched in this pass.
 4. **T01:** The repository canary record, last updated September 11, says Day 1 started September 11. Current scheduled runs were not re-read here; resolve the pasted list's differing date using actual retained run evidence. Keep enrollment closed until all live gates pass.

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   createAdminClient: vi.fn(),
   upsert: vi.fn(),
   rpc: vi.fn(),
+  intentLookup: vi.fn(),
   quarantine: vi.fn(),
   suppressEmail: vi.fn(),
   logWebhookFailure: vi.fn(),
@@ -77,12 +78,14 @@ beforeEach(() => {
 
   mocks.upsert.mockResolvedValue({ error: null });
   mocks.rpc.mockResolvedValue({ data: true, error: null });
+  mocks.intentLookup.mockResolvedValue({ data: { id: 'existing-intent' }, error: null });
   mocks.quarantine.mockResolvedValue({ error: null });
   mocks.suppressEmail.mockResolvedValue(true);
   mocks.logWebhookFailure.mockResolvedValue(undefined);
   mocks.createAdminClient.mockReturnValue({
     rpc: mocks.rpc,
     from: vi.fn((table: string) => {
+      if (table === 'document_email_sends') return { select: () => ({ eq: () => ({ maybeSingle: mocks.intentLookup }) }) };
       if (table === 'webhook_failures') return { insert: mocks.quarantine };
       if (table !== 'email_events') throw new Error(`Unexpected table ${table}`);
       return { upsert: mocks.upsert };
@@ -96,6 +99,37 @@ afterEach(() => {
 });
 
 describe('Resend webhook outcome projection', () => {
+  it('retains a late callback for a deleted document as a routing review', async () => {
+    mocks.rpc.mockResolvedValue({ data: false, error: null });
+    mocks.intentLookup.mockResolvedValue({ data: null, error: null });
+    const data = taggedData('deleted-document', { tags: { kind: 'invoice', account_id: ACCOUNT_ID,
+      document_send_id: '30000000-0000-4000-8000-000000000001', send_phase: 'primary' } });
+    expect((await POST(signedRequest('email.complained', data))).status).toBe(202);
+    expect(mocks.quarantine).toHaveBeenCalledWith(expect.objectContaining({ error_message: expect.stringContaining('DOCUMENT_SEND_QUARANTINE') }));
+    expect(mocks.suppressEmail).toHaveBeenCalledWith(expect.anything(), ACCOUNT_ID, RECIPIENT, 'complaint');
+    mocks.quarantine.mockResolvedValue({ error: { message: 'offline' } });
+    expect((await POST(signedRequest('email.delivered', data))).status).toBe(500);
+  });
+
+  it.each(['client_quote', 'invoice'])('recovers %s acceptance with the signed saved phase', async kind => {
+    const response = await POST(signedRequest('email.delivered', taggedData('document-provider', {
+      tags: { kind, account_id: ACCOUNT_ID, document_send_id: '30000000-0000-4000-8000-000000000001', send_phase: 'fallback' },
+    })));
+    expect(response.status).toBe(200);
+    expect(mocks.rpc).toHaveBeenCalledWith('confirm_document_email_send', {
+      p_id: '30000000-0000-4000-8000-000000000001', p_account_id: ACCOUNT_ID,
+      p_recipient: RECIPIENT, p_provider_id: 'document-provider', p_phase: 'fallback',
+    });
+  });
+
+  it.each([{ data: false, error: null }, { data: null, error: { message: 'offline' } }])('retries document callbacks until their binding is durably reconciled', async result => {
+    mocks.rpc.mockResolvedValue(result);
+    const response = await POST(signedRequest('email.sent', taggedData('document-retry', {
+      tags: { kind: 'invoice', account_id: ACCOUNT_ID, document_send_id: '30000000-0000-4000-8000-000000000001', send_phase: 'primary' },
+    })));
+    expect(response.status).toBe(500);
+  });
+
   it('recovers lifecycle acceptance using the signed intent, workspace and recipient', async () => {
     const response = await POST(signedRequest('email.delivered', taggedData('lost-response', {
       tags: { kind: 'contractor_lifecycle', account_id: ACCOUNT_ID, lifecycle_send_id: '20000000-0000-4000-8000-000000000001' },

@@ -1007,15 +1007,25 @@ export async function convertLeadToJob(
     }
   }
 
-  const { error } = await supabase
+  const { data: converted, error } = await supabase
     .from('leads')
     .update({ converted_job: job.id, status: 'quoted', updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
-    .eq('id', leadId);
+    .eq('id', leadId)
+    .is('converted_job', null)
+    .select('id')
+    .maybeSingle();
 
+  // Two Send submissions may both have read an unconverted lead. Only the
+  // winner may continue to payments, links and customer email. On an uncertain
+  // write response, retain the new job for reconciliation rather than deleting
+  // a possibly committed conversion.
   if (error) {
-    await deleteJob(supabase, accountId, job.id);
     throw error;
+  }
+  if (!converted) {
+    await deleteJob(supabase, accountId, job.id);
+    throw new Error('This lead was already converted by another request. Open its existing quote.');
   }
   return job;
 }

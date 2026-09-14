@@ -2,6 +2,8 @@
 
 September 14, 2026. Local implementation and verification; not yet deployed. Covers immediate welcome, the lifecycle sweep and approved activation batches. Quote/invoice sends are outside this change. See the [customer email checklist](../customer-email-handling-checklist-2026-09-14.md) for remaining gates.
 
+The later [quote/invoice send implementation](document-email-sends.md) has a separate ledger and migration; its recovery rules also preserve the original provider window.
+
 ## Behavior
 
 Before contacting Resend, the sender atomically saves one intent per workspace and lifecycle step. It retains the exact payload and provider idempotency key. An account lock also prevents concurrent different steps from bypassing the 48-hour cadence. Legacy activity events still prevent repeat sends; new accepted sends remain authoritative even if the activity feed write fails.
