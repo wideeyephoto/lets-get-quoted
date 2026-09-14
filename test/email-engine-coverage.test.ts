@@ -355,13 +355,15 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
   describe('Campaign Marketing & Delivery Helpers', () => {
     it('sendCampaignEmail delivers marketing email with CAN-SPAM footer and unsubscribe link', async () => {
-      await sendCampaignEmail({
+      const mockAdmin = {} as any; // Mock admin for test
+      await sendCampaignEmail(mockAdmin, {
         accountId: 'acc-1',
         recipientEmail: 'homeowner@example.com',
         businessName: 'Ace Contracting',
         subject: 'Spring Gutter Cleaning Special: 20% Off',
         body: 'Book your spring service before April 1st to save 20%.',
         mailingAddress: '123 Main St, Austin, TX 78701',
+        idempotencyKey: 'test-idempotency-key',
       });
 
       expect(mocks.send).toHaveBeenCalledTimes(1);

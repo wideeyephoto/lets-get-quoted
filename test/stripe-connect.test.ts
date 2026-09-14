@@ -12,6 +12,10 @@ vi.mock('@/lib/stripe', () => ({
   getStripeClient: vi.fn(),
 }));
 
+vi.mock('@/lib/connect-owner-notices', () => ({
+  syncConnectTransferStatus: vi.fn(),
+}));
+
 describe('stripe-connect', () => {
   let mockSupabase: any;
   let mockStripe: any;
@@ -176,6 +180,36 @@ describe('stripe-connect', () => {
 
       const result = await getRecipientTransferStatus('acct_1');
       expect(result).toBeNull();
+    });
+  });
+
+  describe('refreshAccountOnboardingStatus', () => {
+    it('returns true when sync returns true', async () => {
+      const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+      vi.mocked(syncConnectTransferStatus).mockResolvedValue(true);
+
+      const result = await refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe');
+      
+      expect(result).toBe(true);
+      expect(syncConnectTransferStatus).toHaveBeenCalledWith(mockSupabase, 'acct_stripe', 'acc_1');
+    });
+
+    it('returns false when sync returns false', async () => {
+      const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+      vi.mocked(syncConnectTransferStatus).mockResolvedValue(false);
+
+      const result = await refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe');
+      
+      expect(result).toBe(false);
+    });
+
+    it('throws if sync returns undefined', async () => {
+      const { syncConnectTransferStatus } = await import('@/lib/connect-owner-notices');
+      vi.mocked(syncConnectTransferStatus).mockResolvedValue(undefined);
+
+      await expect(
+        refreshAccountOnboardingStatus(mockSupabase, 'acc_1', 'acct_stripe')
+      ).rejects.toThrow('Connected account no longer matches onboarding return');
     });
   });
 });
