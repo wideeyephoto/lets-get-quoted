@@ -30,13 +30,14 @@ export async function runWebhookAutoHealer(
   if (opts.dryRun) return report;
   for (const failure of unresolved) {
     createHitlAction({
+      id: `hitl-webhook-${failure.id}`,
       category: 'sre_platform',
       title: `Inspect Webhook Failure: ${failure.source} (${failure.event_type || 'event'})`,
       description: `Webhook ${failure.id} failed: "${failure.error_message || 'Unknown error'}". Verify provider identity and business effects before any source-specific recovery. No replay was attempted.`,
       actionType: 'sre.inspect_webhook_failure',
       payload: { failureId: failure.id, source: failure.source, error: failure.error_message },
       requiredRole: 'admin',
-    });
+    }, supabase);
     report.escalatedToHitlCount++;
   }
   if (report.escalatedToHitlCount > 0) {
