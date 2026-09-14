@@ -45,7 +45,7 @@ function fixture(options: { rejectPrepare?: boolean; rejectSnapshot?: boolean; r
 it('saves the normalized owner and exact message under its claimed event before acceptance', async () => {
   const db = fixture();
   expect((await runOwnerEventNotices(db.client)).ownersNotified).toBe(1);
-  expect(db.rpc).toHaveBeenCalledWith('prepare_owner_event_notice', expect.objectContaining({ p_id: 'notice-1', p_account_id: 'account-1', p_recipient: 'owner@example.test' }));
+  expect(db.rpc).toHaveBeenCalledWith('prepare_owner_event_notice', expect.objectContaining({ p_id: 'notice-1', p_account_id: 'account-1', p_recipient: 'application@example.test' }));
   expect(db.rpc).toHaveBeenCalledWith('prepare_owner_event_notice_snapshot', expect.objectContaining({ p_payload: { to: 'owner@example.test' }, p_idempotency_key: 'saved-key' }));
   expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ ctaUrl: expect.stringContaining('/dashboard/jobs/job-1'), bodyLines: ['Help'] }));
   await runOwnerEventNotices(db.client);
@@ -74,7 +74,17 @@ it('reports failed acceptance bookkeeping as an error and keeps the claim', asyn
 });
 
 it('keeps a missing owner visible without calling the sender', async () => {
-  const db = fixture(); mocks.owner.mockResolvedValueOnce(null);
+  const db = fixture();
+  // Remove the recipient_email from the payload so we fall back to owner lookup
+  (db as any).client.rpc = vi.fn(async (name: string, input: Record<string, unknown>) => {
+    if (name === 'claim_owner_event_notices') {
+      const notice = { id: 'notice-1', account_id: 'account-1', source_id: 'feed-1', event_kind: 'client_question', source_payload: { client_id: 'client-1', title: 'Question', body: 'Help' }, attempted_at: '2026-09-14T12:00:00Z' };
+      return { data: [notice], error: null };
+    }
+    if (name === 'finish_owner_event_notice') return { data: true, error: null };
+    return { data: null, error: null };
+  });
+  mocks.owner.mockResolvedValueOnce(null);
   expect((await runOwnerEventNotices(db.client)).errors).toBe(1);
   expect(mocks.send).not.toHaveBeenCalled();
 });

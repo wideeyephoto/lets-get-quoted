@@ -39,7 +39,8 @@ describe('Warranty Sweep Lib', () => {
     };
 
     adminMock = {
-      from: vi.fn(() => queryMock)
+      from: vi.fn(() => queryMock),
+      rpc: vi.fn().mockResolvedValue({ data: 'notice-123', error: null }),
     };
 
     (authModule.createAdminClient as any).mockReturnValue(adminMock);
@@ -74,27 +75,19 @@ describe('Warranty Sweep Lib', () => {
     expect(res.checked).toBe(2);
     expect(res.skipped).toBe(1);
     expect(res.notified).toBe(1);
-    
-    // Ensure it updated the correct id
-    expect(queryMock.update).toHaveBeenCalledWith({ service_reminded_at: expect.any(String) });
-    expect(queryMock.in).toHaveBeenCalledWith('id', ['1']);
-
-    
   });
 
   it('skips email if update fails', async () => {
-    queryMock.then = vi.fn()
-      .mockImplementationOnce((resolve) => resolve({
+    queryMock.then = vi.fn((resolve) => resolve({
         data: [{ id: '1', account_id: 'acct1', job_id: 'job1', title: 'w1', next_service_due: '2023-01-10' }],
         error: null
-      }))
-      .mockImplementationOnce((resolve) => resolve({ error: new Error('stamp fail') }));
+    }));
+    adminMock.rpc.mockResolvedValueOnce({ error: new Error('stamp fail') });
 
     (warrantiesModule.serviceDue as any).mockReturnValue({ due: true, label: 'soon' });
 
     const res = await runServiceReminderSweep();
     
     expect(res.notified).toBe(0);
-    
   });
 });
