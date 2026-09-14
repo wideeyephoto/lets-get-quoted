@@ -193,10 +193,6 @@
       "schedule": "*/15 * * * *"
     },
     {
-      "path": "/api/cron/db-guard",
-      "schedule": "*/5 * * * *"
-    },
-    {
       "path": "/api/cron/webhook-heal",
       "schedule": "*/15 * * * *"
     },

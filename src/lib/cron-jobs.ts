@@ -49,7 +49,13 @@ export type ParkedCronRoute = {
   reason: string;
 };
 
-export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [];
+export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
+  {
+    job: 'db-guard',
+    reason:
+      'RPC public.get_long_running_queries does not exist in the production database schema or repository migrations, causing 285 guaranteed failures/day.',
+  },
+];
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
@@ -423,14 +429,6 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'customer',
     consequence: 'A contractor whose domain finishes provisioning its certificate is never noticed or told, so their website stays on the free subdomain and the builder keeps saying pending until they think to click Check connection again.',
-  },
-
-  {
-    job: 'db-guard',
-    label: 'Database pool guard',
-    schedule: '*/5 * * * *',
-    importance: 'money',
-    consequence: 'A long-running or abandoned query holds its connection until the pool is exhausted, and every request across the product starts failing to reach the database at once.',
   },
   {
     job: 'webhook-heal',
