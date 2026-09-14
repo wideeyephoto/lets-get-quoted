@@ -52,7 +52,7 @@ export function generatePermitApplicationPdf(data: UniversalPermitApplicationDat
       doc.font('Helvetica')
         .fontSize(8)
         .fillColor('#64748b')
-        .text('OFFICIAL UNIFORM PERMIT APPLICATION PACKET (MICHIGAN PUBLIC ACT 230)', { align: 'center' });
+        .text(`APPLICATION FOR ${data.workScope.trade.toUpperCase()} PERMIT`, { align: 'center' });
 
       doc.moveDown(0.5);
 
@@ -140,24 +140,26 @@ function getAttestedText(
         height: 24,
       });
 
-      const techY = scopeY + 36;
-      doc.font('Helvetica-Bold').text('Roof Area / Squares: ', PAGE_MARGIN + 6, techY);
-      doc.font('Helvetica').text(`${data.workScope.roofSquares || 28} Squares`, PAGE_MARGIN + 105, techY);
+      let techY = scopeY + 38;
+      if (data.workScope.specRows && data.workScope.specRows.length > 0) {
+        for (let i = 0; i < data.workScope.specRows.length; i += 2) {
+          const row1 = data.workScope.specRows[i];
+          const row2 = data.workScope.specRows[i + 1];
 
-      doc.font('Helvetica-Bold').text('Covering Material: ', PAGE_MARGIN + 280, techY);
-      doc.font('Helvetica').text(data.workScope.newRoofCovering || 'Architectural Asphalt Shingles (ASTM D3462)', PAGE_MARGIN + 370, techY);
+          doc.font('Helvetica-Bold').text(`${row1.label}: `, PAGE_MARGIN + 6, techY);
+          doc.font('Helvetica').text(row1.value, PAGE_MARGIN + 115, techY, { width: row2 ? 160 : contentWidth - 120 });
 
-      doc.font('Helvetica-Bold').text('Ice Barrier Compliance: ', PAGE_MARGIN + 6, techY + 12);
-      doc.font('Helvetica').text(
-        '24 inches inside exterior wall line (2015 MRC § R905.1.2 Compliant)',
-        PAGE_MARGIN + 115,
-        techY + 12,
-      );
-
-      doc.font('Helvetica-Bold').text('Drip Edge / Flashing: ', PAGE_MARGIN + 6, techY + 24);
-      doc.font('Helvetica').text('Corrosion-resistant metal drip edge at eaves & rakes (MRC § R905.2.8.5)', PAGE_MARGIN + 105, techY + 24);
-
-      doc.y = techY + 40;
+          if (row2) {
+            doc.font('Helvetica-Bold').text(`${row2.label}: `, PAGE_MARGIN + 280, techY);
+            doc.font('Helvetica').text(row2.value, PAGE_MARGIN + 375, techY, { width: contentWidth - 380 });
+          }
+          techY += 14;
+        }
+        doc.y = techY + 6;
+      } else {
+        doc.font('Helvetica-Oblique').text('Verify scope with jurisdiction', PAGE_MARGIN + 6, techY);
+        doc.y = techY + 16;
+      }
 
       // Section 5: Michigan Public Act 230 § 23a Statutory Notice Box
       const noticeBoxY = doc.y + 4;

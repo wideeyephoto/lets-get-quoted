@@ -4,8 +4,9 @@ import { normalizeAddress } from '../location-context/normalize-address';
 import { resolveJurisdiction } from '../location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement, classifyWorkScope } from './requirement-engine';
 import { getCredentialsForAuthority } from './credentials-vault';
-import type { PermitWorkContext, AttestedField, PermitReadiness } from './types';
+import type { PermitWorkContext, AttestedField, PermitReadiness, CodeReference } from './types';
 import { safeSignaturePath } from '../signature';
+import { buildScopeProfile } from './scope-profiles';
 
 export type { AttestedField, PermitReadiness };
 
@@ -61,6 +62,7 @@ export type UniversalPermitApplicationData = {
     atticVentilationType?: string;
     flashingDetails?: string;
     specRows?: Array<{ label: string; value: string }>;
+    citations?: CodeReference[];
   };
   certification: {
     applicantSignatureText: string;
@@ -99,11 +101,11 @@ export async function compilePermitApplication(
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found.');
 
-  // Fetch account, site branding, and contractor compliance profile
-  const [accountRes, siteRes, complianceRes] = await Promise.all([
+  // Fetch account and site branding
+  const [accountRes, siteRes] = await Promise.all([
     supabase
       .from('accounts')
-      .select('business_name, mailing_address, insurance_carrier, insurance_policy_number, insurance_coverage_amount, insurance_expires_on')
+      .select('business_name, mailing_address, insurance_carrier, insurance_policy_number, insurance_coverage_amount, insurance_expires_on, fein, state_employer_number, license_type')
       .eq('id', accountId)
       .maybeSingle(),
     supabase
@@ -111,23 +113,10 @@ export async function compilePermitApplication(
       .select('company_name, phone, license, service_area')
       .eq('account_id', accountId)
       .maybeSingle(),
-    Promise.resolve().then(async () => {
-      try {
-        const query = supabase.from('contractor_compliance_profile');
-        if (typeof query?.select === 'function') {
-          return await query
-            .select('fein, state_employer_number, license_type')
-            .eq('account_id', accountId)
-            .maybeSingle();
-        }
-      } catch {}
-      return { data: null };
-    }),
   ]);
 
   const account = accountRes.data;
   const site = siteRes.data;
-  const compliance = complianceRes?.data;
 
   const parsedAddress = normalizeAddress(job.address);
   const work: PermitWorkContext = classifyWorkScope(job.scope);
@@ -173,7 +162,7 @@ export async function compilePermitApplication(
   );
 
   const licenseTypeVal =
-    compliance?.license_type ||
+    (account as any)?.license_type ||
     (vaultCreds.stateLicense?.tradeDiscipline && vaultCreds.stateLicense.tradeDiscipline !== 'general'
       ? `${vaultCreds.stateLicense.issuingAuthority || 'State'} ${vaultCreds.stateLicense.tradeDiscipline} License`
       : vaultCreds.stateLicense?.issuingAuthority
@@ -182,7 +171,7 @@ export async function compilePermitApplication(
 
   const licenseType = makeAttestedField(
     licenseTypeVal,
-    compliance?.license_type ? 'contractor_compliance_profile' : vaultCreds.stateLicense?.id,
+    (account as any)?.license_type ? 'accounts.license_type' : vaultCreds.stateLicense?.id,
     'License Type',
     missingFields,
   );
@@ -227,15 +216,15 @@ export async function compilePermitApplication(
   );
 
   const mescEmployerNumber = makeAttestedField(
-    compliance?.state_employer_number,
-    compliance?.state_employer_number ? 'contractor_compliance_profile' : null,
+    (account as any)?.state_employer_number,
+    (account as any)?.state_employer_number ? 'accounts.state_employer_number' : null,
     'State Employer / MESC #',
     missingFields,
   );
 
   const fein = makeAttestedField(
-    compliance?.fein,
-    compliance?.fein ? 'contractor_compliance_profile' : null,
+    (account as any)?.fein,
+    (account as any)?.fein ? 'accounts.fein' : null,
     'Federal Employer ID (FEIN)',
     missingFields,
   );
@@ -268,12 +257,14 @@ export async function compilePermitApplication(
     missing: missingFields,
   };
 
+  const scopeProfile = buildScopeProfile(work, jurisdiction, streetAddress, job.scope || undefined);
+
   return {
     authority: {
       id: jurisdiction.authorityId,
       name: jurisdiction.authorityName,
       agencyName: jurisdiction.agencyName,
-      department: jurisdiction.agencyName || 'Building Inspection Division',
+      department: jurisdiction.agencyName || jurisdiction.authorityName || 'Building Department',
       contactPhone: undefined,
     },
     applicant: {
@@ -306,21 +297,24 @@ export async function compilePermitApplication(
       constructionType: 'Type V-B (Wood Frame / Combustible)',
     },
     workScope: {
-      trade: 'Building / Roofing',
-      projectTitle: `${streetAddress} Roof Replacement`,
+      trade: scopeProfile.tradeLabel,
+      projectTitle: scopeProfile.projectTitle,
       detailedDescription:
         job.scope ||
-        `Tear off 1 layer existing asphalt shingles down to wood deck. Inspect sheathing, install synthetic underlayment, ice and water shield on all eaves and valleys, starter strip, architectural shingles, and continuous ridge vent.`,
+        scopeProfile.detailedDescription ||
+        'Scope of work as authorized by property owner.',
       estimatedCost,
-      roofSquares: work.roofSquares,
-      layersToTearOff: 1,
-      newRoofCovering: 'Class A Fiberglass Asphalt Shingles (GAF Timberline HDZ or equiv.)',
-      underlayment: 'ASTM D226 Type II Synthetic Underlayment',
-      iceBarrierCompliance: true,
-      iceBarrierDescription: 'Self-adhering polymer modified bitumen extending 24" inside exterior wall line (2015 MRC § R905.1.2)',
-      dripEdgeCompliance: true,
-      atticVentilationType: 'Balanced Net Free Area with Continuous Ridge Vent & Soffit Inlets (2015 MRC § R806)',
-      flashingDetails: 'New step flashing against sidewalls and chimneys, 26ga corrosion-resistant valley liners',
+      roofSquares: scopeProfile.roofSquares,
+      layersToTearOff: scopeProfile.layersToTearOff,
+      newRoofCovering: scopeProfile.newRoofCovering,
+      underlayment: scopeProfile.underlayment,
+      iceBarrierCompliance: scopeProfile.iceBarrierCompliance,
+      iceBarrierDescription: scopeProfile.iceBarrierDescription,
+      dripEdgeCompliance: scopeProfile.dripEdgeCompliance,
+      atticVentilationType: scopeProfile.atticVentilationType,
+      flashingDetails: scopeProfile.flashingDetails,
+      specRows: scopeProfile.specRows,
+      citations: scopeProfile.citations,
     },
     certification: {
       applicantSignatureText: `${companyName} by Authorized Agent`,
@@ -354,6 +348,24 @@ function renderInsurance(
     return `${carrier.value} (<span class="blank-line" style="min-width: 60px;"></span><span class="missing-chip">Policy missing</span>)`;
   }
   return `<span class="blank-line"></span><span class="missing-chip">Missing — complete in Credentials Vault</span>`;
+}
+
+function renderSpecRowsHtml(specRows: Array<{ label: string; value: string }>): string {
+  const rows: string[] = [];
+  for (let i = 0; i < specRows.length; i += 2) {
+    const item1 = specRows[i];
+    const item2 = specRows[i + 1];
+    if (item2) {
+      rows.push(
+        `        <tr>\n          <td class="label">${item1.label}:</td>\n          <td>${item1.value}</td>\n          <td class="label">${item2.label}:</td>\n          <td>${item2.value}</td>\n        </tr>`,
+      );
+    } else {
+      rows.push(
+        `        <tr>\n          <td class="label">${item1.label}:</td>\n          <td colspan="3">${item1.value}</td>\n        </tr>`,
+      );
+    }
+  }
+  return rows.join('\n');
 }
 
 /**
@@ -449,8 +461,8 @@ export function generatePermitApplicationHtml(
   ${isDraft ? '<div class="draft-watermark">DRAFT — NOT FOR SUBMISSION</div>' : ''}
   <div class="header">
     <h1>${data.authority.name}</h1>
-    <h2>${data.authority.agencyName} · ${data.authority.department}</h2>
-    <div class="dept">Application for Residential Building / Roofing Permit</div>
+    <h2>${data.authority.agencyName}${data.authority.department && data.authority.department !== data.authority.agencyName ? ` · ${data.authority.department}` : ''}</h2>
+    <div class="dept">Application for ${data.workScope.trade} Permit</div>
   </div>
 
   <div class="section">
@@ -556,24 +568,11 @@ export function generatePermitApplicationHtml(
           <td class="label">Estimated Project Value:</td>
           <td><strong>${data.workScope.estimatedCost != null ? `$${data.workScope.estimatedCost.toLocaleString()}` : '<span class="blank-line" style="min-width: 80px;"></span>'}</strong></td>
         </tr>
-        <tr>
-          <td class="label">Tear-Off / Deck Condition:</td>
-          <td>Tear off ${data.workScope.layersToTearOff || 1} layer down to approved wood deck</td>
-          <td class="label">New Covering Material:</td>
-          <td>${data.workScope.newRoofCovering || ''}</td>
-        </tr>
-        <tr>
-          <td class="label">Underlayment:</td>
-          <td>${data.workScope.underlayment || ''}</td>
-          <td class="label">Ice Barrier Protection:</td>
-          <td>${data.workScope.iceBarrierDescription || ''}</td>
-        </tr>
-        <tr>
-          <td class="label">Drip Edge &amp; Flashing:</td>
-          <td>Corrosion-resistant drip edge on eaves/rakes; step/counter flashing (2015 MRC § R905.2.8.5)</td>
-          <td class="label">Attic Ventilation:</td>
-          <td>${data.workScope.atticVentilationType || ''}</td>
-        </tr>
+        ${
+          data.workScope.specRows && data.workScope.specRows.length > 0
+            ? renderSpecRowsHtml(data.workScope.specRows)
+            : `<tr><td colspan="4" style="text-align: center; font-style: italic; color: #475569; padding: 6px;">Verify scope with jurisdiction</td></tr>`
+        }
       </table>
     </div>
   </div>

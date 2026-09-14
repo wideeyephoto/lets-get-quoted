@@ -19,3 +19,4 @@ export * from './state-code-registry';
 export * from './canada-code-registry';
 export * from './mexico-code-registry';
 export * from './inspection-calendar-sync';
+export * from './scope-profiles';

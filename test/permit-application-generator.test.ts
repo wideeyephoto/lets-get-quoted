@@ -134,4 +134,103 @@ describe('Permit Application Pre-fill Generator', () => {
     expect(html).toContain(`d="${validSamplePath}"`);
     expect(html).toContain('Signature of Contractor / Authorized Agent');
   });
+
+  it('routes plumbing scope correctly and isolates trade from roofing keywords', async () => {
+    const { getJob } = await import('@/lib/jobs');
+    vi.mocked(getJob).mockResolvedValueOnce({
+      id: 'job-plumb',
+      account_id: mockAccountId,
+      client_name: 'Jane Customer',
+      address: '211 S Williams St, Royal Oak, MI 48067',
+      scope: 'Replace 50 gallon gas water heater and install 4-inch sewer cleanout',
+      quoted_amount: '4500.00',
+    } as any);
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const data = await compilePermitApplication(mockSupabase, mockAccountId, 'job-plumb');
+    expect(data.workScope.trade).toBe('Residential Plumbing');
+    expect(data.workScope.estimatedCost).toBe(4500);
+    expect(data.workScope.specRows?.some((r) => r.label.includes('Cleanouts'))).toBe(true);
+
+    const html = generatePermitApplicationHtml(data);
+    expect(html).toContain('Application for Residential Plumbing Permit');
+    expect(html).toContain('P3005.2');
+    expect(html).not.toContain('GAF Timberline');
+    expect(html).not.toContain('Ice Barrier Protection');
+    expect(html).not.toContain('Tear off 1 layer');
+  });
+
+  it('routes electrical scope and includes NEC citations', async () => {
+    const { getJob } = await import('@/lib/jobs');
+    vi.mocked(getJob).mockResolvedValueOnce({
+      id: 'job-elec',
+      account_id: mockAccountId,
+      client_name: 'Electric Customer',
+      address: '211 S Williams St, Royal Oak, MI 48067',
+      scope: 'Install 200A service panel upgrade, 240V 50A EV charger in garage',
+      quoted_amount: 3200,
+    } as any);
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const data = await compilePermitApplication(mockSupabase, mockAccountId, 'job-elec');
+    expect(data.workScope.trade).toBe('Residential Electrical');
+    expect(data.workScope.specRows?.some((r) => r.label.includes('Service Disconnect'))).toBe(true);
+
+    const html = generatePermitApplicationHtml(data);
+    expect(html).toContain('Application for Residential Electrical Permit');
+    expect(html).toContain('Art. 230.70');
+    expect(html).not.toContain('Ice Barrier');
+  });
+
+  it('falls back to building generic profile with Verify scope notice when trade is generic', async () => {
+    const { getJob } = await import('@/lib/jobs');
+    vi.mocked(getJob).mockResolvedValueOnce({
+      id: 'job-generic',
+      account_id: mockAccountId,
+      client_name: 'Generic Customer',
+      address: '211 S Williams St, Royal Oak, MI 48067',
+      scope: 'General interior renovation and non-structural dry wall installation',
+      quoted_amount: null,
+    } as any);
+
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      }),
+    } as any;
+
+    const data = await compilePermitApplication(mockSupabase, mockAccountId, 'job-generic');
+    expect(data.workScope.trade).toBe('Residential Building');
+    expect(data.workScope.estimatedCost).toBeUndefined();
+    expect(data.workScope.specRows).toHaveLength(0);
+
+    const html = generatePermitApplicationHtml(data);
+    expect(html).toContain('Application for Residential Building Permit');
+    expect(html).toContain('Verify scope with jurisdiction');
+  });
 });
