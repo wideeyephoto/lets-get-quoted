@@ -1,6 +1,6 @@
 # Google Ads migration and live verification — September 14, 2026
 
-The developer-token migration, app-domain access and fresh campaign-write checks passed. **Offline conversions remain blocked:** the September 14 retest using the real configured action returned Google's requirement to migrate to Data Manager API. The corrected verifier treats that partial failure as a failure, superseding the older conversion-green conclusion. See [LAUNCH_CHECKLIST.md](../LAUNCH_CHECKLIST.md).
+**The developer-token and Data Manager migrations are deployed and production validation passes.** App-domain access and fresh campaign writes passed; the enabled Data Manager transport passed its production validation-only check at 18:52 UTC with zero warnings. Real conversion ingestion/attribution remains unverified because the user has no genuine eligible unuploaded event. The earlier Google upload restriction and initial Data Manager payload failure below are resolved historical checkpoints. See [LAUNCH_CHECKLIST.md](../LAUNCH_CHECKLIST.md).
 
 ## Cloud access and contacts
 
@@ -91,3 +91,34 @@ Data Manager API is enabled on the Cloud project. A dedicated desktop OAuth clie
 The final consent retry was blocked by automatic approval review: Google's required `datamanager` scope allows seeing, creating, editing, importing and deleting customer data across Google Ads, Google Marketing Platform and Google Analytics, broader than the upload-only purpose described in the initial credential approval. Explicit approval of this full scope is pending. No workaround was used after the rejection.
 
 Remaining acceptance: finish approved OAuth and protected credential storage; finish CI and deploy; pass the dedicated validation-only route through the app domain; then enable the production transport and revalidate the active release. A genuine eligible event and downstream diagnostics remain necessary to establish real conversion acceptance/attribution. API configuration or a validation-only success must not be represented as recorded attribution.
+
+### Authorization and release follow-up — September 14, 18:31 UTC
+
+The user explicitly approved the full Data Manager permission after the scope clarification. The consent grant succeeded. At **18:27:41.674 UTC**, the helper confirmed all three dedicated credentials were saved as protected Vercel Production Secrets. The Windows command wrapper was replaced with PowerShell; no secret values were printed or committed. The previous pending-approval and incomplete-storage checkpoint is superseded.
+
+PR #92 passed the full CI run in **11m 1s** and merged as `efc8bc44f386b4eab4cd9c8b5890e752a932f10a`. A fresh production deployment `dpl_5dh3ybVWmJgJV4L3m9w85ivSL7Gz` was started after credential storage to bind the new variables. Production transport selection remains unchanged pending live validation.
+
+Cloud Audience status was verified as **In production**, External. Google displays an app-verification requirement for unapproved sensitive/restricted scopes and a 100-user cap. This is a broader OAuth distribution consideration; this owner grant succeeded. No publishing-status or user-cap settings were changed.
+### Live payload correction — September 14, 18:37 UTC
+
+The credential-bound release was promoted successfully to the app domain. At **18:32:28.072 UTC**, the protected endpoint reached ingestion but Google returned HTTP 400. A local validation-only diagnostic identified `REQUIRED_FIELD_MISSING` at `events.events[0].event_source`. The general Event reference marks this field optional, but the Google Ads offline destination requires it.
+
+[PR #93](https://github.com/wideeyephoto/lets-get-quoted/pull/93), commit `59a65c4a6`, explicitly sends `eventSource: OTHER` for offline CRM events and both verification paths. Thirteen focused transport/route tests passed, including a regression for this requirement. The corrected payload then received Google HTTP 200 with validation request ID `v-809be260-6293-4c52-9d34-df59a81cfeb9`. It still used `validateOnly=true`; this is not a recorded conversion. [Initial deployed failure](google-data-manager-initial-validation-2026-09-14.json), [corrected Google validation](google-data-manager-corrected-validation-2026-09-14.json).
+
+The corrective preview deployment passed. Full corrective CI and production activation are pending at this checkpoint. A genuine unuploaded Google Ads won-job/lead ID was requested for the final real-event check.
+
+The user confirmed no genuine eligible unuploaded conversion is available. Real-event ingestion/attribution must remain an open first-conversion acceptance gate; no synthetic sale will be generated. This does not prevent enabling the API transport after production validation passes.
+
+### Corrective release gates complete — September 14, 18:48 UTC
+
+Full CI run `34881769597` passed, including the full unit suite, database checks, type checks, lint and build. PR #93 merged as `4cbc22a6a347e591125223088ed00a5425bcc7ae`. After live corrected-payload validation and passing CI, the production configuration was set to `GOOGLE_ADS_CONVERSION_TRANSPORT=data-manager`. Deployment `dpl_F27bydJqQWBnsUW56MU2vRuUeQeb` is building from that merge with the new setting.
+
+## Final production acceptance — September 14, 18:52 UTC
+
+Deployment `dpl_F27bydJqQWBnsUW56MU2vRuUeQeb` (`https://lets-get-quoted-pe13ksmmq-lets-get-quoted.vercel.app`), merge `4cbc22a6a347e591125223088ed00a5425bcc7ae`, completed successfully and was explicitly promoted. Resolving `app.letsgetquoted.com` confirmed this exact READY release.
+
+- At **18:52:31.702 UTC**, the protected Data Manager route returned **HTTP 200**, `ok: true`, `productionTransportEnabled: true`, stage `ingestion`, **zero warnings**, `validationOnly: true`, and `conversionRecorded: false`. [Production validation evidence](google-data-manager-production-validation-2026-09-14.json).
+- At **18:52:40.545 UTC**, the protected Ads read-only route returned **HTTP 200**, Google upstream 200, no developer-token header, two accessible accounts and manager access. [Post-cutover account-access evidence](google-ads-post-data-manager-read-only-2026-09-14.json).
+- The downloaded temporary client-secret JSON was removed after successful protected storage and authorization. Production secrets were not exported or committed.
+
+The migration and production API configuration/validation are complete. Genuine conversion ingestion, provider processing and attribution remain unverified because no eligible real event is available. No synthetic conversion was recorded and no campaign was activated. Review the first genuine conversion's request ID and downstream diagnostics before calling attribution green.

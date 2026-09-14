@@ -1,0 +1,14 @@
+{
+  "checkedAt": "2026-09-14T18:32:27.635Z",
+  "base": "https://app.letsgetquoted.com",
+  "httpStatus": 502,
+  "ok": false,
+  "timestamp": "2026-09-14T18:32:28.072Z",
+  "transport": "data-manager",
+  "productionTransportEnabled": false,
+  "validationOnly": true,
+  "conversionRecorded": false,
+  "stage": "ingestion",
+  "warningCount": 0,
+  "message": "Data Manager rejected the request (HTTP 400)."
+}
