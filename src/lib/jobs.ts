@@ -36,6 +36,7 @@ export type QuoteItem = {
 };
 
 export type Job = {
+  document_email_revision?: string;
   id: string;
   account_id: string;
   ref: string;

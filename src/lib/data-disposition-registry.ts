@@ -1042,6 +1042,39 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Quick Stop repayment evidence follows the existing refund-ledger policy.
+  quick_stop_refund_tasks: {
+    tableName: 'quick_stop_refund_tasks',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  quick_stop_manual_refund_reservations: {
+    tableName: 'quick_stop_manual_refund_reservations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'payment_id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  quick_stop_no_show_enforcements: {
+    tableName: 'quick_stop_no_show_enforcements',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'request_id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Direct payment refund authorization tokens
   billing_direct_refund_authorizations: {
     tableName: 'billing_direct_refund_authorizations',
@@ -1779,6 +1812,26 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
   },
 
   // Email dispatch audit history
+  contractor_lifecycle_sends: {
+    tableName: 'contractor_lifecycle_sends',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'resend',
+  },
+  document_email_sends: {
+    tableName: 'document_email_sends',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'resend',
+  },
   email_events: {
     tableName: 'email_events',
     relationship: 'direct_account_id',

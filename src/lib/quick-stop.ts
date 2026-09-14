@@ -65,18 +65,9 @@ export const QUICK_STOP_ACTIVE_STATUSES: QuickStopStatus[] = [
   'arrived',
 ];
 
-/**
- * Statuses where nothing is pending from either side — the request is closed out
- * and belongs in history rather than in the work queue.
- *
- * This replaces QUICK_STOP_TERMINAL_STATUSES, which claimed "no further
- * transitions" and was wrong about that for most of its own contents: `completed`,
- * `refunded` and both cancels all move on to `disputed`, and the table below says
- * so. It also left `disputed` out entirely, so its one and only consumer had to
- * paste it back in by hand, which is the shape of a list that does not mean what
- * it is called. "Closed" is what that consumer actually wanted, and what this is.
- */
-export const QUICK_STOP_CLOSED_STATUSES: QuickStopStatus[] = [
+// Closed for scheduling. Financial reconciliation and staff adjudication can
+// still change these records; none may reopen an active appointment.
+export const QUICK_STOP_TERMINAL_STATUSES: QuickStopStatus[] = [
   'contractor_declined',
   'offer_expired',
   'customer_declined',
@@ -85,108 +76,47 @@ export const QUICK_STOP_CLOSED_STATUSES: QuickStopStatus[] = [
   'contractor_canceled',
   'no_show_confirmed',
   'refunded',
-  // A chargeback is somebody else's process now; the visit itself is over, and an
-  // owner looking at their queue should not find it sitting among live work.
   'disputed',
 ];
 
-/**
- * The statuses a contractor may still answer — the offer/decline/more-info gate.
- * Lives here, beside the transition table, so the table and the guards that
- * enforce it cannot drift apart unnoticed (see test/quick-stop.test.ts).
- */
-export const QUICK_STOP_OFFERABLE_STATUSES: QuickStopStatus[] = ['awaiting_contractor', 'more_information_requested'];
-
-/** Statuses that still hold a slot on a given arrival day, for the daily cap. */
-export const QUICK_STOP_DAY_OCCUPYING_STATUSES: QuickStopStatus[] = [
-  'contractor_offer_sent',
-  'awaiting_customer_payment',
-  'confirmed',
-  'en_route',
-  'arrived',
-];
-
-/**
- * Allowed forward transitions.
- *
- * READ THIS AS A DESCRIPTION, NOT A GATE. Nothing imports canTransition; every
- * transition is enforced by the compare-and-set on the update that performs it,
- * which is where the atomicity has to live anyway. That is a reasonable design,
- * but while this table went unread it also went unmaintained, and it drifted into
- * contradicting the code in five places: the sweep expires an unanswered request
- * straight to `offer_expired`, completeQuickStopAction and the auto-complete both
- * finish a visit from `confirmed` or `en_route` with no `arrived` in between,
- * staff can record a no-show against an auto-completed visit, a late charge is
- * refunded out of `offer_expired` and the other closed states, and a failed offer
- * hand-off rolls back to `awaiting_contractor`. Every entry below is a transition
- * some code path really performs; test/quick-stop.test.ts pins the guard lists
- * against it so the next divergence fails a test rather than sitting here.
- */
+// Allowed forward transitions. Kept explicit so server actions can reject an
+// out-of-order move (e.g. paying an already-expired offer) instead of trusting
+// client state. Disputes are reachable from any post-payment state.
 export const QUICK_STOP_TRANSITIONS: Record<QuickStopStatus, QuickStopStatus[]> = {
   requested: ['awaiting_contractor', 'contractor_declined'],
-  // -> offer_expired: sweepQuickStopOffers step 2, when the response window lapses.
-  awaiting_contractor: ['contractor_offer_sent', 'more_information_requested', 'contractor_declined', 'offer_expired'],
-  more_information_requested: ['awaiting_contractor', 'contractor_offer_sent', 'contractor_declined', 'offer_expired'],
+  // Publishing the fully linked offer is one transaction. contractor_offer_sent
+  // remains readable for older interrupted creations that the sweep recovers.
+  awaiting_contractor: ['contractor_offer_sent', 'awaiting_customer_payment', 'more_information_requested', 'contractor_declined', 'offer_expired'],
+  more_information_requested: ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'contractor_declined', 'offer_expired'],
   contractor_declined: ['refunded'],
-  // -> awaiting_contractor / more_information_requested: the rollback when the
-  //    payment hand-off fails, in the action's catch and in sweep step 4.
-  contractor_offer_sent: [
-    'awaiting_customer_payment',
-    'offer_expired',
-    'customer_declined',
-    'contractor_canceled',
-    'awaiting_contractor',
-    'more_information_requested',
-  ],
+  contractor_offer_sent: ['awaiting_customer_payment', 'offer_expired', 'customer_declined', 'contractor_canceled'],
   awaiting_customer_payment: ['confirmed', 'offer_expired', 'customer_declined', 'customer_canceled', 'contractor_canceled'],
-  // -> refunded: a charge that landed after the offer closed is handed straight
-  //    back (confirmQuickStopPayment / LATE_PAYMENT_REFUNDABLE).
   offer_expired: ['refunded'],
   customer_declined: ['refunded'],
-  // -> completed without arriving: completeQuickStopAction accepts `confirmed` and
-  //    `en_route`, and sweep step 3 auto-completes from either.
-  // -> no_show_confirmed DIRECTLY, with no no_show_reported in between: that is
-  //    what reportNoShowQuickStopAction and the admin console both really do,
-  //    because nothing ever writes the intermediate status. See its entry below.
-  confirmed: [
-    'en_route',
-    'arrived',
-    'completed',
-    'customer_canceled',
-    'contractor_canceled',
-    'no_show_reported',
-    'no_show_confirmed',
-    'disputed',
-  ],
-  en_route: [
-    'arrived',
-    'completed',
-    'customer_canceled',
-    'contractor_canceled',
-    'no_show_reported',
-    'no_show_confirmed',
-    'disputed',
-  ],
-  arrived: ['completed', 'customer_canceled', 'contractor_canceled', 'disputed'],
-  // -> no_show_confirmed: the auto-complete is an assumption, not proof of arrival,
-  //    so staff can still record a no-show against one (RESOLVABLE_FROM.no_show).
-  completed: ['disputed', 'no_show_confirmed', 'refunded'],
+  confirmed: ['en_route', 'arrived', 'completed', 'customer_canceled', 'contractor_canceled', 'no_show_confirmed', 'refunded', 'disputed'],
+  en_route: ['arrived', 'completed', 'customer_canceled', 'contractor_canceled', 'no_show_confirmed', 'refunded', 'disputed'],
+  arrived: ['completed', 'customer_canceled', 'contractor_canceled', 'refunded', 'disputed'],
+  completed: ['no_show_confirmed', 'refunded', 'disputed'],
   customer_canceled: ['refunded', 'disputed'],
   contractor_canceled: ['refunded', 'disputed'],
-  // Declared but UNREACHABLE: nothing writes `no_show_reported`. A customer's
-  // report stamps the no_show_reported_at column and resolves straight to
-  // no_show_confirmed (full refund plus the escalating account lock), so the
-  // adjudication step this row describes does not exist. Left in place because the
-  // status is in the database check constraint, and because the missing step is a
-  // product decision rather than a typo.
-  no_show_reported: ['no_show_confirmed', 'completed', 'disputed'],
+  // Legacy pending reports may still be adjudicated; new reports resolve in one
+  // transaction after paid-visit and reporting-window eligibility is checked.
+  no_show_reported: ['no_show_confirmed', 'completed', 'refunded', 'disputed'],
   no_show_confirmed: ['refunded', 'disputed'],
   refunded: ['disputed'],
-  disputed: ['refunded', 'completed'],
+  disputed: ['refunded', 'completed', 'no_show_confirmed'],
 };
 
 export function canTransition(from: QuickStopStatus, to: QuickStopStatus): boolean {
   return QUICK_STOP_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export function assertQuickStopTransition(from: QuickStopStatus, to: QuickStopStatus): void {
+  if (!canTransition(from, to)) throw new Error(`Quick Stop cannot move from ${from} to ${to}.`);
+}
+
+export function getQuickStopTransitionSources(to: QuickStopStatus): QuickStopStatus[] {
+  return QUICK_STOP_STATUSES.filter((from) => canTransition(from, to));
 }
 
 // ---------------------------------------------------------------------------
@@ -279,25 +209,6 @@ export const QUICK_STOP_STATUS_LABEL: Record<QuickStopStatus, string> = {
 // ---------------------------------------------------------------------------
 // Settings
 // ---------------------------------------------------------------------------
-
-/**
- * The zone an account's Quick Stop wall-clock values mean, when the account has
- * none recorded. `arrival_date`/`arrival_start`/`arrival_end` are a bare date and
- * bare times, so every comparison against "now" needs a zone to resolve them in,
- * and five call sites were each spelling this literal out with `|| '...'`. One
- * name, so a change of default cannot land in four places out of five.
- */
-export const DEFAULT_QUICK_STOP_TIME_ZONE = 'America/New_York';
-
-/**
- * How long after the arrival window a customer may still report a no-show.
- *
- * The status page and the action behind its button each had their own copy of this
- * number and each resolved the window in the server's zone. Two copies of one rule
- * on either side of a button is how a control ends up disagreeing with what
- * happens when you press it.
- */
-export const QUICK_STOP_NO_SHOW_GRACE_MS = 2 * 60 * 60 * 1000;
 
 export const DEFAULT_QUICK_STOP_WEEKDAYS = [1, 2, 3, 4, 5];
 export const DEFAULT_QUICK_STOP_EARLIEST = '08:00';

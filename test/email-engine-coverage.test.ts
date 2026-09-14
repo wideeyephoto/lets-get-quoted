@@ -4,13 +4,21 @@ const mocks = vi.hoisted(() => ({
   send: vi.fn(),
   loadEmailBrand: vi.fn(),
   generateInvoicePdf: vi.fn(),
+  rpc: vi.fn(),
+  suppression: vi.fn(),
 }));
 
 vi.mock('resend', () => ({
   Resend: class {
+    key = 'synthetic-key';
     emails = { send: mocks.send };
+    fetchRequest = (_path: string, options: { body: string }) => mocks.send(JSON.parse(options.body));
   },
 }));
+
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc,
+  from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }),
+}) }));
 
 vi.mock('@/lib/email-brand', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/email-brand')>();
@@ -58,6 +66,10 @@ describe('Email Engine & Notification System (lib/email)', () => {
     vi.clearAllMocks();
     process.env.RESEND_API_KEY = 're_test_key_123';
     mocks.send.mockResolvedValue({ data: { id: 'msg_123' }, error: null });
+    mocks.suppression.mockResolvedValue({ data: [], error: null });
+    mocks.rpc.mockImplementation(async (name: string, args: any) => ({ data: name === 'claim_document_email_send'
+      ? { action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'document/intent/primary',
+        payload: args.p_payload, retry_before: new Date(Date.now() + 3_600_000).toISOString() } : true, error: null }));
     mocks.loadEmailBrand.mockResolvedValue({
       businessName: 'Ace Contracting',
       accent: '#0284c7',
@@ -145,6 +157,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('sendClientQuoteEmail', () => {
     it('renders quote email with line items, total, and direct approval link', async () => {
       await sendClientQuoteEmail({
+        jobId: 'job-1', jobRevision: 'revision-1',
         accountId: 'acc-1',
         recipientEmail: 'homeowner@contractorclient.test',
         businessName: 'Apex Renovations',
@@ -165,6 +178,13 @@ describe('Email Engine & Notification System (lib/email)', () => {
   });
 
   describe('sendAppointmentReminderEmail', () => {
+    it('stops a locally blocked recipient before calling the real shared transport', async () => {
+      mocks.suppression.mockResolvedValue({ data: [{ reason: 'hard_bounce' }], error: null });
+      await expect(sendAppointmentReminderEmail({ accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
+        businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null,
+      })).rejects.toThrow('blocked');
+      expect(mocks.send).not.toHaveBeenCalled();
+    });
     it('dispatches reminder with appointment date, time window, and address', async () => {
       await sendAppointmentReminderEmail({
         accountId: 'acc-1',
@@ -188,7 +208,9 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('sendInvoiceEmail', () => {
     it('sends invoice with item breakdown and generated PDF attachment', async () => {
       const invoiceData: any = {
+        accountId: 'acc-1', jobRevision: 'job-revision',
         invoice: {
+          job_id: 'job-1', document_email_revision: 'invoice-revision',
           id: 'inv-101',
           ref: 'INV-101',
           amount: 850,

@@ -166,4 +166,38 @@ describe('Export Insights API Route', () => {
       expect.objectContaining({ businessName: 'Your business' })
     );
   });
+
+  it.each(['csv', 'pdf'])('propagates owner denial before any data or %s output', async (format) => {
+    const denied = new Error('NEXT_REDIRECT');
+    requireOwnerContextMock.mockRejectedValueOnce(denied);
+    await expect(GET(createRequest(`https://letsgetquoted.com/api/export/insights?format=${format}`)))
+      .rejects.toBe(denied);
+    expect(supabaseMock.from).not.toHaveBeenCalled();
+    expect(buildInsightsMock).not.toHaveBeenCalled();
+    expect(buildInsightsCsvMock).not.toHaveBeenCalled();
+    expect(buildInsightsPdfMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['csv', 'pdf'])('keeps %s data and branding scoped to the authenticated workspace', async (format) => {
+    const accountQuery = supabaseMock.from('accounts');
+    const siteQuery = supabaseMock.from('sites');
+    await GET(createRequest(`https://letsgetquoted.com/api/export/insights?format=${format}&accountId=other-workspace&account_id=other-workspace&businessName=Other`));
+    expect(accountQuery.eq).toHaveBeenCalledTimes(1);
+    expect(accountQuery.eq).toHaveBeenCalledWith('id', 'acct_123');
+    expect(siteQuery.eq).toHaveBeenCalledTimes(1);
+    expect(siteQuery.eq).toHaveBeenCalledWith('account_id', 'acct_123');
+    expect(buildInsightsMock).toHaveBeenCalledTimes(1);
+    expect(buildInsightsMock).toHaveBeenCalledWith(
+      supabaseMock, 'acct_123', expect.any(Object), expect.any(Object),
+    );
+    const builder = format === 'csv' ? buildInsightsCsvMock : buildInsightsPdfMock;
+    expect(builder).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({ businessName: 'Site Company' }));
+  });
+
+  it('does not return a successful attachment when PDF generation fails', async () => {
+    const failure = new Error('PDF font unavailable');
+    buildInsightsPdfMock.mockRejectedValueOnce(failure);
+    await expect(GET(createRequest('https://letsgetquoted.com/api/export/insights'))).rejects.toBe(failure);
+    expect(buildInsightsCsvMock).not.toHaveBeenCalled();
+  });
 });

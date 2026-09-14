@@ -1,7 +1,7 @@
 import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
-import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_CLOSED_STATUSES } from '@/lib/quick-stop';
+import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
 import { computeQuickStopRoute, lastKnownWorkPoint, loadMultiDayRouteStops } from '@/lib/quick-stop-route';
 import QuickStopCoverageMap from './QuickStopCoverageMap';
 import QuickStopAreas from './QuickStopAreas';
@@ -24,7 +24,6 @@ import { loadRecipients, matchesAudience } from '@/lib/campaigns';
 import { loadRefundTiers } from '@/lib/quick-stop-refunds';
 import { quickStopState, quickStopStateDetail, quickStopStateHeadline } from '@/lib/quick-stop-state';
 import { normalizeQuickStopTab } from '@/lib/quick-stop-tabs';
-import ScheduleNav from '../schedule/ScheduleNav';
 
 /** How far back the demand panel looks. A quarter is enough to be a pattern. */
 const DEMAND_WINDOW_DAYS = 90;
@@ -74,7 +73,8 @@ export const metadata = { title: 'Quick Stops' };
 
 export default async function QuickStopsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ tab?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const { supabase, accountId, capabilities } = await requireOfficeContext('schedule.write');
+  const canCreateOffer = capabilities.has('jobs.write') && capabilities.has('payments.collect');
 
   // Lazy expiry so the queue is current even between cron runs (releases lapsed
   // payment holds, closes unanswered requests). Best-effort — never blocks render.
@@ -90,12 +90,9 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
   const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
   const driveTime = Boolean((accountRow as { instant_book_drive_time?: boolean } | null)?.instant_book_drive_time);
 
-  // 'disputed' used to be spliced in here, because QUICK_STOP_TERMINAL_STATUSES
-  // left it out and a disputed request would otherwise have shown up as live work.
-  // QUICK_STOP_CLOSED_STATUSES includes it, so the splice is gone.
-  const closed = new Set<string>(QUICK_STOP_CLOSED_STATUSES);
-  const active = requests.filter((r) => !closed.has(r.status));
-  const history = requests.filter((r) => closed.has(r.status));
+  const terminal = new Set<string>(QUICK_STOP_TERMINAL_STATUSES);
+  const active = requests.filter((r) => !terminal.has(r.status));
+  const history = requests.filter((r) => terminal.has(r.status));
 
   // For active requests: route only where an offer is still being decided; photos
   // for all so the contractor can see the job. (A handful of live requests.)
@@ -388,7 +385,7 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
           </div>
           <div style={{ marginTop: '1rem' }}>
             {activeCards.map(({ r, route, photoUrls }) => (
-              <QuickStopRequestCard key={r.id} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} />
+              <QuickStopRequestCard key={r.id} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} canCreateOffer={canCreateOffer} />
             ))}
           </div>
         </section>
@@ -474,7 +471,7 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
           </div>
           <div style={{ marginTop: '1rem' }}>
             {history.map((r) => (
-              <QuickStopRequestCard key={r.id} request={r as unknown as CardRequest} route={null} photoUrls={[]} defaults={defaults} />
+              <QuickStopRequestCard key={r.id} request={r as unknown as CardRequest} route={null} photoUrls={[]} defaults={defaults} canCreateOffer={canCreateOffer} />
             ))}
           </div>
         </section>
@@ -498,9 +495,6 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
 
   return (
     <main className="wide-shell workspace-shell bset">
-      <div style={{ marginBottom: '1.25rem' }}>
-        <ScheduleNav />
-      </div>
       <QuickStopHead />
       <QuickStopTabs
         today={todayPanel}

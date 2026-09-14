@@ -119,6 +119,13 @@ describe('nested invoice/job integrity', () => {
     expect(writes).toEqual([]);
   });
 
+  it('does not mark a newer invoice revision sent after acceptance of an older version', async () => {
+    const { client, terminalFilters } = fakeInvoiceClient();
+    await expect(updateInvoiceStatus(client, 'account-a', 'job-b', 'invoice-b', 'sent', 'old-revision'))
+      .rejects.toThrow('invoice changed during sending');
+    expect(terminalFilters.at(-1)?.filters).toContainEqual(['document_email_revision', 'old-revision']);
+  });
+
   it('binds the nested page and action side effects to the verified invoice job', () => {
     const root = process.cwd();
     const page = readFileSync(

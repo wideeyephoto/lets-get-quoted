@@ -30,7 +30,7 @@ describe('Google Ads v25 Lead Engine & Closed-Loop Suite', () => {
         'mock_token'
       );
 
-      expect(headers['developer-token']).toBe('mock_dev_token');
+      expect(headers).not.toHaveProperty('developer-token');
       expect(headers['login-customer-id']).toBe('9876543210');
       expect(headers['Authorization']).toBe('Bearer mock_token');
       expect(headers['Content-Type']).toBe('application/json');

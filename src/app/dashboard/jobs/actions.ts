@@ -162,6 +162,8 @@ export async function createJobAction(formData: FormData) {
     const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
     const emailIt = async (to: string) => {
       await sendClientQuoteEmail({
+        jobId: job.id,
+        jobRevision: job.document_email_revision,
         recipientEmail: to,
         businessName,
         clientName: job.client_name,
@@ -1479,7 +1481,9 @@ export async function saveQuoteItemsAndNotifyAction(
      changed. */
   const emailTheUpdate = async (to: string) => {
     const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-    await sendClientQuoteEmail({
+    const receipt = await sendClientQuoteEmail({
+      jobId: job.id,
+      jobRevision: job.document_email_revision,
       recipientEmail: to,
       businessName,
       clientName: job.client_name,
@@ -1488,6 +1492,7 @@ export async function saveQuoteItemsAndNotifyAction(
       quoteUrl: `${origin}/client/jobs/${token}`,
       accountId,
     });
+    if (receipt.alreadyAccepted) return receipt;
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'job_update',
       title: 'Updated quote emailed to client',
@@ -1499,6 +1504,7 @@ export async function saveQuoteItemsAndNotifyAction(
       body: `Your quote was updated${totalLabel ? ` to ${totalLabel}` : ''}. The link in your email opens the latest version.`,
       visibility: 'client',
     });
+    return receipt;
   };
 
   if (route.channel === 'sms' && phone) {
@@ -1523,15 +1529,17 @@ export async function saveQuoteItemsAndNotifyAction(
       const second = smsFailureFallback({ phone, email, preference, optedOut, kind: 'requested' });
       if (second) {
         try {
-          await emailTheUpdate(second.to);
+          const receipt = await emailTheUpdate(second.to);
           return {
             ok: true,
             total,
             delivery: 'email',
-            message: `Saved. The text didn’t go through, so it was emailed to ${second.to} — worth checking the mobile number.`,
+            message: receipt.alreadyAccepted ? 'Saved. This version was already emailed.'
+              : `Saved. The text didn’t go through, so it was emailed to ${second.to} — worth checking the mobile number.`,
           };
         } catch (emailError) {
           console.error(`Quote update email fallback failed for job ${jobId}:`, emailError);
+          return { ok: true, total, delivery: 'failed', message: 'Saved, but email acceptance was not confirmed. Check delivery before sending again.' };
         }
       }
       return {
@@ -1552,17 +1560,17 @@ export async function saveQuoteItemsAndNotifyAction(
 
   if (email) {
     try {
-      await emailTheUpdate(email);
+      const receipt = await emailTheUpdate(email);
+      return { ok: true, total, delivery: 'email', message: receipt.alreadyAccepted ? 'Saved. This version was already emailed.' : `Saved and emailed to ${email}.` };
     } catch (error) {
       console.error(`Quote update email failed for job ${jobId}:`, error);
       return {
         ok: true,
         total,
         delivery: 'failed',
-        message: `Saved — but the email did not go through. Send ${job.client_name} the link yourself.`,
+        message: 'Saved, but email acceptance was not confirmed. Check delivery before sending again.',
       };
     }
-    return { ok: true, total, delivery: 'email', message: `Saved and emailed to ${email}.` };
   }
 
   return { ok: true, total, delivery: 'none', message: `Saved. Quote total ${totalLabel ?? '$0.00'}.` };

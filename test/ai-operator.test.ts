@@ -732,6 +732,25 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, ctx);
     expect(res.data).toBeDefined();
     expect((res.data as any).totalBounced).toBeDefined();
+    expect((res.data as any).healthStatus).toBe('no_failure_events_returned');
+  });
+
+  it('distinguishes suppressed and failed sends from actual bounces in operator triage', async () => {
+    const events = ['bounced', 'complained', 'failed', 'suppressed'].map(status => ({
+      id: status, account_id: 'workspace-a', recipient: 'client@example.test', status,
+      error_reason: null, occurred_at: '2026-09-14T12:00:00Z',
+    }));
+    const builder = { select: () => builder, is: () => builder, in: () => builder, order: () => builder,
+      limit: async () => ({ data: events, error: null }) };
+    const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, {
+      ...ctx, supabase: { from: () => builder } as any,
+    });
+    const result = res.data as any;
+    expect(result.totalBounced).toBe(1);
+    expect(result.totalFailureEvents).toBe(4);
+    expect(result.details.find((r: any) => r.status === 'failed').bounceType).toBe('Provider Failure');
+    expect(result.details.find((r: any) => r.status === 'suppressed').bounceType).toBe('Provider Suppression');
+    expect(result.details.find((r: any) => r.status === 'suppressed').recommendation).toContain('do not bypass');
   });
 
   it('executes check_sms_carrier_health and evaluates deliverability rate', async () => {

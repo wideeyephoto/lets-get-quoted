@@ -8,7 +8,7 @@ import {
   normalizeHHMM,
   normalizeCategories,
   canTransition,
-  QUICK_STOP_CLOSED_STATUSES,
+  QUICK_STOP_TERMINAL_STATUSES,
   QUICK_STOP_TRANSITIONS,
   type QuickStopStatus,
 } from '@/lib/quick-stop';
@@ -155,22 +155,13 @@ describe('state machine', () => {
     expect(canTransition('awaiting_customer_payment', 'customer_declined')).toBe(true);
   });
 
-  it('a closed request never reopens into work somebody is waiting on', () => {
-    /* The old version of this asserted that a terminal status could only reach
-       `refunded` or `disputed`. That was too narrow to survive contact with what
-       the code does -- staff can record a no-show against an auto-completed visit,
-       and a dispute can be resolved back to `completed` -- and the list it iterated
-       left `disputed` out entirely.
-
-       The invariant that actually matters is weaker but true, and it is the one the
-       dashboard depends on when it splits requests into live work and history:
-       nothing closed can transition to a status where a customer or a contractor is
-       waiting on somebody. Closed may move to closed; it may never move to open. */
-    const closed = new Set<QuickStopStatus>(QUICK_STOP_CLOSED_STATUSES);
-    for (const status of QUICK_STOP_CLOSED_STATUSES) {
-      for (const next of QUICK_STOP_TRANSITIONS[status]) {
-        expect(closed.has(next), `${status} -> ${next} reopens a closed request`).toBe(true);
-      }
+  it('terminal statuses never return to an active lifecycle state', () => {
+    // Terminal states may still move to refunded/disputed (money resolution),
+    // but must never jump back into the active flow.
+    const resolutionOnly = new Set<QuickStopStatus>(['refunded', 'disputed', 'completed', 'no_show_confirmed']);
+    for (const status of QUICK_STOP_TERMINAL_STATUSES) {
+      const outs = QUICK_STOP_TRANSITIONS[status as QuickStopStatus];
+      expect(outs.every((t) => resolutionOnly.has(t))).toBe(true);
     }
   });
 });

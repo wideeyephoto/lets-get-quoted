@@ -190,40 +190,38 @@ describe('Server Actions: Intake, Field & Account Operations', () => {
       );
     });
 
-    it('reports no-show within grace window', async () => {
-      const now = new Date();
-      const today = now.toISOString().slice(0, 10);
+    it('refuses a future unpaid no-show instead of refunding it', async () => {
       mocks.getQuickStopRequestById.mockResolvedValue({
         account_id: 'acc-1',
         status: 'confirmed',
         arrived_at: null,
-        arrival_date: today,
+        arrival_date: '2099-09-13',
         arrival_end: '23:59',
       });
 
       await expect(reportNoShowQuickStopAction('qs-1')).rejects.toThrow(
-        'NEXT_REDIRECT:/quick-stop/qs-1?done=no_show',
+        'NEXT_REDIRECT:/quick-stop/qs-1?error=state',
       );
-      expect(mocks.resolveQuickStopCancellation).toHaveBeenCalledWith(
-        fakeAdmin,
-        'acc-1',
-        'qs-1',
-        expect.objectContaining({ kind: 'no_show' }),
-      );
+      expect(mocks.resolveQuickStopCancellation).not.toHaveBeenCalled();
     });
 
     it('accepts revised arrival window', async () => {
+      fakeAdmin.rpc = vi.fn().mockResolvedValue({ data: true, error: null });
       mocks.getQuickStopRequestById.mockResolvedValue({
         account_id: 'acc-1',
         status: 'confirmed',
         proposed_arrival_date: '2026-09-13',
         proposed_arrival_start: '09:00',
         proposed_arrival_end: '11:00',
+        proposed_window_at: '2026-09-12T10:00:00Z',
       });
 
       await expect(acceptRevisedWindowQuickStopAction('qs-1')).rejects.toThrow(
         'NEXT_REDIRECT:/quick-stop/qs-1?done=window_accepted',
       );
+      expect(fakeAdmin.rpc).toHaveBeenCalledWith('accept_quick_stop_window', {
+        p_account_id: 'acc-1', p_request_id: 'qs-1', p_expected_proposed_at: '2026-09-12T10:00:00Z',
+      });
     });
   });
 

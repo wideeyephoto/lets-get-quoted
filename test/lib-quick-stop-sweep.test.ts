@@ -1,151 +1,47 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
-import { logQuickStopEvent } from '@/lib/quick-stop-requests';
+import { processQuickStopRefunds } from '@/lib/quick-stop-refund-recovery';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 
-vi.mock('@/lib/quick-stop-requests', () => ({
-  logQuickStopEvent: vi.fn(),
-}));
-
-vi.mock('@/lib/email', () => ({
-  getAccountOwnerEmail: vi.fn(),
-  sendContractorAlertEmail: vi.fn(),
-}));
-
-describe('Quick Stop Sweep Lib', () => {
-  let adminMock: any;
-  let queryMock: any;
-
+vi.mock('@/lib/quick-stop-refund-recovery', () => ({ processQuickStopRefunds: vi.fn() }));
+vi.mock('@/lib/email', () => ({ getAccountOwnerEmail: vi.fn(), sendContractorAlertEmail: vi.fn() }));
+function client(rows: unknown[] = [], failure?: string) {
+  const rpc = vi.fn((name: string) => ({ abortSignal: vi.fn().mockResolvedValue({
+    data: name === 'recover_stale_quick_stop_offers' ? 2 : rows,
+    error: name === failure ? { message: 'database unavailable' } : null,
+  }) }));
+  return { rpc, admin: { rpc } as unknown as SupabaseClient };
+}
+describe('bounded Quick Stop sweep coordinator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2023-05-01T20:00:00Z'));
-
-    queryMock = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      lt: vi.fn().mockReturnThis(),
-      lte: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      is: vi.fn().mockReturnThis(),
-      not: vi.fn().mockReturnThis(),
-      order: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      update: vi.fn().mockReturnThis(),
-      maybeSingle: vi.fn(),
-      then: vi.fn((resolve) => resolve({ data: [] }))
-    };
-
-    adminMock = {
-      from: vi.fn(() => queryMock),
-    };
+    vi.mocked(processQuickStopRefunds).mockResolvedValue({ completed: 1, pending: 2, review: 1 });
+    vi.mocked(getAccountOwnerEmail).mockResolvedValue('owner@example.test');
   });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('expires unpaid offers and emails owner', async () => {
-    // 1st query: payQuery
-    // 2nd query: respQuery
-    // 3rd query: doneQuery
-    let callCount = 0;
-    queryMock.then.mockImplementation((resolve: any) => {
-      callCount++;
-      if (callCount === 1) {
-        return resolve({
-          data: [{ id: 'req1', account_id: 'acct1', job_id: 'job1', payment_id: 'pay1', client_name: 'John' }]
-        });
-      }
-      return resolve({ data: [] });
+  it('bounds every batch and preserves account scope through refund recovery', async () => {
+    const { rpc, admin } = client([
+      { kind: 'payment_expired', request_id: 'r1', account_id: 'a1', client_name: 'Sam' },
+      { kind: 'response_expired', request_id: 'r2', account_id: 'a1', client_name: 'Jo' },
+      { kind: 'auto_completed', request_id: 'r3', account_id: 'a1', client_name: 'Lee' },
+    ]);
+    expect(await sweepQuickStopOffers(admin, 'a1')).toEqual({
+      paymentExpired: 1, responseExpired: 1, autoCompleted: 1, interruptedOffersExpired: 2,
+      refundsCompleted: 1, refundsPending: 2, refundsNeedReview: 1,
     });
-
-    queryMock.maybeSingle.mockResolvedValue({ data: { id: 'req1' } }); // claimed
-    (getAccountOwnerEmail as any).mockResolvedValue('owner@test.com');
-
-    const summary = await sweepQuickStopOffers(adminMock);
-
-    expect(summary.paymentExpired).toBe(1);
-    expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'offer_expired' }));
-    expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'archived' })); // jobs
-    expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' })); // payments
-    expect(logQuickStopEvent).toHaveBeenCalled();
-    expect(sendContractorAlertEmail).toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith('sweep_quick_stop_requests', { p_account_id: 'a1', p_limit: 25 });
+    expect(rpc).toHaveBeenCalledWith('recover_stale_quick_stop_offers', { p_account_id: 'a1', p_limit: 25 });
+    expect(processQuickStopRefunds).toHaveBeenCalledWith(admin, 2, 'a1');
+    expect(sendContractorAlertEmail).toHaveBeenCalledOnce();
   });
-
-  it('expires unresponded offers', async () => {
-    let callCount = 0;
-    queryMock.then.mockImplementation((resolve: any) => {
-      callCount++;
-      if (callCount === 2) {
-        return resolve({
-          data: [{ id: 'req2', account_id: 'acct2' }]
-        });
-      }
-      return resolve({ data: [] });
-    });
-
-    queryMock.maybeSingle.mockResolvedValue({ data: { id: 'req2' } });
-
-    const summary = await sweepQuickStopOffers(adminMock);
-
-    expect(summary.responseExpired).toBe(1);
-    expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'offer_expired' }));
-    expect(logQuickStopEvent).toHaveBeenCalledWith(adminMock, 'acct2', 'req2', expect.any(Object));
+  it('fails visibly on database errors instead of claiming zero expired rows', async () => {
+    await expect(sweepQuickStopOffers(client([], 'sweep_quick_stop_requests').admin)).rejects.toThrow('Quick Stop sweep failed');
+    expect(sendContractorAlertEmail).not.toHaveBeenCalled();
   });
-
-  it('auto-completes finished jobs after 2 hours', async () => {
-    let callCount = 0;
-    queryMock.then.mockImplementation((resolve: any) => {
-      callCount++;
-      if (callCount === 3) {
-        return resolve({
-          data: [{ 
-            id: 'req3', 
-            account_id: 'acct3',
-            job_id: 'job3',
-            arrival_date: '2023-05-01',
-            // Wall clock in the ACCOUNT's zone, not UTC. With no accounts row in
-            // this fixture the sweep falls back to America/New_York, so 10:00
-            // local is 14:00Z; now is 20:00Z, comfortably past the 2h grace.
-            arrival_end: '10:00',
-            no_show_reported_at: null
-          }]
-        });
-      }
-      return resolve({ data: [] });
-    });
-
-    queryMock.maybeSingle.mockResolvedValue({ data: { id: 'req3' } });
-
-    const summary = await sweepQuickStopOffers(adminMock);
-
-    expect(summary.autoCompleted).toBe(1);
-    expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
-    expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'complete' })); // jobs
-  });
-
-  it('skips auto-complete if within grace period', async () => {
-    let callCount = 0;
-    queryMock.then.mockImplementation((resolve: any) => {
-      callCount++;
-      if (callCount === 3) {
-        return resolve({
-          data: [{ 
-            id: 'req3', 
-            account_id: 'acct3',
-            arrival_date: '2023-05-01',
-            arrival_end: '23:59', // 03:59Z the next day once zoned -- still within grace
-            no_show_reported_at: null
-          }]
-        });
-      }
-      return resolve({ data: [] });
-    });
-
-    const summary = await sweepQuickStopOffers(adminMock);
-
-    expect(summary.autoCompleted).toBe(0);
-    expect(queryMock.update).not.toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }));
+  it('retains committed results when notification fails', async () => {
+    const { admin } = client([{ kind: 'payment_expired', request_id: 'r1', account_id: 'a1', client_name: 'Sam' }]);
+    vi.mocked(sendContractorAlertEmail).mockRejectedValueOnce(new Error('mail offline'));
+    expect((await sweepQuickStopOffers(admin)).paymentExpired).toBe(1);
+    expect(processQuickStopRefunds).toHaveBeenCalledWith(admin, 5, undefined);
   });
 });

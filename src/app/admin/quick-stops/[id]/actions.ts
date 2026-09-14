@@ -8,31 +8,43 @@ import { QUICK_STOP_OUTCOME, isQuickStopOutcome } from '@/lib/quick-stop-outcome
 import { getQuickStopRequestById, logQuickStopEvent } from '@/lib/quick-stop-requests';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
 import { refundPayment } from '@/lib/payments';
-
-/**
- * A visit can only be marked done if it ever started.
- *
- * This path had no status precondition at all, so staff could force `completed`
- * onto a request that had been declined or had expired unpaid. That is not just an
- * untidy record: `completed` is inside RESOLVABLE_FROM.no_show, so a forced
- * completion put an unpaid request back within reach of the escalating account
- * lock on a second click.
- */
-const COMPLETABLE_FROM: readonly string[] = ['confirmed', 'en_route', 'arrived', 'no_show_reported', 'disputed'];
+import { canTransition } from '@/lib/quick-stop';
+import { transitionQuickStopRequest } from '@/lib/quick-stop-transition';
+import { reconcileQuickStopRefund } from '@/lib/quick-stop-refund-recovery';
 
 function backTo(id: string, query: string): never {
   redirect(`/admin/quick-stops/${id}?${query}`);
 }
 
+// Re-read provider truth for a refund marked for review. This operation never
+// issues another provider refund; staff resolve uncertain money in Stripe first.
+export async function adminReconcileQuickStopRefundAction(requestId: string) {
+  const ctx = await requireMfaPermission('money.refund');
+  const req = await getQuickStopRequestById(ctx.admin, requestId);
+  if (!req) backTo(requestId, 'error=notfound');
+  if (req.refund_state !== 'review') backTo(requestId, 'error=refund_pending');
+  const result = await reconcileQuickStopRefund(ctx.admin, req.account_id, requestId);
+  await logAdminAction(ctx.admin, ctx, {
+    action: 'extra_stop_refund_reconcile', accountId: req.account_id,
+    targetType: 'extra_stop_request', targetId: requestId, meta: result,
+  });
+  revalidatePath(`/admin/quick-stops/${requestId}`);
+  backTo(requestId, result.completed ? 'done=refunded' : 'error=refund_pending');
+}
+
 // Manual refund on a Quick Stop's payment. Blank amount = refund the full
 // remaining balance. Writes both the admin audit trail and the request's own
-// event log, and flips the request to 'refunded' when fully refunded.
+// event log. A discretionary refund preserves the appointment; cancellation is
+// an explicit resolution that closes the job and records a refund obligation.
 export async function adminRefundQuickStopAction(requestId: string, formData: FormData) {
   const ctx = await requireMfaPermission('money.refund');
   const { admin } = ctx;
   const req = await getQuickStopRequestById(admin, requestId);
   if (!req) backTo(requestId, 'error=notfound');
   if (!req.payment_id || !req.paid_at) backTo(requestId, 'error=nopayment');
+  if (req.refund_state && ['pending', 'processing', 'retry', 'review'].includes(req.refund_state)) {
+    backTo(requestId, 'error=refund_pending');
+  }
   const reason = String(formData.get('reason') ?? '').trim();
   if (reason.length < 4) backTo(requestId, 'error=reason');
 
@@ -51,18 +63,17 @@ export async function adminRefundQuickStopAction(requestId: string, formData: Fo
     backTo(requestId, 'error=refund');
   }
 
-  const nowIso = new Date().toISOString();
-  const { error: stateError } = await admin
-    .from('extra_stop_requests')
-    .update({ refund_cents: refundedTotalCents, ...(isFull ? { status: 'refunded' } : {}), updated_at: nowIso })
-    .eq('id', requestId);
+  // refundPayment's finish transaction synchronizes the confirmed amount with
+  // this request. Do not overwrite a concurrent booking resolution afterward.
+  const refreshed = await getQuickStopRequestById(admin, requestId);
+  const stateUpdateFailed = !refreshed || (refreshed.refund_cents ?? 0) < refundedTotalCents;
 
   await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', meta: { adminRefund: true, refundedTotalCents, by: ctx.adminEmail } });
-  await logAdminAction(admin, ctx, { action: 'extra_stop_refund', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, reason, meta: { amountDollars: amountDollars ?? 'full', refundedTotalCents, isFull, stateUpdateFailed: Boolean(stateError) } });
+  await logAdminAction(admin, ctx, { action: 'extra_stop_refund', accountId: req.account_id, targetType: 'extra_stop_request', targetId: requestId, reason, meta: { amountDollars: amountDollars ?? 'full', refundedTotalCents, isFull, stateUpdateFailed } });
 
   revalidatePath(`/admin/quick-stops/${requestId}`);
-  if (stateError) {
-    console.error('Admin Quick Stop refund state update failed:', stateError);
+  if (stateUpdateFailed) {
+    console.error('Admin Quick Stop refund state could not be confirmed');
     backTo(requestId, 'error=refund_state');
   }
   backTo(requestId, 'done=refunded');
@@ -105,23 +116,15 @@ export async function adminResolveQuickStopAction(requestId: string, formData: F
       // exercised enforcement powers finds nobody.
       actor: ctx,
     });
-  } else if (outcome === 'completed') {
-    if (!COMPLETABLE_FROM.includes(req.status)) backTo(requestId, 'error=state');
-    // Compare-and-set on the status we read, so a concurrent resolution cannot be
-    // silently overwritten by this one.
-    const { error } = await admin.from('extra_stop_requests').update({ status: 'completed', completed_at: nowIso, updated_at: nowIso }).eq('id', requestId).eq('status', req.status);
-    if (error) {
-      console.error('Quick Stop completed resolution failed:', error);
-      backTo(requestId, 'error=state');
-    }
-    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'completed', meta: { adminForced: true, by: ctx.adminEmail } });
-  } else if (outcome === 'disputed') {
-    const { error } = await admin.from('extra_stop_requests').update({ status: 'disputed', updated_at: nowIso }).eq('id', requestId);
-    if (error) {
-      console.error('Quick Stop disputed resolution failed:', error);
-      backTo(requestId, 'error=state');
-    }
-    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: 'disputed', meta: { adminForced: true, reason, by: ctx.adminEmail } });
+  } else if (outcome === 'completed' || outcome === 'disputed') {
+    if (!req.payment_id || !req.paid_at || !canTransition(req.status, outcome)) backTo(requestId, 'error=state');
+    const claimed = await transitionQuickStopRequest(admin, {
+      accountId: req.account_id, requestId, from: req.status, to: outcome,
+      patch: { ...(outcome === 'completed' ? { completed_at: nowIso } : {}), updated_at: nowIso },
+      expected: { updated_at: req.updated_at },
+    });
+    if (!claimed) backTo(requestId, 'error=state');
+    await logQuickStopEvent(admin, req.account_id, requestId, { actor: 'system', from: req.status, to: outcome, meta: { adminForced: true, reason, by: ctx.adminEmail } });
   } else {
     backTo(requestId, 'error=outcome');
   }

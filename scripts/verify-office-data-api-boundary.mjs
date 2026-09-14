@@ -93,6 +93,36 @@ try {
   await actor('service_role',null,async()=>assert.equal((await q(update,[jobA])).rows[0].quoted_amount,'77777.00'));
   pass('phase one replays safely and restores service-role price writes before app deployment');
   await q(reads); await q(reads);
+  // Reproduce the actual migration order: the session view predates the
+  // document revision column. Service-role reads saw it; session saves did not.
+  const ledger = source('20260914135714_document_email_send_ledger.sql');
+  await q(ledger.match(/alter table public\.jobs add column document_email_revision[^;]+;/)[0]);
+  await q(section(ledger,'create function public.bump_job_email_revision()', 'create function public.bump_invoice_email_revision()'));
+  const originalRevision = (await q('select document_email_revision from jobs where id=$1',[jobA])).rows[0].document_email_revision;
+  await actor('authenticated',owner,async()=> {
+    const saved = (await q("update job_access set scope=scope where id=$1 returning *",[jobA])).rows[0];
+    assert.equal(saved.document_email_revision, undefined);
+  });
+  pass('pre-repair session save reproduces the missing document revision');
+  const revisionRepair = source('20260914165500_job_access_email_revision.sql');
+  await q(revisionRepair); await q(revisionRepair);
+  await actor('authenticated',owner,async()=> {
+    const saved = (await q("update job_access set scope=scope where id=$1 returning *",[jobA])).rows[0];
+    assert.equal(saved.document_email_revision, originalRevision);
+    const changed = (await q("update job_access set scope='revised quote' where id=$1 returning document_email_revision",[jobA])).rows[0];
+    assert.notEqual(changed.document_email_revision, originalRevision);
+    assert.equal(changed.document_email_revision,(await q('select document_email_revision from job_access where id=$1',[jobA])).rows[0].document_email_revision);
+    const created = (await q("insert into job_access(account_id,ref,client_name) values($1,'REVISION','A') returning document_email_revision",[a])).rows[0];
+    assert.match(created.document_email_revision,/^[a-f0-9-]{36}$/);
+  });
+  pass('replayed repair returns unchanged, revised and newly created document versions');
+  await actor('authenticated',office,async()=> {
+    const visible = (await q('select id,document_email_revision,quoted_amount,quote_items from job_access')).rows;
+    assert.deepEqual(visible,[{id:jobA,document_email_revision:originalRevision,quoted_amount:'0.00',quote_items:null}]);
+  });
+  await deny('anon',null,'select document_email_revision from job_access');
+  assert.equal((await q('select document_email_revision from jobs where id=$1',[jobA])).rows[0].document_email_revision,originalRevision);
+  pass('revision reads retain tenant isolation, financial masking and anonymous denial');
   for(const role of ['anon','authenticated']) {
     for(const sql of ['select quoted_amount from jobs','select quote_items from jobs','select * from jobs','select to_jsonb(jobs) from jobs','select count(*) from jobs where quoted_amount>0','truncate jobs cascade']) await deny(role,role==='authenticated'?office:null,sql);
   }

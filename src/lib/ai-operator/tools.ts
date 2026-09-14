@@ -235,7 +235,7 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
       properties: {
         limit: {
           type: Type.INTEGER,
-          description: 'Maximum number of recent bounced email events to inspect (default: 20)',
+          description: 'Maximum number of recent bounced, complained, failed or suppressed email events to inspect (default: 20)',
         },
       },
     },
@@ -708,19 +708,22 @@ export async function executeOperatorTool(
         const details = failedEmails.map((e) => ({
           id: e.id,
           recipient: e.recipient,
-          bounceType: e.status === 'complained' ? 'Spam Complaint' : 'Hard/Soft Bounce',
+          status: e.status,
+          bounceType: ({ complained: 'Spam Complaint', bounced: 'Bounce', failed: 'Provider Failure', suppressed: 'Provider Suppression' } as Record<string, string>)[e.status] || 'Delivery needs review',
           accountId: e.account_id || undefined,
           timestamp: e.occurred_at,
-          errorReason: e.error_reason || 'Mailbox unavailable or invalid address',
+          errorReason: e.error_reason || 'No provider reason recorded; inspect the delivery history',
           recommendation: e.status === 'complained'
             ? 'Suppress address immediately and check marketing consent'
-            : 'Contact contractor to verify recipient email spelling',
+            : e.status === 'bounced' ? 'Inspect bounce details and verify the recipient with the contractor'
+              : 'Inspect provider history and suppression evidence before any retry; do not bypass a delivery block',
         }));
 
         return {
           data: {
-            totalBounced: failedEmails.length,
-            healthStatus: failedEmails.length === 0 ? 'optimal' : failedEmails.length <= 3 ? 'minor_bounces' : 'attention_required',
+            totalBounced: failedEmails.filter(e => e.status === 'bounced').length,
+            totalFailureEvents: failedEmails.length,
+            healthStatus: failedEmails.length === 0 ? 'no_failure_events_returned' : 'attention_required',
             details,
           },
         };

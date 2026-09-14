@@ -46,6 +46,20 @@ jobs:
       - name: Runtime function ACL and SECURITY DEFINER RPC security on PostgreSQL 17
         run: npm run test:pg17:function-acl
 
+      - name: SMS carrier opt-out database checks
+        run: npm run test:pg17:sms-carrier-opt-out
+      - name: Lifecycle email ledger database checks
+        run: npm run test:pg17:lifecycle-email
+
+      - name: Read-only lifecycle preview checks
+        run: npm run test:email-dry-run
+
+      - name: Quote and invoice email ledger database checks
+        run: npm run test:pg17:document-email
+
+      - name: Operational alerts and email recovery database checks
+        run: npm run test:pg17:operational-alerts
+
       - name: SEO tests
         run: npm run test:seo
 
@@ -56,7 +70,7 @@ jobs:
         run: npm run test:stock
 
       - name: Type check
-        run: npm run typecheck
+        run: npm run typecheck:all
 
       - name: Lint
         run: npm run lint

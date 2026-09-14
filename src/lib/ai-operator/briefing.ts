@@ -355,7 +355,7 @@ export async function generateExecutiveBriefing(
         ? `🟢 ${smsDeliverability.deliverabilityPct?.toFixed(1)}% (0 of ${smsDeliverability.totalSends} failed)`
         : `[🟡 ${smsDeliverability.deliverabilityPct?.toFixed(1)}% — ${smsDeliverability.failedSends} of ${smsDeliverability.totalSends} failed](/admin/messaging)`
   }
-- **Email Deliverability (24h)**: ${failedEmails.length === 0 ? '🟢 100% inbox rate (0 bounces)' : `[🟡 ${failedEmails.length} bounced send(s)](/admin/health)`}
+- **Recent Email Failure Events (up to 50)**: ${failedEmails.length === 0 ? 'No failure events returned; this does not establish an inbox delivery rate.' : `[${failedEmails.length} bounced, complained, failed or suppressed event(s)](/admin/health)`}
 - **Background Cron State**: ${troubleCount === 0 ? '🟢 All scheduled jobs on time' : `[🔴 ${troubleCount} troubled cron execution(s)](/admin/health)`}
 - **Platform Incidents**: ${activeIncidents.length === 0 ? '🟢 0 active incidents' : `[🚨 ${activeIncidents.length} active incident(s)](/admin/incidents)`}
 

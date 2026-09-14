@@ -1,15 +1,10 @@
 import type { ReactNode } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getQuickStopRequestById } from '@/lib/quick-stop-requests';
-import {
-  QUICK_STOP_STATUS_LABEL,
-  QUICK_STOP_NO_SHOW_GRACE_MS,
-  centsToDollars,
-  type QuickStopStatus,
-} from '@/lib/quick-stop';
-import { zonedInstant } from '@/lib/arrival';
-import { loadRefundContext } from '@/lib/quick-stop-refunds';
+import { QUICK_STOP_STATUS_LABEL, centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
+import { loadRefundTiers } from '@/lib/quick-stop-refunds';
 import { renderRefundPolicy } from '@/lib/quick-stop-policy';
+import { loadQuickStopTimeZone, quickStopNoShowEligibility } from '@/lib/quick-stop-time';
 import {
   customerCancelQuickStopAction,
   reportNoShowQuickStopAction,
@@ -76,25 +71,24 @@ export default async function QuickStopStatusPage({
   // swallows its own error, so a pre-migration account (no
   // extra_stop_refund_tiers column yet) falls back to the built-in defaults
   // rather than taking the customer's status page down.
-  // loadRefundContext returns the account's zone alongside its tiers, for the
-  // no-show cutoff below.
-  const { tiers: refundTiers, timeZone } = await loadRefundContext(admin, req.account_id);
-  const refundPolicy = renderRefundPolicy(refundTiers);
+  const refundPolicy = renderRefundPolicy(await loadRefundTiers(admin, req.account_id));
   const status = req.status as QuickStopStatus;
   const when = req.arrival_date ? `${req.arrival_date}${req.arrival_start ? `, ${fmtTime(req.arrival_start)}–${fmtTime(req.arrival_end)}` : ''}` : null;
 
-  /* THE BUTTON HAS TO AGREE WITH THE ACTION BEHIND IT.
-     reportNoShowQuickStopAction enforces the same 2-hour cutoff, and both used to
-     resolve the window's bare date + bare time in the SERVER's zone. On a UTC host
-     that hid this button 4 hours early for an Eastern account and 7 for a Pacific
-     one, so a homeowner whose tech never arrived had no way to say so — the
-     control was gone before the window it is measured from had even closed. */
-  const noShowCutoff = req.arrival_date && req.arrival_end ? zonedInstant(req.arrival_date, req.arrival_end, timeZone) : null;
-  const canReportNoShow =
-    ['confirmed', 'en_route'].includes(status) &&
-    !req.arrived_at &&
-    (!noShowCutoff || Date.now() <= noShowCutoff.getTime() + QUICK_STOP_NO_SHOW_GRACE_MS);
+  const timeZone = await loadQuickStopTimeZone(admin, req.account_id);
+  const canReportNoShow = quickStopNoShowEligibility(req, timeZone) === 'eligible';
   const canCancel = ['awaiting_customer_payment', 'confirmed', 'en_route'].includes(status);
+  const refundPending = ['pending', 'processing', 'retry'].includes(req.refund_state ?? '');
+  const refundNeedsReview = req.refund_state === 'review';
+  const refundStatusCopy = refundPending
+    ? 'Your refund is pending. This page will show when it has been issued.'
+    : refundNeedsReview
+      ? 'Your refund needs a support review. Please contact support for an update.'
+      : req.refund_cents > 0
+        ? `A refund of ${money(req.refund_cents)} has been issued.`
+        : req.refund_state === 'none' || req.refund_state === 'completed' || !req.paid_at
+          ? 'No refund is due under the cancellation policy.'
+          : 'Please contact your contractor for the status of any refund due.';
 
   return (
     <main className="wide-shell workspace-shell payment-shell">
@@ -106,13 +100,15 @@ export default async function QuickStopStatusPage({
         </div>
       </section>
 
-      {searchParams.done === 'canceled' ? <section className="panel workspace-section-card"><p className="payment-banner success">Your Quick Stop was canceled. Any refund due has been issued.</p></section> : null}
-      {searchParams.done === 'no_show' ? <section className="panel workspace-section-card"><p className="payment-banner success">Thanks — we’ve recorded the no-show and issued a full refund.</p></section> : null}
+      {searchParams.done === 'canceled' ? <section className="panel workspace-section-card"><p className="payment-banner success">Your Quick Stop was canceled. {refundStatusCopy}</p></section> : null}
+      {searchParams.done === 'no_show' ? <section className="panel workspace-section-card"><p className="payment-banner success">Thanks — we’ve recorded the no-show. {refundStatusCopy}</p></section> : null}
+      {(refundPending || refundNeedsReview) && !['canceled', 'no_show'].includes(searchParams.done ?? '') ? <section className="panel workspace-section-card"><p className={`payment-banner ${refundNeedsReview ? 'warning' : 'muted'}`}>{refundStatusCopy}</p></section> : null}
       {searchParams.done === 'window_accepted' ? <section className="panel workspace-section-card"><p className="payment-banner success">New arrival window confirmed.</p></section> : null}
       {searchParams.done === 'window_declined' ? <section className="panel workspace-section-card"><p className="payment-banner muted">No problem — your original arrival window still stands.</p></section> : null}
       {searchParams.done === 'diag_approved' ? <section className="panel workspace-section-card"><p className="payment-banner success">Diagnostic visit approved. If there’s an additional charge, we’ve texted you a payment link.</p></section> : null}
       {searchParams.done === 'diag_declined' ? <section className="panel workspace-section-card"><p className="payment-banner muted">Understood — your Quick Stop continues as booked.</p></section> : null}
       {searchParams.error === 'state' ? <section className="panel workspace-section-card"><p className="payment-banner warning">That action isn’t available for this Quick Stop anymore.</p></section> : null}
+      {searchParams.error === 'early' ? <section className="panel workspace-section-card"><p className="payment-banner warning">You can report a no-show after the arrival window ends.</p></section> : null}
       {searchParams.error === 'late' ? <section className="panel workspace-section-card"><p className="payment-banner warning">The 2-hour window to report a no-show has passed. Please contact your card issuer or Stripe for help.</p></section> : null}
 
       {req.proposed_arrival_date && ['confirmed', 'en_route'].includes(status) ? (

@@ -73,6 +73,7 @@ const MIGRATIONS = [
   'migrations/20260906131500_messaging_registry_callback_fail_closed.sql',
   'migrations/20260908173107_sms_dispatch_help_account_binding.sql',
   'migrations/20260908175833_subcontractor_sms_projection_service_grant.sql',
+  'migrations/20260914134735_sms_carrier_opt_out_projection.sql',
 ] as const;
 
 function lf(value: string): string {

@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createJob: vi.fn(),
+  deleteJob: vi.fn(),
   getJob: vi.fn(),
   findOrCreateClientId: vi.fn(),
 }));
@@ -19,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/jobs', () => ({
   createJob: mocks.createJob,
   getJob: mocks.getJob,
-  deleteJob: vi.fn(),
+  deleteJob: mocks.deleteJob,
   parseQuoteItems: vi.fn((x) => (Array.isArray(x) ? x : [])),
 }));
 
@@ -258,17 +259,14 @@ describe('Lead Lifecycle & Intake Intelligence Engine', () => {
       } as unknown as Lead;
 
       const chain = createQueryChain(mockLead);
-      chain.update = vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      });
+      chain.update = vi.fn().mockReturnValue(chain);
 
       mocks.createJob.mockResolvedValue({ id: 'job-created-99' });
 
       const job = await convertLeadToJob(chain, 'acc-1', 'lead-1', 750, 8);
 
       expect(job.id).toBe('job-created-99');
+      expect(chain.is).toHaveBeenCalledWith('converted_job', null);
       expect(mocks.createJob).toHaveBeenCalledWith(
         chain,
         'acc-1',
@@ -278,6 +276,26 @@ describe('Lead Lifecycle & Intake Intelligence Engine', () => {
           estimatedHours: 8,
         }),
       );
+    });
+
+    it('stops a losing conversion before send-side effects and only deletes its unclaimed job', async () => {
+      const chain = createQueryChain({ id: 'lead-1', converted_job: null, triage: {} });
+      chain.update = vi.fn().mockReturnValue(chain);
+      chain.maybeSingle.mockResolvedValueOnce({ data: { id: 'lead-1', converted_job: null, triage: {} }, error: null })
+        .mockResolvedValueOnce({ data: null, error: null });
+      mocks.createJob.mockResolvedValue({ id: 'losing-job' });
+      await expect(convertLeadToJob(chain, 'acc-1', 'lead-1', 750)).rejects.toThrow('another request');
+      expect(mocks.deleteJob).toHaveBeenCalledWith(chain, 'acc-1', 'losing-job');
+    });
+
+    it('keeps a possibly committed job when the conversion acknowledgement is lost', async () => {
+      const chain = createQueryChain({ id: 'lead-1', converted_job: null, triage: {} });
+      chain.update = vi.fn().mockReturnValue(chain);
+      chain.maybeSingle.mockResolvedValueOnce({ data: { id: 'lead-1', converted_job: null, triage: {} }, error: null })
+        .mockResolvedValueOnce({ data: null, error: new Error('timeout') });
+      mocks.createJob.mockResolvedValue({ id: 'uncertain-job' });
+      await expect(convertLeadToJob(chain, 'acc-1', 'lead-1', 750)).rejects.toThrow('timeout');
+      expect(mocks.deleteJob).not.toHaveBeenCalled();
     });
 
     it('unconvertLeadFromJob unlinks job and resets status', async () => {

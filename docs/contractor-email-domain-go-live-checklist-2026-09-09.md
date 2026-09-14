@@ -1,5 +1,7 @@
 # Contractor email domain sending: go-live task list
 
+Customer email verification now has a [T01–T20 execution checklist](customer-email-handling-checklist-2026-09-14.md), including suppression reasons, duplicate sends, outage handling and delivery tracking. Its local checks supplement the live gates below.
+
 Prepared September 9; updated September 10, 2026. Status: **Gmail and Outlook transport authentication/reply passed. Production onboarding, clean disconnect/reconnect, and a real custom-domain Outlook quote with its matching link passed. Remaining lifecycle drills and the seven-day canary remain open.**
 
 Release update, 22:09–22:20 UTC: PR #64 is merged and READY deployment `dpl_955shMPfprmxsadkAEui6PqeaKC9` serves the public app/webhook with the explicitly approved BrokePipes-only allowlist. Full CI passed 14,590 tests and build. Deployed product enrollment created a pending binding, and its exact return-path DNS is now published. Another authenticated workspace has no enrollment UI. Four authentic provider callback replays returned 202 with durable quarantine; the 20 known rehearsal incident records have explicit retained dispositions. The website watcher checked/attached one pending fixture through deployed credentials. Hourly follow-ups are ACTIVE; the seven-day clock remains unstarted. [Current evidence and remaining work](contractor-domains-canary-2026-09-09.md).

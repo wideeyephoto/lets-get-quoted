@@ -117,8 +117,10 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
       // invoice and the payment link never reached anyone who could use it.
       let channel: SentChannel = 'none';
       let sentTo: string | null = null;
+      let alreadyAccepted = false;
       if (job.client_email) {
-        await sendInvoiceEmail({
+        const receipt = await sendInvoiceEmail({
+          jobRevision: job.document_email_revision,
           invoice,
           items,
           businessName,
@@ -128,15 +130,20 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
           origin,
           accountId,
         });
+        alreadyAccepted = receipt.alreadyAccepted;
         channel = 'email';
         sentTo = job.client_email;
+      }
+      if (alreadyAccepted && invoice.status === 'sent') {
+        revalidatePath(`/dashboard/jobs/${verifiedJobId}/invoices/${invoiceId}`);
+        return;
       }
 
       // ...and the contractor gets a receipt of the fact, not a copy of the
       // customer's document. When there was nowhere to send it, that is what the
       // receipt says — better than letting them wait on a payment request the
       // customer never received.
-      if (user?.email) {
+      if (user?.email && !alreadyAccepted) {
         await sendInvoiceSentConfirmationEmail({
           accountId,
           recipientEmail: user.email,
@@ -150,12 +157,14 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
         });
       }
     } catch (err) {
-      // Log it but never fail the status change over an email.
+      // An ambiguous provider outcome is not evidence that an invoice was sent.
       console.error('Failed to send invoice email:', err);
+      throw err;
     }
   }
 
-  await updateInvoiceStatus(supabase, accountId, verifiedJobId, invoiceId, status);
+  await updateInvoiceStatus(supabase, accountId, verifiedJobId, invoiceId, status,
+    status === 'sent' ? invoice.document_email_revision : undefined);
 
   if (status === 'sent' || status === 'paid' || status === 'signed') {
     await createJobFeedEvent(supabase, accountId, verifiedJobId, {

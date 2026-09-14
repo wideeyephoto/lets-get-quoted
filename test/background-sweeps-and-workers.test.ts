@@ -112,109 +112,21 @@ describe('Background Sweeps & Maintenance Workers', () => {
   });
 
   describe('Quick Stop Sweeper (quick-stop-sweep)', () => {
-    it('expires unpaid offers, archives calendar jobs, marks payments failed, and alerts contractor', async () => {
-      fakeAdmin.from.mockImplementation((table: string) => {
-        if (table === 'extra_stop_requests') {
-          const builder = createFluentBuilder([
-            {
-              id: 'req-1',
-              account_id: 'acc-1',
-              status: 'awaiting_customer_payment',
-              job_id: 'job-100',
-              payment_id: 'pay-200',
-              client_name: 'John Smith',
-            },
-          ]);
-          builder.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'req-1' }, error: null });
-          return builder;
-        }
-        return createFluentBuilder([]);
+    it.each([
+      ['payment_expired', 'paymentExpired'],
+      ['response_expired', 'responseExpired'],
+      ['auto_completed', 'autoCompleted'],
+    ])('reports committed %s results from the atomic sweep', async (kind, counter) => {
+      fakeAdmin.rpc.mockImplementation((name: string) => {
+        const response = { data: name === 'recover_stale_quick_stop_offers' ? 0 : name === 'sweep_quick_stop_requests'
+          ? [{ kind, request_id: 'req-1', account_id: 'acc-1', client_name: 'Sam' }] : [], error: null };
+        return { abortSignal: vi.fn().mockResolvedValue(response), then: (resolve: any) => Promise.resolve(response).then(resolve) };
       });
-
       const summary = await sweepQuickStopOffers(fakeAdmin, 'acc-1');
-      expect(summary.paymentExpired).toBe(1);
-      expect(fakeAdmin.from).toHaveBeenCalledWith('jobs');
-      expect(fakeAdmin.from).toHaveBeenCalledWith('payments');
-      expect(mocks.logQuickStopEvent).toHaveBeenCalledWith(
-        fakeAdmin,
-        'acc-1',
-        'req-1',
-        expect.objectContaining({ to: 'offer_expired', meta: { reason: 'payment_window_elapsed' } }),
-      );
-      expect(mocks.sendContractorAlertEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accountId: 'acc-1',
-          recipientEmail: 'owner@contractor.com',
-          subject: 'Quick Stop offer expired unpaid',
-        }),
-      );
-    });
-
-    it('expires unresponsive contractor offers and logs event', async () => {
-      let callCount = 0;
-      fakeAdmin.from.mockImplementation((table: string) => {
-        if (table === 'extra_stop_requests') {
-          callCount++;
-          if (callCount === 1) {
-            // First call: payment expired check returns empty
-            return createFluentBuilder([]);
-          }
-          if (callCount === 2) {
-            // Second call: contractor response expired check
-            const builder = createFluentBuilder([{ id: 'req-2', account_id: 'acc-1' }]);
-            builder.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'req-2' }, error: null });
-            return builder;
-          }
-        }
-        return createFluentBuilder([]);
-      });
-
-      const summary = await sweepQuickStopOffers(fakeAdmin);
-      expect(summary.responseExpired).toBe(1);
-      expect(mocks.logQuickStopEvent).toHaveBeenCalledWith(
-        fakeAdmin,
-        'acc-1',
-        'req-2',
-        expect.objectContaining({ to: 'offer_expired', meta: { reason: 'response_window_elapsed' } }),
-      );
-    });
-
-    it('auto-completes appointments 2 hours after arrival window closes when no no-show was filed', async () => {
-      let callCount = 0;
-      fakeAdmin.from.mockImplementation((table: string) => {
-        if (table === 'extra_stop_requests') {
-          callCount++;
-          if (callCount <= 2) {
-            return createFluentBuilder([]);
-          }
-          // Third call: arrival window auto-completion candidate
-          const pastDate = '2026-06-10';
-          const pastTime = '12:00:00';
-          const builder = createFluentBuilder([
-            {
-              id: 'req-3',
-              account_id: 'acc-1',
-              job_id: 'job-300',
-              arrival_date: pastDate,
-              arrival_end: pastTime,
-              no_show_reported_at: null,
-            },
-          ]);
-          builder.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 'req-3' }, error: null });
-          return builder;
-        }
-        return createFluentBuilder([]);
-      });
-
-      const summary = await sweepQuickStopOffers(fakeAdmin);
-      expect(summary.autoCompleted).toBe(1);
-      expect(fakeAdmin.from).toHaveBeenCalledWith('jobs');
-      expect(mocks.logQuickStopEvent).toHaveBeenCalledWith(
-        fakeAdmin,
-        'acc-1',
-        'req-3',
-        expect.objectContaining({ to: 'completed', meta: { reason: 'auto_complete_after_window' } }),
-      );
+      expect(summary[counter as keyof typeof summary]).toBe(1);
+      expect(fakeAdmin.rpc).toHaveBeenCalledWith('sweep_quick_stop_requests', { p_account_id: 'acc-1', p_limit: 25 });
+      if (kind === 'payment_expired') expect(mocks.sendContractorAlertEmail).toHaveBeenCalledOnce();
+      else expect(mocks.sendContractorAlertEmail).not.toHaveBeenCalled();
     });
   });
 

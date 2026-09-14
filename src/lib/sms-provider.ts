@@ -12,6 +12,7 @@ import { billsTextCredits, type SmsSendContext } from '@/lib/sms-billing-policy'
 import { releaseUsageOverage } from '@/lib/billing/usage-overage';
 import type { TextCreditOverage } from '@/lib/billing/text-credit-usage';
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
+import { assertSupportedSmsDestination } from '@/lib/sms-destination-policy';
 
 /**
  * EVERY provider-shaped fact in the application lives in this file.
@@ -52,6 +53,15 @@ export class SmsBillingRefusalError extends Error {
 
   constructor() {
     super('This workspace is out of text credits. Buy a top-up to keep texting.');
+  }
+}
+
+/** A local configuration failure: no carrier request or credit hold was made. */
+export class SmsCallbackConfigurationError extends Error {
+  override readonly name = 'SmsCallbackConfigurationError';
+
+  constructor() {
+    super('SMS delivery tracking is not configured. Set a trusted HTTPS provider callback origin before sending.');
   }
 }
 
@@ -423,7 +433,7 @@ export function buildSendRequest(
   if (origin) {
     data.set('StatusCallback', `${origin}/api/sms/status`);
   } else if (process.env.NODE_ENV === 'production') {
-    console.warn('[sms-provider] Trusted provider callback origin is missing; StatusCallback disabled.');
+    throw new SmsCallbackConfigurationError();
   }
 
   return {
@@ -620,6 +630,10 @@ export async function sendProviderMessage(
     return SIMULATED_PROVIDER_ID;
   }
 
+  // Repeat the enqueue boundary for legacy queued rows and direct senders,
+  // before any circuit-breaker read, credit reservation, or carrier request.
+  assertSupportedSmsDestination(to);
+
   try {
     const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');
     const breaker = await checkCircuitBreaker('sms_outbound', context.accountId);
@@ -635,6 +649,10 @@ export async function sendProviderMessage(
     ? smsProviderConfigFor(options.provider)
     : smsProviderConfig();
   if (!config) throw new Error('SMS provider is not configured.');
+
+  // Validate delivery tracking before reserving credits or recording that a
+  // carrier request started. A configuration repair can then retry safely.
+  const request = buildSendRequest(config, to, body, options.from, options.mediaUrls);
 
   // Hold the credits before the carrier call, spend them once it is accepted.
   // Dark by default: with the meter off there is no service-role client and no
@@ -672,7 +690,6 @@ export async function sendProviderMessage(
 
   let requestAttempted = false;
   try {
-    const request = buildSendRequest(config, to, body, options.from, options.mediaUrls);
     const usage: SmsUsageEvidence = lease
       ? Object.freeze({
         kind: 'reservation' as const,
