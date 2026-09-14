@@ -46,10 +46,10 @@ describe('the hero is a note from the founder', () => {
     );
   });
 
-  it('offers the two primary hero actions', () => {
+  it('offers the primary hero action and feature request', () => {
     expect(PAGE).toContain("spec={{ label: 'Build my free site' }}");
-    expect(PAGE).toContain('href="#story"');
-    expect(PAGE).toContain('Read the founder truths');
+    expect(PAGE).not.toContain('Read the founder truths');
+    expect(PAGE).not.toContain('The four hats of a contractor');
     expect(PAGE).toContain('id="story"');
     expect(PAGE).toContain('<FounderFeatureRequest');
   });

@@ -146,34 +146,8 @@ export default function FounderExperience() {
               <em>doing the work, answering the phone, writing the quotes, and running the business.</em>”
             </h1>
 
-            <div className={styles.hatsMatrix} aria-label="The four hats of a contractor">
-              <div className={styles.hatCell}>
-                <span className={styles.hatIcon} aria-hidden="true">🔨</span>
-                <strong>Doing the work</strong>
-                <span>On the tools</span>
-              </div>
-              <div className={styles.hatCell}>
-                <span className={styles.hatIcon} aria-hidden="true">📞</span>
-                <strong>Answering the phone</strong>
-                <span>Customer care</span>
-              </div>
-              <div className={styles.hatCell}>
-                <span className={styles.hatIcon} aria-hidden="true">📝</span>
-                <strong>Writing the quotes</strong>
-                <span>Winning jobs</span>
-              </div>
-              <div className={styles.hatCell}>
-                <span className={styles.hatIcon} aria-hidden="true">⚙️</span>
-                <strong>Running the business</strong>
-                <span>Back office</span>
-              </div>
-            </div>
-
             <div className={styles.heroActions}>
               <CtaLink spec={{ label: 'Build my free site' }} className="btn primary" arrow />
-              <a className={styles.storyLinkBtn} href="#story">
-                Read the founder truths <span aria-hidden="true">↓</span>
-              </a>
               <FounderFeatureRequest />
             </div>
 
