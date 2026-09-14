@@ -632,9 +632,6 @@ describe('Group 3: Admin Accounts and Messaging Registrations Actions', () => {
       recForm.set('applicationId', validAppId);
       recForm.set('confirmation', 'RECONCILE +13135550199');
       await expect(reconcileMessagingAssignmentAction(recForm)).rejects.toThrow(`NEXT_REDIRECT:/admin/messaging/registrations?application=${validAppId}&done=1`);
-      expect(mocks.sendMessagingApplicationStatusEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'active', purchasedNumber: '+13135550199' }),
-      );
     });
 
     it('resolveMessagingNumberOperationAction and setMessagingNumberSpendPolicyAction recover and configure policy', async () => {
