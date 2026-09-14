@@ -87,7 +87,25 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'resend',
   },
 
-  // Internal owner notification incidents for website connection events.
+  // Internal owner notification incidents for domain events.
+  email_domain_restoration_notices: {
+    tableName: 'email_domain_restoration_notices',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'resend',
+  },
+
+  email_domain_restoration_snapshots: {
+    tableName: 'email_domain_restoration_snapshots', relationship: 'fk_chain', primaryKeyColumn: 'notice_id',
+    fkPath: ['notice_id', 'email_domain_restoration_notices.account_id'], localAction: 'delete', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot', vendorDependency: 'resend',
+  },
+
   website_domain_connection_notices: {
     tableName: 'website_domain_connection_notices',
     relationship: 'direct_account_id',

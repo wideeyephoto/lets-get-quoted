@@ -367,7 +367,8 @@ export async function verifyEmailSendingDomainAction(
       : null;
 
   // Zero-row write protection & C04: ensure row matches id, account_id, domain,
-  // and is NOT disabled (so an in-flight verify cannot overwrite an admin suspension).
+  // status and provider binding. A stale check cannot replace another recovery
+  // timestamp or overwrite an administrative suspension.
   const { data: updated, error: updateErr } = await admin
     .from('email_sending_domains')
     .update({
@@ -381,6 +382,8 @@ export async function verifyEmailSendingDomainAction(
     .eq('id', domainId)
     .eq('account_id', accountId)
     .eq('domain', existing.domain)
+    .eq('status', existing.status)
+    .eq('provider_domain_id', existing.provider_domain_id)
     .neq('status', 'disabled')
     .select('*')
     .maybeSingle();

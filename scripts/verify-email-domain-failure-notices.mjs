@@ -1,3 +1,4 @@
+import { verifyRestorationCallbacks } from './verify-email-domain-restoration-checks.mjs';
 import { verifyWebsiteCallbacks } from './verify-website-domain-callback-checks.mjs';
 // Disposable PostgreSQL only. No hosted credentials or actual email sends.
 import assert from 'node:assert/strict';
@@ -118,6 +119,8 @@ try {
   await (await import('./verify-website-domain-notice-checks.mjs')).verifyWebsiteDomainNotices(db, other, root, passed);
   await (await import('./verify-website-domain-snapshot-checks.mjs')).verifyWebsiteSnapshots(db, other, root, passed);
   await verifyWebsiteCallbacks(db, other, root, passed);
+  await verifyRestorationCallbacks(db, other, root, passed);
+  await (await import('./verify-email-domain-restoration-snapshot-checks.mjs')).verifyRestorationSnapshots(db, other, root, passed);
   if (process.env.LGQ_SUPABASE_CLI) {
     await db.query('reset role');
     console.log(execFileSync(process.env.LGQ_SUPABASE_CLI, ['db','advisors','--db-url',

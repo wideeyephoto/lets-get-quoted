@@ -10,6 +10,7 @@ import {
   listSendingDomains,
   toStoredStatus,
 } from '@/lib/resend-domains';
+import { runEmailDomainRestorationNotices } from '@/lib/email-domain-restoration-notices';
 import { runEmailDomainFailureNotices } from '@/lib/email-domain-failure-notices';
 
 /**
@@ -90,16 +91,32 @@ export async function runEmailSendingDomainReconcile(
   client?: SupabaseClient,
 ): Promise<SendingDomainReconcileSummary> {
   const summary = emptySummary();
+  const admin = client ?? createAdminClient();
+  async function processNotices() {
+    for (const run of [runEmailDomainFailureNotices, runEmailDomainRestorationNotices]) {
+      try {
+        const notices = await run(admin);
+        summary.ownersNotified += notices.ownersNotified;
+        summary.errors += notices.errors;
+        summary.notificationReviews = (summary.notificationReviews ?? 0) + notices.notificationReviews;
+        summary.notificationBacklog = (summary.notificationBacklog ?? 0) + notices.notificationBacklog;
+        const failures = 'failures' in notices ? notices.failures : notices.notificationFailures;
+        if (failures.length) summary.failures = [...(summary.failures ?? []), ...failures];
+      } catch (error) {
+        summary.errors += 1;
+        console.error('[email-domain-reconcile] owner notice processing failed:', error instanceof Error ? error.message : error);
+      }
+    }
+  }
 
   // Not gated on the feature flag, on purpose. The flag decides whether the
   // dashboard offers the section; it says nothing about whether rows already
   // exist. A domain verified while the flag was on stays live in every send
   // path after it is switched off, so it still has to be reconciled.
   if (!(await isSendingDomainProvisioningConfigured())) {
-    return { ...summary, errors: 1, skipped: true, reason: 'RESEND_DOMAINS_API_KEY / RESEND_API_KEY domain-management access is unavailable' };
+    await processNotices();
+    return { ...summary, errors: summary.errors + 1, reason: 'RESEND_DOMAINS_API_KEY / RESEND_API_KEY domain-management access is unavailable' };
   }
-
-  const admin = client ?? createAdminClient();
 
   const res = (await admin
     .from('email_sending_domains')
@@ -168,6 +185,7 @@ export async function runEmailSendingDomainReconcile(
         .eq('account_id', row.account_id)
         .eq('domain', row.domain)
         .eq('status', row.status)
+        .eq('provider_domain_id', row.provider_domain_id)
         .neq('status', 'disabled')
         .select('id')
         .maybeSingle();
@@ -276,16 +294,6 @@ export async function runEmailSendingDomainReconcile(
     );
   }
 
-  try {
-    const notices = await runEmailDomainFailureNotices(admin);
-    summary.ownersNotified += notices.ownersNotified;
-    summary.errors += notices.errors;
-    summary.notificationReviews = notices.notificationReviews;
-    summary.notificationBacklog = notices.notificationBacklog;
-    if (notices.failures.length) summary.failures = notices.failures;
-  } catch (error) {
-    summary.errors += 1;
-    console.error('[email-domain-reconcile] owner notice processing failed:', error instanceof Error ? error.message : error);
-  }
+  await processNotices();
   return summary;
 }

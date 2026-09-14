@@ -260,3 +260,9 @@ Execution order, acceptance criteria and milestone dependencies are in the [impl
 - **T16/T17/T19:** Signed website callbacks now bind saved notice/workspace/recipient/provider evidence before delivery history or suppression. Early delivery repairs missing acceptance without resending; delayed completion cannot erase stronger outcomes. Unknown or unprepared callbacks are quarantined for review.
 - **Verification:** 97 application tests and 57 PostgreSQL checks passed, plus changed-file lint, full type checking and a clean local security advisor. See the [ten-step execution record](customer-email-ten-step-execution-2026-09-14.md).
 - **Remaining:** Continue remaining domain/owner notice coverage and restoration behavior, then scheduled and other message families. Hosted acceptance and canary gates remain open; no live change occurred.
+
+### Twenty-fifth-pass implementation — sending-domain restoration
+
+- **T16/T17/T19:** A previously attempted domain failure can now produce one durable restoration notice per verified recovery. The source update and notice commit together; current owner, message, provider identity/key and signed outcomes are retained. Changed connections stop unsent notices. No automatic resend is enabled.
+- **Verification:** 153 application tests and 75 PostgreSQL checks passed, plus lint, sender-registry checks and a clean local security advisor. See the [restoration runbook](runbooks/email-domain-restoration-notices.md) and [ten-step record](customer-email-ten-step-execution-2026-09-14.md).
+- **Remaining:** Step 4 still includes generic contractor alerts, owner confirmations, lead notices and messaging application notices. Steps 5–10 and hosted acceptance remain open. No live change occurred.

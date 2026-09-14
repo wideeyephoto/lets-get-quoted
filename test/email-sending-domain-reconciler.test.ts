@@ -21,6 +21,8 @@ const isConfigured = vi.fn(() => true);
 // the mock has to accept whatever the worker passes without asserting a shape
 // the test does not care about.
 const runNotices = vi.fn();
+const runRestorationNotices = vi.fn(async (..._args: unknown[]) => ({ ownersNotified: 0, errors: 0, notificationReviews: 0, notificationBacklog: 0, notificationFailures: [] }));
+vi.mock('@/lib/email-domain-restoration-notices', () => ({ runEmailDomainRestorationNotices: (...a: unknown[]) => runRestorationNotices(...a) }));
 
 vi.mock('@/lib/resend-domains', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/resend-domains')>();
@@ -250,7 +252,10 @@ describe('Custom sending domain reconciler', () => {
 
     const summary = await runEmailSendingDomainReconcile(db.client);
 
-    expect(summary.skipped).toBe(true);
+    expect(summary.skipped).toBeUndefined();
+    expect(runNotices).toHaveBeenCalledWith(db.client);
+    expect(runRestorationNotices).toHaveBeenCalledWith(db.client);
+    expect(cronSummaryHasFailures(summary)).toBe(true);
     expect(summary.checked).toBe(0);
     expect(summary.reason).toMatch(/RESEND_API_KEY/);
     expect(getSendingDomain).not.toHaveBeenCalled();
@@ -327,4 +332,12 @@ describe('Custom sending domain reconciler', () => {
       expect(cronSummaryHasFailures(summary as unknown as Record<string, unknown>)).toBe(true);
     });
   });
+});
+
+it('keeps restoration processing available when the failure-notice reader fails', async () => {
+  const db = makeDb([]);
+  runNotices.mockRejectedValueOnce(new Error('failure queue unavailable'));
+  const result = await runEmailSendingDomainReconcile(db.client);
+  expect(runRestorationNotices).toHaveBeenCalledWith(db.client);
+  expect(result.errors).toBeGreaterThan(0);
 });

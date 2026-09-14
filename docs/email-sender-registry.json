@@ -185,7 +185,8 @@
         "sendSelectionRequestEmail:sdk-email-submit": 1,
         "sendSendingDomainFailedEmail:sdk-email-submit": 1,
         "sendSupportCaseCustomerEmail:sdk-email-submit": 1,
-        "sendSupportCaseStaffEmail:sdk-email-submit": 1
+        "sendSupportCaseStaffEmail:sdk-email-submit": 1,
+        "sendSendingDomainRestoredEmail:sdk-email-submit": 1
       }
     },
     "src/lib/founder-alerts.ts": {

@@ -10,7 +10,7 @@ controlled canary require actual environment and receiver evidence.
 | 1 | Complete website-notice snapshots | Implemented locally; verification below | Immutable recipient/content/link/sender snapshots before submission; failure and mutation tests |
 | 2 | Provider identity and deduplication keys | Implemented locally; verification below | Saved credential fingerprint and stable per-notice key; actual request-boundary proof; hosted scope verified in step 9 |
 | 3 | Signed website callback recovery | Implemented locally; verification below | Saved binding checks, lost-acceptance repair, monotonic outcomes and callback/worker race tests without resend |
-| 4 | Remaining domain/owner notices | Open | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
+| 4 | Remaining domain/owner notices | In progress: restoration implemented locally; other owner events remain | Inventoried source events and recipients; defined restoration behavior; every intended event has durable identity |
 | 5 | Appointment/booking/selection reminders | Open | Durable scheduled occurrences and obsolete-event cancellation, including concurrent and repeated triggers |
 | 6 | Campaign/review/rebook messages | Open | Durable recipient occurrences, audience-rerun deduplication, correct opt-out policy |
 | 7 | Remaining email families | Open | Digests/support/merchandise/auth/report inventory closed with durable identities and token/report preservation |
@@ -60,3 +60,28 @@ concurrent callback/completion, provider collisions, tenant/recipient mismatch,
 expired observation, immutable snapshots and operator closeout. Worker tests
 cover early delivery followed by acknowledgement or timeout and a second run.
 Hosted acceptance and canary evidence remain open. Step 4 is next.
+
+## September 14 — restoration notices and remaining owner inventory
+
+Step 3 committed as a959c44f7. Restoration now has an atomic source event,
+private immutable snapshot, current recipient/provider key, one-attempt worker
+and signed callback repair. See the [restoration runbook](runbooks/email-domain-restoration-notices.md).
+The domain reconciler processes both queues even without management credentials,
+and a failure reading one queue does not hide the other. Interactive verification
+and scheduled reconciliation fence status/provider changes to preserve the
+winning recovery timestamp.
+
+Observed local verification: **153 application tests**, **75/75 PostgreSQL 17
+checks**, changed-file lint, **10 registry tests** and the local security advisor
+passed. Provider receiver/region/capacity evidence remains unverified.
+
+Step 4 remains open: the source scan found generic contractor alerts for client
+questions/changes, payments/disputes, scheduling, warranty, margin, review and
+subcontractor events; quote/invoice/payment/review confirmation wrappers; lead
+notifications from public leads, marketplace and booking; and messaging
+application submission/status notices. These need source identities and saved
+payloads too. They must not be described as protected merely because domain
+notices are done. Digests/support are also tracked in step 7 and booking/reminder
+notifications in step 5; overlap does not remove their acceptance requirement.
+
+Full application/test type checking completed successfully with no diagnostics after the final application changes.

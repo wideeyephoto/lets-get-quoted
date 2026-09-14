@@ -1392,6 +1392,53 @@ export async function sendCustomDomainConnectedEmail(input: {
   return result.data.id;
 }
 
+export async function sendSendingDomainRestoredEmail(input: {
+  noticeId: string;
+  prepareIntent: PrepareOwnerEmail;
+  recipientEmail: string;
+  businessName: string;
+  domain: string;
+  accountId: string;
+  settingsUrl: string;
+}): Promise<string> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+  const tags = defaultTags('sending_domain_restored', brand, input.accountId);
+  if (typeof input.noticeId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.noticeId)) {
+    throw new Error('Sending domain restoration notice identity could not be verified.');
+  }
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `${input.domain} is verified again`,
+    html: renderBrandedEmail({
+      brand,
+      audience: 'account',
+      preheader: `Email authentication for ${input.domain} is verified again`,
+      eyebrow: 'Email connection restored',
+      heading: 'Your sending domain is verified again',
+      paragraphs: [
+        `The email provider has verified ${input.domain} again. New eligible messages can use your configured sending address.`,
+        'This does not resend earlier messages or confirm their delivery. Review recent email activity if a customer is missing a message. Any separate sending hold still applies.',
+      ],
+      cta: { label: 'Review email settings', url: input.settingsUrl },
+      footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Manage this domain any time in <a href="${escapeHtml(input.settingsUrl)}" style="color:#6b7280">your email settings</a>.</p>`,
+    }),
+    reply_to: 'hello@letsgetquoted.com',
+    tags: [...tags, { name: 'domain_restoration_notice_id', value: input.noticeId }],
+  }, { idempotencyKey: `domain-restored:v1:${input.noticeId}`, prepareIntent: input.prepareIntent });
+
+  if (result.error) {
+    console.error('Failed to send sending-domain restoration email:', result.error);
+    throw new Error(result.error.message);
+  }
+  if (!result.data?.id) throw new Error('Email provider returned no message ID.');
+  return result.data.id;
+}
+
 export async function sendDailyDigestEmail(input: {
   accountId: string;
   recipientEmail: string;

@@ -341,6 +341,20 @@ describe('Contractor Email Sending Domains - Release Controls & Guards', () => {
       expect(row.status).toBe('disabled');
     });
 
+    it.each(['state', 'binding'])('does not replace the winning recovery after a concurrent %s change', async changed => {
+      const row = { id: 'domain-race', account_id: currentAccountId, domain: 'builder.test', provider_domain_id: 'provider-old', status: 'failed', verified_at: null as string | null };
+      dbRows.email_sending_domains.push(row);
+      beforeUpdate = () => {
+        if (changed === 'state') { row.status = 'verified'; row.verified_at = '2026-09-14T12:00:00Z'; }
+        else row.provider_domain_id = 'provider-new';
+      };
+      globalThis.fetch = vi.fn(async () => new Response(JSON.stringify({ id: 'provider-old', name: row.domain, status: 'verified', records: [] }), { status: 200 }));
+      const { verifyEmailSendingDomainAction } = await import('@/app/dashboard/settings/email-domain-actions');
+      await expect(verifyEmailSendingDomainAction(row.id)).rejects.toThrow(/Domain changed/);
+      if (changed === 'state') expect(row.verified_at).toBe('2026-09-14T12:00:00Z');
+      else expect(row.provider_domain_id).toBe('provider-new');
+    });
+
     it('verifyEmailSendingDomainAction refuses to verify a domain in disabled status', async () => {
       currentAccountId = 'ws-disabled';
       dbRows.email_sending_domains.push({

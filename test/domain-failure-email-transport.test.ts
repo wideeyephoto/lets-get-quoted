@@ -5,7 +5,7 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/email-send-policy', () => ({ assertEmailSendAllowed: vi.fn() }));
 vi.mock('@/lib/email-brand', async importOriginal => ({ ...await importOriginal<typeof import('@/lib/email-brand')>(), loadEmailBrand: async () => { throw new Error('Use default brand'); } }));
 import { assertEmailSendAllowed } from '@/lib/email-send-policy';
-import { sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail, type DurableOwnerEmailSnapshot } from '@/lib/email';
+import { sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail, sendSendingDomainRestoredEmail, type DurableOwnerEmailSnapshot } from '@/lib/email';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
@@ -34,12 +34,19 @@ it('keeps each owner notice key and snapshot independent through the installed S
   expect(new Headers(otherOptions.headers).get('Idempotency-Key')).toBe(`website-domain-connected:v1:${input.noticeId}`);
   expect(websiteSnapshot.mock.calls[0][0].payload).toEqual(JSON.parse(otherOptions.body as string));
   expect(websiteSnapshot.mock.calls[0][0].providerFingerprint).toBe(prepareIntent.mock.calls[0][0].providerFingerprint);
+  const restoredSnapshot = vi.fn(async (_snapshot: DurableOwnerEmailSnapshot) => { expect(fetch).toHaveBeenCalledTimes(2); });
+  await sendSendingDomainRestoredEmail({ ...input, prepareIntent: restoredSnapshot });
+  const restoredOptions = (fetch.mock.calls[2] as unknown as [string, RequestInit])[1];
+  expect(new Headers(restoredOptions.headers).get('Idempotency-Key')).toBe('domain-restored:v1:' + input.noticeId);
+  expect(restoredSnapshot.mock.calls[0][0].payload).toEqual(JSON.parse(restoredOptions.body as string));
+  expect(restoredSnapshot.mock.calls[0][0].payload.tags).toContainEqual({ name: 'kind', value: 'sending_domain_restored' });
+  expect(JSON.parse(restoredOptions.body as string).html).toContain('does not resend earlier messages');
   vi.mocked(assertEmailSendAllowed).mockRejectedValueOnce(new Error('blocked'));
   await expect(sendSendingDomainFailedEmail(input)).rejects.toThrow('blocked');
-  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(fetch).toHaveBeenCalledTimes(3);
 });
 
-it.each([sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail])('never submits when saving the snapshot fails or a delivery block appears during saving (%s)', async sendNotice => {
+it.each([sendSendingDomainFailedEmail, sendCustomDomainConnectedEmail, sendSendingDomainRestoredEmail])('never submits when saving the snapshot fails or a delivery block appears during saving (%s)', async sendNotice => {
   vi.stubEnv('RESEND_API_KEY', 'synthetic-offline-key');
   const fetch = vi.fn(); vi.stubGlobal('fetch', fetch);
   vi.mocked(assertEmailSendAllowed).mockResolvedValue(undefined);
