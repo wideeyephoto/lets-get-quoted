@@ -71,6 +71,13 @@ describe('Email Engine & Notification System (lib/email)', () => {
     mocks.suppression.mockResolvedValue({ data: [], error: null });
     mocks.rpc.mockImplementation(async (name: string, args: any) => {
       if (name === 'claim_document_email_send' || name === 'claim_customer_email_send') {
+        const to = args.p_payload?.to || args.p_payload?.recipientEmail;
+        if (to === 'blocked@contractorclient.test' || (Array.isArray(to) && to.includes('blocked@contractorclient.test'))) {
+          return {
+            data: { action: 'blocked', reason: 'recipient_delivery_block' },
+            error: null
+          };
+        }
         return {
           data: {
             action: 'send', id: 'intent', token: 'lease', phase: 'primary', key: 'test/intent/primary',
@@ -201,7 +208,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
         recipientEmail: 'client@contractorclient.test',
         businessName: 'Ace Contracting',
         clientName: 'Bob Miller',
-        whenLabel: 'Monday, June 15, 2026 A 9:00 AM ?" 11:00 AM',
+        whenLabel: 'Monday, June 15, 2026 · 9:00 AM – 11:00 AM',
         jobRef: 'JOB-101',
         address: '742 Evergreen Terrace, Springfield',
         jobId: 'job-1', idempotencyKey: 'test-idem-2',
