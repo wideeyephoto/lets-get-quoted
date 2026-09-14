@@ -43,6 +43,7 @@ export async function runEmailDomainFailureNotices(admin: SupabaseClient): Promi
       const site = await admin.from('sites').select('company_name').eq('account_id', notice.account_id).maybeSingle();
       if (site.error) throw new Error('owner_brand_unavailable');
       providerId = await sendSendingDomainFailedEmail({
+        noticeId: notice.id,
         recipientEmail,
         businessName: (site.data?.company_name as string | null)?.trim() || 'your business',
         domain: notice.domain,

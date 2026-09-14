@@ -68,17 +68,27 @@ import { sendPlatformTransactionalEmail } from './platform-transactional-email';
 let resendClient: Resend | null = null;
 const resend = {
   emails: {
-    send: (...args: Parameters<Resend['emails']['send']>) => {
+    send: (payload: Parameters<Resend['emails']['send']>[0], options?: Parameters<Resend['emails']['send']>[1] & { idempotencyKey?: string }) => {
       if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
       const client = resendClient;
-      return sendWithDomainFallback(async (payload, options) => {
+      return sendWithDomainFallback(async (payload, requestOptions) => {
         if (resendTagValue(payload.tags, 'account_id')) await assertEmailSendAllowed(createAdminClient(), payload);
         else if (['contact_message', 'support_case_staff', 'support_case_customer'].includes(resendTagValue(payload.tags, 'kind') ?? '')) {
-          return sendPlatformTransactionalEmail(createAdminClient(), client, payload, options);
+          return sendPlatformTransactionalEmail(createAdminClient(), client, payload, requestOptions);
         }
         else throw new Error('Email workspace could not be verified. No email was submitted.');
-        return client.emails.send(payload, options);
-      }, ...args);
+        if (options?.idempotencyKey) {
+          // SDK v3 has no typed idempotency option. Submit the already rendered
+          // payload with an explicit header, without mutating shared headers.
+          if (payload.react) throw new Error('Idempotent email requires rendered content.');
+          return client.fetchRequest<{ id: string }>('/emails', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${client.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': options.idempotencyKey },
+            body: JSON.stringify(payload),
+          });
+        }
+        return client.emails.send(payload, requestOptions);
+      }, payload, options);
     },
   },
 };
@@ -1260,6 +1270,7 @@ export function renderDailyDigestEmailHtml(input: {
  * receipt of earlier messages or override a separate administrative sending hold.
  */
 export async function sendSendingDomainFailedEmail(input: {
+  noticeId: string;
   recipientEmail: string;
   businessName: string;
   domain: string;
@@ -1272,6 +1283,12 @@ export async function sendSendingDomainFailedEmail(input: {
   }
 
   const brand = await brandFor(input);
+  const tags = defaultTags('sending_domain_failed', brand, input.accountId);
+  // The ledger UUID identifies one failure episode globally. Do not derive this
+  // from the domain, current owner, timestamp or attempt number.
+  if (typeof input.noticeId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.noticeId)) {
+    throw new Error('Domain failure notice identity could not be verified. No email was submitted.');
+  }
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
@@ -1293,8 +1310,8 @@ export async function sendSendingDomainFailedEmail(input: {
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">We are sending this from ${escapeHtml("Let's Get Quoted")} rather than ${escapeHtml(input.domain)} because that domain can no longer sign mail.</p>`,
     }),
     reply_to: 'hello@letsgetquoted.com',
-    tags: defaultTags('sending_domain_failed', brand, input.accountId),
-  });
+    tags: [...tags, { name: 'domain_failure_notice_id', value: input.noticeId }],
+  }, { idempotencyKey: `domain-failure:v1:${input.noticeId}` });
 
   if (result.error) {
     console.error('Failed to send sending-domain failure email:', result.error);

@@ -154,11 +154,12 @@
     "src/lib/email.ts": {
       "purpose": "Shared tenant notices, marketing, documents and platform support/contact",
       "recipientScope": "required workspace for tenant senders; explicit platform support/contact",
-      "transport": "SDK wrapper plus document ledger",
+      "transport": "SDK wrapper plus document ledger; explicit HTTP idempotency header for domain failure notices",
       "suppression": "missing/altered tenant IDs rejected; explicit platform kinds gated; marketing blocks all opt-outs; fallback rechecks",
       "remaining": "Caller authorization remains upstream; independent/external paths, remaining durable families and provider evidence",
       "signatures": {
         "<module>:gate:sendPlatformTransactionalEmail": 1,
+        "<module>:provider-email-request": 1,
         "<module>:provider-import:resend": 1,
         "<module>:sdk-email-submit": 1,
         "sendAppointmentReminderEmail:sdk-email-submit": 1,

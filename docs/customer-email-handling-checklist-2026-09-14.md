@@ -215,6 +215,12 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 16 offline tests with the installed Supabase client passed, including lower API caps, partial-read failures, privacy and request restrictions. Changed-script lint and registry checks passed; CI includes the report tests. No hosted report or email was run.
 - **Remaining:** Collect/review actual environment evidence, resolve unknown IDs through supported paths, approve retention rules and continue durable identities. See the [review runbook](runbooks/operational-callback-evidence-review.md).
 
+### Nineteenth-pass implementation — domain failure submission identity
+
+- **T16/T17:** The domain failure sender now requires its existing durable incident UUID, sends a stable provider key and includes the incident ID with its workspace tag. Invalid identities fail before submission; a separate failure episode receives a different key even on the same domain. Uncertain sends still require manual review and are never automatically rearmed.
+- **Verification:** 50 selected application tests and 10 registry tests passed, including an offline request-boundary check using the installed SDK; type checking and changed-file lint passed. No migration, hosted change or email was run.
+- **Remaining:** Save immutable message snapshots and provider scope, reconcile signed callbacks with acceptance, and define bounded recovery before enabling retries. Domain restoration and other owner notice families remain open. The provider key alone does not establish permanent deduplication or delivery.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

@@ -62,6 +62,8 @@ Acceptance: all audited paths have an explicit policy; transactional marketing o
 
 Checklist: T06, T07, T16, T17, T19.
 
+Local first step: domain failure submissions now require the existing failure-notice UUID, pass `domain-failure:v1:<notice UUID>` as the provider idempotency key, and include `domain_failure_notice_id` alongside the workspace tag. This UUID already identifies a persisted failure episode globally. Existing one-attempt/manual-review behavior remains in place. This does not complete M3: immutable message snapshots, provider-scope fencing, callback acceptance reconciliation and recovery eligibility remain open. The new tag alone is not trusted to repair acceptance. Restoration and other owner notices remain separate work.
+
 Implement a reusable notice ledger and worker contract for remaining business events, while retaining the existing lifecycle/document ledgers. Use database uniqueness, immutable payload snapshots, atomic leases, acceptance records and provider-scope checks. Avoid a simultaneous rewrite of all transports.
 
 | Order | Family | Intended identity and recovery rule |

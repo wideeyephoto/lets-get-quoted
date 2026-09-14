@@ -80,6 +80,7 @@ describe('Durable domain failure notices', () => {
     const db = database();
     expect((await runEmailDomainFailureNotices(db.client)).ownersNotified).toBe(1);
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      noticeId: 'notice-1',
       settingsUrl: expect.stringMatching(/\/dashboard\/settings#email-domain$/),
     }));
     expect(db.notices[0].state).toBe('accepted');
