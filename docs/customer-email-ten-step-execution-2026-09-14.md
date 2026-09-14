@@ -180,3 +180,9 @@ No hosted changes or receiver evidence; step 4 remains in progress.
 - **T16/T17/T19:** Cancellation/no-show transitions now atomically save a private owner notice. Terminal requests return before refund execution or notification; the database rejects reclassification into another cancellation. Notice copy reports the cancellation and asks the owner to verify refund status rather than treating intended refund cents as completion.
 - **Verification:** 26 application tests, 120 PostgreSQL checks, full type checking, lint and clean local security advisor passed. Tests cover competing cancellations, repeated terminal requests, corrected intended refund amounts and subsequent refund status.
 - **Remaining:** Confirmed refund-outcome notifications need authoritative provider evidence; refund execution and customer SMS have not been migrated by this owner-email change. Drain legacy cancellation email producers at rollout. Other owner families and hosted acceptance remain open.
+
+### Thirty-sixth-pass implementation — Quick Stop expired-offer notices
+
+- **T16/T17/T19:** Payment-window expiration now commits its owner notice atomically. Saved deadline/payment/customer identity binds pending delivery; late paid/refunded evidence cancels it. An extended future deadline rejects a stale expiration. Copy does not claim that nothing was charged or that downstream cleanup completed.
+- **Verification:** 15 application tests, 122 PostgreSQL checks, full type checking, production-file lint and clean local security advisor passed. Concurrent/repeated expiration produces one notice; response-only expiration stays silent as before.
+- **Remaining:** Drain legacy expiry email producers before applying the trigger. New Quick Stop requests and authoritative refund outcomes remain open, along with other owner families and hosted acceptance. No live payment or email operation occurred.

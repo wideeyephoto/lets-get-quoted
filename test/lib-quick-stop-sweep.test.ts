@@ -1,16 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { logQuickStopEvent } from '@/lib/quick-stop-requests';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 
 vi.mock('@/lib/quick-stop-requests', () => ({
   logQuickStopEvent: vi.fn(),
 }));
 
-vi.mock('@/lib/email', () => ({
-  getAccountOwnerEmail: vi.fn(),
-  sendContractorAlertEmail: vi.fn(),
-}));
+vi.mock('@/lib/owner-event-notices',()=>({runOwnerEventNotices:vi.fn()}));
 
 describe('Quick Stop Sweep Lib', () => {
   let adminMock: any;
@@ -57,7 +54,7 @@ describe('Quick Stop Sweep Lib', () => {
     });
 
     queryMock.maybeSingle.mockResolvedValue({ data: { id: 'req1' } }); // claimed
-    (getAccountOwnerEmail as any).mockResolvedValue('owner@test.com');
+
 
     const summary = await sweepQuickStopOffers(adminMock);
 
@@ -66,7 +63,7 @@ describe('Quick Stop Sweep Lib', () => {
     expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'archived' })); // jobs
     expect(queryMock.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' })); // payments
     expect(logQuickStopEvent).toHaveBeenCalled();
-    expect(sendContractorAlertEmail).toHaveBeenCalled();
+    expect(runOwnerEventNotices).toHaveBeenCalledWith(adminMock,{sourceId:'req1',accountId:'acct1'});
   });
 
   it('expires unresponded offers', async () => {

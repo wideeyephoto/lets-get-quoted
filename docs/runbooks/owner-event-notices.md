@@ -280,3 +280,20 @@ notice or a migration of the customer refund SMS.
 Verification: 26 application tests, 120 PostgreSQL checks, full type checking,
 lint and clean local security advisor. Actual refund-outcome notification and
 hosted financial/receiver acceptance remain open.
+
+## Quick Stop payment-window expiration
+
+Drain legacy expiry email producers before applying
+20260914183645_quick_stop_expiry_notices.sql and deploying the updated sweep.
+Only awaiting_customer_payment to offer_expired creates a notice. The saved
+payment deadline must already have passed; an extended deadline makes a stale
+sweep fail without expiring the request. Response-only expiration stays silent.
+
+The saved deadline, payment ID and customer must match before sending. Paid or
+refunded local payment evidence cancels pending expiry mail. Copy reports only
+the expired window and directs the owner to review the request/payment; it does
+not claim no charge occurred or that separate calendar cleanup succeeded.
+
+Verification: 15 application tests, 122 PostgreSQL checks, full type checking,
+production-file lint and clean local security advisor. New-request and verified
+refund-outcome notices, other families and hosted acceptance remain open.

@@ -1,8 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { logQuickStopEvent, type QuickStopRequest } from '@/lib/quick-stop-requests';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 export type SweepSummary = { paymentExpired: number; responseExpired: number; autoCompleted: number };
 
@@ -54,23 +53,7 @@ export async function sweepQuickStopOffers(admin: SupabaseClient, accountId?: st
     await logQuickStopEvent(admin, row.account_id, row.id, { actor: 'system', from: 'awaiting_customer_payment', to: 'offer_expired', meta: { reason: 'payment_window_elapsed' } });
 
     try {
-      const ownerEmail = await getAccountOwnerEmail(admin, row.account_id);
-      if (ownerEmail) {
-        await sendContractorAlertEmail({
-          accountId: row.account_id,
-          recipientEmail: ownerEmail,
-          businessName: 'Let’s Get Quoted',
-          subject: 'Quick Stop offer expired unpaid',
-          heading: 'A Quick Stop offer expired',
-          bodyLines: [
-            `${row.client_name} didn’t complete payment in time, so the hold was released.`,
-            'No appointment was created and nothing was charged.',
-          ],
-          ctaLabel: 'View Quick Stops',
-          ctaUrl: `${APP_ORIGIN}/dashboard/quick-stops`,
-          tone: 'info',
-        });
-      }
+      await runOwnerEventNotices(admin,{sourceId:row.id,accountId:row.account_id});
     } catch (error) {
       console.error('Quick Stop expiry email failed:', error instanceof Error ? error.message : error);
     }
