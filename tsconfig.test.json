@@ -4,8 +4,9 @@
   // all. That's how six tests came to sit broken on main: BookingAvailability
   // grew four fields, the fixtures never followed, and tsc had no view of them.
   //
-  // Run via `npm run typecheck` (not part of `next build`, which keeps using
-  // tsconfig.json).
+  // Run via `npm run typecheck:all` in required GitHub CI. Vercel's native
+  // `typecheck` job and `next build` use tsconfig.json for application checks;
+  // the application-plus-tests compiler needs more memory than the native job.
   // test-staging is here for the same reason test is. It was added without
   // being typechecked, and immediately paid for it: a call passing `status` to a
   // function whose parameter is `statuses` compiled fine as an excess property
