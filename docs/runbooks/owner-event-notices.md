@@ -297,3 +297,22 @@ not claim no charge occurred or that separate calendar cleanup succeeded.
 Verification: 15 application tests, 122 PostgreSQL checks, full type checking,
 production-file lint and clean local security advisor. New-request and verified
 refund-outcome notices, other families and hosted acceptance remain open.
+
+## New Quick Stop requests
+
+Drain legacy new-request email producers before applying
+20260914183857_quick_stop_request_owner_notices.sql and deploying the new caller.
+An awaiting-contractor insert atomically records its owner notice. The current
+request must still await a response, retain its source details and have an open
+response window before sending. The email points to Quick Stops for its deadline.
+
+A BEFORE INSERT invoker trigger normalizes email/phone whitespace and locks
+account/contact keys in consistent order. A matching active email or phone rejects
+the overlapping insert, closing the race in the old preflight check. Existing
+application phone normalization remains in use. Closed requests allow a later
+request; another account is independent. This is not delayed replay protection:
+form request IDs and receipts remain necessary after a prior request closes.
+
+Verification: 36 application tests, 124 PostgreSQL checks, full type checking,
+lint and clean local security advisor. Hosted release and receiver acceptance,
+form replay receipts and confirmed refund-outcome notices remain open.

@@ -1,11 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeUsPhone } from '@/lib/phone';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { runOwnerEventNotices } from '@/lib/owner-event-notices';
 import { QUICK_STOP_ACTIVE_STATUSES, type QuickStopStatus } from '@/lib/quick-stop';
 import type { QuickStopQualification } from '@/lib/quick-stop-qualify';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 // One row of the extra_stop_requests table, as the dashboard reads it. Kept
 // loose (unknown-friendly) — callers pick the fields they need.
@@ -205,25 +204,7 @@ export async function createQuickStopRequest(
 
   // Alert the owner. Best-effort — a notification failure never fails the request.
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (ownerEmail) {
-      await sendContractorAlertEmail({
-        accountId,
-        recipientEmail: ownerEmail,
-        businessName: opts.businessName,
-        subject: `⚡ New Quick Stop request — respond within ${opts.responseDeadlineMins} min`,
-        heading: 'A customer wants a Quick Stop',
-        bodyLines: [
-          qualification.summary || input.issue,
-          input.address ? `Location: ${input.address}` : 'No address given.',
-          qualification.visitMinutes ? `Estimated visit: ~${qualification.visitMinutes} min.` : 'Visit duration not estimated.',
-          `Review the job, propose an arrival window, and set your fee before the ${opts.responseDeadlineMins}-minute window closes.`,
-        ],
-        ctaLabel: 'Review the request',
-        ctaUrl: `${APP_ORIGIN}/dashboard/quick-stops`,
-        tone: 'info',
-      });
-    }
+    await runOwnerEventNotices(admin,{sourceId:request.id,accountId});
   } catch (error) {
     console.error('Quick Stop owner alert failed:', error instanceof Error ? error.message : error);
   }

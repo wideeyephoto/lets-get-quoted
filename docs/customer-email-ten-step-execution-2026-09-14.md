@@ -186,3 +186,9 @@ No hosted changes or receiver evidence; step 4 remains in progress.
 - **T16/T17/T19:** Payment-window expiration now commits its owner notice atomically. Saved deadline/payment/customer identity binds pending delivery; late paid/refunded evidence cancels it. An extended future deadline rejects a stale expiration. Copy does not claim that nothing was charged or that downstream cleanup completed.
 - **Verification:** 15 application tests, 122 PostgreSQL checks, full type checking, production-file lint and clean local security advisor passed. Concurrent/repeated expiration produces one notice; response-only expiration stays silent as before.
 - **Remaining:** Drain legacy expiry email producers before applying the trigger. New Quick Stop requests and authoritative refund outcomes remain open, along with other owner families and hosted acceptance. No live payment or email operation occurred.
+
+### Thirty-seventh-pass implementation — new Quick Stop owner notices
+
+- **T16/T17/T19:** New awaiting-contractor requests now commit their owner notice atomically. A database contact guard serializes matching email/phone submissions within an account; callers can no longer race the earlier read-only duplicate check. Answered, expired or changed source requests stop pending new-request mail.
+- **Verification:** 36 application tests, 124 PostgreSQL checks, full type checking, lint and clean local security advisor passed. Concurrent requests sharing either contact channel create one request; another account and a later request after closure remain allowed.
+- **Remaining:** A form request identity is still required for delayed retries after the earlier request closes. Active-contact protection alone is not a replay receipt. Drain legacy new-request email producers before deployment. Authoritative refund outcomes, remaining owner families and hosted acceptance stay open.
