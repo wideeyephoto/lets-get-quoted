@@ -33,6 +33,7 @@ export type OfflineConversionQueueItem = {
   lastError?: string;
   createdAt: string;
   uploadedAt?: string;
+  providerRequestId?: string;
 };
 
 /**
@@ -122,7 +123,7 @@ export async function processOfflineConversionItem(
     conversionDateTime: item.conversionDateTime,
     conversionValueDollars: item.conversionValueDollars,
     currencyCode: item.currencyCode,
-    orderId: item.orderId,
+    orderId: item.orderId || item.id,
     email: item.email,
     phone: item.phone,
     firstName: item.firstName,
@@ -136,6 +137,7 @@ export async function processOfflineConversionItem(
     if (result.success) {
       item.status = 'uploaded';
       item.uploadedAt = new Date().toISOString();
+      item.providerRequestId = result.requestId;
       item.lastError = undefined;
     } else {
       item.status = item.attempts >= maxAttempts ? 'failed' : 'pending';
@@ -347,6 +349,9 @@ export async function triggerWonLeadOfflineConversion(
           ...pendingRecord,
           status: finalStatus,
           uploadedAt: result.success ? result.uploadedAt : undefined,
+          providerRequestId: result.requestId,
+          transport: result.transport,
+          processingState: result.success && result.transport === 'data-manager' ? 'accepted' : undefined,
           lastError: result.success ? undefined : result.message,
         },
       },
