@@ -20,7 +20,7 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc,
   from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }),
 }) }));
 
-const fakeAdmin = { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression, maybeSingle: async () => ({ data: null, error: null }) }) }) }) } as any;
+const emailFakeAdmin = { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression, maybeSingle: async () => ({ data: null, error: null }) }) }) }) } as any;
 
 vi.mock('@/lib/email-brand', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/email-brand')>();
@@ -49,7 +49,7 @@ import {
 } from '@/lib/email';
 
 describe('Email Engine & Notification System (lib/email)', () => {
-  let { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any: any;
+  let fakeAdmin: any;
 
   const createFluentBuilder = (dataResult: any = null, error: any = null) => {
     const builder: any = {
@@ -84,7 +84,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
 
   describe('getAccountOwnerEmail', () => {
     it('returns reply_to_email from accounts if configured', async () => {
-      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
+      fakeAdmin = {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createFluentBuilder({ reply_to_email: 'custom-reply@contractor.com' });
@@ -93,12 +93,12 @@ describe('Email Engine & Notification System (lib/email)', () => {
         }),
       };
 
-      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-1');
+      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-1');
       expect(email).toBe('custom-reply@contractor.com');
     });
 
     it('falls back to owner user in memberships and auth.users if reply_to_email is unset', async () => {
-      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
+      fakeAdmin = {
         from: vi.fn((table: string) => {
           if (table === 'accounts') {
             return createFluentBuilder({ reply_to_email: null });
@@ -118,16 +118,16 @@ describe('Email Engine & Notification System (lib/email)', () => {
         },
       };
 
-      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-1');
+      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-1');
       expect(email).toBe('owner-auth@contractor.com');
     });
 
     it('returns null if account does not exist or has no owner', async () => {
-      { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any = {
+      fakeAdmin = {
         from: vi.fn(() => createFluentBuilder(null)),
       };
 
-      const email = await getAccountOwnerEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, 'acc-nonexistent');
+      const email = await getAccountOwnerEmail(fakeAdmin, 'acc-nonexistent');
       expect(email).toBeNull();
     });
   });
@@ -188,7 +188,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
       expect(mocks.send).not.toHaveBeenCalled();
     });
     it('dispatches reminder with appointment date, time window, and address', async () => {
-      await sendAppointmentReminderEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, { accountId: 'acc-1',
+      await sendAppointmentReminderEmail(fakeAdmin, { accountId: 'acc-1',
         recipientEmail: 'client@contractorclient.test',
         businessName: 'Ace Contracting',
         clientName: 'Bob Miller',
