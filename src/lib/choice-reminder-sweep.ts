@@ -337,6 +337,7 @@ async function deliverChoiceReminder(
 
   let channel: 'sms' | 'email';
   let smsEventId: string | null = null;
+  let emailEventId: string | null = null;
   try {
     // A fresh link each time — tokens are stored hashed and cannot be recovered,
     // and older ones keep working.
@@ -372,7 +373,7 @@ async function deliverChoiceReminder(
       }
       channel = 'sms';
     } else {
-      await sendSelectionRequestEmail({
+      const receipt = await sendSelectionRequestEmail(admin, {
         recipientEmail: email as string,
         businessName,
         clientName,
@@ -380,7 +381,10 @@ async function deliverChoiceReminder(
         overdue: send.daysPastNeededBy > 0,
         url,
         accountId,
+        jobId: job.id,
+        idempotencyKey: `choice-reminder:${job.id}:${send.sendOn}:${send.selectionId ?? 'job'}`,
       });
+      emailEventId = receipt.id;
       channel = 'email';
     }
   } catch (error) {
@@ -418,6 +422,7 @@ async function deliverChoiceReminder(
       selection_ids: send.selectionIds,
       delivery_state: channel === 'sms' ? 'queued' : 'sent',
       sms_event_id: channel === 'sms' ? smsEventId : null,
+      email_event_id: channel === 'email' ? emailEventId : null,
     },
   }).catch(() => {});
 

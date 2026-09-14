@@ -167,6 +167,7 @@ export async function sendJobAppointmentReminder(
 
   let channel: 'sms' | 'email';
   let smsEventId: string | null = null;
+  let emailEventId: string | null = null;
   if (canText && phone) {
     smsEventId = await sendAppointmentReminderSms({
       phone,
@@ -179,7 +180,18 @@ export async function sendJobAppointmentReminder(
     });
     channel = 'sms';
   } else {
-    await sendAppointmentReminderEmail({ recipientEmail: email as string, businessName, clientName: firstName, whenLabel, address: job.address, jobRef: job.ref, accountId: job.account_id });
+    const receipt = await sendAppointmentReminderEmail(admin, {
+      recipientEmail: email as string,
+      businessName,
+      clientName: firstName,
+      whenLabel,
+      address: job.address,
+      jobId: job.id,
+      jobRef: job.ref,
+      accountId: job.account_id,
+      idempotencyKey: `appointment-reminder:${job.id}:${job.scheduled_for}:${job.scheduled_time ?? 'none'}`,
+    });
+    emailEventId = receipt.id;
     channel = 'email';
   }
 
@@ -195,6 +207,7 @@ export async function sendJobAppointmentReminder(
       manual: Boolean(options.force),
       delivery_state: channel === 'sms' ? 'queued' : 'sent',
       sms_event_id: smsEventId,
+      email_event_id: emailEventId,
     },
   });
 

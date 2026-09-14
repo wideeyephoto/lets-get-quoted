@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/auth';
 import { resolvePortalAccess } from '@/lib/client-portal';
 import { findPortalMessageReceipt } from '@/lib/portal-message-requests';
 import { submitPortalMessage } from '@/lib/client-portal-data';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { setRecurringPlanActive } from '@/lib/recurring';
 import { checkRateLimit, checkRateLimitStrict } from '@/lib/rate-limit';
@@ -125,13 +124,12 @@ export async function customerTogglePlanAction(
   if (targetJobId) {
     try {
       await createJobFeedEvent(admin, access.accountId, targetJobId, {
-        kind: 'note',
-        title: active ? `Recurring plan resumed by ${clientName}` : `Recurring plan paused by ${clientName}`,
-        body: active
-          ? `${clientName} resumed their recurring maintenance plan "${plan.title}". Future service visits have been restored to the calendar.`
-          : `${clientName} paused their recurring maintenance plan "${plan.title}". Future scheduled visits were removed from the calendar.`,
+        kind: 'customer_plan_change',
+        title: active ? `Recurring plan resumed by ${clientName}: ${plan.title}` : `Recurring plan paused by ${clientName}: ${plan.title}`,
+        body: `${clientName} has ${active ? 'resumed' : 'paused'} their recurring maintenance plan "${plan.title}".\n\n${active ? 'Future service visits have been restored to your schedule.' : 'Future scheduled visits for this plan have been removed from your calendar.'}${client?.phone ? `\nCustomer phone: ${client.phone}` : ''}${client?.email ? `\nCustomer email: ${client.email}` : ''}`,
         visibility: 'internal',
         author: clientName,
+        meta: { owner_email_notice: 'v1' },
       });
     } catch (feedErr) {
       console.error('Failed to log job feed event for customer plan toggle:', feedErr);
@@ -142,46 +140,13 @@ export async function customerTogglePlanAction(
       await admin.from('client_feed').insert({
         account_id: access.accountId,
         client_id: access.clientId,
-        kind: 'note',
-        title: active ? `Recurring plan resumed by ${clientName}` : `Recurring plan paused by ${clientName}`,
-        body: active
-          ? `${clientName} resumed their recurring maintenance plan "${plan.title}".`
-          : `${clientName} paused their recurring maintenance plan "${plan.title}".`,
+        kind: 'customer_plan_change',
+        title: active ? `Recurring plan resumed by ${clientName}: ${plan.title}` : `Recurring plan paused by ${clientName}: ${plan.title}`,
+        body: `${clientName} has ${active ? 'resumed' : 'paused'} their recurring maintenance plan "${plan.title}".\n\n${active ? 'Future service visits have been restored to your schedule.' : 'Future scheduled visits for this plan have been removed from your calendar.'}${client?.phone ? `\nCustomer phone: ${client.phone}` : ''}${client?.email ? `\nCustomer email: ${client.email}` : ''}`,
         author: clientName,
+        meta: { owner_email_notice: 'v1' },
       });
     } catch (feedErr) {}
-  }
-
-  // Notify contractor via alert email
-  try {
-    // Limit to 50 alert emails per day per account to avoid spam
-    if (await checkRateLimit(admin, `portal-alert-email:${access.accountId}-day`, 50, 86400)) {
-      const ownerEmail = await getAccountOwnerEmail(admin, access.accountId);
-      if (ownerEmail) {
-        await sendContractorAlertEmail({
-          accountId: access.accountId,
-          recipientEmail: ownerEmail,
-          businessName,
-          subject: active
-            ? `Recurring plan resumed by ${clientName}: ${plan.title}`
-            : `Recurring plan paused by ${clientName}: ${plan.title}`,
-          heading: active ? 'Recurring Plan Resumed' : 'Recurring Plan Paused',
-          bodyLines: [
-            `${clientName} has ${active ? 'resumed' : 'paused'} their recurring maintenance plan "${plan.title}".`,
-            ...(active
-              ? ['Future service visits have been restored to your schedule.']
-              : ['Future scheduled visits for this plan have been removed from your calendar.']),
-            ...(client?.phone ? [`Customer phone: ${client.phone}`] : []),
-            ...(client?.email ? [`Customer email: ${client.email}`] : []),
-          ],
-          ctaLabel: 'View Recurring Plans',
-          ctaUrl: 'https://app.letsgetquoted.com/dashboard/recurring',
-          tone: active ? 'info' : 'warning',
-        });
-      }
-    }
-  } catch (emailErr) {
-    console.error('Failed to notify contractor of customer plan toggle:', emailErr);
   }
 
   revalidatePath(`/portal/view/${token}`);

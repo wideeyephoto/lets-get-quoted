@@ -28,7 +28,7 @@ export function EmailRecoveryPanel({ emailRecovery }: { emailRecovery: EmailSend
                   <strong>{EMAIL_RECOVERY_REASONS[row.reason] ?? 'Delivery needs review'}</strong>
                   {' · '}{row.kind.replace(/_/g, ' ')}{' · '}{row.attempts} {row.attempts === 1 ? 'attempt' : 'attempts'}
                   {' · '}<Link href={`/admin/accounts/${row.account_id}`}>Open workspace</Link>
-                  <br />Reference: <code style={{ overflowWrap: 'anywhere' }}>{row.send_id}</code>{row.phase === 'fallback' ? ' · Platform sender fallback' : ''}
+                  <br />Reference: <Link href={`/admin/health/email/${row.source}/${row.send_id}`}><code style={{ overflowWrap: 'anywhere' }}>{row.send_id}</code></Link>{row.phase === 'fallback' ? ' · Platform sender fallback' : ''}
                   <br />Retry cutoff: {formatTime(row.retry_before)}
                 </span>
               </li>

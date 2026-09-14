@@ -1348,40 +1348,38 @@ async function notifyOwner(
   accountId: string,
   request: DispatchRequest,
   crewId: string,
+  offerId: string,
   kind: 'won' | 'interest' | 'question',
   detail?: string,
 ): Promise<void> {
   try {
-    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-    if (!ownerEmail) return;
     const who = await crewNameFor(admin, accountId, crewId);
-    const businessName = await loadBusinessName(admin, accountId);
     const heading =
       kind === 'won'
         ? `${who} accepted ${request.workDescription}`
         : kind === 'interest'
           ? `${who} is available for ${request.workDescription}`
           : `${who} asked a question`;
-    await sendContractorAlertEmail({
-      accountId,
-      recipientEmail: ownerEmail,
-      businessName,
-      subject: heading,
-      heading,
-      bodyLines: [
-        kind === 'won'
-          ? `${who} claimed the job. Every other offer is now closed and they are assigned.`
-          : kind === 'interest'
-            ? `${who} put their hand up. Nothing is assigned until you choose.`
-            : `${who} asked: “${detail ?? ''}”`,
-        `${request.workDescription} · ${formatPay(request.payAmount, request.payKind)} · ${scheduleLabel(request) || 'no date set'}.`,
-      ],
-      ctaLabel: 'Open the request',
-      ctaUrl: `${APP_ORIGIN}/dashboard/crew/requests/${request.id}`,
-      // 'info' rather than the default: sendContractorAlertEmail's other tone is
-      // "ACTION NEEDED" in red, which is the wrong colour for good news about a
-      // job that just got covered.
-      tone: 'info',
+          
+    const bodyText = [
+      kind === 'won'
+        ? `${who} claimed the job. Every other offer is now closed and they are assigned.`
+        : kind === 'interest'
+          ? `${who} put their hand up. Nothing is assigned until you choose.`
+          : `${who} asked: "${detail ?? ''}"`,
+      `${request.workDescription} — ${formatPay(request.payAmount, request.payKind)} — ${scheduleLabel(request) || 'no date set'}.`,
+    ].join('\n\n');
+
+    await admin.from('owner_event_notices').insert({
+      account_id: accountId,
+      source_type: 'dispatch_offer',
+      source_id: offerId,
+      event_kind: 'subcontractor_alert',
+      source_payload: {
+        title: heading,
+        body: bodyText,
+        request_id: request.id
+      }
     });
   } catch (error) {
     console.error('Owner dispatch alert failed:', error instanceof Error ? error.message : error);
@@ -1429,7 +1427,7 @@ async function notifyAfterClaim(
     });
   }
 
-  await notifyOwner(admin, accountId, request, winnerCrewId, 'won');
+  await notifyOwner(admin, accountId, request, winnerCrewId, winnerOfferId, 'won');
 
   for (const row of ((offers ?? []) as unknown as Row[])) {
     if (row.id === winnerOfferId) continue;

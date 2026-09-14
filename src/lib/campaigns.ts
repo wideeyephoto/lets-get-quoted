@@ -396,14 +396,18 @@ export async function sendCampaign(
           }
           if (mayEmail) {
             try {
-              await sendCampaignEmail({
-                recipientEmail: recipient.email as string,
-                businessName: input.businessName,
-                subject: personalize(input.subject, recipient, referral),
-                body: personalize(input.body, recipient, referral),
-                accountId,
-                mailingAddress: input.mailingAddress,
-              });
+              const receipt = await sendCampaignEmail(
+                ledger ?? supabase,
+                {
+                  recipientEmail: recipient.email as string,
+                  businessName: input.businessName,
+                  subject: personalize(input.subject, recipient, referral),
+                  body: personalize(input.body, recipient, referral),
+                  accountId,
+                  mailingAddress: input.mailingAddress,
+                  idempotencyKey: `campaign:${runId}:${recipient.id}:email`,
+                }
+              );
               emailSent++;
               if (ledger && lease) await commitMarketingEmailUsage(ledger, lease);
             } catch (error) {

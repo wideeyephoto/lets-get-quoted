@@ -746,14 +746,19 @@ export async function sendSelectionRequestEmail(input: {
 // Post-job ask for a Google review, over email — the fallback channel when the
 // client has no textable mobile (or opted out of texts) but does have an email.
 // Throws on provider rejection so the caller can report the send failed.
-export async function sendReviewRequestEmail(input: {
-  recipientEmail: string;
-  businessName: string;
-  clientName: string;
-  reviewUrl: string;
-  accountId: string;
-  mailingAddress: string | null;
-}): Promise<void> {
+export async function sendReviewRequestEmail(
+  admin: SupabaseClient,
+  input: {
+    recipientEmail: string;
+    businessName: string;
+    clientName: string;
+    reviewUrl: string;
+    accountId: string;
+    mailingAddress: string | null;
+    jobId: string;
+    idempotencyKey: string;
+  }
+): Promise<{ id: string | null }> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -774,43 +779,56 @@ export async function sendReviewRequestEmail(input: {
     </table>
   `;
 
-  const result = await resend.emails.send({
-    from: contractorFrom(brand),
-    to: input.recipientEmail,
-    subject: `How did we do? A quick review for ${input.businessName}`,
-    html: renderBrandedEmail({
-      brand,
-      preheader: `A quick review for ${input.businessName}`,
-      eyebrow: 'Thank you',
-      heading: `${input.clientName}, thanks for choosing ${input.businessName}`,
-      paragraphs: ['Would you take a moment to leave an honest review? For a local independent business, a few words from a real customer makes all the difference.'],
-      bodyHtml: reviewCardHtml,
-      cta: { label: 'Leave a 5-star review', url: input.reviewUrl },
-      footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
-    }),
-    reply_to: replyAddress(brand),
-    headers: listUnsubscribeHeaders(oneClickUrl),
-    tags: defaultTags('review_request', brand, input.accountId),
-  });
+  const { sendCustomerEmail } = await import('@/lib/customer-email-sends');
 
-  if (result.error) {
-    console.error('Failed to send review request email:', result.error);
-    throw new Error(result.error.message);
-  }
-  console.log('Review request email sent');
+  const receipt = await sendCustomerEmail(
+    admin,
+    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    {
+      accountId: input.accountId,
+      jobId: input.jobId,
+      kind: 'review_request',
+      idempotencyKey: input.idempotencyKey,
+    },
+    {
+      from: contractorFrom(brand),
+      to: input.recipientEmail,
+      subject: `How did we do? A quick review for ${input.businessName}`,
+      html: renderBrandedEmail({
+        brand,
+        preheader: `A quick review for ${input.businessName}`,
+        eyebrow: 'Thank you',
+        heading: `${input.clientName}, thanks for choosing ${input.businessName}`,
+        paragraphs: ['Would you take a moment to leave an honest review? For a local independent business, a few words from a real customer makes all the difference.'],
+        bodyHtml: reviewCardHtml,
+        cta: { label: 'Leave a 5-star review', url: input.reviewUrl },
+        footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
+      }),
+      reply_to: replyAddress(brand),
+      headers: listUnsubscribeHeaders(oneClickUrl),
+      tags: defaultTags('review_request', brand, input.accountId),
+    }
+  );
+
+  return { id: receipt.id };
 }
 
 // "Book again" nudge to a past customer, over email — the fallback channel when
 // there's no opted-in mobile. Throws on provider rejection so the caller counts
 // it as failed.
-export async function sendRebookInviteEmail(input: {
-  recipientEmail: string;
-  businessName: string;
-  clientName: string;
-  url: string;
-  accountId: string;
-  mailingAddress: string | null;
-}): Promise<void> {
+export async function sendRebookInviteEmail(
+  admin: SupabaseClient,
+  input: {
+    recipientEmail: string;
+    businessName: string;
+    clientName: string;
+    url: string;
+    accountId: string;
+    mailingAddress: string | null;
+    jobId: string;
+    idempotencyKey: string;
+  }
+): Promise<{ id: string | null }> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -819,28 +837,38 @@ export async function sendRebookInviteEmail(input: {
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const content = rebookInviteEmailContent(input);
-  const result = await resend.emails.send({
-    from: contractorFrom(brand),
-    to: input.recipientEmail,
-    subject: content.subject,
-    html: renderBrandedEmail({
-      brand,
-      preheader: content.preheader,
-      eyebrow: content.eyebrow,
-      heading: content.heading,
-      paragraphs: content.paragraphs,
-      cta: { label: content.ctaLabel, url: input.url },
-      footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
-    }),
-    reply_to: replyAddress(brand),
-    headers: listUnsubscribeHeaders(oneClickUrl),
-    tags: defaultTags('rebook_invite', brand, input.accountId),
-  });
 
-  if (result.error) {
-    console.error('Failed to send rebook invite email:', result.error);
-    throw new Error(result.error.message);
-  }
+  const { sendCustomerEmail } = await import('@/lib/customer-email-sends');
+
+  const receipt = await sendCustomerEmail(
+    admin,
+    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    {
+      accountId: input.accountId,
+      jobId: input.jobId,
+      kind: 'rebook_invite',
+      idempotencyKey: input.idempotencyKey,
+    },
+    {
+      from: contractorFrom(brand),
+      to: input.recipientEmail,
+      subject: content.subject,
+      html: renderBrandedEmail({
+        brand,
+        preheader: content.preheader,
+        eyebrow: content.eyebrow,
+        heading: content.heading,
+        paragraphs: content.paragraphs,
+        cta: { label: content.ctaLabel, url: input.url },
+        footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
+      }),
+      reply_to: replyAddress(brand),
+      headers: listUnsubscribeHeaders(oneClickUrl),
+      tags: defaultTags('rebook_invite', brand, input.accountId),
+    }
+  );
+
+  return { id: receipt.id };
 }
 
 // Day-before reminder for a scheduled job, over email — the fallback channel
@@ -1150,34 +1178,48 @@ export async function renderCampaignEmailHtml(input: {
   });
 }
 
-export async function sendCampaignEmail(input: {
-  recipientEmail: string;
-  businessName: string;
-  subject: string;
-  body: string;
-  accountId: string;
-  mailingAddress: string | null;
-}): Promise<void> {
+export async function sendCampaignEmail(
+  admin: SupabaseClient,
+  input: {
+    recipientEmail: string;
+    businessName: string;
+    subject: string;
+    body: string;
+    accountId: string;
+    mailingAddress: string | null;
+    idempotencyKey: string;
+  }
+): Promise<{ id: string | null }> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
   const brand = await brandFor(input);
+  const html = await renderCampaignEmailHtml(input);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
-  const result = await resend.emails.send({
-    from: contractorFrom(brand),
-    to: input.recipientEmail,
-    subject: input.subject,
-    html: await renderCampaignEmailHtml(input),
-    reply_to: replyAddress(brand),
-    headers: listUnsubscribeHeaders(oneClickUrl),
-    tags: defaultTags('campaign', brand, input.accountId),
-  });
 
-  if (result.error) {
-    console.error('Failed to send campaign email:', result.error);
-    throw new Error(result.error.message);
-  }
+  const { sendCustomerEmail } = await import('@/lib/customer-email-sends');
+
+  const receipt = await sendCustomerEmail(
+    admin,
+    { key: process.env.RESEND_API_KEY, fetchRequest: resend.fetchRequest.bind(resend) },
+    {
+      accountId: input.accountId,
+      kind: 'campaign',
+      idempotencyKey: input.idempotencyKey,
+    },
+    {
+      from: contractorFrom(brand),
+      to: input.recipientEmail,
+      subject: input.subject,
+      html,
+      reply_to: replyAddress(brand),
+      headers: listUnsubscribeHeaders(oneClickUrl),
+      tags: defaultTags('campaign', brand, input.accountId),
+    }
+  );
+
+  return { id: receipt.id };
 }
 
 // The owner's "here's your business today" digest, separated from delivery so

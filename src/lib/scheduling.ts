@@ -5,7 +5,6 @@ import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { formatJobSchedule } from '@/lib/jobs';
 import { recordSmsConsent, sendCrewScheduleSelectedSms, sendSchedulingOptionsSms } from '@/lib/sms';
 import { applyQuoteAcceptance, createJobFeedEvent } from '@/lib/job-feed';
-import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { pickBusinessName } from '@/lib/business-name';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
@@ -177,60 +176,7 @@ export async function getPublicScheduleRequest(token: string): Promise<PublicSch
   return hydratePublicScheduleRequest(admin, scheduleRequest);
 }
 
-// Best-effort owner alert when a client responds to a scheduling request. The
-// client-facing selection flow must never fail because an email couldn't be
-// sent, so every error here is swallowed and logged — the response is already
-// persisted and surfaced on the job feed and dashboard by the time this runs.
-async function notifyOwnerOfScheduleResponse(
-  admin: SupabaseClient,
-  request: PublicScheduleRequest,
-  kind: 'selected' | 'needs_more_options',
-  detail: { option?: ScheduleOption; notes: string | null }
-): Promise<void> {
-  try {
-    const ownerEmail = await getAccountOwnerEmail(admin, request.account_id);
-    if (!ownerEmail) return;
-
-    const ctaUrl = `${APP_ORIGIN}/dashboard/jobs/${request.job_id}?open=scheduling#job-scheduling`;
-    const clientName = request.job.client_name || 'Your client';
-
-    if (kind === 'selected' && detail.option) {
-      await sendContractorAlertEmail({
-        accountId: request.account_id,
-        recipientEmail: ownerEmail,
-        businessName: request.businessName,
-        subject: `${clientName} picked a start date`,
-        heading: `${clientName} picked a start date`,
-        bodyLines: [
-          `${clientName} chose ${formatScheduleOption(detail.option)} for ${request.job.ref}.`,
-          ...(detail.notes ? [`Their note: ${detail.notes}`] : []),
-          'The job is now on your calendar for that date.',
-        ],
-        ctaLabel: 'Open the job',
-        ctaUrl,
-        tone: 'info',
-      });
-    } else if (kind === 'needs_more_options') {
-      await sendContractorAlertEmail({
-        accountId: request.account_id,
-        recipientEmail: ownerEmail,
-        businessName: request.businessName,
-        subject: `${clientName} asked for different dates`,
-        heading: `${clientName} wants different dates`,
-        bodyLines: [
-          `${clientName} passed on the dates you sent for ${request.job.ref}.`,
-          ...(detail.notes ? [`Their note: ${detail.notes}`] : []),
-          'Send them a fresh set of dates to keep the job moving.',
-        ],
-        ctaLabel: 'Send new dates',
-        ctaUrl,
-        tone: 'warning',
-      });
-    }
-  } catch (error) {
-    console.error(`Unable to email owner about schedule response for request ${request.id}:`, error);
-  }
-}
+  // Owner will be notified via owner_event_notices table trigger on job_feed
 
 async function applyScheduleSelection(request: PublicScheduleRequest, optionIndex: number, notes: string | null): Promise<PublicScheduleRequest> {
   if (request.status !== 'open') return request;
@@ -296,12 +242,13 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
     console.error(`Quote acceptance from date selection failed for job ${request.job_id}:`, error instanceof Error ? error.message : error);
   }
 
+  const clientName = request.job.client_name || 'Your client';
   await createJobFeedEvent(admin, request.account_id, request.job_id, {
     kind: 'job_scheduled',
-    title: 'Client selected a service date',
-    body: `${request.job.client_name} selected ${formatScheduleOption(option)}.${notes ? ` Notes: ${notes}` : ''}`,
+    title: `${clientName} picked a start date`,
+    body: `${clientName} chose ${formatScheduleOption(option)} for ${request.job.ref}.\n\n${notes ? `Their note: ${notes}\n\n` : ''}The job is now on your calendar for that date.`,
     visibility: 'client',
-    meta: { selected_date: option.date, selected_time: option.time, client_notes: notes },
+    meta: { selected_date: option.date, selected_time: option.time, client_notes: notes, owner_email_notice: 'v1' },
   });
 
   try {
@@ -335,7 +282,7 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
     console.error(`Unable to notify crew for schedule request ${request.id}:`, error);
   }
 
-  await notifyOwnerOfScheduleResponse(admin, request, 'selected', { option, notes });
+  // Removed inline notifyOwnerOfScheduleResponse
 
   return { ...request, status: 'selected', selected_index: optionIndex, selected_date: option.date, selected_time: option.time, client_notes: notes, responded_at: respondedAt };
 }
@@ -404,15 +351,14 @@ async function applyDifferentScheduleRequest(request: PublicScheduleRequest, not
     .eq('id', request.id);
   if (error) throw error;
 
+  const clientName = request.job.client_name || 'Your client';
   await createJobFeedEvent(admin, request.account_id, request.job_id, {
     kind: 'job_scheduled',
-    title: 'Client requested different schedule options',
-    body: notes || 'The client asked for different dates or times.',
+    title: `${clientName} asked for different dates`,
+    body: `${clientName} passed on the dates you sent for ${request.job.ref}.\n\n${notes ? `Their note: ${notes}\n\n` : ''}Send them a fresh set of dates to keep the job moving.`,
     visibility: 'client',
-    meta: { client_notes: notes, needs_more_options: true },
+    meta: { client_notes: notes, needs_more_options: true, owner_email_notice: 'v1' },
   });
-
-  await notifyOwnerOfScheduleResponse(admin, request, 'needs_more_options', { notes });
 
   return { ...request, status: 'needs_more_options', client_notes: notes, responded_at: respondedAt };
 }
