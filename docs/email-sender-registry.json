@@ -228,8 +228,8 @@
       "purpose": "Operational alert delivery and recovery",
       "recipientScope": "configured operations recipient",
       "transport": "HTTP",
-      "suppression": "independent durable alert queue and saved payload/key; not shared platform gate",
-      "remaining": "Review operations-specific block policy, provider scope and hosted channel; do not claim universal suppression",
+      "suppression": "queued findings: saved recipient validation and platform delivery blocks with unchanged payload/key; emergency outage/recovery: database-independent exception",
+      "remaining": "Operational callback/history reconciliation, provider scope and hosted responder receipt; emergency exception prevents universal suppression claims",
       "signatures": {
         "resendRequest:provider-url": 1,
         "runOperationalMonitor:provider-email-request": 1,

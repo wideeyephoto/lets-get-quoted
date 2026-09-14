@@ -43,8 +43,9 @@ describe('operational failure delivery', () => {
   it('preserves a leased send on database failure after provider acceptance for an idempotent retry', async () => {
     const update = vi.fn().mockReturnValue({ eq: () => ({ eq: () => ({ select: async () => ({ error: { code: '08006' } }) }) }) });
     const admin: any = { rpc: vi.fn().mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: 1 }).mockResolvedValueOnce({ data: [
-      { id: 'stable-id', claim_token: 'claim', payload: { text: 'same message' } },
-    ] }), from: vi.fn().mockReturnValue({ update }) };
+      { id: 'stable-id', claim_token: 'claim', payload: { to: ['ops@example.com'], text: 'same message' } },
+    ] }), from: vi.fn((table) => table === 'platform_email_suppression'
+      ? { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) } : { update }) };
     const fetcher = vi.fn().mockResolvedValue(Response.json({ id: 'provider-id' }));
     await expect(runOperationalMonitor({ admin, crons: [], env: { FOUNDER_ALERT_EMAIL: 'ops@example.com', RESEND_API_KEY: 'test' }, fetcher, pause: async () => {} })).rejects.toThrow('accept_record:08006');
     expect(fetcher.mock.calls[0][1].headers['Idempotency-Key']).toBe('lgq-operational-stable-id');
@@ -211,10 +212,11 @@ describe('operational failure delivery', () => {
       });
 
       const existingLeased = [
-        { id: 'recovered-alert-1', claim_token: 'token-1', payload: { text: 'alert message' } }
+        { id: 'recovered-alert-1', claim_token: 'token-1', payload: { to: ['ops@example.com'], text: 'alert message' } }
       ];
 
       const from = vi.fn((table: string) => {
+        if (table === 'platform_email_suppression') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) };
         if (table === 'operational_alert_deliveries') {
           return {
             select: () => ({

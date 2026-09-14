@@ -190,6 +190,13 @@ September 14: implementation started from `a773f17a8` in `codex/customer-email-c
 - **Verification:** 17 files / 348 tests and full application/test type checking passed, including 23 new cases across the real sender functions. Changed-file lint and the sender-registry check passed. See the [workspace caller review](runbooks/shared-email-workspace-scope.md). No live sends or hosted changes occurred.
 - **Remaining:** Independent operations-recipient policy, indirect/external transport review, durable identities, provider evidence and hosted acceptance.
 
+### Fifteenth-pass implementation — operational recipient policy
+
+- **T12/T18/T19:** Queued alerts now verify the saved single recipient and exact platform delivery status before submission. Blocks/mismatches move to review; unavailable checks defer without sending. Existing payloads, keys and recovery protections are preserved.
+- **T20:** Emergency outage/recovery remains explicitly database-independent. Invalid recipient configuration and missing provider acceptance cannot report success; redirects are rejected. This exception is not platform-table coverage.
+- **Verification:** 4 files / 57 tests, full type checking and registry checks passed. Lint has zero errors and two existing warnings. No live sends, migration or hosted changes. See the [operations policy](runbooks/operational-email-recipient-policy.md).
+- **Remaining:** Operational callback/history reconciliation, provider scope/capacity, external transports, independent responder receipt and durable remaining email families.
+
 ### Next work and live gates (updated)
 
 Execution order, acceptance criteria and milestone dependencies are in the [implementation and rollout plan](customer-email-implementation-plan-2026-09-14.md). The initial recovery worker is implemented locally; continue with the remaining independent sender policies and capacity verification.

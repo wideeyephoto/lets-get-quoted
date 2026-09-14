@@ -162,7 +162,7 @@ export function requireResult(result, stage, { elapsedMs = 0, retryAttempt = 1 }
 export async function resendRequest(path, { key, method = 'GET', payload, idempotencyKey, fetcher = fetch }) {
   if (!key) throw new Error('resend_key_missing');
   const response = await fetcher(`https://api.resend.com${path}`, {
-    method, cache: 'no-store', signal: AbortSignal.timeout(10000),
+    method, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(10000),
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json',
       ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
     ...(payload ? { body: JSON.stringify(payload) } : {}),
@@ -170,7 +170,42 @@ export async function resendRequest(path, { key, method = 'GET', payload, idempo
   if (!response.ok) throw new Error(`resend_http_${response.status}`);
   const result = await response.json();
   if (result.error || result.name === 'validation_error') throw new Error('resend_provider_rejected');
+  if (method === 'POST' && path === '/emails' && (typeof result.id !== 'string' || !result.id.trim())) throw new Error('resend_missing_email_id');
   return result;
+}
+
+export function operationalRecipient(env) {
+  const recipient = env.ONCALL_PRIMARY_EMAIL || env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+  if (typeof recipient !== 'string' || !/^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(recipient)) {
+    throw new Error('operational_recipient_invalid');
+  }
+  return recipient;
+}
+
+/** Check saved destinations without changing the payload used by the provider key. */
+export async function assertOperationalDeliveryAllowed(admin, payload, recipient) {
+  operationalRecipient({ ONCALL_PRIMARY_EMAIL: recipient });
+  const to = typeof payload?.to === 'string' ? [payload.to] : payload?.to;
+  if (!Array.isArray(to) || to.length !== 1 || typeof to[0] !== 'string'
+    || to[0].toLowerCase() !== recipient.toLowerCase()
+    || (payload.cc && (!Array.isArray(payload.cc) || payload.cc.length))
+    || (payload.bcc && (!Array.isArray(payload.bcc) || payload.bcc.length))) {
+    throw new Error('operational_recipient_mismatch');
+  }
+  const email = recipient.toLowerCase();
+  let lookup;
+  try {
+    lookup = await admin.from('platform_email_suppression').select('email, reason').eq('email', email).maybeSingle();
+  } catch {
+    throw new Error('operational_delivery_check_unavailable');
+  }
+  const { data, error } = lookup || {};
+  const blocks = ['hard_bounce', 'complaint', 'provider_suppressed'];
+  if (error || data === undefined || (data && (data.email !== email
+    || ![...blocks, 'unsubscribe_link', 'one_click_unsubscribe'].includes(data.reason)))) {
+    throw new Error('operational_delivery_check_unavailable');
+  }
+  if (data && blocks.includes(data.reason)) throw new Error('operational_delivery_blocked');
 }
 
 /**
@@ -346,7 +381,7 @@ export async function sendMonitorFailureEmail({
   source = 'vercel',
   deploymentId = null,
 } = {}) {
-  const recipient = env.ONCALL_PRIMARY_EMAIL || env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+  const recipient = operationalRecipient(env);
   if (!recipient) throw new Error('alert_recipient_missing');
   const project = new URL(env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co').hostname.split('.')[0];
 
@@ -418,6 +453,7 @@ export async function sendMonitorRecovery({
   deploymentId = null,
 } = {}) {
   const outageId = stateInfo?.outage_id || result.outageId || `outage-${now.toISOString().slice(0, 13)}`;
+  const recipient = operationalRecipient(env);
 
   // Claim dispatch right atomically
   if (admin) {
@@ -425,8 +461,6 @@ export async function sendMonitorRecovery({
     if (!claimed) return null;
   }
 
-  const recipient = env.ONCALL_PRIMARY_EMAIL || env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
-  if (!recipient) throw new Error('alert_recipient_missing');
   const project = new URL(env.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co').hostname.split('.')[0];
 
   const firstOccurrence = stateInfo?.first_failure_at ? new Date(stateInfo.first_failure_at).toISOString() : 'earlier';
@@ -470,7 +504,7 @@ export async function runOperationalMonitor({
   runId = null,
   deploymentId = (typeof process !== 'undefined' ? process.env.VERCEL_GIT_COMMIT_SHA : null),
 }) {
-  const recipient = env.ONCALL_PRIMARY_EMAIL || env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+  const recipient = operationalRecipient(env);
   if (!recipient || !env.RESEND_API_KEY) throw new Error('operational_alert_config_missing');
 
   const startTime = Date.now();
@@ -544,6 +578,7 @@ export async function runOperationalMonitor({
     await pause(600); // shared provider rate limit; cron leases prevent overlapping sends
     let result;
     try {
+      await assertOperationalDeliveryAllowed(admin, alert.payload, recipient);
       result = await resendRequest('/emails', {
         key: env.RESEND_API_KEY,
         method: 'POST',
@@ -554,10 +589,11 @@ export async function runOperationalMonitor({
       if (!result.id) throw new Error('resend_missing_email_id');
     } catch (error) {
       failed++;
-      const code = /^resend_[a-z0-9_]+$/.test(error.message) ? error.message : 'send_outcome_unknown';
+      const code = /^(resend|operational)_[a-z0-9_]+$/.test(error.message) ? error.message : 'send_outcome_unknown';
+      const needsReview = ['operational_recipient_mismatch', 'operational_delivery_blocked'].includes(code);
       requireResult(
         await admin.from('operational_alert_deliveries').update({
-          state: 'pending',
+          state: needsReview ? 'manual_review' : 'pending',
           next_attempt_at: new Date(Date.now() + 5 * 60000).toISOString(),
           claim_token: null,
           lease_expires_at: null,
