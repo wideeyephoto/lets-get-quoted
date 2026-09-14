@@ -20,6 +20,8 @@ vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({ rpc: mocks.rpc,
   from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }),
 }) }));
 
+const fakeAdmin = { rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression, maybeSingle: async () => ({ data: null, error: null }) }) }) }) } as any;
+
 vi.mock('@/lib/email-brand', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/email-brand')>();
   return {
@@ -180,7 +182,7 @@ describe('Email Engine & Notification System (lib/email)', () => {
   describe('sendAppointmentReminderEmail', () => {
     it('stops a locally blocked recipient before calling the real shared transport', async () => {
       mocks.suppression.mockResolvedValue({ data: [{ reason: 'hard_bounce' }], error: null });
-      await expect(sendAppointmentReminderEmail({ rpc: mocks.rpc, from: () => ({ select: () => ({ eq: () => ({ in: mocks.suppression }) }) }) } as any, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
+      await expect(sendAppointmentReminderEmail(fakeAdmin, { accountId: 'acc-1', recipientEmail: 'blocked@contractorclient.test',
         businessName: 'Ace Contracting', clientName: 'Client', whenLabel: 'Monday', jobRef: 'JOB-101', address: null, jobId: 'job-1', idempotencyKey: 'test-idem-1',
       })).rejects.toThrow('blocked');
       expect(mocks.send).not.toHaveBeenCalled();
