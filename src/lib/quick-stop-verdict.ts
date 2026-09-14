@@ -39,6 +39,8 @@ const FUTURE_TOLERANCE_MS = 60 * 1000;
 
 // A stable server-only secret, domain-separated so this HMAC can't collide with
 // any other use of the same key. Same approach as the unsubscribe tokens.
+// Fails closed by throwing if SUPABASE_SERVICE_ROLE_KEY is unset so tokens never
+// degrade to a repo-constant fallback.
 function verdictSecret(): string {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required to sign Quick Stop verdict tokens.');
@@ -71,6 +73,7 @@ export type QuickStopVerdictFacts = {
 };
 
 // Case and spacing are not the job changing. Anything else is.
+// Separated by \0 so text shifted across field boundaries changes the fingerprint.
 function fingerprint(facts: QuickStopVerdictFacts): string {
   const norm = (value: string | null | undefined) => (value ?? '').toString().toLowerCase().replace(/\s+/g, ' ').trim();
   const payload = [facts.issue, facts.startedWhen, facts.worsening, facts.propertyType].map(norm).join('\0');
