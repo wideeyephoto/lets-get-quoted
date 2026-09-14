@@ -351,7 +351,7 @@ export const STATE_CODE_REGISTRY: Record<string, StateCodeProfile> = {
     stateName: 'Louisiana',
     fips: '22',
     licensingBoard: 'Louisiana State Licensing Board for Contractors (LSLBC)',
-    licensingUrl: 'https://lslbc.louisiana.gov',
+    licensingUrl: 'https://lslbc.gov/',
     codes: {
       building: { name: '2021 Louisiana State Uniform Construction Code (2021 IRC)', edition: '2021', model: 'IRC' },
       electrical: { name: '2020 National Electrical Code (NEC)', edition: '2020', model: 'NEC' },
