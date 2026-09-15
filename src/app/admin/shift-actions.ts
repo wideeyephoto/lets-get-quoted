@@ -1,7 +1,7 @@
 'use server';
 
 import { requireAdmin } from '@/lib/auth';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { revalidatePath } from 'next/cache';
 import type { ShiftNote } from './ShiftNotesWidget';
 

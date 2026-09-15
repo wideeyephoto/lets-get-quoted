@@ -144,7 +144,7 @@ export async function saveScheduledPaymentAction(formData: FormData) {
     .eq('active', true)
     .ilike('label', label)
     .limit(2);
-  const duplicate = (clash.data ?? []).find((row) => row.id !== id);
+  const duplicate = (clash.data ?? []).find((row: any) => row.id !== id);
   if (duplicate) {
     const existing = `$${Number(duplicate.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     throw new Error(
@@ -168,8 +168,8 @@ export async function saveScheduledPaymentAction(formData: FormData) {
   };
 
   const { error } = id
-    ? await supabase.from('scheduled_payments').update(row).eq('account_id', accountId).eq('id', id)
-    : await supabase.from('scheduled_payments').insert(row);
+    ? await supabase.from('scheduled_payments').update(row: any).eq('account_id', accountId).eq('id', id)
+    : await supabase.from('scheduled_payments').insert(row: any);
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/cash-flow');

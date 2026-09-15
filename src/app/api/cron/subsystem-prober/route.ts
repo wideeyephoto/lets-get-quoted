@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cronRoute } from '@/lib/cron-runs';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 import { getCronTrouble } from '@/lib/cron-runs';
 import { dispatchOnCallPage } from '@/lib/on-call-paging';
 import { getApmSummary } from '@/lib/apm-telemetry';
@@ -28,7 +28,7 @@ export const GET = cronRoute('subsystem-prober', async () => {
       await dispatchOnCallPage({
         title: `CRITICAL: Money Cron Failed (${item.job})`,
         incidentType: 'cron_failure',
-        severity: 'critical',
+        severity: 'high',
         actionRequired: item.consequence,
         metadata: {
           job: item.job,
@@ -46,7 +46,7 @@ export const GET = cronRoute('subsystem-prober', async () => {
     await dispatchOnCallPage({
       title: `High Error Rate: ${apm.errorRatePct}%`,
       incidentType: 'uptime',
-      severity: 'critical',
+      severity: 'high',
       metadata: apm
     });
     paged++;

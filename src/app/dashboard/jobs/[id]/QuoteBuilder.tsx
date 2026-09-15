@@ -69,6 +69,7 @@ function ago(at: number): string {
 // mirrors what the client will see; Save persists the items and recomputes the
 // job's quoted amount server-side.
 export default function QuoteBuilder({
+  jobId,
   action,
   notifyAction,
   autosaveKey,
@@ -87,6 +88,7 @@ export default function QuoteBuilder({
   changeOrderHref,
   printHref,
 }: {
+  jobId?: string;
   businessName?: string;
   jobRef?: string;
   clientPhone?: string | null;
@@ -660,6 +662,7 @@ export default function QuoteBuilder({
         isOpen={photoModalOpen}
         onClose={() => setPhotoModalOpen(false)}
         onApplyLineItems={handleApplyPhotoDefects}
+        jobId={jobId}
       />
 
       {rows.length === 0 ? (

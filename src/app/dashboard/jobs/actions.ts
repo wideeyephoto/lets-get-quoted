@@ -130,7 +130,7 @@ export async function createJobAction(formData: FormData) {
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
     title: `${job.ref} created`,
-    body: formatJobQuoteSummary(job),
+    body: formatJobQuoteSummary(job: any),
     visibility: 'client',
     sourceTable: 'jobs',
     sourceId: job.id,
@@ -773,7 +773,7 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
       listCrew(supabase, accountId),
     ]);
 
-    if (job) {
+    if (job: any) {
       const newlyAssigned = crewMembers.filter((member) => added.includes(member.id));
 
       // Push the field app (best-effort, never throws) alongside the SMS — the
@@ -1632,7 +1632,7 @@ export async function reviewQuoteAction(
     .not('quote_items', 'is', null)
     .order('created_at', { ascending: false })
     .limit(60);
-  const history = (past ?? []).map((row) => ({
+  const history = (past ?? []).map((row: any) => ({
     labels: parseQuoteItems(row.quote_items).filter((item) => item.kind !== 'subscription').map((item) => item.label),
   }));
 

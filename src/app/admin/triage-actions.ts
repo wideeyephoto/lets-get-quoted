@@ -2,7 +2,7 @@
 
 import { requireAdmin } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
-import { createAdminClient } from '@/lib/supabase';
+import { createAdminClient } from '@/lib/supabase-admin';
 
 export async function forceRunCron(formData: FormData) {
   const { adminEmail } = await requireAdmin();

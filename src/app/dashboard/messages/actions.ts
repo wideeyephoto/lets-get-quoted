@@ -545,7 +545,7 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
 
   const threadContext = messages
     .reverse()
-    .map((m) => `${m.direction === 'inbound' ? 'Customer' : 'Contractor'}: ${m.body}`)
+    .map((m: any) => `${m.direction === 'inbound' ? 'Customer' : 'Contractor'}: ${m.body}`)
     .join('\n');
 
   const instructions = [

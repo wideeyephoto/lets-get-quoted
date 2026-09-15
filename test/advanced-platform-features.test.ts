@@ -295,7 +295,7 @@ describe('20 Advanced Platform Features Suite', () => {
     await expect(analyzePhotoDefectsAndEstimate({
       trade: 'Roofing',
       notes: 'Missing shingles and active moisture drip near skylight',
-      photoUrl: 'data:image/jpeg;base64,dummy',
+      photoUrls: ['data:image/jpeg;base64,dummy'],
     })).rejects.toThrow('AI photo analysis is currently undergoing upgrades');
   });
 

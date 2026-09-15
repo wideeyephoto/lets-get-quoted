@@ -94,3 +94,48 @@ export async function createPhotoEstimateInput(
     createdAt: data.created_at,
   };
 }
+
+export async function createPhotoEstimateRun(
+  supabase: SupabaseClient,
+  estimateId: string,
+  inputRevision: number,
+  provider: string,
+  status: 'pending' | 'processing' | 'completed' | 'failed',
+  result: any = null,
+  errorCategory: string | null = null,
+): Promise<PhotoEstimateRun> {
+  const { data, error } = await supabase
+    .from('photo_estimate_runs')
+    .insert({
+      estimate_id: estimateId,
+      input_revision: inputRevision,
+      provider,
+      status,
+      result,
+      error_category: errorCategory,
+    })
+    .select('*')
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    estimateId: data.estimate_id,
+    inputRevision: data.input_revision,
+    provider: data.provider,
+    modelVersion: data.model_version,
+    promptVersion: data.prompt_version,
+    schemaVersion: data.schema_version,
+    status: data.status,
+    leaseToken: data.lease_token,
+    leaseExpiresAt: data.lease_expires_at,
+    attemptCount: data.attempt_count,
+    result: data.result,
+    errorCategory: data.error_category,
+    usageMetadata: data.usage_metadata,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+

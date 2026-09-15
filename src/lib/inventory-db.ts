@@ -11,6 +11,10 @@ import type {
   DepreciationSchedule,
   ToolCustodyLogEntry,
   VanKitTemplate,
+  RestockOrder,
+  RestockOrderLine,
+  RestockReceipt,
+  RestockOrderStatus,
 } from '@/lib/inventory-tracker';
 import {
   DEFAULT_TOOLS,
@@ -882,25 +886,25 @@ export async function adjustStockQuantity(
   accountId: string,
   stockId: string,
   delta: number,
-  _reason?: string,
+  reason?: string,
+  requestId?: string,
 ): Promise<VanStockItem> {
-  const { data: item, error: fetchErr } = await supabase
-    .from('inventory_stock_items')
-    .select('*')
-    .eq('id', stockId)
-    .eq('account_id', accountId)
-    .single();
-  if (fetchErr || !item) throw new Error('Stock item not found');
+  const p_quantity = -delta; // RPC subtracts p_quantity, so negative delta means add
 
-  const newQty = Math.max(0, Number(item.quantity_on_hand) + delta);
-  const { data: updated, error: updateErr } = await supabase
-    .from('inventory_stock_items')
-    .update({ quantity_on_hand: newQty, updated_at: new Date().toISOString() })
-    .eq('id', stockId)
-    .eq('account_id', accountId)
-    .select()
-    .single();
-  if (updateErr) throw updateErr;
+  const { data, error } = await supabase.rpc('inventory_transfer_stock', {
+    p_account_id: accountId,
+    p_source_item_id: stockId,
+    p_quantity: p_quantity,
+    p_to_location_name: null,
+    p_to_location_id: null,
+    p_performed_by: null,
+    p_notes: reason || 'Manual adjustment',
+    p_request_id: requestId || null
+  });
+
+  if (error) throw error;
+
+  const { data: updated } = await supabase.from('inventory_stock_items').select('*').eq('id', stockId).single();
   return mapStockRow(updated);
 }
 
@@ -918,101 +922,36 @@ export async function transferStock(
     quantity: number;
     performedBy?: string;
     notes?: string;
+    requestId?: string;
+    toLocationId?: string;
   },
 ): Promise<{ transfer: StockTransfer; sourceStock: VanStockItem; destinationStock?: VanStockItem }> {
-  const { data: item, error: fetchErr } = await supabase
-    .from('inventory_stock_items')
-    .select('*')
-    .eq('id', input.stockId)
-    .eq('account_id', accountId)
-    .single();
-  if (fetchErr || !item) throw new Error('Source stock item not found');
+  const { data, error } = await supabase.rpc('inventory_transfer_stock', {
+    p_account_id: accountId,
+    p_source_item_id: input.stockId,
+    p_quantity: input.quantity,
+    p_to_location_name: input.toLocation,
+    p_to_location_id: input.toLocationId || null,
+    p_performed_by: input.performedBy || null,
+    p_notes: input.notes || null,
+    p_request_id: input.requestId || null
+  });
+  
+  if (error) throw error;
 
-  if (Number(item.quantity_on_hand) < input.quantity) {
-    throw new Error(`Insufficient stock available for transfer. On hand: ${item.quantity_on_hand}, Requested: ${input.quantity}`);
+  // Re-fetch source and dest to return
+  const { data: sourceData } = await supabase.from('inventory_stock_items').select('*').eq('id', input.stockId).single();
+  let destData = undefined;
+  if (input.toLocation) {
+    const { data: dest } = await supabase.from('inventory_stock_items').select('*').eq('sku', sourceData.sku).eq('location_name', input.toLocation).eq('account_id', accountId).maybeSingle();
+    destData = dest;
   }
-
-  // Deduct from source
-  const newQty = Math.max(0, Number(item.quantity_on_hand) - input.quantity);
-  const { data: updatedSource, error: updateErr } = await supabase
-    .from('inventory_stock_items')
-    .update({ quantity_on_hand: newQty, updated_at: new Date().toISOString() })
-    .eq('id', input.stockId)
-    .eq('account_id', accountId)
-    .select()
-    .single();
-  if (updateErr) throw updateErr;
-
-  // Check if destination location already has an item with this SKU
-  const { data: destItem } = await supabase
-    .from('inventory_stock_items')
-    .select('*')
-    .eq('account_id', accountId)
-    .eq('sku', item.sku)
-    .eq('location_name', input.toLocation)
-    .maybeSingle();
-
-  let destinationStock: VanStockItem | undefined;
-  if (destItem) {
-    const updatedDestQty = Number(destItem.quantity_on_hand) + input.quantity;
-    await supabase
-      .from('inventory_stock_items')
-      .update({
-        quantity_on_hand: updatedDestQty,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', destItem.id)
-      .eq('account_id', accountId);
-    destinationStock = mapStockRow({
-      ...destItem,
-      quantity_on_hand: updatedDestQty,
-      updated_at: new Date().toISOString(),
-    });
-  } else {
-    // Create stock item entry at new location
-    const newStockRow = {
-      account_id: accountId,
-      name: item.name,
-      sku: item.sku,
-      category: item.category,
-      location_name: input.toLocation,
-      quantity_on_hand: input.quantity,
-      min_threshold: item.min_threshold,
-      unit: item.unit,
-      unit_cost: item.unit_cost,
-      preferred_supplier: item.preferred_supplier,
-      reorder_qty: item.reorder_qty,
-      notes: `Transferred from ${input.fromLocation}`,
-    };
-    const { data: createdDest } = await supabase
-      .from('inventory_stock_items')
-      .insert(newStockRow)
-      .select?.()
-      ?.single?.() || {};
-    destinationStock = createdDest ? mapStockRow(createdDest) : mapStockRow({ id: `stock-${Date.now()}`, ...newStockRow });
-  }
-
-  // Record transfer log
-  const { data: transferRecord, error: transferErr } = await supabase
-    .from('inventory_stock_transfers')
-    .insert({
-      account_id: accountId,
-      item_id: input.stockId,
-      item_name: item.name,
-      from_location: input.fromLocation,
-      to_location: input.toLocation,
-      quantity: input.quantity,
-      performed_by: input.performedBy || null,
-      notes: input.notes || null,
-    })
-    .select()
-    .single();
-  if (transferErr) throw transferErr;
+  const { data: transferData } = await supabase.from('inventory_stock_transfers').select('*').eq('id', data.transfer_id).single();
 
   return {
-    transfer: mapTransferRow(transferRecord),
-    sourceStock: mapStockRow(updatedSource),
-    destinationStock,
+    transfer: mapTransferRow(transferData),
+    sourceStock: mapStockRow(sourceData),
+    destinationStock: destData ? mapStockRow(destData) : undefined,
   };
 }
 
@@ -1377,8 +1316,9 @@ export async function applyVanKitTemplate(
         })
         .eq('id', existing.id)
         .eq('account_id', accountId)
+        .eq('quantity_on_hand', existing.quantity_on_hand) // Optimistic locking
         .select()
-        .single();
+        .maybeSingle();
       if (!updateErr && updated) {
         results.push(mapStockRow(updated));
       }
@@ -1408,4 +1348,131 @@ export async function applyVanKitTemplate(
   }
 
   return results;
+}
+export function mapRestockOrderLineRow(row: Record<string, unknown>): RestockOrderLine {
+  return {
+    id: String(row.id),
+    orderId: String(row.order_id),
+    itemId: row.item_id ? String(row.item_id) : null,
+    sku: String(row.sku ?? ''),
+    itemName: String(row.item_name ?? ''),
+    destinationLocationName: String(row.destination_location_name ?? ''),
+    destinationLocationId: row.destination_location_id ? String(row.destination_location_id) : null,
+    orderedQuantity: Number(row.ordered_quantity ?? 0),
+    receivedQuantity: Number(row.received_quantity ?? 0),
+    unit: String(row.unit ?? 'ea'),
+    unitCost: Number(row.unit_cost ?? 0),
+  };
+}
+
+export function mapRestockOrderRow(row: Record<string, unknown>, linesRow?: Record<string, unknown>[]): RestockOrder {
+  return {
+    id: String(row.id),
+    orderNumber: String(row.order_number ?? ''),
+    supplierName: String(row.supplier_name ?? ''),
+    status: (row.status as RestockOrderStatus) ?? 'draft',
+    createdBy: String(row.created_by ?? ''),
+    createdAt: String(row.created_at ?? ''),
+    updatedAt: String(row.updated_at ?? ''),
+    lines: Array.isArray(linesRow) ? linesRow.map(mapRestockOrderLineRow) : [],
+  };
+}
+
+export async function fetchRestockOrders(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<RestockOrder[]> {
+  const { data: orders, error: ordersErr } = await supabase
+    .from('inventory_restock_orders')
+    .select('*, lines:inventory_restock_order_lines(*)')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
+
+  if (ordersErr) throw ordersErr;
+  
+  return (orders || []).map((o: any) => mapRestockOrderRow(o, o.lines));
+}
+
+export async function saveRestockOrder(
+  supabase: SupabaseClient,
+  accountId: string,
+  order: Omit<RestockOrder, 'id' | 'createdAt' | 'updatedAt' | 'lines'> & { id?: string; lines: Omit<RestockOrderLine, 'id' | 'orderId' | 'receivedQuantity'>[] },
+): Promise<RestockOrder> {
+  const orderId = order.id || crypto.randomUUID();
+  
+  const { data: savedOrder, error: orderErr } = await supabase
+    .from('inventory_restock_orders')
+    .upsert({
+      id: orderId,
+      account_id: accountId,
+      order_number: order.orderNumber,
+      supplier_name: order.supplierName,
+      status: order.status,
+      created_by: order.createdBy,
+      updated_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (orderErr) throw orderErr;
+
+  // For draft orders, we can just wipe and rewrite lines
+  if (!order.id) {
+    const linesPayload = order.lines.map((l) => ({
+      account_id: accountId,
+      order_id: orderId,
+      item_id: l.itemId || null,
+      sku: l.sku,
+      item_name: l.itemName,
+      destination_location_name: l.destinationLocationName,
+      destination_location_id: l.destinationLocationId || null,
+      ordered_quantity: l.orderedQuantity,
+      unit: l.unit,
+      unit_cost: l.unitCost
+    }));
+    
+    if (linesPayload.length > 0) {
+      await supabase.from('inventory_restock_order_lines').insert(linesPayload);
+    }
+  }
+
+  return fetchRestockOrder(supabase, accountId, orderId);
+}
+
+export async function fetchRestockOrder(
+  supabase: SupabaseClient,
+  accountId: string,
+  orderId: string
+): Promise<RestockOrder> {
+  const { data, error } = await supabase
+    .from('inventory_restock_orders')
+    .select('*, lines:inventory_restock_order_lines(*)')
+    .eq('id', orderId)
+    .eq('account_id', accountId)
+    .single();
+
+  if (error) throw error;
+  return mapRestockOrderRow(data, data.lines);
+}
+
+export async function receiveRestockOrderLine(
+  supabase: SupabaseClient,
+  accountId: string,
+  orderId: string,
+  lineId: string,
+  quantity: number,
+  receivedBy: string,
+  requestId: string
+) {
+  const { data, error } = await supabase.rpc('inventory_receive_order_line', {
+    p_account_id: accountId,
+    p_order_id: orderId,
+    p_line_id: lineId,
+    p_quantity: quantity,
+    p_received_by: receivedBy,
+    p_request_id: requestId
+  });
+  
+  if (error) throw error;
+  return data;
 }

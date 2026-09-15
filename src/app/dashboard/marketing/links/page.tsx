@@ -23,7 +23,7 @@ export default async function LinkBuilderPage() {
       .eq('account_id', accountId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .then((res) => res, () => ({ data: [] as any[] })),
+      .then((res: any) => res, () => ({ data: [] as any[] })),
     loadMarketingAttributionData(supabase, accountId).catch(() => ({ leads: [], jobs: [] })),
   ]);
 
@@ -44,7 +44,7 @@ export default async function LinkBuilderPage() {
   }
 
   const rawLinks = (dbLinksRes?.data as any[]) || [];
-  const targetCampaigns = rawLinks.map((row) => ({
+  const targetCampaigns = rawLinks.map((row: any) => ({
     id: row.id,
     name: row.name,
     campaign: row.campaign,
@@ -56,7 +56,7 @@ export default async function LinkBuilderPage() {
 
   const metricsMap = aggregateCampaignAttribution(targetCampaigns, leads, jobLookup);
 
-  const initialCampaigns: EnrichedTrackingCampaign[] = rawLinks.map((row) => {
+  const initialCampaigns: EnrichedTrackingCampaign[] = rawLinks.map((row: any) => {
     const m = metricsMap[row.id] || {
       visits: row.scan_count || 0,
       leads: 0,

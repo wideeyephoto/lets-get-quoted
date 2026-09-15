@@ -398,7 +398,7 @@ export async function createPaymentPlanScheduleAction(
       return { success: false, error: 'At least one milestone is required.' };
     }
 
-    const insertRows = milestones.map((m) => ({
+    const insertRows = milestones.map((m: any) => ({
       account_id: accountId,
       job_id: jobId,
       kind: m.kind || 'stage',
@@ -467,7 +467,7 @@ export async function getClientStatementDataAction(clientName: string): Promise<
 
     if (jobsError) throw jobsError;
 
-    const jobIds = (jobs ?? []).map((j) => j.id);
+    const jobIds = (jobs ?? []).map((j: any) => j.id);
     if (jobIds.length === 0) {
       return { success: false, error: `No records found for client "${clientName}".` };
     }
@@ -686,11 +686,11 @@ export async function generateAccountingJournalCsvAction(format: 'qbo' | 'xero' 
       return { success: false, error: 'Could not query transactions.' };
     }
 
-    const jobIds = [...new Set(payments.map((p) => p.job_id))];
+    const jobIds = [...new Set(payments.map((p: any) => p.job_id))];
     const { data: jobs } = await supabase.from('jobs').select('id, ref, client_name').in('id', jobIds);
-    const jobMap = new Map((jobs ?? []).map((j) => [j.id, j]));
+    const jobMap = new Map((jobs ?? []).map((j: any) => [j.id, j]));
 
-    const mapped = payments.map((p) => {
+    const mapped = payments.map((p: any) => {
       const gross = Number(p.amount);
       const fee = Number(p.platform_fee || 0);
       const net = Math.round((gross - fee) * 100) / 100;

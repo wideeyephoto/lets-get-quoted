@@ -10,6 +10,7 @@ import type { PhotoDefectEstimateResult, DefectItem } from '@/lib/multimodal-def
 import { supabase } from '@/lib/supabase';
 
 export interface PhotoDefectEstimatorModalProps {
+  jobId?: string;
   isOpen: boolean;
   onClose: () => void;
   defaultTrade?: string;
@@ -34,10 +35,12 @@ interface PhotoItem {
   preview: string;
   uploading: boolean;
   url?: string;
+  path?: string;
   error?: string;
 }
 
 export default function PhotoDefectEstimatorModal({
+  jobId,
   isOpen,
   onClose,
   defaultTrade = 'Roofing',
@@ -99,10 +102,10 @@ export default function PhotoDefectEstimatorModal({
         const formData = new FormData();
         formData.append('photo', photo.file);
         
-        const { url } = await uploadEstimatePhotoAction(formData);
+        const { url, path } = await uploadEstimatePhotoAction(formData);
         
         setPhotos((prev) =>
-          prev.map((p) => (p.id === photo.id ? { ...p, uploading: false, url } : p))
+          prev.map((p) => (p.id === photo.id ? { ...p, uploading: false, url, path } : p))
         );
       } catch (err: any) {
         setPhotos((prev) =>
@@ -123,7 +126,8 @@ export default function PhotoDefectEstimatorModal({
     }
     
     const validUrls = photos.filter(p => p.url).map(p => p.url as string);
-    if (validUrls.length === 0) {
+    const validPaths = photos.filter(p => p.path).map(p => p.path as string);
+    if (validUrls.length === 0 || validPaths.length === 0) {
       setError('No successfully uploaded photos to analyze.');
       return;
     }
@@ -135,6 +139,8 @@ export default function PhotoDefectEstimatorModal({
         trade,
         notes: notes || undefined,
         photoUrls: validUrls,
+        photoPaths: validPaths,
+        jobId,
       });
 
       if (res.ok && res.estimate) {

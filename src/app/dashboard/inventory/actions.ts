@@ -296,6 +296,7 @@ export async function adjustStockQuantityAction(params: {
   stockId: string;
   delta: number;
   reason?: string;
+  requestId?: string;
 }): Promise<VanStockItem> {
   const { supabase, accountId } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
   if (!params.stockId) throw new Error('Stock ID is required');
@@ -306,6 +307,7 @@ export async function adjustStockQuantityAction(params: {
     sanitizeString(params.stockId, 100),
     delta,
     params.reason ? sanitizeString(params.reason, 255) : undefined,
+    params.requestId,
   );
 }
 
@@ -315,6 +317,7 @@ export async function transferStockAction(input: {
   toLocation: string;
   quantity: number;
   notes?: string;
+  requestId?: string;
 }): Promise<{ transfer: StockTransfer; sourceStock: VanStockItem; destinationStock?: VanStockItem }> {
   const { supabase, accountId, userEmail } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
   if (!input.stockId) throw new Error('Stock ID is required');
@@ -327,6 +330,7 @@ export async function transferStockAction(input: {
     quantity: qty,
     performedBy: userEmail || 'Office Staff',
     notes: input.notes ? sanitizeString(input.notes, 500) : undefined,
+    requestId: input.requestId,
   });
 }
 

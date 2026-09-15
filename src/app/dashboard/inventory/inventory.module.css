@@ -904,6 +904,32 @@
   flex-shrink: 0;
 }
 
+.badgeNeutral {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--inv-surface-subtle, rgba(255,255,255,0.05));
+  color: var(--inv-text-primary, #e2e8f0);
+  border: 1px solid var(--inv-border-subtle, rgba(255,255,255,0.1));
+}
+
+.badgeDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
 .statusAvailable {
   background: var(--inv-return-btn-bg, rgba(16, 185, 129, 0.2));
   color: var(--inv-status-good-text, #6ee7b7);

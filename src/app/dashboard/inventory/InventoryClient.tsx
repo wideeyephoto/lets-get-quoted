@@ -894,7 +894,7 @@ export default function InventoryClient({
     const timer = setTimeout(async () => {
       pendingStockDeltas.current.delete(item.id);
       try {
-        const updated = await adjustStockQuantityAction({ stockId: item.id, delta: combinedDelta });
+        const updated = await adjustStockQuantityAction({ stockId: item.id, delta: combinedDelta, requestId: crypto.randomUUID() });
         setStock((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       } catch (err: unknown) {
         showToast(err instanceof Error ? err.message : 'Failed to update stock quantity', 'error');
@@ -938,6 +938,7 @@ export default function InventoryClient({
           toLocation,
           quantity,
           notes,
+          requestId: crypto.randomUUID(),
         });
 
         // Update source, destination, and transfers cleanly using real persisted DB entities
@@ -2015,12 +2016,6 @@ export default function InventoryClient({
                 const isCheckedOut = tool.status === 'checked_out';
                 const isLarge = toolViewMode === 'large';
                 const isOverdue = isToolOverdue(tool);
-                const depr = calculateAssetDepreciation(
-                  tool.purchasePrice,
-                  tool.purchaseDate,
-                  tool.depreciationSchedule,
-                  asOfDate
-                );
 
                 return (
                   <div key={tool.id} className={`${styles.assetCard} ${isLarge ? styles.assetCardLarge : ''}`}>
@@ -2090,134 +2085,31 @@ export default function InventoryClient({
                         {tool.brand} {tool.modelNumber ? `• Mod: ${tool.modelNumber}` : ''} • {tool.category}
                       </div>
 
-                      {/* Checked out custody well */}
-                      {isCheckedOut ? (
-                        <div className={styles.custodyBlock}>
-                          <div className={styles.custodyRow}>
-                            <span className={styles.custodyLabel}>
-                              <User size={13} /> Assigned Tech:
-                            </span>
-                            <span className={styles.custodyValue}>
-                              {tool.assignedCrewName || 'Assigned'}
-                            </span>
-                          </div>
-                          {tool.assignedJobLabel && (
-                            <div className={styles.custodyRow}>
-                              <span className={styles.custodyLabel}>
-                                <MapPin size={13} /> Destination:
-                              </span>
-                              <span
-                                className={styles.custodyValue}
-                                style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                              >
-                                {tool.assignedJobLabel}
-                              </span>
-                            </div>
-                          )}
-                          <div className={styles.custodyRow}>
-                            <span className={styles.custodyLabel}>
-                              {isVehicleLocation(tool.locationName) ? <Truck size={13} /> : <MapPin size={13} />} Home Base:
-                            </span>
-                            <span className={styles.custodyValue}>
-                              {tool.locationName || 'Main Shop & Warehouse'}
-                            </span>
-                          </div>
-                          {tool.expectedReturnDate ? (
-                            <div className={styles.custodyRow} style={{ color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
-                              <span className={styles.custodyLabel}>
-                                <Clock size={14} /> Expected Return:
-                              </span>
-                              <span style={{ fontWeight: 700, color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-primary, #ffffff)' }}>
-                                {tool.expectedReturnDate} {isOverdue && '(OVERDUE)'}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className={styles.custodyRow} style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
-                              <span className={styles.custodyLabel}>
-                                <Clock size={14} /> Expected Return:
-                              </span>
-                              <span style={{ fontWeight: 600, color: 'var(--inv-text-primary, #ffffff)' }}>
-                                Return date not set
-                              </span>
-                            </div>
-                          )}
-                          {tool.checkedOutAt && (
-                            <div className={styles.custodyRow} style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
-                              <span className={styles.custodyLabel}>
-                                <Calendar size={14} /> Checked Out:
-                              </span>
-                              <span style={{ fontWeight: 600, color: 'var(--inv-text-primary, #ffffff)' }}>
-                                {new Date(tool.checkedOutAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        /* Storage Depot for Available / In-Maintenance tools */
-                        <div className={styles.locationBlock}>
-                          <div className={styles.locationRow}>
-                            <span className={styles.locationLabel}>
-                              {isVehicleLocation(tool.locationName) ? <Truck size={13} /> : <MapPin size={13} />} Storage Depot:
-                            </span>
-                            <span className={styles.locationValue}>
-                              <span>{tool.locationName || 'Main Shop & Warehouse'}</span>
-                              <span
-                                className={`${styles.locationTypeTag} ${
-                                  isVehicleLocation(tool.locationName)
-                                    ? styles.locationTypeTagVehicle
-                                    : styles.locationTypeTagFacility
-                                }`}
-                              >
-                                {isVehicleLocation(tool.locationName) ? 'Vehicle' : 'Facility'}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.75rem' }}>
+                        <span className={styles.badgeNeutral}>
+                          <Tag size={12} /> {tool.category}
+                        </span>
+                        {isCheckedOut && (
+                          <span className={styles.badgeNeutral}>
+                            <User size={12} /> {tool.assignedCrewName || 'Assigned'}
+                          </span>
+                        )}
+                        <span className={styles.badgeNeutral}>
+                          {isVehicleLocation(tool.locationName) ? <Truck size={12} /> : <MapPin size={12} />}{' '}
+                          {tool.locationName || 'Main Shop & Warehouse'}
+                        </span>
+                        {isCheckedOut && tool.expectedReturnDate && isOverdue && (
+                          <span className={styles.badgeDanger}>
+                            <Clock size={12} /> Overdue: {tool.expectedReturnDate}
+                          </span>
+                        )}
+                      </div>
 
                       {tool.notes && (
                         <p className={styles.notesQuote}>&ldquo;{tool.notes}&rdquo;</p>
                       )}
 
-                      {/* Tax Depreciation & Book Basis Strip */}
-                      <div
-                        style={{
-                          marginTop: '0.75rem',
-                          padding: isLarge ? '0.65rem 0.85rem' : '0.45rem 0.65rem',
-                          borderRadius: '8px',
-                          background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.03))',
-                          border: '1px solid var(--inv-border-subtle)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '0.8rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          <span style={{ color: 'var(--inv-text-muted)' }}>
-                            Cost Basis:{' '}
-                            <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
-                              {tool.purchasePrice !== null && tool.purchasePrice !== undefined ? formatUsdExact(tool.purchasePrice) : 'Cost not entered'}
-                            </strong>
-                            {tool.purchaseDate && (
-                              <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', marginLeft: '0.35rem' }}>
-                                ({tool.purchaseDate})
-                              </span>
-                            )}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
-                            <TaxHelpBubble schedule={tool.depreciationSchedule} />
-                            <span style={{ color: 'var(--inv-text-caption, #94a3b8)', fontSize: '0.74rem' }}>{depr.statusText}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--inv-text-caption, #94a3b8)', textTransform: 'uppercase', fontWeight: 700 }}>
-                            Book Value
-                          </div>
-                          <div className={styles.taxBookValue}>{formatUsdExact(depr.currentBookValue)}</div>
-                        </div>
-                      </div>
+
                     </div>
 
                     {/* Card Footer */}
@@ -2336,7 +2228,6 @@ export default function InventoryClient({
                     ? styles.statusMaintenance
                     : styles.statusDanger;
 
-                const depr = calculateAssetDepreciation(v.purchasePrice, v.purchaseDate, v.depreciationSchedule, asOfDate);
 
                 return (
                   <div key={v.id} className={styles.assetCard}>
@@ -2346,9 +2237,16 @@ export default function InventoryClient({
                           <span className={styles.assetTagBadge}>{v.licensePlate}</span>
                           {v.vin ? <span className={styles.serialNumberTag}>VIN: {v.vin}</span> : null}
                         </div>
-                        <span className={`${styles.statusBadge} ${statusBadgeClass}`}>
-                          {isRetired ? <Slash size={14} /> : statusDesc.tone === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />} {statusDesc.label}
-                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span className={`${styles.statusBadge} ${statusBadgeClass}`}>
+                            {isRetired ? <Slash size={14} /> : statusDesc.tone === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />} {statusDesc.label}
+                          </span>
+                          {!isRetired && audit.statusTone !== 'success' && (
+                            <span className={audit.statusTone === 'danger' ? styles.badgeDanger : styles.badgeNeutral}>
+                              <AlertCircle size={12} /> {audit.isServiceOverdue ? 'Service Overdue' : audit.isInspectionExpired ? 'Inspection Expired' : 'Service Due Soon'}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <h3
@@ -2475,45 +2373,7 @@ export default function InventoryClient({
                         )}
                       </div>
 
-                      {/* Tax Depreciation & Book Value */}
-                      <div
-                        className={styles.taxBasisRow}
-                        style={{
-                          marginTop: '0.85rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.65rem 0.85rem',
-                          background: 'var(--inv-surface-subtle, rgba(15, 23, 42, 0.65))',
-                          borderRadius: '8px',
-                          border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.08))',
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          <span style={{ color: 'var(--inv-text-muted)' }}>
-                            Cost Basis:{' '}
-                            <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
-                              {v.purchasePrice !== null && v.purchasePrice !== undefined ? formatUsdExact(v.purchasePrice) : 'Cost not entered'}
-                            </strong>
-                            {v.purchaseDate && (
-                              <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', marginLeft: '0.35rem' }}>
-                                ({v.purchaseDate})
-                              </span>
-                            )}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
-                            <TaxHelpBubble schedule={v.depreciationSchedule} isVehicle />
-                            <span style={{ color: 'var(--inv-text-caption, #94a3b8)', fontSize: '0.74rem' }}>{depr.statusText}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--inv-text-caption, #94a3b8)', textTransform: 'uppercase', fontWeight: 700 }}>
-                            Book Value
-                          </div>
-                          <div className={styles.taxBookValue}>{formatUsdExact(depr.currentBookValue)}</div>
-                        </div>
-                      </div>
+
                     </div>
 
                     {/* Card Footer */}

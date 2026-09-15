@@ -8,8 +8,10 @@ import {
 } from '@/lib/multimodal-defect-estimator';
 
 export interface AnalyzePhotoDefectsParams {
+  jobId?: string;
   trade: string;
   photoUrls?: string[];
+  photoPaths?: string[];
   notes?: string;
 }
 
@@ -42,21 +44,47 @@ export async function analyzePhotoDefectsAction(
   params: AnalyzePhotoDefectsParams,
 ): Promise<AnalyzePhotoDefectsResponse> {
   try {
-    await requireOfficeContext('jobs.read');
+    const { supabase, accountId, userId } = await requireOfficeContext('jobs.read');
 
     const trade = params.trade?.trim() || 'General Repair';
     const notes = params.notes?.trim() || undefined;
     const photoUrls = params.photoUrls || [];
 
-    const estimate = await analyzePhotoDefectsAndEstimate({
+    const { listServices } = await import('@/lib/services');
+    const priceBookData = await listServices(supabase, accountId, { activeOnly: true });
+    const priceBook = priceBookData.map(s => ({
+      id: s.id,
+      name: s.name,
+      unitPrice: s.unit_price,
+      unit: s.unit
+    }));
+
+    const estimateResult = await analyzePhotoDefectsAndEstimate({
       trade,
       photoUrls,
       notes,
+      priceBook,
     });
+
+    if (params.jobId) {
+      const { createPhotoEstimate, createPhotoEstimateInput, createPhotoEstimateRun } = await import('@/lib/photo-estimate/repository');
+      
+      const estimate = await createPhotoEstimate(supabase, accountId, params.jobId, userId, trade);
+      await createPhotoEstimateInput(supabase, estimate.id, 1, notes, params.photoPaths || [], userId);
+      await createPhotoEstimateRun(
+        supabase,
+        estimate.id,
+        1,
+        'gemini',
+        'completed',
+        estimateResult,
+        null
+      );
+    }
 
     return {
       ok: true,
-      estimate,
+      estimate: estimateResult,
     };
   } catch (error) {
     console.error('Failed to analyze photo defects:', error);
