@@ -41,6 +41,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'stripe',
   },
 
+  // User navigation preferences
+  navigation_preferences: {
+    tableName: 'navigation_preferences',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'account_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Account user memberships and RBAC mappings
   memberships: {
     tableName: 'memberships',

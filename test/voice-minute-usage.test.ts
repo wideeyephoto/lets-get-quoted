@@ -220,14 +220,34 @@ describe('admission', () => {
   });
 
   it('bounds waiting for a busy claim and fails closed without touching its hold', async () => {
-    setRpc('claim_voice_call_admission_v2', ...Array.from({ length: 4 }, () => ({
+    vi.useFakeTimers();
+    try {
+    setRpc('claim_voice_call_admission_v2', ...Array.from({ length: 21 }, () => ({
       data: [{ claim_status: 'busy', admission_id: 'adm-1' }], error: null,
     })));
-    expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
+    const decision = admitVoiceCall(admin, input, { mode: 'enforce' });
+    await vi.runAllTimersAsync();
+    expect(await decision)
       .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
-    expect(callsFor('claim_voice_call_admission_v2')).toHaveLength(4);
+    expect(callsFor('claim_voice_call_admission_v2')).toHaveLength(21);
     expect(callsFor('reserve_usage_credits')).toHaveLength(0);
     expect(callsFor('release_voice_call_admission_claim')).toHaveLength(0);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('replays a hold that finalizes after the old three-retry window', async () => {
+    vi.useFakeTimers();
+    try {
+      setRpc('claim_voice_call_admission_v2',
+        ...Array.from({ length: 12 }, () => ({ data: [{ claim_status: 'busy', admission_id: 'adm-1' }], error: null })),
+        { data: [{ claim_status: 'existing', admission_id: 'adm-1' }], error: null },
+      );
+      const decision = admitVoiceCall(admin, input, { mode: 'measure' });
+      await vi.runAllTimersAsync();
+      expect(await decision).toEqual({ outcome: 'admitted_existing', capMinutes: 2 });
+      expect(callsFor('reserve_usage_credits')).toHaveLength(0);
+      expect(callsFor('release_voice_call_admission_claim')).toHaveLength(0);
+    } finally { vi.useRealTimers(); }
   });
 
   it('fails closed without retrying an unreadable admission claim', async () => {
