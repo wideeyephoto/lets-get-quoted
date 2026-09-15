@@ -353,12 +353,11 @@ describe('rendering an answer', () => {
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
     expect(swml.sections.main[1].play.urls).toEqual([
-      'https://letsgetquoted.com/audio/ai-disclosure-eyre-v2.wav',
-      'https://letsgetquoted.com/audio/dispatch-connected-v3.wav',
-      'say: Thanks for calling.',
+      "say: Thanks for calling. You're speaking with our AI receptionist.",
     ]);
     expect(swml.sections.main[1].play.say_voice).toBe('rime.eyre:coda');
-    expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
+    expect(ai.prompt.text).toContain('Begin with one brief invitation');
+    expect(ai.prompt.text).toContain('Ask it only once');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
     expect(swml.sections.main[0].answer.max_duration).toBe(598);
@@ -391,8 +390,9 @@ describe('rendering an answer', () => {
 
     expect(playIndex).toBeGreaterThan(-1);
     expect(recordIndex).toBeGreaterThan(playIndex);
-    expect(main[playIndex].play.urls[0]).toBe('https://x.test/audio/ai-disclosure-eyre-v2.wav');
-    expect(main[playIndex].play.urls[2]).toContain('This call may be recorded for quality and training purposes.');
+    expect(main[playIndex].play.urls).toEqual([
+      "say: Thanks for calling. You're speaking with our AI receptionist. This call may be recorded for quality and training purposes.",
+    ]);
   });
 
   it('hard-disables provider recording on contractor calls and asks the provider to redact spoken codes', () => {
@@ -404,8 +404,13 @@ describe('rendering an answer', () => {
     });
     const main = JSON.parse(answer.body).sections.main;
     expect(main.some((section: Record<string, unknown>) => 'record_call' in section)).toBe(false);
-    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.urls.join(' '))
-      .not.toContain('This call may be recorded');
+    const opening = main.find((section: Record<string, unknown>) => 'play' in section).play.urls;
+    expect(opening).toEqual([
+      'https://x.test/audio/ai-disclosure-eyre-v2.wav',
+      'https://x.test/audio/dispatch-connected-v3.wav',
+      'say: Thanks for calling.',
+    ]);
+    expect(opening.join(' ')).not.toContain('This call may be recorded');
     const ai = main.find((section: Record<string, unknown>) => 'ai' in section).ai;
     expect(ai.params.redact_prompt).toMatch(/six-digit authentication codes/i);
     expect(ai.params.redact_prompt).toMatch(/one-time passwords|OTPs/i);

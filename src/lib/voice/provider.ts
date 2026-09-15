@@ -43,7 +43,10 @@ export type InboundCall = Readonly<{
 
 /** The disclosure callers must hear before interacting with the agent. */
 export const AI_VOICE_DISCLOSURE = "Your personal Let's Get Quoted AI Assistant is loading.";
+export const CUSTOMER_AI_VOICE_DISCLOSURE = "You're speaking with our AI receptionist.";
 export const RECORDING_DISCLOSURE = 'This call may be recorded for quality and training purposes.';
+
+const TRAILING_HELP_QUESTION = /\s*(?:how|what)\s+(?:can|may)\s+(?:i|we)\s+(?:help|assist)(?:\s+you)?(?:\s+today)?\s*[?.!]*\s*$/i;
 
 /**
  * Add the fixed disclosure to a contractor-authored greeting.
@@ -78,6 +81,31 @@ export function greetingWithAiDisclosure(
     result = `${result} ${RECORDING_DISCLOSURE}`;
   }
   return result;
+}
+
+/**
+ * Build the homeowner opening without the staff-only loading announcement.
+ *
+ * The conversational agent asks the first question after this introduction.
+ * Removing the common trailing question from a saved greeting prevents the
+ * caller from hearing two versions of "How can I help?" back to back.
+ */
+export function customerGreetingWithAiDisclosure(
+  greeting: string | null | undefined,
+  options: { recordingEnabled?: boolean } = {},
+): string {
+  const custom = (greeting ?? '').trim()
+    .replace(AI_VOICE_DISCLOSURE, '')
+    .replace(CUSTOMER_AI_VOICE_DISCLOSURE, '')
+    .replace('You are speaking with an AI assistant.', '')
+    .replace("Hi, I'm your AI assistant.", '')
+    .replace(RECORDING_DISCLOSURE, '')
+    .replace(TRAILING_HELP_QUESTION, '')
+    .trim();
+  const intro = custom || 'Thanks for calling.';
+  const parts = [intro, CUSTOMER_AI_VOICE_DISCLOSURE];
+  if (options.recordingEnabled) parts.push(RECORDING_DISCLOSURE);
+  return parts.join(' ');
 }
 
 /**

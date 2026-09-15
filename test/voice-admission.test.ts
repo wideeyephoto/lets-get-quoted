@@ -241,7 +241,8 @@ describe('what a caller gets', () => {
     expect(result.plan.receiptUrl).not.toContain('@');
     expect(result.plan.transferStatusUrl).toBe(options.forwardActionUrl(ACCOUNT));
     // The disclosure is not optional and not a setting.
-    expect(result.plan.greeting).toMatch(/AI assistant/i);
+    expect(result.plan.greeting).toMatch(/AI receptionist/i);
+    expect(result.plan.greeting).not.toContain('loading');
     expect(admitVoiceCall).toHaveBeenCalledWith(
       admin,
       {
@@ -612,8 +613,9 @@ describe('when the receptionist is meant to pick up', () => {
     });
     const result = await planInboundCall(admin, call, options);
     if (result.plan.kind !== 'ai_agent') throw new Error('expected the agent');
-    expect(result.plan.greeting).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
-    expect(result.plan.greeting).toContain('Rivera Plumbing, how can I help?');
+    expect(result.plan.greeting).toBe("Rivera Plumbing, You're speaking with our AI receptionist.");
+    expect(result.plan.greeting).not.toContain('loading');
+    expect(result.plan.greeting).not.toMatch(/how can I help/i);
     // The configured hand-off wins over the general forwarding number.
     expect(result.plan.transferTo).toBe('+15550001111');
   });
@@ -628,5 +630,15 @@ describe('when the receptionist is meant to pick up', () => {
       expect.objectContaining({ callerNumber: null, callerKind: 'customer' }),
       expect.anything(),
     );
+
+    let toolContext: { callerPhone?: string | null } | undefined;
+    await planInboundCall(admin, anonCall, {
+      ...options,
+      swaigUrl: (_accountId, context) => {
+        toolContext = context;
+        return 'https://lgq.test/api/voice/swaig?token=test';
+      },
+    });
+    expect(toolContext?.callerPhone).toBeNull();
   });
 });

@@ -1,4 +1,8 @@
-import { AI_VOICE_DISCLOSURE, greetingWithAiDisclosure } from '@/lib/voice/provider';
+import {
+  AI_VOICE_DISCLOSURE,
+  customerGreetingWithAiDisclosure,
+  greetingWithAiDisclosure,
+} from '@/lib/voice/provider';
 import { VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import type {
   InboundCall,
@@ -282,9 +286,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
       // SWML, which is JSON. `post_prompt_url` is where the receipt lands, and
       // it is the only URL in here — LGQ's own.
       const recordCall = plan.recordCall === true && plan.contractorMode !== true;
-      const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
-        recordingEnabled: recordCall,
-      });
+      const spokenGreeting = plan.contractorMode
+        ? greetingWithAiDisclosure(plan.greeting, { recordingEnabled: false })
+        : customerGreetingWithAiDisclosure(plan.greeting, { recordingEnabled: recordCall });
       const remainingGreeting = spokenGreeting.replace(AI_VOICE_DISCLOSURE, '').trim();
       const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
         ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
@@ -300,13 +304,14 @@ export const signalwireVoiceProvider: VoiceProvider = {
       // actually heard.
       mainSection.push({
         play: {
-          urls: [
-            new URL('/audio/ai-disclosure-eyre-v2.wav', plan.receiptUrl).toString(),
-            new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
-            ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
-          ],
-          // The fixed disclosure clip avoids live synthesis startup artifacts.
-          // Keep the same voice for the remaining, account-specific greeting.
+          urls: plan.contractorMode
+            ? [
+                new URL('/audio/ai-disclosure-eyre-v2.wav', plan.receiptUrl).toString(),
+                new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
+                ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
+              ]
+            : [`say: ${spokenGreeting}`],
+          // Keep the same voice for the account-specific homeowner greeting.
           say_voice: 'rime.eyre:coda',
           // Reduce the opening's playback level for speakerphone comfort.
           volume: -2,
@@ -908,7 +913,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
           },
           prompt: {
             text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '
-              + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
+              + 'The prerecorded opening already introduced the business and identified you as its AI receptionist. It did not ask a question. Begin with one brief invitation such as "How can I help you today?" Ask it only once, and do not repeat it after the caller starts speaking. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
               + 'When speaking, repeating, confirming, or reading back any phone number to the caller, always speak it as a standard 10-digit number starting directly with the area code (e.g. 810-304-2061); never include "+1", "plus one", or a leading "1". '

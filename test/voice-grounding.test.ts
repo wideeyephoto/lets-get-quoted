@@ -6,6 +6,10 @@ describe('buildVoiceSystemPrompt', () => {
     const prompt = buildVoiceSystemPrompt({ companyName: 'Apex', trade: 'plumbing',
       serviceNames: [], serviceAreas: 'Maplewood', availableSlots: [] });
     expect(prompt).toContain('not a confirmed appointment');
+    expect(prompt).toContain('Begin with one brief invitation');
+    expect(prompt).toContain('Ask it only once');
+    expect(prompt).toContain('save the homeowner\'s details and preferred time with capture_lead');
+    expect(prompt.indexOf('Use the capture_lead tool')).toBeLessThan(prompt.indexOf('before checking appointment availability'));
     expect(prompt).toContain('existing appointment stays unchanged');
     expect(prompt).toContain('No live emergency transfer is available');
     expect(prompt).not.toContain('directly lock in an appointment');

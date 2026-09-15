@@ -156,7 +156,7 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
     const preferredDateRaw = String(args.preferred_date || args.timeframe || '').trim().toLowerCase();
 
     if (!bookingDays || bookingDays.length === 0) {
-      let resp = 'Our service calendar is currently accepting requests, and our team will follow up to confirm the earliest open dispatch window.';
+      let resp = 'Online appointment selection is currently paused or full. I can still save your details and preferred time as a callback request for our office to review.';
       if (emergency) {
         resp += ' We also provide 24/7 priority emergency service for active hazards and leaks.';
       }
@@ -248,7 +248,7 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
     const bookingDays = await getAvailableBookingDays(admin, accountId).catch(() => []);
     if (!bookingDays || bookingDays.length === 0) {
       return NextResponse.json({
-        response: 'I cannot confirm an available appointment right now. No appointment has been booked. Please contact our office or try again later.',
+        response: 'I cannot offer an open appointment window right now. No appointment has been booked, but I can save your details and preferred time as a callback request for our office to review.',
       });
     }
 
