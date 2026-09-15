@@ -1,6 +1,6 @@
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
-import { loadInventoryData } from '@/lib/inventory-db';
+import { loadInventoryData, fetchRestockOrders } from '@/lib/inventory-db';
 import { listCrew } from '@/lib/crew';
 import { listJobs } from '@/lib/jobs';
 import InventoryClient from './InventoryClient';
@@ -16,11 +16,12 @@ export default async function InventoryPage() {
   const { supabase, accountId, account, capabilities, role } = await requireOfficeContext('inventory.read');
   const admin = createAdminClient();
 
-  const [{ data: site }, inventoryPayload, crewList, jobsList] = await Promise.all([
+  const [{ data: site }, inventoryPayload, crewList, jobsList, restockOrders] = await Promise.all([
     admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
     loadInventoryData(supabase, accountId),
     listCrew(supabase, accountId).catch(() => []),
     listJobs(supabase, accountId).catch(() => []),
+    fetchRestockOrders(supabase, accountId).catch(() => []),
   ]);
 
   const businessName = pickBusinessName(site, account, 'Our Company');
@@ -49,6 +50,7 @@ export default async function InventoryPage() {
         initialPayload={inventoryPayload}
         crewMembers={crewMembers}
         activeJobs={activeJobs}
+        initialRestockOrders={restockOrders}
         canWrite={canWrite}
         canCustody={canCustody}
       />

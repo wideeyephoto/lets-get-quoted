@@ -53,6 +53,7 @@ export default function PhotoDefectEstimatorModal({
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<PhotoDefectEstimateResult | null>(null);
+  const [priceBook, setPriceBook] = useState<Array<{ id: string; name: string; unitPrice: number; unit: string }>>([]);
   const [applied, setApplied] = useState(false);
 
   useEffect(() => {
@@ -145,6 +146,7 @@ export default function PhotoDefectEstimatorModal({
 
       if (res.ok && res.estimate) {
         setEstimate(res.estimate);
+        if (res.priceBook) setPriceBook(res.priceBook);
       } else {
         setError(res.message || 'Inspection failed. Please try again.');
       }
@@ -155,14 +157,24 @@ export default function PhotoDefectEstimatorModal({
     }
   };
 
+  const getCalculatedCost = (defect: DefectItem) => {
+    let cost = 0;
+    if (defect.suggestedServiceId) {
+      const svc = priceBook.find(s => s.id === defect.suggestedServiceId);
+      if (svc) {
+        cost = svc.unitPrice * (defect.suggestedQuantity || 1);
+      }
+    }
+    return cost;
+  };
+  const totalCost = estimate?.defects.reduce((acc, curr) => acc + getCalculatedCost(curr), 0) || 0;
+
   const handleApplyToQuote = () => {
     if (!estimate || !onApplyLineItems) return;
-    const items = estimate.suggestedQuoteDraft.lineItems.length > 0
-      ? estimate.suggestedQuoteDraft.lineItems
-      : estimate.defects.map((d) => ({
-          name: d.defectName,
-          cost: d.estimatedTotalDollars,
-        }));
+    const items = estimate.defects.map((d) => ({
+      name: d.defectName + ' - ' + d.recommendedRepair,
+      cost: getCalculatedCost(d),
+    }));
 
     onApplyLineItems(items);
     setApplied(true);
@@ -515,12 +527,12 @@ export default function PhotoDefectEstimatorModal({
                     {estimate.overallDamageSummary}
                   </p>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #a1a1aa)' }}>Estimated Total</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent, #38bdf8)' }}>
-                    ${estimate.totalEstimatedRepairDollars.toLocaleString('en-US')}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #a1a1aa)' }}>Calculated Total</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent, #38bdf8)' }}>
+                      ${totalCost.toLocaleString('en-US')}
+                    </div>
                   </div>
-                </div>
               </div>
 
               {/* Defect Items */}

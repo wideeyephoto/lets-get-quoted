@@ -100,7 +100,7 @@ export default async function ReferralsPage() {
   type ReferredLeadRow = ReferralQueueLead & { triage: LeadTriage | null };
   const referredBy = new Map<string, string>();
   const referred: ReferralQueueLead[] = (rawLeads as unknown as ReferredLeadRow[]).filter((lead: any) => {
-    const who = getLeadTriage(lead: any).referredBy;
+    const who = getLeadTriage(lead).referredBy;
     if (!who) return false;
     referredBy.set(lead.id, who);
     lead.value = jobMap.get(lead.id) || 0;

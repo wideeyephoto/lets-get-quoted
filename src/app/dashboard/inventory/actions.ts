@@ -10,6 +10,8 @@ import type {
   StockTransfer,
   InventoryPayload,
   ToolAssetStatus,
+  RestockOrder,
+  RestockOrderLine,
 } from '@/lib/inventory-tracker';
 import {
   loadInventoryData,
@@ -30,6 +32,9 @@ import {
   updateVehicleMileage,
   seedInitialInventory,
   applyVanKitTemplate,
+  fetchRestockOrders,
+  saveRestockOrder,
+  receiveRestockOrderLine,
 } from '@/lib/inventory-db';
 import { uploadToolPhoto } from '@/lib/tool-photo-storage';
 

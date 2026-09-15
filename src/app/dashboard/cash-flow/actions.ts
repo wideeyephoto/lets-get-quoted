@@ -168,8 +168,8 @@ export async function saveScheduledPaymentAction(formData: FormData) {
   };
 
   const { error } = id
-    ? await supabase.from('scheduled_payments').update(row: any).eq('account_id', accountId).eq('id', id)
-    : await supabase.from('scheduled_payments').insert(row: any);
+    ? await supabase.from('scheduled_payments').update(row).eq('account_id', accountId).eq('id', id)
+    : await supabase.from('scheduled_payments').insert(row);
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/cash-flow');

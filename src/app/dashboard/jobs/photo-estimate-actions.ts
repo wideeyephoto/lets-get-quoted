@@ -19,6 +19,7 @@ export interface AnalyzePhotoDefectsResponse {
   ok: boolean;
   estimate?: PhotoDefectEstimateResult;
   message?: string;
+  priceBook?: Array<{ id: string; name: string; unitPrice: number; unit: string }>;
 }
 
 export async function uploadEstimatePhotoAction(formData: FormData) {
@@ -85,6 +86,7 @@ export async function analyzePhotoDefectsAction(
     return {
       ok: true,
       estimate: estimateResult,
+      priceBook,
     };
   } catch (error) {
     console.error('Failed to analyze photo defects:', error);

@@ -6,6 +6,7 @@ import type { VanStockItem } from '@/lib/inventory-tracker';
 import { formatUsdExact } from '@/lib/money-format';
 import AccessibleModal from './AccessibleModal';
 import styles from '../inventory.module.css';
+import { saveRestockOrderAction } from '../actions';
 
 interface PurchaseOrderModalProps {
   isOpen: boolean;
@@ -117,6 +118,41 @@ export default function PurchaseOrderModal({
     }
   }
 
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSaveOrder(status: 'draft' | 'ordered') {
+    if (displayedItems.length === 0) return;
+    setIsSaving(true);
+    try {
+      const targetSupplier = selectedSupplier === 'all' ? 'Multiple Suppliers' : selectedSupplier;
+      
+      const lines = displayedItems.map(item => ({
+        itemId: item.id,
+        sku: item.sku,
+        itemName: item.name,
+        destinationLocationName: item.location,
+        destinationLocationId: item.locationId,
+        orderedQuantity: item.orderQty,
+        unit: item.unit,
+        unitCost: item.unitCost
+      }));
+
+      await saveRestockOrderAction({
+        orderNumber: 'PO-' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+        supplierName: targetSupplier,
+        status,
+        createdBy: 'Automated System',
+        lines
+      });
+
+      onToast('Order saved successfully!');
+      window.location.reload();
+    } catch (e: any) {
+      onToast(e.message || 'Error saving order', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  }
   return (
     <AccessibleModal
       isOpen={isOpen}
@@ -245,31 +281,33 @@ export default function PurchaseOrderModal({
                 >
                   <Download size={14} /> Export CSV
                 </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className={styles.btnSecondary}
-                  style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
-                >
-                  <Printer size={14} /> Print PO
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyText}
-                  className={styles.btnSecondary}
-                  style={{ fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
-                >
-                  <Copy size={14} /> Copy PO Text
-                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className={styles.btnPrimary}
-              >
-                Done
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={styles.btnSecondary}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveOrder('draft')}
+                  className={styles.btnSecondary}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save as Draft'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveOrder('ordered')}
+                  className={styles.btnPrimary}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Mark Ordered'}
+                </button>
+              </div>
             </div>
           </>
         )}

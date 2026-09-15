@@ -1511,7 +1511,7 @@ export async function suggestNearbyCitiesAction(options: {
       const lower = c.name.toLowerCase().trim();
       if (!seen.has(lower)) {
         seen.add(lower);
-        deduplicatedCandidates.push(c: any);
+        deduplicatedCandidates.push(c);
       }
     }
 

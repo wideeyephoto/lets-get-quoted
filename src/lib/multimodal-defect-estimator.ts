@@ -4,21 +4,17 @@ export interface DefectItem {
   defectName: string;
   severity: 'minor' | 'moderate' | 'severe' | 'structural';
   recommendedRepair: string;
-  estimatedLaborHours: number;
-  estimatedMaterialCostDollars: number;
-  estimatedTotalDollars: number;
+  suggestedServiceId?: string;
+  suggestedQuantity?: number;
+  uncertaintyExplanation?: string;
+  missingInformation?: string;
 }
 
 export interface PhotoDefectEstimateResult {
   trade: string;
   overallDamageSummary: string;
   defects: DefectItem[];
-  totalEstimatedRepairDollars: number;
   urgency: 'routine' | 'urgent' | 'emergency';
-  suggestedQuoteDraft: {
-    title: string;
-    lineItems: Array<{ name: string; cost: number }>;
-  };
 }
 
 const responseSchema: Schema = {
@@ -44,55 +40,29 @@ const responseSchema: Schema = {
             enum: ['minor', 'moderate', 'severe', 'structural'],
           },
           recommendedRepair: { type: Type.STRING },
-          estimatedLaborHours: { type: Type.NUMBER },
-          estimatedMaterialCostDollars: { type: Type.NUMBER },
-          estimatedTotalDollars: { type: Type.NUMBER },
+          suggestedServiceId: { type: Type.STRING, description: 'Optional ID of the most relevant service from the price book, if provided.' },
+          suggestedQuantity: { type: Type.NUMBER, description: 'Optional suggested quantity for the recommended repair, if calculable.' },
+          uncertaintyExplanation: { type: Type.STRING, description: 'Explanation of any uncertainty about the defect or repair.' },
+          missingInformation: { type: Type.STRING, description: 'Any missing information needed to confidently price this repair.' },
         },
         required: [
           'defectName',
           'severity',
           'recommendedRepair',
-          'estimatedLaborHours',
-          'estimatedMaterialCostDollars',
-          'estimatedTotalDollars',
         ],
       },
-    },
-    totalEstimatedRepairDollars: {
-      type: Type.NUMBER,
-      description: 'Total estimated cost for all repairs (sum of defect estimatedTotalDollars)',
     },
     urgency: {
       type: Type.STRING,
       enum: ['routine', 'urgent', 'emergency'],
       description: 'The urgency of the required repairs.',
     },
-    suggestedQuoteDraft: {
-      type: Type.OBJECT,
-      properties: {
-        title: { type: Type.STRING, description: 'Title for the quote' },
-        lineItems: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING, description: 'Description of the quote line item' },
-              cost: { type: Type.NUMBER, description: 'Cost of the quote line item' },
-            },
-            required: ['name', 'cost'],
-          },
-        },
-      },
-      required: ['title', 'lineItems'],
-    },
   },
   required: [
     'trade',
     'overallDamageSummary',
     'defects',
-    'totalEstimatedRepairDollars',
     'urgency',
-    'suggestedQuoteDraft',
   ],
 };
 
@@ -151,8 +121,8 @@ export async function analyzePhotoDefectsAndEstimate(params: {
   const imageParts = await Promise.all(photoUrls.map(fetchImageAsPart));
 
   const priceBookContext = priceBook && priceBook.length > 0
-    ? `\nHere is the contractor's Price Book. If any of these line items apply to the defects you find, USE EXACTLY these names and costs in your suggested draft quote:\n${priceBook.map(item => `- ${item.name} ($${item.unitPrice}/${item.unit})`).join('\n')}`
-    : `\nThe contractor has no explicit price book. Use reasonable industry averages for the draft quote line items.`;
+    ? `\nHere is the contractor's Price Book (ID: Name ($Price/Unit)). If any of these services apply to the defects you find, include the exact service ID in 'suggestedServiceId' and the required quantity in 'suggestedQuantity':\n${priceBook.map(item => `- ${item.id}: ${item.name} ($${item.unitPrice}/${item.unit})`).join('\n')}`
+    : `\nThe contractor has no explicit price book. Provide repair recommendations without specific service IDs.`;
 
   const prompt = `You are an expert ${trade} estimator and inspector.
 Examine the following photos of a job site.
@@ -163,10 +133,9 @@ ${priceBookContext}
 Identify any defects, damage, or required repairs.
 Provide a structured estimate including:
 - An overall summary of the damage.
-- A list of itemized defects with severity, recommended repairs, labor hours, and material costs.
-- The total estimated cost.
-- The overall urgency of the repairs.
-- A suggested draft quote with line items that can be sent to the customer.`;
+- A list of itemized defects with severity, recommended repairs, and suggested services/quantities (if known).
+- Note any uncertainty or missing information for pricing.
+- The overall urgency of the repairs.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',

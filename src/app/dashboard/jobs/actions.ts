@@ -130,7 +130,7 @@ export async function createJobAction(formData: FormData) {
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
     title: `${job.ref} created`,
-    body: formatJobQuoteSummary(job: any),
+    body: formatJobQuoteSummary(job),
     visibility: 'client',
     sourceTable: 'jobs',
     sourceId: job.id,
@@ -773,7 +773,7 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
       listCrew(supabase, accountId),
     ]);
 
-    if (job: any) {
+    if (job) {
       const newlyAssigned = crewMembers.filter((member) => added.includes(member.id));
 
       // Push the field app (best-effort, never throws) alongside the SMS — the

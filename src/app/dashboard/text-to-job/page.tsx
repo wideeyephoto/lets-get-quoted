@@ -88,8 +88,8 @@ export default async function TextToJobDashboardPage({
   const formattedOwnerAlertPhone = ownerAlertPhone ? formatUsPhone(ownerAlertPhone) : null;
 
   const mappedCrew: CrewRow[] = (crewRows || []).map((c: any) => {
-    const verified = isCrewPhoneVerified(c: any);
-    const verificationInfo = resolveCrewPhoneVerification(c: any);
+    const verified = isCrewPhoneVerified(c);
+    const verificationInfo = resolveCrewPhoneVerification(c);
     return {
       id: c.id,
       name: c.name,

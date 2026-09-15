@@ -62,6 +62,8 @@ import {
   type DepreciationSchedule,
   type ToolCustodyLogEntry,
   type VanKitTemplate,
+  type RestockOrder,
+  type RestockOrderLine,
   TAX_GUIDANCE_SCHEDULES,
   COMMERCIAL_VEHICLE_TAX_TIP,
   calculateAssetDepreciation,
@@ -72,7 +74,7 @@ import {
   isToolOverdue,
   generateDepreciationScheduleCsv,
 } from '@/lib/inventory-tracker';
-import { formatUsdExact } from '@/lib/money-format';
+import { formatUsd, formatUsdExact } from '@/lib/money-format';
 import { validateToolPhotoFile } from '@/lib/tool-photo-validation';
 import {
   saveToolAction,
@@ -92,8 +94,12 @@ import {
   autofillToolFromStoreAction,
   searchStoreCatalogAction,
   seedStarterInventoryAction,
+  seedInitialInventoryAction,
   uploadToolPhotoAction,
   applyVanKitTemplateAction,
+  transferToolAction,
+  saveRestockOrderAction,
+  receiveRestockOrderLineAction,
 } from './actions';
 import { getTodayDateString, type StoreAutofillResult } from '@/lib/store-autofill';
 import AccessibleModal from './components/AccessibleModal';
@@ -109,6 +115,7 @@ interface InventoryClientProps {
   initialPayload?: InventoryPayload;
   crewMembers?: Array<{ id: string; name: string; role?: string }>;
   activeJobs?: Array<{ id: string; label: string; status?: string }>;
+  initialRestockOrders?: RestockOrder[];
   canWrite?: boolean;
   canCustody?: boolean;
 }
@@ -242,8 +249,8 @@ export default function InventoryClient({
   const searchParams = useSearchParams();
 
   const initialTab = (searchParams.get('tab') as 'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations') || 'tools';
-  const [activeTab, setActiveTab] = useState<'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations'>(
-    ['tools', 'fleet', 'stock', 'maintenance', 'locations'].includes(initialTab) ? initialTab : 'tools'
+  const [activeTab, setActiveTab] = useState<'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations' | 'orders'>(
+    ['tools', 'fleet', 'stock', 'maintenance', 'locations', 'orders'].includes(initialTab) ? initialTab : 'tools'
   );
   const [asOfDate, setAsOfDate] = useState<string>(searchParams.get('asOf') || getTodayDateString());
   const [isPending, startTransition] = useTransition();
@@ -334,7 +341,7 @@ export default function InventoryClient({
   const pendingStockDeltas = useRef<Map<string, { delta: number; timer: ReturnType<typeof setTimeout> }>>(new Map());
 
   // URL synchronization
-  const handleTabChange = useCallback((tab: 'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations') => {
+  const handleTabChange = useCallback((tab: 'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations' | 'orders') => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', tab);
@@ -1677,6 +1684,20 @@ export default function InventoryClient({
               {locations.length + vehicles.length}
             </span>
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'orders'}
+            onClick={() => handleTabChange('orders')}
+            className={`${styles.tabButton} ${activeTab === 'orders' ? styles.tabButtonActive : ''}`}
+          >
+            <ShoppingBag size={18} />
+            <span>Restock Orders</span>
+            <span className={`${styles.tabBadge} ${activeTab === 'orders' ? styles.tabBadgeActive : ''}`}>
+              {initialRestockOrders?.filter(o => o.status !== 'cancelled' && o.status !== 'received').length || 0}
+            </span>
+          </button>
         </nav>
       </div>
 
@@ -2565,11 +2586,12 @@ export default function InventoryClient({
                   <th>Item &amp; SKU</th>
                   <th>Category</th>
                   <th>Location</th>
-                  <th style={{ textAlign: 'center' }}>On Hand / Min Level</th>
+                  <th style={{ textAlign: 'center' }}>On Hand / Min</th>
+                  <th style={{ textAlign: 'center' }}>Incoming</th>
                   <th style={{ textAlign: 'right' }}>Unit Cost</th>
                   <th style={{ textAlign: 'right' }}>Total Value</th>
                   <th>Preferred Supplier</th>
-                  <th style={{ textAlign: 'center' }}>Stock Health</th>
+                  <th style={{ textAlign: 'center' }}>Health</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -2635,6 +2657,17 @@ export default function InventoryClient({
                         <div style={{ fontSize: '0.82rem', color: 'var(--inv-text-muted, #cbd5e1)', marginTop: '0.3rem', fontWeight: 600 }}>
                           Min: {item.minThreshold} {item.unit}
                         </div>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{ fontWeight: 800, color: '#38bdf8' }}>
+                          {
+                            (initialRestockOrders || [])
+                              .filter(o => o.status !== 'cancelled' && o.status !== 'received' && o.status !== 'draft')
+                              .flatMap(o => o.lines)
+                              .filter(l => l.sku === item.sku && l.destinationLocationName === item.location)
+                              .reduce((sum, l) => sum + Math.max(0, l.orderedQuantity - l.receivedQuantity), 0)
+                          }
+                        </span>
                       </td>
                       <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: 'var(--inv-text-primary, #f1f5f9)' }}>
                         {formatUsdExact(item.unitCost)}
@@ -2981,6 +3014,103 @@ export default function InventoryClient({
         </div>
       )}
 
+      {activeTab === 'orders' && (
+        <div className={styles.tabContent} role="tabpanel">
+          <div className={styles.sectionHeader}>
+            <div>
+              <h2 className={styles.sectionTitle}>Restock Orders</h2>
+              <p className={styles.sectionSubtitle}>
+                Manage purchase orders for stock replenishment
+              </p>
+            </div>
+            {canWrite && (
+              <div className={styles.actionsGroup}>
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  onClick={() => setPoModalOpen(true)}
+                >
+                  <ShoppingBag size={16} />
+                  <span>New Draft</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.tableWrap}>
+            <table className={styles.stockTable}>
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Supplier</th>
+                  <th>Status</th>
+                  <th>Lines</th>
+                  <th>Created</th>
+                  {canWrite && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {initialRestockOrders && initialRestockOrders.length > 0 ? (
+                  initialRestockOrders.map(order => (
+                    <tr key={order.id}>
+                      <td style={{ fontFamily: 'monospace' }}>{order.orderNumber}</td>
+                      <td>{order.supplierName}</td>
+                      <td>
+                        <span className={styles.badge} data-status={order.status}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>{order.lines.length} items</td>
+                      <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                      {canWrite && (
+                        <td>
+                          {order.status === 'draft' ? (
+                            <button
+                              type="button"
+                              className={styles.btnSecondary}
+                              onClick={async () => {
+                                try {
+                                  await saveRestockOrderAction({
+                                    ...order,
+                                    status: 'ordered',
+                                  });
+                                  window.location.reload();
+                                } catch(e: any) {
+                                  setToast({ message: e.message || 'Error', type: 'error' });
+                                }
+                              }}
+                            >
+                              Mark Ordered
+                            </button>
+                          ) : (order.status === 'ordered' || order.status === 'partially_received') ? (
+                            <button
+                              type="button"
+                              className={styles.btnPrimary}
+                              onClick={() => {
+                                // For simplicity we receive all outstanding in this prototype
+                                // Or we could open a receiving modal
+                                alert('In a real app, this would open a line-item receiving modal');
+                              }}
+                            >
+                              Receive Lines
+                            </button>
+                          ) : null}
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={canWrite ? 6 : 5} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <p style={{ color: 'var(--inv-text-muted)' }}>No restock orders found.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {/* ── MODALS ──────────────────────────────────────────────────────────── */}
 
       {/* Check Out Tool Modal */}
