@@ -17,7 +17,7 @@ describe('Dispatch latency contract', () => {
     const ai = main.find((item: { ai?: unknown }) => item.ai).ai;
     expect(main.find((item: { answer?: unknown }) => item.answer).answer.max_duration).toBe(598);
     expect(ai.params.energy_level).toBe(62);
-    expect(ai.params.barge_min_words).toBe(2);
+    expect(ai.params.barge_min_words).toBe(contractorMode ? 1 : 2);
     expect(ai.params.end_of_speech_timeout).toBe(contractorMode ? 700 : 1000);
     expect(ai.params.enable_turn_detection).toBe(true);
     expect(ai.params.turn_detection_timeout).toBe(250);
@@ -29,6 +29,7 @@ describe('Dispatch latency contract', () => {
       expect(ai.params.enable_text_normalization).toBe('off');
       expect(ai.params.redact_prompt).toContain('Do not insert category names');
       expect(ai.params.transparent_barge).toBe(true);
+      expect(ai.params.enable_barge).toBe('all');
       expect(ai.params.barge_functions).toBe(false);
       expect(ai.params.interrupt_prompt).toContain('do not restart or summarize');
       const lookup = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'lookup_jobs');
@@ -65,6 +66,19 @@ describe('Dispatch latency contract', () => {
     const ai = main.find((item: { ai?: unknown }) => item.ai).ai;
     expect(ai.params.energy_level).toBe(70);
     expect(ai.params.barge_min_words).toBe(3);
+  });
+
+  it('keeps one-word staff interruption enabled even with a higher general word threshold', () => {
+    vi.stubEnv('SIGNALWIRE_VOICE_BARGE_MIN_WORDS', '3');
+    const answer = signalwireVoiceProvider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://example.com/receipt',
+      receiptAuthorization: { scheme: 'basic', username: 'fixture', password: 'fixture' },
+      greeting: 'Hello', capMinutes: 10, transferTo: null,
+      swaigUrl: 'https://example.com/swaig', contractorMode: true,
+    });
+    const ai = JSON.parse(answer.body).sections.main.find((item: { ai?: unknown }) => item.ai).ai;
+    expect(ai.params).toMatchObject({ barge_min_words: 1, enable_barge: 'all', barge_functions: false });
+    expect(ai.params.interrupt_prompt).toContain('For stop, pause, or hold on alone, wait');
   });
 
   const context: VoiceGroundingContext = {

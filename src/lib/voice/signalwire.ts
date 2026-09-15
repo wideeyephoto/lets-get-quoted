@@ -880,7 +880,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
             energy_level: voiceEnergyLevel(),
-            barge_min_words: voiceBargeMinWords(),
+            // Staff commands such as "Stop" and "Pause" are one word. The
+            // general noise threshold must not prevent their interruption.
+            barge_min_words: plan.contractorMode ? 1 : voiceBargeMinWords(),
             end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
             enable_turn_detection: true,
             turn_detection_timeout: 250,
@@ -890,6 +892,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               auto_correct: true,
               enable_text_normalization: 'off',
               transparent_barge: true,
+              enable_barge: 'all',
               barge_functions: false,
               interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
             } : {}),
