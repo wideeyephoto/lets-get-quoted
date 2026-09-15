@@ -358,6 +358,15 @@ describe('rendering an answer', () => {
     expect(swml.sections.main[1].play.say_voice).toBe('rime.eyre:coda');
     expect(ai.prompt.text).toContain('Begin with one brief invitation');
     expect(ai.prompt.text).toContain('Ask it only once');
+    expect(ai.prompt.text).toContain('During an intake review, omit the full callback number');
+    expect(ai.prompt.text).toContain('silently remove a leading "+1" or "1"');
+    expect(ai.prompt.text).toContain('Never say "+1", "plus one", "country code", or read a leading "1" aloud');
+    expect(ai.prompt.text).toContain('final intake recap at about 1.2 times your normal speaking speed');
+    expect(ai.languages).toEqual([
+      expect.objectContaining({ name: 'English', auto_speed: true }),
+      expect.objectContaining({ name: 'Spanish', auto_speed: true }),
+    ]);
+    expect(ai.params.tts_number_format).toBe('national');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
     expect(swml.sections.main[0].answer.max_duration).toBe(598);

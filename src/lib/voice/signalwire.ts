@@ -871,8 +871,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         ai: {
           languages: [
-            { name: 'English', code: 'en-US', voice: 'rime.eyre:coda' },
-            { name: 'Spanish', code: 'es-US', voice: 'rime.eyre:coda' },
+            { name: 'English', code: 'en-US', voice: 'rime.eyre:coda', ...(!plan.contractorMode ? { auto_speed: true } : {}) },
+            { name: 'Spanish', code: 'es-US', voice: 'rime.eyre:coda', ...(!plan.contractorMode ? { auto_speed: true } : {}) },
           ],
           voice: 'rime.eyre:coda',
           ...(plan.hints && plan.hints.length > 0 ? { hints: plan.hints } : {}),
@@ -885,6 +885,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
             energy_level: voiceEnergyLevel(),
+            // The provider otherwise expands E.164 values as "plus one...".
+            // Keep storage normalized while rendering caller-facing numbers locally.
+            tts_number_format: 'national',
             // Staff commands such as "Stop" and "Pause" are one word. The
             // general noise threshold must not prevent their interruption.
             barge_min_words: plan.contractorMode ? 1 : voiceBargeMinWords(),
@@ -916,7 +919,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'The prerecorded opening already introduced the business and identified you as its AI receptionist. It did not ask a question. Begin with one brief invitation such as "How can I help you today?" Ask it only once, and do not repeat it after the caller starts speaking. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
-              + 'When speaking, repeating, confirming, or reading back any phone number to the caller, always speak it as a standard 10-digit number starting directly with the area code (e.g. 810-304-2061); never include "+1", "plus one", or a leading "1". '
+              + 'Phone numbers are stored internally in international format, but that storage format must never be spoken. During an intake review, omit the full callback number and say "the callback number you provided." If the caller explicitly asks to hear it, silently remove a leading "+1" or "1" and speak exactly the remaining 10 digits starting with the area code (e.g. 810-304-2061). Never say "+1", "plus one", "country code", or read a leading "1" aloud. '
+              + 'Deliver the final intake recap at about 1.2 times your normal speaking speed. Keep it to one compact sentence with commas between the caller\'s name, service address, request, and preferred time. Do not add field labels, filler, or the callback number. Return to normal speed after the recap. '
               + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '
