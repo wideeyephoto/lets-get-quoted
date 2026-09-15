@@ -19,6 +19,8 @@ import { attentionBadgeLabel } from '@/lib/lead-queue';
 import { useNavCustomization, useNavCollapsed, useNavPinned } from '@/lib/nav-customization';
 import { useNavVisibility } from '@/lib/nav-visibility-client';
 import { selectWorkspaceAction } from '@/app/workspaces/actions';
+import { NavigationSidebar } from './navigation-sidebar';
+import { NavigationSettingsButton } from './navigation-settings/NavigationSettingsButton';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
 // see the status route), so it is the only one whose digits can run away from
@@ -198,6 +200,8 @@ type AccountStatus = {
   /** Whether any communication or AI credit balance is low. */
   lowCreditAlert?: boolean;
   nav?: { visible: string[]; demoted: string[]; hiddenCount: number } | null;
+  navPreferences?: any;
+  eligibleNavIds?: string[];
 };
 
 // Whether an automation is actually accepting work right now. 'paused' is the
@@ -437,6 +441,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [lowCreditAlert, setLowCreditAlert] = useState(false);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [navPreferences, setNavPreferences] = useState<any>(null);
+  const [eligibleNavIds, setEligibleNavIds] = useState<string[]>([]);
   const isDashboard = pathname.startsWith('/dashboard');
   const isTransactional =
     pathname.startsWith('/pay') ||
@@ -785,6 +791,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           if (data.nav) {
             setNav(data.nav);
           }
+          if (data.navPreferences) setNavPreferences(data.navPreferences);
+          if (data.eligibleNavIds) setEligibleNavIds(data.eligibleNavIds);
         }
         return data;
       })
@@ -1348,6 +1356,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               </Link>
             )}
 
+            <NavigationSettingsButton />
             <button
               type="button"
               className="sidenav-collapse-toggle"
@@ -1430,54 +1439,36 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
 
           <nav className="sidenav-nav" aria-label="Dashboard">
-            {NAV_GROUPS.map((group) => {
-              let visibleHrefs = nav
-                ? group.hrefs.filter((href) => (nav.visible.includes(href) || isPinned(href)) && (!nav.demoted?.includes(href) || isPinned(href)))
-                : group.hrefs;
-
-              // Trade promotion: order promoted items at priority positions,
-              // but ensure Leads remains in slot one of Work where the day starts.
-              if (nav?.promoted && nav.promoted.length > 0) {
-                const promotedInGroup = nav.promoted.filter((href) => visibleHrefs.includes(href));
-                const othersInGroup = visibleHrefs.filter((href) => !nav.promoted?.includes(href));
-                if (othersInGroup.includes('/dashboard/leads')) {
-                  const leadsIdx = othersInGroup.indexOf('/dashboard/leads');
-                  visibleHrefs = [
-                    ...othersInGroup.slice(0, leadsIdx + 1),
-                    ...promotedInGroup,
-                    ...othersInGroup.slice(leadsIdx + 1),
-                  ];
-                } else {
-                  visibleHrefs = [...promotedInGroup, ...othersInGroup];
-                }
-              }
-
-              if (visibleHrefs.length === 0) return null;
-              const isSingle = visibleHrefs.length === 1;
-
-              return (
-                <div className={`sidenav-group sidenav-group--${group.accent}${isSingle ? ' is-single' : ''}`} key={group.label}>
-                  {!isSingle ? <p className="sidenav-glabel">{group.label}</p> : null}
-                  {visibleHrefs.map((href) => renderSideLink(href, '', isPinned(href)))}
-                </div>
-              );
-            })}
-            {(() => {
-              const demotedHrefs = nav && nav.demoted
-                ? nav.demoted.filter((href) => !isPinned(href))
-                : [];
-              if (demotedHrefs.length === 0) return null;
-              return (
-                <div className="sidenav-group sidenav-group--less-used" key="Less used">
-                  <p className="sidenav-glabel">Less used</p>
-                  {demotedHrefs.map((href) => renderSideLink(href, 'sidenav-link--demoted', true))}
-                </div>
-              );
-            })()}
-            {/* Dashboard closes the rail rather than opening it. It is the
-                summary of everything above, not a step before any of it, and at
-                the top it took the first slot from Leads — which is where the
-                day actually starts. */}
+            <NavigationSidebar
+              preferences={navPreferences}
+              eligibleNavIds={eligibleNavIds}
+              isPinned={isPinned}
+              isActive={isActiveNav}
+              pathname={pathname}
+              isCollapsed={isCollapsed}
+              togglePin={togglePin}
+              renderPillAndCount={(href) => {
+                const count = countByHref[href] ?? 0;
+                const total = totalByHref[href];
+                const active = isActiveNav(pathname, href);
+                const isNew = !active && isSectionNew(newestByHref[href], navSeen[href]);
+                const scheduleRollupState = quickStopState === 'paused' || bookingState === 'paused' ? 'paused' : quickStopState === 'on' || bookingState === 'on' ? 'on' : quickStopState === 'off' && bookingState === 'off' ? 'off' : 'unknown';
+                const state = href === '/dashboard/schedule' ? scheduleRollupState : href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : href === '/dashboard/sites' ? (sitePublished ? 'on' : 'off') : 'unknown';
+                const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href]);
+                const showCount = !showState && count > 0;
+                const showNew = !showState && !showCount && isNew;
+                const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0);
+                
+                return (
+                  <>
+                    {showState && <span className="sidenav-state-pill">{state.toUpperCase()}</span>}
+                    {showCount && <span className={`sidenav-count${href === '/dashboard/leads' ? ' attention' : ''}`} aria-label={`${count} items needing attention`}>{attentionDigits(href, count)}</span>}
+                    {showNew && <span className={`sidenav-new-badge${href === '/dashboard/leads' && newestLeadHighValue ? ' high-value' : ''}`}>New</span>}
+                    {showTotal && <span className="sidenav-total-hollow" aria-label={total.title}>{total.count}</span>}
+                  </>
+                );
+              }}
+            />
             {renderSideLink('/dashboard', 'sidenav-bottom')}
           </nav>
 
