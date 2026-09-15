@@ -118,16 +118,20 @@ describe('AI Voice contractor job resolution', () => {
 });
 
 describe('AI Voice spoken job choices', () => {
-  it.each(['Jay Demo 1071', 'jay demo 1 0 7 1', 'job jay dash demo dash 1071.'])('looks up the complete spoken reference %s after a literal miss', async query => {
-    const job = { ...baseJob, ref: 'J-DEMO-1071' };
+  it.each(['Jay Demo 1071', 'jay demo 1 0 7 1', 'job jay dash demo dash 1071.',
+    'j demo one zero seven one', 'Jay Demo one oh seven one', 'job j hyphen demo hyphen one 0 seven 1.',
+    'J-DEMO-one-zero-seven-one', 'j demo 1071',
+  ])('looks up the complete spoken reference %s after a literal miss', async query => {
+    const job = { ...baseJob, ref: 'J-DEMO-1071', quoted_amount: 2300 };
     const { admin, search, rpc } = mockAdmin();
     search.mockResolvedValueOnce({ data: { jobs: [], total_count: 0 }, error: null })
       .mockResolvedValueOnce({ data: { jobs: [job], total_count: 1 }, error: null });
-    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query }));
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query, include_details: true }));
     expect(search.mock.calls.map(call => call[1].p_query)).toEqual([query, job.ref]);
     expect(search).toHaveBeenLastCalledWith('search_voice_jobs', { p_account_id: ACCOUNT_ID, p_query: job.ref, p_phone_candidates: null });
     expect(result.response).toContain('J-DEMO-1071');
     expect(result.response).toContain('1 matching job');
+    expect(result.response).toContain('recorded quote: two thousand three hundred dollars');
     expect(rpc).not.toHaveBeenCalled();
   });
   it('preserves a literal customer match instead of rewriting it as a reference', async () => {
@@ -135,7 +139,10 @@ describe('AI Voice spoken job choices', () => {
     const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: 'Jay Demo 1071' }));
     expect(search).toHaveBeenCalledTimes(1); expect(result.response).toContain(baseJob.ref);
   });
-  it.each(['Jay Demo', 'Jay', 'Jay Demo 1071 or 1072', 'Jay Smith at 1071 Main Street'])('does not guess an incomplete or ambiguous spoken reference: %s', async query => {
+  it.each(['Jay Demo', 'Jay', 'Jay Demo 1071 or 1072', 'Jay Smith at 1071 Main Street',
+    'j demo one zero seven one or two', 'one zero seven one', 'j demo ten seventy one',
+    'j demo one zero seven one at Main Street', 'j demo 1234567890123',
+  ])('does not guess an incomplete or ambiguous spoken reference: %s', async query => {
     const { admin, search, rpc } = mockAdmin();
     const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query }));
     expect(search).toHaveBeenCalledTimes(1); expect(result.response).toContain('no jobs matching');
