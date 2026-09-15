@@ -63,16 +63,12 @@ describe('Photo Defect Estimator Server Action', () => {
         defectName: 'Missing Shingles',
         severity: 'minor',
         recommendedRepair: 'Replace 3 tabs',
-        estimatedLaborHours: 1,
-        estimatedMaterialCostDollars: 50,
-        estimatedTotalDollars: 150
+        suggestedServiceId: 'service-1',
+        suggestedQuantity: 3,
+        uncertaintyExplanation: null,
+        missingInformation: []
       }],
-      totalEstimatedRepairDollars: 150,
       urgency: 'routine',
-      suggestedQuoteDraft: {
-        title: 'Roof Repair',
-        lineItems: [{ name: 'Shingle replacement', cost: 150 }]
-      }
     };
 
     mockGenerateContent.mockResolvedValueOnce({
@@ -87,7 +83,7 @@ describe('Photo Defect Estimator Server Action', () => {
 
     expect(result.ok).toBe(true);
     expect(result.estimate).toBeDefined();
-    expect(result.estimate?.totalEstimatedRepairDollars).toBe(150);
+    expect(result.estimate?.defects[0].suggestedQuantity).toBe(3);
   });
 
   it('handles AI returning malformed JSON gracefully', async () => {
@@ -119,6 +115,22 @@ describe('Photo Defect Estimator Server Action', () => {
     expect(result.message).toContain('AI photo analysis is currently undergoing upgrades');
 
     process.env.GEMINI_API_KEY = original;
+  });
+
+  it('handles AI quota exhaustion (429) gracefully', async () => {
+    process.env.GEMINI_API_KEY = 'test-key';
+    mockGenerateContent.mockRejectedValueOnce({
+      status: 429,
+      message: 'Quota exceeded for quota metric'
+    });
+
+    const result = await analyzePhotoDefectsAction({
+      trade: 'Roofing',
+      photoUrls: ['data:image/jpeg;base64,dummy'],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('Service is currently busy or over quota');
   });
 
   it('catches and reports unauthorized errors gracefully', async () => {

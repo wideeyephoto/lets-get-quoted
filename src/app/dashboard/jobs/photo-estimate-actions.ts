@@ -93,8 +93,16 @@ export async function analyzePhotoDefectsAction(
       priceBook,
       estimateId,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to analyze photo defects:', error);
+    
+    if (error?.status === 429) {
+      return {
+        ok: false,
+        message: 'Service is currently busy or over quota. Please try again later.'
+      };
+    }
+
     const message = error instanceof Error ? error.message : 'Failed to analyze photo defects.';
     return {
       ok: false,
