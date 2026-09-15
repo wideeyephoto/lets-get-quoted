@@ -1,3 +1,5 @@
+import { supabaseHosts } from './supabase-hosts.mjs';
+
 export const MAX_PROXY_REDIRECTS = 3;
 export const MAX_PROXY_IMAGE_BYTES = 35 * 1024 * 1024; // 35 MB matching lead photo upload limit
 
@@ -14,7 +16,7 @@ export function getConfiguredAllowedHosts(): Set<string> {
     try {
       const parsed = new URL(urlStr!);
       if (parsed.hostname) {
-        allowed.add(parsed.hostname.toLowerCase());
+        for (const host of supabaseHosts(parsed.href)) allowed.add(host);
       }
     } catch {
       // ignore invalid URL in env

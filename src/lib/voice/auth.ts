@@ -1,4 +1,5 @@
 import 'server-only';
+import { supabaseHosts } from '@/lib/supabase-hosts.mjs';
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
@@ -388,7 +389,7 @@ export function isTrustedVoiceMediaUrl(urlStr: string): boolean {
     const parsed = new URL(urlStr);
     if (parsed.protocol !== 'https:' || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) return false;
     const trustedDomains = ['signal' + 'wire.com', 'storage.googleapis.com', 'supabase.co'];
-    return trustedDomains.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
+    return supabaseHosts(process.env.NEXT_PUBLIC_SUPABASE_URL).includes(parsed.hostname) || trustedDomains.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
   } catch {
     return false;
   }

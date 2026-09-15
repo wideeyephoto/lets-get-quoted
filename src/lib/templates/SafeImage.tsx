@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { supabaseHosts } from '@/lib/supabase-hosts.mjs';
 
 // next/image throws during server render — 500-ing the whole public page — if
 // src is on a host not in next.config's images.remotePatterns. Contractor image
@@ -9,7 +10,7 @@ import Image from 'next/image';
 export function isOptimizableHost(src: string): boolean {
   try {
     const { hostname } = new URL(src);
-    return hostname === 'images.unsplash.com' || hostname === 'images.pexels.com' || hostname.endsWith('.supabase.co');
+    return hostname === 'images.unsplash.com' || hostname === 'images.pexels.com' || supabaseHosts(process.env.NEXT_PUBLIC_SUPABASE_URL).includes(hostname);
   } catch {
     return false;
   }

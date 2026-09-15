@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+import { supabaseHosts } from './src/lib/supabase-hosts.mjs';
 
 // Derive the Supabase Storage hostname from the public env var at config-eval
 // time (mirrors src/lib/supabase-url.ts). Falls back to a wildcard so a
@@ -134,7 +135,9 @@ const nextConfig = {
       { protocol: 'https', hostname: 'files.cdn.printful.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.pexels.com', pathname: '/**' },
-      { protocol: 'https', hostname: supabaseImageHost(), pathname: '/storage/v1/object/public/**' },
+      ...supabaseHosts(`https://${supabaseImageHost()}`).map((hostname) => ({
+        protocol: 'https', hostname, pathname: '/storage/v1/object/public/**',
+      })),
     ],
   },
 };

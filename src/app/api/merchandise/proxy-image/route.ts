@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { isPrivateIp } from '@/lib/public-api/ssrf-guard';
+import { supabaseHosts } from '@/lib/supabase-hosts.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ function isHostPermitted(hostname: string): boolean {
   }
 
   const projectHost = getProjectSupabaseHost();
-  if (projectHost && host === projectHost) {
+  if (projectHost && supabaseHosts(`https://${projectHost}`).includes(host)) {
     return true;
   }
 
