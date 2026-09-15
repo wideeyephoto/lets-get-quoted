@@ -54,6 +54,7 @@ export default function PhotoDefectEstimatorModal({
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<PhotoDefectEstimateResult | null>(null);
   const [priceBook, setPriceBook] = useState<Array<{ id: string; name: string; unitPrice: number; unit: string }>>([]);
+  const [estimateId, setEstimateId] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function PhotoDefectEstimatorModal({
       setError(null);
       setPhotos([]);
       setEstimate(null);
+      setEstimateId(null);
     }
   }, [isOpen, defaultTrade, defaultNotes]);
 
@@ -147,6 +149,7 @@ export default function PhotoDefectEstimatorModal({
       if (res.ok && res.estimate) {
         setEstimate(res.estimate);
         if (res.priceBook) setPriceBook(res.priceBook);
+        if (res.estimateId) setEstimateId(res.estimateId);
       } else {
         setError(res.message || 'Inspection failed. Please try again.');
       }
@@ -169,18 +172,38 @@ export default function PhotoDefectEstimatorModal({
   };
   const totalCost = estimate?.defects.reduce((acc, curr) => acc + getCalculatedCost(curr), 0) || 0;
 
-  const handleApplyToQuote = () => {
-    if (!estimate || !onApplyLineItems) return;
+  const handleApplyToQuote = async () => {
+    if (!estimate || !onApplyLineItems || !jobId) return;
+    
     const items = estimate.defects.map((d) => ({
       name: d.defectName + ' - ' + d.recommendedRepair,
       cost: getCalculatedCost(d),
+      suggestedServiceId: d.suggestedServiceId,
+      quantity: d.suggestedQuantity || 1,
+      defectName: d.defectName,
+      recommendedRepair: d.recommendedRepair,
+      severity: d.severity,
     }));
 
-    onApplyLineItems(items);
-    setApplied(true);
-    setTimeout(() => {
-      onClose();
-    }, 1200);
+    try {
+      if (estimateId) {
+        const { applyPhotoDefectsAction } = await import('./photo-estimate-actions');
+        await applyPhotoDefectsAction({
+          jobId,
+          estimateId,
+          items,
+          priceBook,
+        });
+      }
+      
+      onApplyLineItems(items);
+      setApplied(true);
+      setTimeout(() => {
+        onClose();
+      }, 1200);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save estimate link.');
+    }
   };
 
   const getSeverityStyle = (severity: DefectItem['severity']) => {

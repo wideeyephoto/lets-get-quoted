@@ -167,7 +167,7 @@ export async function createPhotoEstimateReview(
     .single();
 
   if (error) {
-    throw new Error(Failed to create photo estimate review: );
+    throw new Error(`Failed to create photo estimate review: ${error.message}`);
   }
   return data;
 }
@@ -193,7 +193,7 @@ export async function createPhotoEstimateQuoteLink(
     .single();
 
   if (error) {
-    throw new Error(Failed to create photo estimate quote link: );
+    throw new Error(`Failed to create photo estimate quote link: ${error.message}`);
   }
   return data;
 }

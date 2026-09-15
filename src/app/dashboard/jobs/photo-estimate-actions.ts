@@ -20,6 +20,7 @@ export interface AnalyzePhotoDefectsResponse {
   estimate?: PhotoDefectEstimateResult;
   message?: string;
   priceBook?: Array<{ id: string; name: string; unitPrice: number; unit: string }>;
+  estimateId?: string;
 }
 
 export async function uploadEstimatePhotoAction(formData: FormData) {
@@ -67,10 +68,13 @@ export async function analyzePhotoDefectsAction(
       priceBook,
     });
 
+    let estimateId: string | undefined = undefined;
+
     if (params.jobId) {
       const { createPhotoEstimate, createPhotoEstimateInput, createPhotoEstimateRun } = await import('@/lib/photo-estimate/repository');
       
       const estimate = await createPhotoEstimate(supabase, accountId, params.jobId, userId, trade);
+      estimateId = estimate.id;
       await createPhotoEstimateInput(supabase, estimate.id, 1, notes, params.photoPaths || [], userId);
       await createPhotoEstimateRun(
         supabase,
@@ -87,6 +91,7 @@ export async function analyzePhotoDefectsAction(
       ok: true,
       estimate: estimateResult,
       priceBook,
+      estimateId,
     };
   } catch (error) {
     console.error('Failed to analyze photo defects:', error);
