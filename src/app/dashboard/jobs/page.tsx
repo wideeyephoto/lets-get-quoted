@@ -296,14 +296,6 @@ export default async function JobsPage({
             canCreate={canCreate}
             toolbarAccessory={
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Link
-                  href="/dashboard/text-to-job"
-                  className="btn secondary"
-                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
-                  title="Create or update jobs via SMS & voice memo"
-                >
-                  🎙️ Text-to-Job
-                </Link>
                 <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
               </div>
             }

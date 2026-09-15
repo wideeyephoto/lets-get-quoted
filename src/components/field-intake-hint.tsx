@@ -182,8 +182,8 @@ export default function FieldIntakeHint({
 
           <div className={styles.popoverFooter}>
             <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" className={styles.saveContactBtn} />
-            <Link href="/features/text-to-job" className={styles.learnMoreLink}>
-              How it works →
+            <Link href="/dashboard/text-to-job" className={styles.learnMoreLink} title="Configure SMS and voice intake">
+              Text-to-Job →
             </Link>
           </div>
         </div>
