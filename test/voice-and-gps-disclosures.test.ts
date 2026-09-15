@@ -70,14 +70,14 @@ describe('Voice & GPS Compliance Disclosures', () => {
 
       expect(recordAction).toBeDefined();
       expect(playAction).toBeDefined();
-      expect(playAction.play.urls[0]).toBe('https://app.letsgetquoted.com/audio/ai-disclosure-eyre-v1.wav');
+      expect(playAction.play.urls[0]).toBe('https://app.letsgetquoted.com/audio/ai-disclosure-eyre-v2.wav');
       expect(playAction.play.urls[2]).toContain(RECORDING_DISCLOSURE);
       expect(mainSections.indexOf(playAction)).toBeLessThan(mainSections.indexOf(recordAction));
       // Pin the approved spoken disclosure itself, not only its URL. Changing
       // this clip requires checking its wording and listening to it again.
-      const disclosure = fs.readFileSync(path.resolve(process.cwd(), 'public/audio/ai-disclosure-eyre-v1.wav'));
+      const disclosure = fs.readFileSync(path.resolve(process.cwd(), 'public/audio/ai-disclosure-eyre-v2.wav'));
       expect(createHash('sha256').update(disclosure).digest('hex'))
-        .toBe('29b6b75fc4c1f85d65921c37b4a9c7e7a21b0cedaf51a7d361e5c4fc92174848');
+        .toBe('72df7bb29d028d0b9a644a82760174b80c3231ac692d290bee970aba08dfa8e3');
     });
   });
 

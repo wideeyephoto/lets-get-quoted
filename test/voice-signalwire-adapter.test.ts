@@ -353,7 +353,7 @@ describe('rendering an answer', () => {
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
     expect(swml.sections.main[1].play.urls).toEqual([
-      'https://letsgetquoted.com/audio/ai-disclosure-eyre-v1.wav',
+      'https://letsgetquoted.com/audio/ai-disclosure-eyre-v2.wav',
       'https://letsgetquoted.com/audio/dispatch-connected-v3.wav',
       'say: Thanks for calling.',
     ]);
@@ -391,7 +391,7 @@ describe('rendering an answer', () => {
 
     expect(playIndex).toBeGreaterThan(-1);
     expect(recordIndex).toBeGreaterThan(playIndex);
-    expect(main[playIndex].play.urls[0]).toBe('https://x.test/audio/ai-disclosure-eyre-v1.wav');
+    expect(main[playIndex].play.urls[0]).toBe('https://x.test/audio/ai-disclosure-eyre-v2.wav');
     expect(main[playIndex].play.urls[2]).toContain('This call may be recorded for quality and training purposes.');
   });
 

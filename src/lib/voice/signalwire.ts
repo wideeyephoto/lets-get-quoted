@@ -301,7 +301,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         play: {
           urls: [
-            new URL('/audio/ai-disclosure-eyre-v1.wav', plan.receiptUrl).toString(),
+            new URL('/audio/ai-disclosure-eyre-v2.wav', plan.receiptUrl).toString(),
             new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
             ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
           ],
