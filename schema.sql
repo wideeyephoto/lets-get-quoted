@@ -8761,7 +8761,7 @@ grant execute on function public.workspace_purchased_capacity_units(uuid, text)
 
 commit;
 
--- Source: migrations/20260819080000_usage_overage_authorization.sql
+-- Source: migrations/20260820114124_usage_overage_authorization.sql
 -- Overage a contractor asked for, capped at a number they chose.
 --
 -- WHY THE SHAPE IS WHAT IT IS. The price book's rule is absolute: LGQ never
@@ -9986,7 +9986,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819170000_revoke_truncate_from_browser_roles.sql
+-- Source: migrations/20260820004313_revoke_truncate_from_browser_roles.sql
 -- Take TRUNCATE away from anon and authenticated, on every table in public.
 --
 -- WHY. A survey of production found 84 tables with TRUNCATE granted to both
@@ -10092,7 +10092,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819180000_top_up_ledger_voice_skus.sql
+-- Source: migrations/20260820004414_top_up_ledger_voice_skus.sql
 -- Let the top-up purchase ledger record the four voice SKUs.
 --
 -- WHY. `billing_top_up_purchase_operations` binds every top-up id to its
@@ -10204,7 +10204,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819190000_voice_minute_allowance.sql
+-- Source: migrations/20260820004438_voice_minute_allowance.sql
 -- Grant voice minutes, so the meter has something to measure.
 --
 -- THE BLOCKER THIS REMOVES. Nothing fills a `voice_minutes` ledger. The monthly
@@ -10396,7 +10396,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819200000_assert_canonical_reset_untouched.sql
+-- Source: migrations/20260820005035_assert_canonical_reset_untouched.sql
 -- Actually assert what 20260819190000 claimed to assert.
 --
 -- WHAT WENT WRONG. That migration ended with a post-condition labelled "THE ONE
@@ -10475,7 +10475,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819260000_overage_settlement.sql
+-- Source: migrations/20260820074457_overage_settlement.sql
 -- Turn accrued overage into something that can be charged.
 --
 -- THE GAP. `workspace_overage_accruals` has been written since 20260819080000
@@ -10857,7 +10857,7 @@ end $post$;
 
 commit;
 
--- Source: migrations/20260819290000_overage_accrual_idempotency.sql
+-- Source: migrations/20260820120240_overage_accrual_idempotency.sql
 -- Give the overage accrual an idempotency anchor.
 --
 -- THE HOLE. authorize_usage_overage took the cap lock, compared the accrued
@@ -11237,7 +11237,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260819300000_release_respects_settled_period.sql
+-- Source: migrations/20260820120250_release_respects_settled_period.sql
 -- A settled period's accruals are frozen.
 --
 -- THE INTERACTION. close_overage_period takes a snapshot of the accrual rows
@@ -11368,7 +11368,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260819310000_cap_counts_overlapping_periods.sql
+-- Source: migrations/20260820120304_cap_counts_overlapping_periods.sql
 -- Stop a spending cap re-arming itself when the period boundary moves.
 --
 -- THE DOUBLE SPEND. The cap is one number per workspace with no period attached
@@ -11575,7 +11575,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260820110000_voice_allowance_survives_a_moved_period.sql
+-- Source: migrations/20260820125506_voice_allowance_survives_a_moved_period.sql
 -- A moved billing boundary must not hand out a second month of voice minutes.
 --
 -- THE LEAK. grant_voice_minute_allowance built its idempotency key out of
@@ -11776,7 +11776,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260820120000_settle_a_voice_overage_for_what_was_used.sql
+-- Source: migrations/20260820125518_settle_a_voice_overage_for_what_was_used.sql
 -- A twenty-second wrong number costs $21, and nothing ever gives it back.
 --
 -- THE SHAPE OF IT. A phone call cannot be measured before it happens, so the
@@ -27091,7 +27091,7 @@ $$;
 
 commit;
 
--- Source: migrations/20260903172223_owner_shared_field_command_routing.sql
+-- Source: migrations/20260903202613_owner_shared_field_command_routing.sql
 -- Keep LGQ platform-lane traffic out of the contractor's customer inbox.
 --
 -- The transcript row remains durable and keeps every receipt/task foreign key
@@ -27700,7 +27700,7 @@ $$;
 
 commit;
 
--- Source: migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql
+-- Source: migrations/20260903203149_sms_enqueue_delivery_overload_cleanup.sql
 -- Remove the obsolete enqueue_sms_delivery overload left behind when
 -- p_available_at was added as an optional thirteenth argument. Keeping both
 -- signatures makes named twelve-argument calls ambiguous inside PostgreSQL,
@@ -27825,7 +27825,7 @@ notify pgrst, 'reload schema';
 
 commit;
 
--- Source: migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql
+-- Source: migrations/20260903203757_sms_enqueue_delivery_replay_hardening.sql
 -- Preserve the legacy enqueue contract after consolidating onto the delayed
 -- delivery signature. Idempotent replays must return the real delivery-task
 -- state and must fail closed if an event ever exists without its task.
@@ -36633,7 +36633,7 @@ $verify_registry_callback_fail_closed$;
 
 commit;
 
--- Source: migrations/20260908173107_sms_dispatch_help_account_binding.sql
+-- Source: migrations/20260908173701_sms_dispatch_help_account_binding.sql
 -- A dispatch HELP receipt previously had no account binding, even for one
 -- consented active crew workspace. The production canary gate consequently
 -- suppressed its compliance acknowledgment. Use the existing STOP/START
@@ -36679,7 +36679,7 @@ $migration$;
 
 commit;
 
--- Source: migrations/20260908175833_subcontractor_sms_projection_service_grant.sql
+-- Source: migrations/20260908201549_subcontractor_sms_projection_service_grant.sql
 -- The offer-link trigger runs as the server's service_role. Its nested
 -- projector call needs EXECUTE; browser roles must remain excluded.
 begin;
@@ -36687,7 +36687,7 @@ grant execute on function public.apply_subcontractor_sms_event_projection(uuid)
   to service_role;
 commit;
 
--- Source: migrations/20260914134735_sms_carrier_opt_out_projection.sql
+-- Source: migrations/20260914145820_sms_carrier_opt_out_projection.sql
 -- Carrier 21610 means an explicit recipient opt-out for Twilio and SignalWire.
 -- Project it with the canonical receipt transaction, including reconciliation.
 -- No carrier call or historical-consent rewrite is performed by this migration.

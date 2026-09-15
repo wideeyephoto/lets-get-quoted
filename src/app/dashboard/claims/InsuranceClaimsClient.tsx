@@ -2313,7 +2313,7 @@ export default function InsuranceClaimsClient({
                       type="button"
                       className={`${styles.faqCard} ${isSelected ? styles.faqCardActive : ''}`}
                       onClick={() => setCopilotAnswer(faq.detailedExplanation)}
-                      aria-expanded={isSelected}
+                      aria-pressed={isSelected}
                     >
                       <div className={styles.faqCardTop}>
                         <span className={styles.faqCategory}>{faq.category}</span>
