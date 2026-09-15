@@ -40,3 +40,18 @@ grounding, provider-status route and settlement. Live acceptance still requires
 hanging up during the opening and immediately calling again after deployment.
 The voicemail attempt reached the primary recording callback successfully, but
 the caller's intended interruption and silence tests did not run.
+
+## Overlapping admission retry
+
+The later voicemail report had a different cause. The first request took 11.865
+seconds and eventually returned an AI plan. A provider retry overlapped its
+unfinished reservation, exhausted three 100ms retries, and returned voicemail
+first. The provider's executed SWML confirms voicemail; an admission row alone
+does not prove the caller reached AI. The caller hung up during that greeting.
+
+Busy polling now allows a five-second window with at most twenty 250ms pauses.
+Every poll still uses the atomic claim gate; no busy claim itself grants access,
+releases another request's hold or creates another reservation. A regression
+test covers finalization after the former retry window. Persistently busy calls
+still decline; slower startup remains a performance concern and live retry
+acceptance is required.
