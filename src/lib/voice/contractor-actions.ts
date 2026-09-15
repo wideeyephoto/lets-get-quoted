@@ -97,11 +97,25 @@ function normalizeLookup(value: string): string {
 
 /** Only a complete spoken J-reference, never a fuzzy customer-name rewrite. */
 function spokenJobReference(value: string | null): string | null {
-  const match = value?.trim().match(/^(?:job\s+)?jay(?:\s+(?:dash|hyphen))?\s+(?:([a-z]{1,12})(?:\s+(?:dash|hyphen))?\s+)?(\d(?:[\d\s]*\d)?)\.?$/i);
-  if (!match) return null;
-  const digits = match[2].replace(/\s/g, '');
+  const digitWords: Record<string, string> = {
+    zero: '0', oh: '0', one: '1', two: '2', three: '3', four: '4',
+    five: '5', six: '6', seven: '7', eight: '8', nine: '9',
+  };
+  const isDigitWord = (token: string) => Object.prototype.hasOwnProperty.call(digitWords, token);
+  const tokens = value?.trim().toLowerCase().replace(/\.$/, '').replace(/-/g, ' ').split(/\s+/) ?? [];
+  if (tokens[0] === 'job') tokens.shift();
+  if (!['j', 'jay'].includes(tokens.shift() ?? '')) return null;
+  const skipSeparator = () => {
+    if (tokens[0] === 'dash' || tokens[0] === 'hyphen') tokens.shift();
+  };
+  skipSeparator();
+  const prefix = tokens[0] && /^[a-z]{1,12}$/.test(tokens[0]) && !isDigitWord(tokens[0])
+    ? tokens.shift()?.toUpperCase() : undefined;
+  if (prefix) skipSeparator();
+  if (!tokens.length || tokens.some(token => !/^\d+$/.test(token) && !isDigitWord(token))) return null;
+  const digits = tokens.map(token => digitWords[token] ?? token).join('');
   if (digits.length > 12) return null;
-  return ['J', match[1]?.toUpperCase(), digits].filter(Boolean).join('-');
+  return ['J', prefix, digits].filter(Boolean).join('-');
 }
 
 function isUuid(value: string): boolean {
