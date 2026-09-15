@@ -19,8 +19,8 @@ const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'postgres', passwo
   persistent: true, onLog: () => {}, onError: () => {}, postgresFlags: ['-h', '127.0.0.1'] });
 const schema = readFileSync(join(root, 'schema.sql'), 'utf8');
 const source = file => readFileSync(join(root, 'migrations', file), 'utf8');
-const repair = source('20260911155729_repair_office_job_write_boundary.sql');
-const reads = source('20260911162539_enforce_office_job_read_boundary.sql');
+const repair = source('20260911155210_repair_office_job_write_boundary.sql');
+const reads = source('20260911155217_enforce_office_job_read_boundary.sql');
 const broken = source('20260911000000_office_data_api_security.sql');
 const section = (text, start, end) => { const a = text.indexOf(start), b = text.indexOf(end, a); assert(a >= 0 && b > a, `Missing SQL anchors ${start}`); return text.slice(a,b); };
 const fn = name => { const r = new RegExp(`create or replace function (?:public\\.)?${name}\\([\\s\\S]*?as (\\$[\\w]*\\$)[\\s\\S]*?\\1;`, 'i'); const found = schema.match(r); assert(found, `Missing actual schema function ${name}`); return found[0]; };
