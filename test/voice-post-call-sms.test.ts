@@ -18,7 +18,9 @@ describe('AI Voice Post-Call SMS Follow-up Engine', () => {
     });
 
     expect(text).toContain('Hi Sarah Jenkins, thanks for calling Apex Roofing & Solar!');
-    expect(text).toContain("We've reserved your appointment for Thursday at 2:00 PM.");
+    expect(text).toContain('We received your appointment request for Thursday at 2:00 PM.');
+    expect(text).toContain('This is pending our confirmation.');
+    expect(text).not.toContain('reserved');
     expect(text).toContain('https://apexroofing.letsgetquoted.com/portal');
     expect(text).toContain('Reply STOP to opt out.');
   });
@@ -33,6 +35,7 @@ describe('AI Voice Post-Call SMS Follow-up Engine', () => {
 
     expect(text).toContain('Hi Marcus Vance, thanks for calling Rivera Plumbing!');
     expect(text).toContain('We received your inquiry regarding Water heater leaking in garage.');
+    expect(text).toContain('Our team will contact you after review.');
     expect(text).toContain('https://riveraplumbing.com/status');
     expect(text).toContain('Reply STOP to opt out.');
   });

@@ -383,14 +383,17 @@ export type ArrivalToken = (typeof ARRIVAL_TOKENS)[number];
 export const DEFAULT_ARRIVAL_TEMPLATE =
   '{{business}}: {{name}} is on the way and should reach you {{eta}}. Track the visit here: {{link}}';
 
+const ARRIVAL_WITHOUT_ETA_TEMPLATE =
+  '{{business}}: {{name}} is on the way to your appointment. Track arrival: {{link}}';
+
 // The update wording carries NO link on purpose. The customer already has one
 // from the first text, and their page is already showing this new time — a
 // second link in the same thread is just a second thing to be confused by.
 export const DEFAULT_DELAY_TEMPLATE =
-  '{{business}}: running behind — {{name}} now expects to reach you {{eta}}. Sorry about that.';
+  '{{business}}: running behind. {{name}} now expects to reach you {{eta}}. Sorry about that.';
 
 export const DEFAULT_UPDATE_TEMPLATE =
-  '{{business}}: update from {{name}} — now expecting to reach you {{eta}}.';
+  '{{business}}: update from {{name}}, now expecting to reach you {{eta}}.';
 
 export type ArrivalTokenValues = {
   business: string;
@@ -424,7 +427,7 @@ export function unknownTokens(template: string): string[] {
 
 /** How the ETA reads inside a sentence: "by 2:15", "between 2:15 and 2:45", or nothing. */
 export function etaPhrase(times: ArrivalWindowTimes | null, timeZone: string): string {
-  if (!times) return 'shortly';
+  if (!times) return 'at a time to be confirmed';
   const start = formatClockTime(times.start, timeZone);
   if (times.end.getTime() <= times.start.getTime()) return `by ${start}`;
   return `between ${start} and ${formatClockTime(times.end, timeZone)}`;
@@ -463,7 +466,8 @@ export function buildArrivalMessage(input: ArrivalMessageInput): string {
     link,
   };
 
-  const rendered = (input.override ?? renderTemplate(input.template?.trim() || DEFAULT_ARRIVAL_TEMPLATE, values)).trim();
+  const defaultTemplate = input.times ? DEFAULT_ARRIVAL_TEMPLATE : ARRIVAL_WITHOUT_ETA_TEMPLATE;
+  const rendered = (input.override ?? renderTemplate(input.template?.trim() || defaultTemplate, values)).trim();
   // Tidy up after a template that referenced {{link}} on an update, where there
   // is no link: "Track here:" with nothing after it reads like a bug.
   const body = link ? rendered : rendered.replace(/\s*[:—-]?\s*$/, '').trim();

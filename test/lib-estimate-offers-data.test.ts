@@ -27,6 +27,14 @@ vi.mock('@/lib/estimate-offers', () => ({
   displayStatus: vi.fn(),
   greetingName: vi.fn().mockReturnValue('John'),
   holdState: vi.fn().mockReturnValue({ holding: true }),
+  // The owner notice now comes from one outcome-aware template rather than
+  // three inline strings, so the mock has to carry it or the notify throws
+  // and the reply is swallowed as unhandled.
+  ownerEstimateAcceptedText: vi.fn(({ outcome }: { outcome: string }) => (
+    outcome === 'expired' ? 'the hold expired, so nothing was booked'
+      : outcome === 'booking_failed' ? 'could not be added to your day'
+      : 'booked'
+  )),
   parseOfferReply: vi.fn(),
   storedWindowLabel: vi.fn().mockReturnValue('12pm - 2pm'),
 }));

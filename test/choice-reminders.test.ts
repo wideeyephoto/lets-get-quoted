@@ -569,8 +569,8 @@ describe('choiceReminderText', () => {
     expect(choiceReminderText(base)).toBe(
       [
         'Hi Sarah, you have 2 choices due today for your Lawn & Order project:',
-        '• Patio tile',
-        '• Kitchen faucet',
+        '- Patio tile',
+        '- Kitchen faucet',
         'Review choices: letsgetquoted.com/client/jobs/…',
         'Reply STOP to opt out.',
       ].join('\n'),
@@ -684,6 +684,6 @@ describe('the small labels', () => {
   });
 
   it('bullets the list, and never renders a nameless choice as a bare bullet', () => {
-    expect(choiceListText(['Patio tile', '  '])).toBe('• Patio tile\n• Choice to make');
+    expect(choiceListText(['Patio tile', '  '])).toBe('- Patio tile\n- Choice to make');
   });
 });

@@ -295,7 +295,8 @@ describe('Neighborhood Halo — Halo-Aware Speed-to-Lead SMS', () => {
     expect(sms).toContain('Apex Roofing Experts');
     expect(sms).toContain('Maple Ave in Oakridge Estates');
     expect(sms).toContain('$250 Street Cluster Discount');
-    expect(sms).toContain('estimator is working nearby this week');
+    expect(sms).toContain("We'll confirm availability.");
+    expect(sms).not.toMatch(/working nearby|tomorrow|free|qualifies/i);
     expect(sms).toContain('Reply STOP to opt out');
   });
 });

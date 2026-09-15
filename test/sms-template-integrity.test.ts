@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ts from 'typescript';
 
-describe('Task 30: AST check - no string literals in the body position', () => {
-  it('asserts every SmsCatalogueEntry.body in sms-catalogue.ts is a call expression, not a template or string literal', () => {
+describe('catalogue builder integrity', () => {
+  it('uses builder calls or the canonical crew subscription constant for message bodies', () => {
     const cataloguePath = join(process.cwd(), 'src/lib/sms-catalogue.ts');
     const sourceCode = readFileSync(cataloguePath, 'utf8');
     const sourceFile = ts.createSourceFile(
@@ -62,12 +62,15 @@ describe('Task 30: AST check - no string literals in the body position', () => {
 
       const init = bodyProperty.initializer;
       const isCall = ts.isCallExpression(init);
+      const isCanonicalCrewWelcome = id === 'crew-welcome'
+        && ts.isIdentifier(init)
+        && init.text === 'CREW_SMS_WELCOME_MESSAGE';
       const isString =
         ts.isStringLiteral(init) ||
         ts.isNoSubstitutionTemplateLiteral(init) ||
         ts.isTemplateExpression(init);
 
-      if (!isCall || isString) {
+      if ((!isCall && !isCanonicalCrewWelcome) || isString) {
         violations.push({
           id,
           kind: ts.SyntaxKind[init.kind],
@@ -78,7 +81,7 @@ describe('Task 30: AST check - no string literals in the body position', () => {
 
     expect(
       violations,
-      `Found entries in SMS_CATALOGUE with raw string/template literals instead of builder calls: ${JSON.stringify(
+      `Found entries in SMS_CATALOGUE with raw string/template literals instead of shared message sources: ${JSON.stringify(
         violations,
         null,
         2

@@ -106,7 +106,12 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
       serviceAddress: '123 Main St',
     });
 
-    expect(confirmText).toContain('Thanks for calling BrokePipes Plumbing!');
+    // A request is not a booking. The copy identifies the business and says
+    // the slot is still pending, so nobody reads a confirmation into an ask
+    // nobody has answered yet.
+    expect(confirmText).toContain('BrokePipes Plumbing:');
+    expect(confirmText).toContain('This is pending our confirmation.');
+    expect(confirmText).not.toMatch(/\bconfirmed\b|\bbooked\b/i);
     expect(confirmText).toContain('Thursday, Aug 27');
     expect(confirmText).toContain('123 Main St');
     expect(confirmText).toContain('Reply STOP to opt out.');

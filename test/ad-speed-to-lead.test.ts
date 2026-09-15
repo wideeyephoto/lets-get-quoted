@@ -28,7 +28,9 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     expect(text).toContain('Hi Sarah');
     expect(text).toContain('Apex Roofing');
     expect(text).toContain('Roof Replacement in Austin');
-    expect(text).toContain('tomorrow morning or afternoon');
+    expect(text).toContain('What day works for an estimate?');
+    expect(text).toContain("We'll confirm availability.");
+    expect(text).not.toMatch(/tomorrow|free|nearby|standby/i);
     expect(text).toContain('Reply STOP to opt out.');
   });
 
@@ -43,7 +45,9 @@ describe('AI Speed-to-Lead SMS Engine', () => {
 
     expect(text).toContain('Hi David');
     expect(text).toContain('urgent request for Burst Pipe Leak in Dallas');
-    expect(text).toContain('dispatch team is on standby');
+    expect(text).toContain('What time can we call to discuss it?');
+    expect(text).toContain('Availability is not yet confirmed.');
+    expect(text).not.toMatch(/standby|2-minute/i);
     expect(text).toContain('Reply STOP to opt out.');
   });
 
@@ -63,7 +67,8 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     expect(text).toContain('Hi Emma');
     expect(text).toContain('Maplewood Drive in Sunset Hills');
     expect(text).toContain('10% neighbor group discount');
-    expect(text).toContain('estimator is working nearby this week');
+    expect(text).toContain("We'll confirm availability.");
+    expect(text).not.toMatch(/tomorrow|free|working nearby|qualifies/i);
     expect(text).toContain('Reply STOP to opt out.');
   });
 

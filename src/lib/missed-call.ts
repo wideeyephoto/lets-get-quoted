@@ -14,8 +14,8 @@
  * owner should be able to see the opt-out is handled without asking.
  */
 export function missedCallTextBack(businessName: string): string {
-  const name = businessName.trim() || 'us';
-  return `Sorry we missed your call at ${name}! Reply here and we'll help you out. Reply STOP to opt out.`;
+  const name = businessName.trim() || 'Your service team';
+  return `${name}: Sorry we missed your call. What do you need help with, and what's the service address? Reply STOP to opt out.`;
 }
 
 export type MissedCallTone = 'live' | 'waiting' | 'setup' | 'error';

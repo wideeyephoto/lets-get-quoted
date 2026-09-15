@@ -35,7 +35,7 @@ describe('6:45 AM Morning Weather Alert', () => {
         scheduleUrl: 'https://app.letsgetquoted.com/dashboard/schedule?weather=check',
       });
 
-      expect(text).toContain('⛈️ Morning Weather Alert (6:45 AM)');
+      expect(text).toContain('Morning Weather Alert (6:45 AM)');
       expect(text).toContain('1 scheduled job');
       expect(text).toContain('Summit Roofing: Sarah Connor');
       expect(text).toContain('80% chance of rain');

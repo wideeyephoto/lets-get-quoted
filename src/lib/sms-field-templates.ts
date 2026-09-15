@@ -1,22 +1,19 @@
-/**
- * Deterministic ASCII confirmation templates for field intake SMS.
- *
- * CRITICAL CARRIER INVARIANT:
- * Every character must belong to the GSM 7-bit basic character set.
- * Emojis, curly quotes, and em-dashes silently promote the entire SMS
- * to UCS-2 (lowering the segment limit from 160 to 70 characters and
- * multiplying carrier billing costs).
- */
+import { normalizeSmsSystemText } from '@/lib/sms-copy';
 
-// Clean any accidental non-GSM7 characters to pure ASCII
-export function sanitizeGsm7Text(text: string): string {
-  return text
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[—–]/g, '-')
-    .replace(/[^\x20-\x7E\r\n]/g, '')
+/**
+ * Field confirmations use plain system wording while preserving names and
+ * meaningful customer text. Unicode costs extra segments; deleting it can
+ * change a name, address, or task. The shared segment counter handles that cost.
+ */
+export function normalizeFieldSmsText(text: string): string {
+  return normalizeSmsSystemText(text)
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .replace(/\t/g, ' ')
     .trim();
 }
+
+/** @deprecated Compatibility name; this preserves Unicode rather than stripping it. */
+export const sanitizeGsm7Text = normalizeFieldSmsText;
 
 export function attachFieldReviewLink(baseText: string, reviewUrl?: string): string {
   const cleanBase = sanitizeGsm7Text(baseText);

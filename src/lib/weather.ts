@@ -58,7 +58,7 @@ export const SENSITIVITIES: Sensitivity[] = [
     windRisky: 25,
     minTempF: 40,
     maxTempF: 95,
-    reasonNote: 'Shingles need a dry deck and safe footing, and they won’t seal properly in the cold.',
+    reasonNote: "Shingles need a dry deck and safe footing, and they won't seal properly in the cold.",
   },
   {
     key: 'painting',
@@ -68,7 +68,7 @@ export const SENSITIVITIES: Sensitivity[] = [
     windRisky: 20,
     minTempF: 50,
     maxTempF: 95,
-    reasonNote: 'Paint won’t cure below 50°F or in the wet, and wind carries overspray onto everything nearby.',
+    reasonNote: "Paint won't cure below 50 F or in the wet, and wind carries overspray onto everything nearby.",
   },
   {
     key: 'concrete',
@@ -88,7 +88,7 @@ export const SENSITIVITIES: Sensitivity[] = [
     windRisky: 30,
     minTempF: 25,
     maxTempF: null,
-    reasonNote: 'It’s outside work, and the forecast isn’t on our side.',
+    reasonNote: "It's outside work, and the forecast isn't on our side.",
   },
   {
     key: 'landscaping',
@@ -98,7 +98,7 @@ export const SENSITIVITIES: Sensitivity[] = [
     windRisky: null,
     minTempF: 32,
     maxTempF: null,
-    reasonNote: 'Saturated ground means ruts in a lawn we’d then have to repair.',
+    reasonNote: "Saturated ground means ruts in a lawn we'd then have to repair.",
   },
 ];
 
@@ -170,11 +170,11 @@ export function assessDay(forecast: Forecast, sensitivity: Sensitivity): Assessm
   // freezing overnight ruins a pour even if the afternoon is pleasant.
   if (sensitivity.minTempF !== null && forecast.lowF !== null && forecast.lowF < sensitivity.minTempF) {
     level = raise(level, forecast.lowF < sensitivity.minTempF - 10 ? 'unworkable' : 'risky');
-    reasons.push(`down to ${forecast.lowF}°F`);
+    reasons.push(`down to ${forecast.lowF} F`);
   }
   if (sensitivity.maxTempF !== null && forecast.highF !== null && forecast.highF > sensitivity.maxTempF) {
     level = raise(level, 'watch');
-    reasons.push(`up to ${forecast.highF}°F`);
+    reasons.push(`up to ${forecast.highF} F`);
   }
 
   return { day: forecast.day, level, reasons, summary: forecast.summary };
@@ -242,7 +242,7 @@ export function draftCustomerMessage(input: {
   });
   const why = input.assessment.reasons.length > 0 ? ` (${input.assessment.reasons.join(', ')})` : '';
   
-  let options = ' We’ll call you to find another day.';
+  let options = " We'll call you to find another day.";
   if (input.targetAlternativeDay) {
     const targetWhen = new Date(`${input.targetAlternativeDay}T12:00:00Z`).toLocaleDateString('en-US', {
       timeZone: 'UTC',
@@ -250,12 +250,12 @@ export function draftCustomerMessage(input: {
       month: 'short',
       day: 'numeric',
     });
-    options = ` We can move your visit to ${targetWhen} instead — does that work for you? Reply YES to confirm.`;
+    options = ` We can move your visit to ${targetWhen} instead - does that work for you? Reply YES to confirm.`;
   } else if (input.alternatives.length > 0) {
     options = ` We could do ${input.alternatives
       .map((a) => new Date(`${a.day}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long' }))
-      .join(' or ')} instead — which suits you?`;
+      .join(' or ')} instead - which suits you?`;
   }
 
-  return `${greeting}${input.businessName} here. The forecast for ${when}${why} isn’t going to work for your job. ${input.sensitivity.reasonNote}${options}`;
+  return `${greeting}${input.businessName} here. The forecast for ${when}${why} isn't going to work for your job. ${input.sensitivity.reasonNote}${options}`;
 }

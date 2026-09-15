@@ -46,7 +46,7 @@ describe('readable voice alert summaries', () => {
     const brief = text.split('): ')[1].split(' Details:')[0];
     expect(brief.length).toBeLessThanOrEqual(140);
     expect(brief).toMatch(/(?:water|heater|replacement)\.\.\.$/);
-    expect(text.endsWith(`${input.dashboardUrl} — Reply STOP to opt out.`)).toBe(true);
+    expect(text.endsWith(`${input.dashboardUrl}. Reply STOP to opt out.`)).toBe(true);
   });
 
   it('formats structured emergency details without exposing serialized fields', () => {
@@ -55,7 +55,7 @@ describe('readable voice alert summaries', () => {
     }) });
     expect(text).toContain('Water pouring into basement Hazard: water leak flooding. Review details');
     expect(text).not.toContain('caller_name');
-    expect(text.endsWith(`${input.dashboardUrl} — Reply STOP to opt out.`)).toBe(true);
+    expect(text.endsWith(`${input.dashboardUrl}. Reply STOP to opt out.`)).toBe(true);
   });
 });
 
