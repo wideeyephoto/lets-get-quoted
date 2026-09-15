@@ -104,7 +104,7 @@ export const HeroQuickFormTranslations = {
     callNow: "Llama ahora para confirmarlo",
     requestGoesDirectly: "Tu solicitud va directamente a",
     neverSold: "— nunca se vende a intermediarios ni competidores.",
-    addJobPhoto: "Agrega una foto del trabajo (ej. equipo, área de trabajo). Por favor � no incluyas identificaciones ni documentos financieros.",
+    addJobPhoto: "Agrega una foto del trabajo (ej. equipo, área de trabajo). Por favor, no incluyas identificaciones ni documentos financieros.",
     addMorePhotos: (current: number, max: number) => `Agregar más fotos (${current}/${max})`,
     addJobPhotos: "💎 Agregar fotos del trabajo",
     removePhoto: (name: string) => `Eliminar ${name}`,

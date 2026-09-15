@@ -102,13 +102,13 @@ export default function ContractorLicensingSection({
           <strong>Credentials &amp; Municipal PINs Vault</strong>
           <p className="cert-summary-facts">
             {loading ? (
-              'Checking vault records…'
+              'Checking vault recordsâ€¦'
             ) : (
               [
                 stateLicenses.length > 0 ? `${stateLicenses.length} trade ${stateLicenses.length === 1 ? 'license' : 'licenses'}` : 'No state licenses yet',
                 municipalPins.length > 0 ? `${municipalPins.length} municipal ${municipalPins.length === 1 ? 'PIN' : 'PINs'}` : null,
                 insuranceCreds.length > 0 ? 'Insurance linked' : null,
-              ].filter(Boolean).join(' · ')
+              ].filter(Boolean).join(' Â· ')
             )}
           </p>
           <p className="cert-summary-state">
@@ -179,10 +179,10 @@ export default function ContractorLicensingSection({
                     )}
                   </div>
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--muted, #94a3b8)' }}>
-                    <strong>{cred.issuingAuthority}</strong> · {cred.credentialType.replace('_', ' ').toUpperCase()}
-                    {cred.licenseNumber ? ` · #${cred.licenseNumber}` : ''}
-                    {cred.contractorPin ? ` · PIN: ${cred.contractorPin}` : ''}
-                    {cred.expiresAt ? ` · Exp: ${cred.expiresAt}` : ''}
+                    <strong>{cred.issuingAuthority}</strong> Â· {cred.credentialType.replace('_', ' ').toUpperCase()}
+                    {cred.licenseNumber ? ` Â· #${cred.licenseNumber}` : ''}
+                    {cred.contractorPin ? ` Â· PIN: ${cred.contractorPin}` : ''}
+                    {cred.expiresAt ? ` Â· Exp: ${cred.expiresAt}` : ''}
                   </p>
                 </div>
               </div>
@@ -264,14 +264,14 @@ export default function ContractorLicensingSection({
               type="text"
               value={fein}
               onFocus={() => {
-                if (fein.includes('•')) {
+                if (fein.includes('â€¢')) {
                   setFein('');
                 }
               }}
               onChange={(e) => setFein(e.target.value)}
               placeholder="12-3456789"
               className="input"
-              pattern="^\d{2}-?\d{7}$|^•.*"
+              pattern="^\d{2}-?\d{7}$|^â€¢.*"
               title="FEIN must be a 9-digit Federal Employer Identification Number (XX-XXXXXXX)"
             />
           </div>
@@ -282,7 +282,7 @@ export default function ContractorLicensingSection({
               disabled={complianceSaving}
               className="btn primary"
             >
-              {complianceSaving ? 'Saving…' : 'Save Compliance Settings'}
+              {complianceSaving ? 'Savingâ€¦' : 'Save Compliance Settings'}
             </button>
           </div>
         </form>
