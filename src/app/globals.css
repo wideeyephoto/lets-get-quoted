@@ -74984,3 +74984,20 @@ a.sms-cat-switch:focus-visible {
 .referral-code-label { font-size: 0.85rem; color: var(--mute-t50); }
 
 .portal-message-thread:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Mobile Touch Target Fixes (min 44x44px for accessibility) */
+@media (max-width: 640px) {
+  table button,
+  table [role="button"],
+  button:has(> svg:only-child),
+  [role="button"]:has(> svg:only-child),
+  .quick-action-button,
+  .disclosure-caret,
+  .icon-button {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
