@@ -153,7 +153,7 @@ describe('dark connected-payment projection worker', () => {
     expect(JSON.stringify(result)).not.toContain(secret);
   });
 
-  it('stops a selector failure and passes raw error', async () => {
+  it('stops a selector failure with one fixed PII-free batch code', async () => {
     const secret = 'cus_private customer@example.com';
     const dependencies: ConnectedPaymentProjectionWorkerDependencies = {
       queue: { claimNext: vi.fn().mockRejectedValue(new Error(secret)) },
@@ -166,8 +166,9 @@ describe('dark connected-payment projection worker', () => {
       selectedCount: 0,
       claimedCount: 0,
       results: [],
-      errorCode: secret,
+      errorCode: 'projection_worker_claim_error',
     });
+    expect(JSON.stringify(result)).not.toContain(secret);
   });
 
   it('reports a database-dead-lettered eighth lease without provider or projection calls', async () => {
