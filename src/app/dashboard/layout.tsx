@@ -109,9 +109,20 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     }
   }
 
+  const { cookies } = await import('next/headers');
+  const impersonateId = (await cookies()).get('lgq_impersonate')?.value;
+
   return (
     <AssistantProvider>
       {navDecision ? <DashboardNavSync nav={navDecision} /> : null}
+      {impersonateId && (
+        <div style={{ background: '#f87171', color: '#fff', padding: '0.5rem', textAlign: 'center', fontWeight: 'bold', zIndex: 10000, position: 'relative' }}>
+          VIEWING AS IMPERSONATED CONTRACTOR (READ-ONLY)
+          <form action={async () => { 'use server'; const { stopImpersonation } = await import('@/app/admin/impersonate-actions'); await stopImpersonation(); }} style={{ display: 'inline', marginLeft: '1rem' }}>
+            <button type="submit" style={{ background: '#fff', color: '#f87171', padding: '0.1rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', border: 'none', cursor: 'pointer' }}>Exit Impersonation</button>
+          </form>
+        </div>
+      )}
       {!onboarded ? (
         // The whole bar starts the Stripe connect itself — landing on Settings
         // and hunting for the same button is a step that does nothing.

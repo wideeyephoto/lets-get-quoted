@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { cache } from 'react';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { signingKeys } from '@/lib/auth-jwks';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -472,6 +472,22 @@ const loadSessionMember = perRequest(async () => {
   const supabase = await createSupabaseServerClient();
   const user = await verifiedUser(supabase);
   if (!user) return null;
+
+  // Impersonation mode
+  const impersonateId = (await cookies()).get('lgq_impersonate')?.value;
+  if (impersonateId) {
+    // Only allow if actual user is admin
+    const adminClient = createAdminClient();
+    const { data: staff } = await adminClient.from('staff').select('role').eq('email', user.email).single();
+    if (staff) {
+      const { createReadOnlyAdminClient } = await import('@/lib/readonly-client');
+      return {
+        supabase: createReadOnlyAdminClient(),
+        user: { ...user, id: impersonateId },
+        member: { account_id: impersonateId, role: 'owner' }
+      };
+    }
+  }
 
   const admin = createAdminClient();
   let rows = await readMemberRows(admin, user.id);
