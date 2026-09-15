@@ -53,6 +53,7 @@ export type SignupIntent = {
   billing?: SignupBilling | null;
   source?: SignupSource | null;
   next?: string | null;
+  custom?: string | null;
   gclid?: string | null;
   gbraid?: string | null;
   wbraid?: string | null;
@@ -114,6 +115,7 @@ export function parseSignupIntent(
   const businessName = get('business_name')?.trim() || get('name')?.trim() || null;
   const source = (get('source')?.trim() as SignupSource) || null;
   const next = get('next')?.trim() || null;
+  const custom = get('custom')?.trim() || null;
 
   // Acquisition and Click Attribution (Google Ads, Meta, UTMs, and Linkers)
   const gclid = get('gclid')?.trim() || null;
@@ -136,6 +138,7 @@ export function parseSignupIntent(
     billing: plan ? billing : null,
     source,
     next,
+    custom,
     gclid,
     gbraid,
     wbraid,
@@ -168,6 +171,7 @@ export function serializeSignupIntent(intent: Partial<SignupIntent>): URLSearchP
   if (intent.plan && intent.billing) params.set('billing', intent.billing);
   if (intent.source) params.set('source', intent.source);
   if (intent.next) params.set('next', intent.next);
+  if (intent.custom) params.set('custom', intent.custom);
 
   // Preserve Click Attribution and UTMs across redirects and navigations
   if (intent.gclid) params.set('gclid', intent.gclid);

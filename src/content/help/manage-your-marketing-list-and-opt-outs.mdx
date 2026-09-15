@@ -1,0 +1,30 @@
+---
+title: "Manage your marketing list, opt-outs, and delivery limits"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Intake and quoting"
+---
+
+# Purpose
+Understand the opted-in customer audience, the 250-recipient batch cap, and TCPA/carrier STOP compliance.
+
+# Steps
+## How contacts enter the marketing list
+- Transactional Opt-In: Contacts created through website intake, phone estimates, or quotes are marked with status = opted_in.
+- Immediate Compliance: If a customer replies STOP to any message, carrier automation immediately locks their phone number into opted-out status.
+- No Dashboard Override: Editing or saving a client profile in the dashboard CANNOT re-opt a stopped phone number. The customer must text START or UNSTOP from their mobile phone.
+
+## The 250-recipient batch cap
+Every marketing campaign broadcast is sliced to MAX_RECIPIENTS = 250. If you have an audience of 500 contacts, plan your sends in segmented batches to ensure full reach.
+
+## Email suppression rules
+Email unsubscribe clicks permanently add recipient emails to the suppression list. The platform suppresses future marketing emails automatically to maintain high inbox deliverability.
+
+
+
+# Done State
+You will run compliant promotional campaigns without risking carrier blocks or sending to opted-out contacts.
+
+# Common Failure
+**A customer wants to receive marketing texts again after texting STOP.**
+Instruct the customer to text "START" or "UNSTOP" to your business phone number from their phone.

@@ -51,6 +51,7 @@ export const OWN_CHROME_MARKETING_ROUTES = [
   '/faq',
   '/security',
   '/resources',
+  '/blog',
   '/contact',
   '/privacy',
   '/terms',

@@ -51,30 +51,29 @@ import ClientCompletionCertificate from '@/components/forms/ClientCompletionCert
 import ClientNextActionBanner from '@/components/client/ClientNextActionBanner';
 import { signClientFormAction } from './form-actions';
 import { listJobFormSubmissions } from '@/lib/forms/forms-data';
+import { headers } from 'next/headers';
+import { t, tRecord, detectLocale, type Locale } from '@/lib/i18n';
 
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  requested: 'Awaiting payment',
-  processing: 'Processing',
-  paid: 'Paid',
-  failed: 'Failed',
-  refunded: 'Refunded',
-};
+function paymentStatusLabel(locale: Locale) {
+  return tRecord(locale, 'payment.status', ['requested', 'processing', 'paid', 'failed', 'refunded']);
+}
 
-const INVOICE_STATUS_LABEL: Record<string, string> = {
-  draft: 'Draft',
-  sent: 'Sent',
-  signed: 'Signed',
-  paid: 'Paid',
-  void: 'Void',
-};
+function invoiceStatusLabel(locale: Locale) {
+  return tRecord(locale, 'invoice.status', ['draft', 'sent', 'signed', 'paid', 'void']);
+}
 
-const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
-const FREQ_WORD: Record<string, string> = { weekly: 'weekly', biweekly: 'every two weeks', monthly: 'monthly' };
+function freqLabel(locale: Locale) {
+  return tRecord(locale, 'freq.label', ['weekly', 'biweekly', 'monthly']);
+}
 
-function formatDay(value: string | null): string {
+function freqWord(locale: Locale) {
+  return tRecord(locale, 'freq.word', ['weekly', 'biweekly', 'monthly']);
+}
+
+function formatDay(value: string | null, locale: Locale = 'en'): string {
   if (!value) return '';
   const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(locale === 'es' ? 'es-ES' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /**
@@ -86,15 +85,17 @@ function formatDay(value: string | null): string {
  * from, with no acknowledgement anywhere, and a question that FAILED to send
  * looked identical to one that had.
  */
-const FLASH: Record<string, { tone: 'good' | 'bad'; text: string }> = {
-  approved: { tone: 'good', text: 'Thanks — your approval is recorded and your contractor has been notified.' },
-  scheduled: { tone: 'good', text: 'Your start date is confirmed. Your contractor can see it now.' },
-  'schedule-requested': { tone: 'good', text: 'Sent. Your contractor will send different dates to choose from.' },
-  asked: { tone: 'good', text: 'Your question is on its way. The quote stays open while they reply.' },
-  'ask-failed': { tone: 'bad', text: 'That question did not send. Please try again, or call the number at the top of this page.' },
-  'options-updated': { tone: 'good', text: 'Your options are updated and your contractor has been told. Your new total is below.' },
-  'options-failed': { tone: 'bad', text: 'We could not change those options. Your quote is unchanged — please call your contractor.' },
-};
+function flashMessages(locale: Locale): Record<string, { tone: 'good' | 'bad'; text: string }> {
+  return {
+    approved: { tone: 'good', text: t(locale, 'flash.approved') },
+    scheduled: { tone: 'good', text: t(locale, 'flash.scheduled') },
+    'schedule-requested': { tone: 'good', text: t(locale, 'flash.schedule-requested') },
+    asked: { tone: 'good', text: t(locale, 'flash.asked') },
+    'ask-failed': { tone: 'bad', text: t(locale, 'flash.ask-failed') },
+    'options-updated': { tone: 'good', text: t(locale, 'flash.options-updated') },
+    'options-failed': { tone: 'bad', text: t(locale, 'flash.options-failed') },
+  };
+}
 
 export default async function ClientJobDashboardPage({
   params: paramsPromise,
@@ -105,66 +106,59 @@ export default async function ClientJobDashboardPage({
 }) {
   const params = await paramsPromise;
   const searchParams = (await searchParamsPromise) || {};
-  const dashboard = await getClientJobDashboard(params.token);
-
-  // Loaded from the token independently of the dashboard so an un-migrated
-  // database (no change_orders table) shows the job as it always did rather
-  // than blanking the whole page.
+  const hdrs = await headers();
+  const locale = detectLocale(hdrs.get('accept-language'));
+  const PAYMENT_STATUS_LABEL = paymentStatusLabel(locale);
+  const INVOICE_STATUS_LABEL = invoiceStatusLabel(locale);
+  const FREQ_LABEL = freqLabel(locale);
+  const FREQ_WORD = freqWord(locale);
+  const FLASH = flashMessages(locale);
   const access = await resolveJobAccess(params.token);
   const admin = createAdminClient();
-  const clientChangeOrders = access
-    ? toClientChangeOrders(await loadClientChangeOrders(admin, access.accountId, access.jobId))
-    : [];
-  const rawWarranties = access
-    ? await listWarranties(admin, access.accountId, access.jobId)
-    : [];
-  const docUrlsMap: Record<string, Array<{ name: string; url: string }>> = {};
-  if (access && rawWarranties.length > 0) {
-    await Promise.all(
-      rawWarranties.map(async (w) => {
-        if (w.documentPaths && w.documentPaths.length > 0) {
-          docUrlsMap[w.id] = await signedWarrantyDocUrls(admin, access.accountId, w.documentPaths);
-        }
-      })
-    );
-  }
-  const clientWarranties = access
-    ? toClientWarranties(rawWarranties, undefined, docUrlsMap)
-    : [];
 
-  const { data: siteRow } = access
-    ? await admin.from('sites').select('content').eq('account_id', access.accountId).maybeSingle()
-    : { data: null };
+  const [
+    dashboard,
+    clientChangeOrders,
+    { rawWarranties, clientWarranties },
+    { data: siteRow },
+    clientSelections,
+    clientFormSubmissions,
+    clientInsurance,
+    wide,
+  ] = await Promise.all([
+    getClientJobDashboard(params.token),
+    access ? loadClientChangeOrders(admin, access.accountId, access.jobId).then(toClientChangeOrders) : Promise.resolve([]),
+    (async () => {
+      if (!access) return { rawWarranties: [], clientWarranties: [] };
+      const rawWarranties = await listWarranties(admin, access.accountId, access.jobId);
+      const docUrlsMap: Record<string, Array<{ name: string; url: string }>> = {};
+      if (rawWarranties.length > 0) {
+        await Promise.all(
+          rawWarranties.map(async (w) => {
+            if (w.documentPaths && w.documentPaths.length > 0) {
+              docUrlsMap[w.id] = await signedWarrantyDocUrls(admin, access.accountId, w.documentPaths);
+            }
+          })
+        );
+      }
+      return { rawWarranties, clientWarranties: toClientWarranties(rawWarranties, undefined, docUrlsMap) };
+    })(),
+    access ? admin.from('sites').select('content').eq('account_id', access.accountId).maybeSingle() : Promise.resolve({ data: null }),
+    access ? loadClientSelections(admin, access.accountId, access.jobId).then(r => toSignedClientSelections(admin, access.accountId, r)) : Promise.resolve([]),
+    access ? listJobFormSubmissions(admin, access.accountId, access.jobId) : Promise.resolve([]),
+    access ? clientInsuranceFor(admin, access.accountId) : Promise.resolve(null),
+    access ? admin.from('jobs').select('quote_signer_name, quote_signed_at, quoted_amount, quote_signature_path, quote_signature_method').eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+  ]);
+
   const siteContent = getSiteContent(siteRow?.content ?? null);
   const googleReviewDeepUrl = googleReviewUrl({
     placeId: siteContent.testimonials.googlePlaceId,
     listingUrl: siteContent.testimonials.googleUrl,
   });
-  const clientSelections = access
-    ? await toSignedClientSelections(admin, access.accountId, await loadClientSelections(admin, access.accountId, access.jobId))
-    : [];
-  const clientFormSubmissions = access
-    ? await listJobFormSubmissions(admin, access.accountId, access.jobId)
-    : [];
 
-  // Proof of insurance, for the quote. Everything about whether this appears at
-  // all is decided by showsToClient — in particular, an EXPIRED certificate is
-  // never shown. It isn't a stale asset, it's a false assurance somebody would
-  // be relying on when they approve.
-  const clientInsurance = access ? await clientInsuranceFor(admin, access.accountId) : null;
-
-  // The signature on the quote, for the receipt and for the executed document.
-  // Read on its own and behind a fallback because the mark columns ship behind
-  // their own migration: naming a column that isn't there fails the whole
-  // query, and a receipt with no name is a worse answer than a receipt with no
-  // mark. quoted_amount rides along because a legacy single-amount quote has no
-  // line items to total and the receipt still has to name a figure.
-  const readSignature = async (columns: string) =>
-    access
-      ? admin.from('jobs').select(columns).eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle()
-      : { data: null, error: null };
-  const wide = await readSignature('quote_signer_name, quote_signed_at, quoted_amount, quote_signature_path, quote_signature_method');
-  const signatureRow = (wide.error ? (await readSignature('quote_signer_name, quote_signed_at, quoted_amount')).data : wide.data) as
+  const signatureRow = (wide.error ? (access
+    ? (await admin.from('jobs').select('quote_signer_name, quote_signed_at, quoted_amount').eq('account_id', access.accountId).eq('id', access.jobId).maybeSingle()).data
+    : null) : wide.data) as
     | {
         quote_signer_name?: string | null;
         quote_signed_at?: string | null;
@@ -182,15 +176,13 @@ export default async function ClientJobDashboardPage({
     return (
       <main className="wide-shell workspace-shell client-job-dashboard">
         <section className="panel workspace-section-card quote-dead-link">
-          <p className="eyebrow">This link has closed</p>
-          <h1 className="workspace-title">This quote link is no longer active</h1>
+          <p className="eyebrow">{t(locale, 'expired.eyebrow')}</p>
+          <h1 className="workspace-title">{t(locale, 'expired.title') || 'This quote link is no longer active'}</h1>
           <p className="workspace-lead">
-            Links expire, and a contractor can close one at any time — usually because the quote was replaced with a newer
-            one, or the job is finished.
+            {t(locale, 'expired.body1')}
           </p>
           <p className="workspace-lead">
-            Nothing is lost. Reply to the text or email you received it in and ask for a fresh link, and it will open right
-            where this one did.
+            {t(locale, 'expired.body2') || 'Reply to the text or email you received it in and ask for a fresh link.'}
           </p>
         </section>
       </main>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireOwnerContext } from '@/lib/auth';
 import { getStripeClient } from '@/lib/stripe';
 import { createOnboardingLink } from '@/lib/stripe-connect';
+import { unstable_rethrow } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,9 @@ export async function GET(request: Request) {
       headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
     });
   } catch (err: any) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     const digest = (err as { digest?: unknown } | null)?.digest;
     if (typeof digest === 'string' && (digest.startsWith('NEXT_REDIRECT') || digest === 'NEXT_NOT_FOUND')) {
       throw err;

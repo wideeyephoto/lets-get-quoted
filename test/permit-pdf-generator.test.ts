@@ -3,6 +3,8 @@ import { generatePermitApplicationPdf } from '../src/lib/permit-intel/permit-pdf
 import type { UniversalPermitApplicationData } from '../src/lib/permit-intel/application-generator';
 
 describe('Permit PDF Generator Engine', () => {
+  const provided = (val: string) => ({ status: 'provided' as const, value: val, sourceId: 'test' });
+
   const sampleData: UniversalPermitApplicationData = {
     authority: {
       id: 'mi-royal-oak',
@@ -14,26 +16,29 @@ describe('Permit PDF Generator Engine', () => {
     applicant: {
       type: 'contractor',
       companyName: 'Apex Roofing LLC',
-      contactName: 'John Contractor',
-      licenseNumber: '2101999888',
-      licenseType: 'Residential Builder',
-      licenseExpiration: '2027-05-31',
-      insuranceCarrier: 'Auto-Owners Insurance',
-      insurancePolicyNumber: 'AO-9948271',
-      workersCompCarrier: 'State Accident Fund',
+      contactName: provided('John Contractor'),
+      licenseNumber: provided('2101999888'),
+      licenseType: provided('Residential Builder'),
+      licenseExpiration: provided('2027-05-31'),
+      insuranceCarrier: provided('Auto-Owners Insurance'),
+      insurancePolicyNumber: provided('AO-9948271'),
+      workersCompCarrier: provided('State Accident Fund'),
+      workersCompPolicy: provided('WC-883719'),
+      mescEmployerNumber: provided('MESC-10928'),
+      fein: provided('12-3456789'),
       phone: '(248) 555-0199',
       email: 'john@apexroofing.com',
       address: '100 Main St, Royal Oak, MI',
     },
     property: {
-      ownerName: 'Jane Homeowner',
+      ownerName: provided('Jane Homeowner'),
       ownerPhone: '(248) 555-0122',
       ownerEmail: 'jane@example.com',
       streetAddress: '211 S Williams St',
       city: 'Royal Oak',
       state: 'MI',
       zip: '48067',
-      parcelNumber: '72-25-16-100-001',
+      parcelNumber: provided('72-25-16-100-001'),
       occupancyType: 'One-Family Residential (R-3)',
       constructionType: 'Type V-B (Wood Frame)',
     },
@@ -57,6 +62,10 @@ describe('Permit PDF Generator Engine', () => {
       signatureDate: '2026-08-26',
       section23aNotice: 'Section 23a of the state construction code act of 1972, 1972 PA 230, MCL 125.1523a, prohibits a person from conspiring to circumvent the licensing requirements of this state relating to persons who are to perform work on a residential building or a residential structure.',
     },
+    readiness: {
+      complete: true,
+      missing: [],
+    },
   };
 
   it('generates a valid PDF buffer starting with %PDF-', async () => {
@@ -67,5 +76,21 @@ describe('Permit PDF Generator Engine', () => {
     // Verify PDF header magic bytes
     const header = pdfBuffer.subarray(0, 5).toString('ascii');
     expect(header).toBe('%PDF-');
+  });
+
+  it('generates a valid PDF when contractor supplies drawn finger signature', async () => {
+    const dataWithSig: UniversalPermitApplicationData = {
+      ...sampleData,
+      certification: {
+        ...sampleData.certification,
+        applicantSignaturePath: 'M10 20 Q50 60 100 20 L200 80',
+        signatureMethod: 'drawn',
+      },
+    };
+
+    const pdfBuffer = await generatePermitApplicationPdf(dataWithSig);
+    expect(pdfBuffer).toBeDefined();
+    expect(pdfBuffer.length).toBeGreaterThan(1000);
+    expect(pdfBuffer.subarray(0, 5).toString('ascii')).toBe('%PDF-');
   });
 });

@@ -65,8 +65,16 @@ export const QUICK_STOP_ACTIVE_STATUSES: QuickStopStatus[] = [
   'arrived',
 ];
 
-// Terminal statuses — no further transitions.
-export const QUICK_STOP_TERMINAL_STATUSES: QuickStopStatus[] = [
+/**
+ * Statuses where nothing is pending from either side — the request is closed out
+ * and belongs in history rather than in the work queue.
+ *
+ * Named "closed" rather than "terminal": financial reconciliation and staff
+ * adjudication can still change these records (`completed`, `refunded` and both
+ * cancels all move on to `disputed`, and the table below says so). What they have
+ * in common is that none of them may reopen an active appointment.
+ */
+export const QUICK_STOP_CLOSED_STATUSES: QuickStopStatus[] = [
   'contractor_declined',
   'offer_expired',
   'customer_declined',
@@ -75,6 +83,28 @@ export const QUICK_STOP_TERMINAL_STATUSES: QuickStopStatus[] = [
   'contractor_canceled',
   'no_show_confirmed',
   'refunded',
+  // A chargeback is somebody else's process now; the visit itself is over, and an
+  // owner looking at their queue should not find it sitting among live work.
+  'disputed',
+];
+
+/** @deprecated The list never meant "no further transitions". Use QUICK_STOP_CLOSED_STATUSES. */
+export const QUICK_STOP_TERMINAL_STATUSES = QUICK_STOP_CLOSED_STATUSES;
+
+/**
+ * The statuses a contractor may still answer — the offer/decline/more-info gate.
+ * Lives here, beside the transition table, so the table and the guards that
+ * enforce it cannot drift apart unnoticed.
+ */
+export const QUICK_STOP_OFFERABLE_STATUSES: QuickStopStatus[] = ['awaiting_contractor', 'more_information_requested'];
+
+/** Statuses that still hold a slot on a given arrival day, for the daily cap. */
+export const QUICK_STOP_DAY_OCCUPYING_STATUSES: QuickStopStatus[] = [
+  'contractor_offer_sent',
+  'awaiting_customer_payment',
+  'confirmed',
+  'en_route',
+  'arrived',
 ];
 
 // Allowed forward transitions. Kept explicit so server actions can reject an
@@ -82,27 +112,42 @@ export const QUICK_STOP_TERMINAL_STATUSES: QuickStopStatus[] = [
 // client state. Disputes are reachable from any post-payment state.
 export const QUICK_STOP_TRANSITIONS: Record<QuickStopStatus, QuickStopStatus[]> = {
   requested: ['awaiting_contractor', 'contractor_declined'],
-  awaiting_contractor: ['contractor_offer_sent', 'more_information_requested', 'contractor_declined'],
-  more_information_requested: ['awaiting_contractor', 'contractor_offer_sent', 'contractor_declined'],
-  contractor_declined: [],
-  contractor_offer_sent: ['awaiting_customer_payment', 'offer_expired', 'customer_declined'],
-  awaiting_customer_payment: ['confirmed', 'offer_expired', 'customer_declined'],
-  offer_expired: [],
-  customer_declined: [],
-  confirmed: ['en_route', 'arrived', 'customer_canceled', 'contractor_canceled', 'no_show_reported', 'disputed'],
-  en_route: ['arrived', 'customer_canceled', 'contractor_canceled', 'no_show_reported', 'disputed'],
-  arrived: ['completed', 'disputed'],
-  completed: ['disputed'],
+  // Publishing the fully linked offer is one transaction. contractor_offer_sent
+  // remains readable for older interrupted creations that the sweep recovers.
+  awaiting_contractor: ['contractor_offer_sent', 'awaiting_customer_payment', 'more_information_requested', 'contractor_declined', 'offer_expired'],
+  more_information_requested: ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'contractor_declined', 'offer_expired'],
+  contractor_declined: ['refunded'],
+  // -> offer_expired: an offer whose payment never got off the ground is expired
+  //    by recover_stale_quick_stop_offers rather than handed back, so there is
+  //    deliberately no edge from here to awaiting_contractor.
+  contractor_offer_sent: ['awaiting_customer_payment', 'offer_expired', 'customer_declined', 'contractor_canceled'],
+  awaiting_customer_payment: ['confirmed', 'offer_expired', 'customer_declined', 'customer_canceled', 'contractor_canceled'],
+  offer_expired: ['refunded'],
+  customer_declined: ['refunded'],
+  confirmed: ['en_route', 'arrived', 'completed', 'customer_canceled', 'contractor_canceled', 'no_show_confirmed', 'refunded', 'disputed'],
+  en_route: ['arrived', 'completed', 'customer_canceled', 'contractor_canceled', 'no_show_confirmed', 'refunded', 'disputed'],
+  arrived: ['completed', 'customer_canceled', 'contractor_canceled', 'refunded', 'disputed'],
+  completed: ['no_show_confirmed', 'refunded', 'disputed'],
   customer_canceled: ['refunded', 'disputed'],
   contractor_canceled: ['refunded', 'disputed'],
-  no_show_reported: ['no_show_confirmed', 'completed', 'disputed'],
+  // Legacy pending reports may still be adjudicated; new reports resolve in one
+  // transaction after paid-visit and reporting-window eligibility is checked.
+  no_show_reported: ['no_show_confirmed', 'completed', 'refunded', 'disputed'],
   no_show_confirmed: ['refunded', 'disputed'],
   refunded: ['disputed'],
-  disputed: ['refunded', 'completed'],
+  disputed: ['refunded', 'completed', 'no_show_confirmed'],
 };
 
 export function canTransition(from: QuickStopStatus, to: QuickStopStatus): boolean {
   return QUICK_STOP_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export function assertQuickStopTransition(from: QuickStopStatus, to: QuickStopStatus): void {
+  if (!canTransition(from, to)) throw new Error(`Quick Stop cannot move from ${from} to ${to}.`);
+}
+
+export function getQuickStopTransitionSources(to: QuickStopStatus): QuickStopStatus[] {
+  return QUICK_STOP_STATUSES.filter((from) => canTransition(from, to));
 }
 
 // ---------------------------------------------------------------------------

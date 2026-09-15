@@ -2,7 +2,7 @@
 /**
  * Google Ads API v25 Offline Conversion Upload & Allowlist Verifier
  *
- * Checks whether the active developer token is allowlisted for
+ * Checks whether the integration is allowlisted for
  * ConversionUploadService.UploadClickConversions, or whether it has been
  * restricted under the June 15, 2026 cutoff (requiring Google Data Manager API).
  *
@@ -91,7 +91,6 @@ export async function runOfflineConversionVerification(options = {}) {
 
   const clientId = options.clientId || env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = options.clientSecret || env.GOOGLE_ADS_CLIENT_SECRET;
-  const developerToken = options.developerToken || env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const refreshToken = options.refreshToken || env.GOOGLE_ADS_REFRESH_TOKEN;
   const mccCustomerId = (options.mccCustomerId || env.GOOGLE_ADS_MCC_CUSTOMER_ID || '').replace(/-/g, '').trim();
   const explicitCustomerId = (options.customerId || env.GOOGLE_ADS_CLIENT_CUSTOMER_ID || '').replace(/-/g, '').trim();
@@ -150,11 +149,10 @@ export async function runOfflineConversionVerification(options = {}) {
   }
 
   // Live execution
-  if (!clientId || !clientSecret || !refreshToken || !developerToken) {
+  if (!clientId || !clientSecret || !refreshToken) {
     const missing = [];
     if (!clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
     if (!clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
-    if (!developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
     if (!refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
 
     const err = `Missing required credentials for live verification: ${missing.join(', ')}. Pass via CLI flags or provide in .env.local.`;
@@ -205,7 +203,6 @@ export async function runOfflineConversionVerification(options = {}) {
     console.log('[Step 2/3] Constructing test click conversion upload payload...');
     const headers = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
       'Content-Type': 'application/json',
     };
     if (mccCustomerId) {
@@ -259,7 +256,7 @@ export async function runOfflineConversionVerification(options = {}) {
       if (resText.includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE')) {
         report.requiresDataManagerApi = true;
         report.allowlisted = false;
-        const msg = 'DEVELOPER TOKEN RESTRICTION CONFIRMED: Developer token is NOT allowlisted for ConversionUploadService. Google restricted this endpoint after June 15, 2026. Must migrate to Google Data Manager API.';
+        const msg = 'CONVERSION UPLOAD RESTRICTION CONFIRMED: This integration is NOT allowlisted for ConversionUploadService. Google restricted this endpoint after June 15, 2026. Must migrate to Google Data Manager API.';
         report.error = msg;
         report.steps.push({
           step: 3,
@@ -271,12 +268,12 @@ export async function runOfflineConversionVerification(options = {}) {
         return report;
       }
 
-      if (resText.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
-        const msg = 'DEVELOPER TOKEN UNAPPROVED: Token is restricted to Test Account Access and cannot operate on production advertiser accounts. Requires Explorer or Basic Access approval in API Center.';
+      if (resText.includes('CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION') || resText.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
+        const msg = 'CLOUD PROJECT UNAPPROVED: The OAuth Cloud project cannot access production advertiser accounts. Review its access level on the Google Ads API Overview page in Google Cloud Console.';
         report.error = msg;
         report.steps.push({
           step: 3,
-          name: 'Developer Token Status',
+          name: 'Cloud Project Access Status',
           status: 'BLOCKED',
           note: msg,
         });
@@ -295,7 +292,7 @@ export async function runOfflineConversionVerification(options = {}) {
       step: 3,
       name: 'uploadClickConversions Endpoint Reachability',
       status: 'PASS',
-      note: `HTTP 200 received! ConversionUploadService is active and allowlisted on this developer token. (Partial failure on synthetic data: ${partialErr})`,
+      note: `HTTP 200 received! ConversionUploadService is active and allowlisted for this integration. (Partial failure on synthetic data: ${partialErr})`,
     });
 
     console.log('\n---------------------------------------------------------------');

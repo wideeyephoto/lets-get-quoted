@@ -53,6 +53,7 @@ describe('outbound SMS producer boundary', () => {
       return /\bsendProviderMessage\s*\(/.test(executableSource(path));
     });
     expect(callers.sort()).toEqual([
+      'src/lib/sms-canary.ts',
       'src/lib/sms-delivery-worker.ts',
       'src/lib/voice/staff-step-up.ts',
     ]);
@@ -191,7 +192,7 @@ describe('outbound SMS producer boundary', () => {
     expect(scheduleActions).toContain('idempotencyKey: `booking-decision:${jobId}:declined`');
     expect(quickStopActions).toContain('idempotencyKey: `quick-stop:${requestId}:en-route`');
     expect(quickStopActions).toContain('idempotencyKey: `quick-stop:${requestId}:arrived`');
-    expect(quickStopPayments).toContain('idempotencyKey: `quick-stop:${requestId}:offer:${payment.id}`');
+    expect(quickStopPayments).toContain('idempotencyKey: `quick-stop:${requestId}:offer:${request.payment_id}`');
     expect(quickStopPayments).toContain('idempotencyKey: `quick-stop:${confirmed.id}:confirmed:${paymentId}`');
     expect(quickStopRefunds).toContain('idempotencyKey: `quick-stop:${requestId}:refund:${status}`');
     expect(jobsActions).toContain('idempotencyKey: `client-job-dashboard:${job.id}:job-create`');

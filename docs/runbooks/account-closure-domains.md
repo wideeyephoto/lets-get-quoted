@@ -1,6 +1,6 @@
 # Account closure and contractor domains
 
-The supported admin **Close account** action schedules a 30-day recovery period. It suspends access immediately and records `account_closure_requested`; it must not report completed anonymization during that period. The scheduled closure worker performs disposal after the recovery deadline and any legal hold. The legacy hard-delete helper is not the supported UI flow.
+The supported admin **Close account → Schedule closure** action schedules a 30-day recovery period. It suspends access immediately and records `account_closure_requested`; it must not report completed anonymization during that period. The scheduled closure worker performs disposal after the recovery deadline and any legal hold. The legacy hard-delete helper is not the supported UI flow.
 
 The closure request captures website hostnames/site IDs and email domain/provider IDs in the service-only `account_closure_jobs.domain_cleanup_targets` ledger. It captures these within the request transaction, before email rows can be disposed. New domain enrollment is serialized with the account lock and cannot cross that snapshot. Browser roles cannot read these targets or run cleanup/recovery RPCs.
 
@@ -14,13 +14,16 @@ Account recovery uses the existing suspension columns, restores only memberships
 
 ## Release and rollback
 
-Apply these migrations in order before deploying the new application:
+The canonical repository migrations are listed below in order. Compare the existing migration history and live function definition before applying anything; do not reapply an equivalent hosted repair merely because its recorded timestamp differs:
 
-1. `20260910133921_account_closure_domain_cleanup.sql`
-2. `20260910140253_account_closure_request_contract.sql`
-3. `20260910140758_account_closure_actor_type.sql`
+1. `20260910135949_account_closure_domain_cleanup.sql`
+2. `20260910140640_account_closure_request_contract.sql`
+3. `20260910140859_account_closure_actor_type.sql`
+4. `20260912085216_account_closure_actor_drift_repair.sql`
 
-The latter two align the pre-existing request/recovery functions with the hosted account schema: `suspended_at`, `suspended_reason`, and text `suspended_by`. There are no `accounts.status` or `accounts.updated_at` columns. Staging discovered this mismatch during a transaction that rolled back completely. The final local harness uses the actual column names and types. Preserve each applied migration rather than rewriting staging history.
+On September 12, production retained the actor-fix migration record but its stored request function again contained the incompatible UUID/text assignment. Migration history alone is not proof of the live function definition. The additive repair accepts the known correct cast unchanged or restores the known old assignment, preserving all other function logic and refusing unexpected definitions or browser execution grants. The PostgreSQL harness reproduces this drift before repairing it. A supported production fixture request then succeeded; its normal recovery period remains in force unless separately authorized for that exact empty fixture.
+
+The second and third migrations align the pre-existing request/recovery functions with the hosted account schema: `suspended_at`, `suspended_reason`, and text `suspended_by`. There are no `accounts.status` or `accounts.updated_at` columns. Staging discovered this mismatch during a transaction that rolled back completely. The final local harness uses the actual column names and types. Preserve each applied migration rather than rewriting staging history.
 
 Run `npm run test:pg17:closure-domains`, relevant application tests, type checking, lint and the full CI build. The PostgreSQL harness exercises actual request/claim functions, capture, grace and hold guards, concurrent enrollment, retry/completion, browser-role denial, recovery and preservation of existing enforcement. A hosted SQL rollback drill checks the full hosted schema without provider calls or committed fixture data. Neither test is proof of a deployed production provider deletion.
 

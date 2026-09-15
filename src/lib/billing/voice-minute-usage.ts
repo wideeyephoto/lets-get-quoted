@@ -189,8 +189,13 @@ export async function admitVoiceCall(
   // response race with voicemail. Every retry repeats the atomic identity,
   // number, terminal and capacity checks; busy itself never grants admission.
   let busyRetries = 0;
-  for (; slot.outcome === 'busy' && busyRetries < 3; busyRetries += 1) {
-    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+  const busyDeadline = Date.now() + 5000;
+  // Live provider retries overlapped a slow reservation for several seconds.
+  // Three 100ms pauses let the retry return voicemail before the first request
+  // finalized. Give the same call a five-second polling window, still requiring
+  // the atomic claim to confirm completion and its original cap.
+  for (; slot.outcome === 'busy' && busyRetries < 20 && Date.now() < busyDeadline; busyRetries += 1) {
+    await new Promise<void>((resolve) => setTimeout(resolve, Math.min(250, busyDeadline - Date.now())));
     slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
   }
   if (busyRetries > 0) console.info('voice_admission_retry', { attempts: busyRetries, outcome: slot.outcome });

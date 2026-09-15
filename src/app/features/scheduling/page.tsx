@@ -169,7 +169,7 @@ export default function SchedulingFeaturePage() {
       /* The calendar IS the argument — it explains the capacity model faster
          than the four paragraphs under it. Signing up is the second option,
          which is the shared shell's default. */
-      primary={{ label: 'Open the live calendar', href: '/demo/schedule' }}
+      primary={{ label: 'See scheduling in the demo', href: '/demo/schedule' }}
       demo={
         <ExampleFrame
           label="Three windows sent by text, and the one they picked."

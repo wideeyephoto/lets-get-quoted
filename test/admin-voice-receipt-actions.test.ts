@@ -6,7 +6,7 @@ vi.mock('@/lib/admin', () => ({ logAdminAction: mocks.audit }));
 vi.mock('@/lib/voice/auth', () => ({ signalWireVoiceScope: mocks.scope }));
 vi.mock('@/lib/voice/receipt-recovery', () => ({ recoverVoiceReceipt: mocks.recover }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidate }));
-vi.mock('next/navigation', () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
+vi.mock('next/navigation', () => ({ unstable_rethrow: (t: unknown) => { const d = (t as { digest?: unknown })?.digest; if (typeof d === 'string' && d.startsWith('NEXT_REDIRECT')) throw t; }, redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 import { retryVoiceReceiptAction } from '@/app/admin/failures/actions';
 
 const EVENT = '11111111-1111-4111-8111-111111111111';

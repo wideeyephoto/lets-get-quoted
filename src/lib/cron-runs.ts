@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { CRON_JOBS, cronHealth, cronSummaryHasFailures, type CronHealth } from '@/lib/cron-jobs';
@@ -43,31 +44,38 @@ const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
  */
 const PRUNE_ODDS = 50;
 
-async function startRun(admin: SupabaseClient, job: string): Promise<string | null> {
+type CronRunIdentity = Pick<CronRunRow, 'id' | 'job' | 'started_at'>;
+
+async function startRun(admin: SupabaseClient, job: string): Promise<CronRunIdentity> {
+  // Keep the identity even when the insert response is lost. Completion can
+  // then create the missing row or finish the already committed row safely.
+  const identity = { id: randomUUID(), job, started_at: new Date().toISOString() };
   try {
-    const { data, error } = await admin
+    const { error } = await admin
       .from('cron_runs')
-      .insert({ job, started_at: new Date().toISOString() })
+      .insert(identity)
       .select('id')
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return (data as { id: string } | null)?.id ?? null;
   } catch (error) {
     console.error(`cron_runs start failed for ${job}:`, error instanceof Error ? error.message : error);
-    return null;
   }
+  return identity;
 }
 
 async function finishRun(
   admin: SupabaseClient,
-  runId: string | null,
+  identity: CronRunIdentity,
   patch: { ok: boolean; durationMs: number; summary?: unknown; error?: string | null },
 ): Promise<void> {
-  if (!runId) return;
   try {
-    await admin
+    // One completion write for this invocation; never rerun business work.
+    // The stable primary key covers both a rejected insert and an insert that
+    // committed before its response failed, without creating duplicate runs.
+    const { error } = await admin
       .from('cron_runs')
-      .update({
+      .upsert({
+        ...identity,
         finished_at: new Date().toISOString(),
         ok: patch.ok,
         duration_ms: patch.durationMs,
@@ -75,8 +83,10 @@ async function finishRun(
         // string is wrapped so the shape stays queryable.
         summary: patch.summary === undefined ? null : asJson(patch.summary),
         error: patch.error ?? null,
-      })
-      .eq('id', runId);
+      }, { onConflict: 'id' });
+    if (error) {
+      console.error('cron_runs finish write error:', error.message);
+    }
   } catch (error) {
     console.error('cron_runs finish failed:', error instanceof Error ? error.message : error);
   }
@@ -90,7 +100,10 @@ function asJson(value: unknown): Record<string, unknown> | null {
 
 async function pruneOldRuns(admin: SupabaseClient): Promise<void> {
   try {
-    await admin.from('cron_runs').delete().lt('started_at', new Date(Date.now() - RETENTION_MS).toISOString());
+    const { error } = await admin.from('cron_runs').delete().lt('started_at', new Date(Date.now() - RETENTION_MS).toISOString());
+    if (error) {
+      console.error('cron_runs prune write error:', error.message);
+    }
   } catch (error) {
     console.error('cron_runs prune failed:', error instanceof Error ? error.message : error);
   }
@@ -189,14 +202,14 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
     }
 
     const admin = createAdminClient();
-    const runId = await startRun(admin, job);
+    const runRecord = await startRun(admin, job);
     const startedMs = Date.now();
 
     try {
       const summary = await run();
       const summaryJson = asJson(summary);
       const logicalFailure = cronSummaryHasFailures(summaryJson);
-      await finishRun(admin, runId, {
+      await finishRun(admin, runRecord, {
         ok: !logicalFailure,
         durationMs: Date.now() - startedMs,
         summary,
@@ -210,7 +223,7 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`${job} cron failed:`, message);
-      await finishRun(admin, runId, { ok: false, durationMs: Date.now() - startedMs, error: message.slice(0, 2000) });
+      await finishRun(admin, runRecord, { ok: false, durationMs: Date.now() - startedMs, error: message.slice(0, 2000) });
       // Status stays 500 so Vercel's own run history marks it failed too. The
       // body no longer needs to carry detail — it is in cron_runs.error, where
       // somebody can actually find it.

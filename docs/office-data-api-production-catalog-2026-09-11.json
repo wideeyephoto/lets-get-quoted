@@ -1,0 +1,60 @@
+{
+  "checkedAt": "2026-09-11T16:41:56.381Z",
+  "project": "mfuvvtrkipkigwqqtcal",
+  "release": {
+    "commit": "b1bb7f172ee1042f13bfaf5816318d467f5193f3",
+    "deployment": "dpl_6aT9U7w7GpzkDN9Y1RsM4PBDwjgm",
+    "origin": "https://app.letsgetquoted.com"
+  },
+  "hostedMigrations": [
+    {
+      "version": "20260911155729",
+      "name": "repair_office_job_write_boundary"
+    },
+    {
+      "version": "20260911162539",
+      "name": "enforce_office_job_read_boundary"
+    }
+  ],
+  "privileges": {
+    "raw_table_select": false,
+    "raw_price_select": false,
+    "raw_operational_select": true,
+    "service_table_select": true,
+    "authenticated_truncate": false
+  },
+  "functions": [
+    {
+      "name": "guard_job_protected_fields",
+      "config": [
+        "search_path=\"\""
+      ],
+      "security_definer": false
+    },
+    {
+      "name": "job_quote_values",
+      "config": [
+        "search_path=\"\""
+      ],
+      "security_definer": true
+    },
+    {
+      "name": "write_job_access",
+      "config": [
+        "search_path=\"\""
+      ],
+      "security_definer": false
+    }
+  ],
+  "view_options": [
+    "security_invoker=true",
+    "security_barrier=true"
+  ],
+  "clientForeignKeys": [
+    {
+      "conname": "jobs_client_id_fkey",
+      "definition": "FOREIGN KEY (account_id, client_id) REFERENCES clients(account_id, id) ON DELETE SET NULL (client_id)"
+    }
+  ],
+  "boundaryAdvisorFindings": []
+}

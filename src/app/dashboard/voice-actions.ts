@@ -8,6 +8,7 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { createJobTask } from '@/lib/job-tasks';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { ParsedJobVoiceData, ParsedLeadVoiceData } from '@/lib/contractor-voice-ai';
+import { unstable_rethrow } from 'next/navigation';
 
 /**
  * Server action to apply parsed voice data to a Lead (create new or update existing).
@@ -100,6 +101,9 @@ export async function applyVoiceLeadAction(payload: {
       return { ok: true, leadId: created.id };
     }
   } catch (err) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     console.error('applyVoiceLeadAction error:', err);
     return { ok: false, error: err instanceof Error ? err.message : 'Failed to apply lead voice update.' };
   }

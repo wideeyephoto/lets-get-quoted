@@ -44,6 +44,10 @@ describe('Municipality-Specific Certificate of Insurance (COI) Generator', () =>
     const cert = generateMunicipalCoi({
       contractor: {
         companyName: 'Metro Electric',
+        generalLiabilityCarrier: 'Hartford Fire Insurance Co',
+        generalLiabilityPolicyNumber: 'HART-102948',
+        workersCompCarrier: 'State Compensation Insurance Fund',
+        workersCompPolicyNumber: 'SCIF-991024',
       },
       municipality: {
         authorityName: 'City of Los Angeles',
@@ -58,5 +62,20 @@ describe('Municipality-Specific Certificate of Insurance (COI) Generator', () =>
     expect(html).toContain('City of Los Angeles');
     expect(html).toContain('$1,000,000');
     expect(html).toContain('30 DAYS NOTICE');
+  });
+
+  it('refuses to generate and throws CoverageDataMissingError when coverage data is absent', () => {
+    expect(() =>
+      generateMunicipalCoi({
+        contractor: {
+          companyName: 'Metro Electric',
+        },
+        municipality: {
+          authorityName: 'City of Los Angeles',
+          city: 'Los Angeles',
+          state: 'CA',
+        },
+      }),
+    ).toThrow(/missing required coverage data/);
   });
 });

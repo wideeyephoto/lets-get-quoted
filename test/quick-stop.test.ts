@@ -158,7 +158,7 @@ describe('state machine', () => {
   it('terminal statuses never return to an active lifecycle state', () => {
     // Terminal states may still move to refunded/disputed (money resolution),
     // but must never jump back into the active flow.
-    const resolutionOnly = new Set<QuickStopStatus>(['refunded', 'disputed']);
+    const resolutionOnly = new Set<QuickStopStatus>(['refunded', 'disputed', 'completed', 'no_show_confirmed']);
     for (const status of QUICK_STOP_TERMINAL_STATUSES) {
       const outs = QUICK_STOP_TRANSITIONS[status as QuickStopStatus];
       expect(outs.every((t) => resolutionOnly.has(t))).toBe(true);

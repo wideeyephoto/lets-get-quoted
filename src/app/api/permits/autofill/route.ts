@@ -97,8 +97,22 @@ export async function POST(request: Request) {
       const liabIns = credentials.find((c) => c.credentialType === 'liability_insurance');
       const wcIns = credentials.find((c) => c.credentialType === 'workers_comp');
 
+      let accountBusinessName: string | undefined;
+      if (typeof supabase.from === 'function') {
+        try {
+          const { data: account } = await supabase
+            .from('accounts')
+            .select('business_name')
+            .eq('id', membership.accountId)
+            .maybeSingle();
+          accountBusinessName = account?.business_name;
+        } catch {
+          // ignore lookup failure
+        }
+      }
+
       contractor = {
-        businessName: stateLic?.holderName || contractor?.businessName || "Let's Get Quoted Partner Contractor",
+        businessName: stateLic?.holderName || contractor?.businessName || accountBusinessName || 'Contractor',
         licenseNumber: stateLic?.licenseNumber || contractor?.licenseNumber,
         insuranceCarrier: liabIns?.insuranceCarrier || contractor?.insuranceCarrier,
         policyNumber: liabIns?.policyNumber || contractor?.policyNumber,

@@ -1,0 +1,43 @@
+
+.fixit {
+  --c-bg: #fff; --c-surface: #f5f5f7; --c-ink: #2b2b30; --c-muted: #6a6a72; --c-line: #ececef; --c-deep: #201f24; --c-on-deep: #fff;
+  --fx-ink: var(--c-ink); --fx-muted: var(--c-muted); --fx-surface: var(--c-surface);
+  --fixit-ambient: radial-gradient(circle at 60% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
+  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+.fixit[data-mode='dark'] {
+  --fixit-ambient: radial-gradient(ellipse at 40% -10%, rgba(245, 130, 42, 0.22), transparent 48%), radial-gradient(circle at 90% 20%, rgba(251, 191, 36, 0.14), transparent 35%), linear-gradient(180deg, #120e0a 0%, #1c1510 50%, #0a0806 100%);
+}
+.fixit .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.fixit .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
+.fixit .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--fx-ink); }
+.fixit .kicker { color: var(--theme-accent); }
+.fixit .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(43,43,48,.28); }
+.fixit .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); color: var(--theme-accent); border-radius: 12px; }
+.fixit .serviceCard h3 { color: var(--fx-ink); }
+.fixit .serviceCard p { color: var(--fx-muted); }
+.fixit .statValue { color: var(--fx-ink); }
+.fixit .statItem { background: var(--fx-surface); border-radius: 14px; padding: 1.4rem 1rem; }
+.fixit .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
+.fixit .heroQuickForm {
+  border-radius: 14px;
+  background: var(--c-surface);
+  color: var(--fx-ink);
+  border: 1px solid var(--c-line);
+  box-shadow: 0 24px 50px -22px rgba(43,43,48,.28);
+}
+.fixit .heroQuickForm .heroFormTitle { color: var(--fx-ink); font-family: var(--theme-display); font-weight: 800; }
+.fixit .heroQuickForm .heroFormNote { color: var(--fx-muted); }
+.fixit .heroQuickForm input, .fixit .heroQuickForm select, .fixit .heroQuickForm textarea {
+  border-radius: 8px;
+  border-color: var(--c-line);
+  background: color-mix(in srgb, var(--c-surface) 92%, #000 8%);
+  color: var(--fx-ink);
+}
+.fixit .heroQuickForm .heroFormChip {
+  border-radius: 8px;
+  border-color: var(--c-line);
+}
+
+.fixit[data-mode='dark'] { --c-bg: #17181d; --c-surface: #1f2129; --c-ink: #e9eaef; --c-muted: #9ba1ae; --c-line: #262933; --c-deep: #101115; --c-on-deep: #e9eaef; }
+.fixit[data-mode='dark'] .fixitPhoneIcon { border-color: #363b47; }

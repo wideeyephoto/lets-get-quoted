@@ -10,7 +10,7 @@ import {
   PLATFORM_CAMPAIGN_TEMPLATES,
   type PlatformCampaignTemplate,
 } from '@/lib/platform-campaign-templates';
-import { EMAIL_THEMES, type EmailThemeId } from '@/emails/brand';
+import type { EmailThemeId } from '@/emails/brand';
 import {
   getAudienceReachAction,
   previewPlatformCampaignAction,
@@ -25,6 +25,8 @@ type Props = {
   onCampaignSent?: () => void;
 };
 
+const INITIAL_TEMPLATE = PLATFORM_CAMPAIGN_TEMPLATES.find((template) => template.id === 'feature-launch')!;
+
 export default function AdminCampaignComposer({
   adminEmail,
   initialAudienceReach,
@@ -33,25 +35,17 @@ export default function AdminCampaignComposer({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('feature-launch');
   const [audience, setAudience] = useState<PlatformAudienceId>('all_contractors');
   const [customEmails, setCustomEmails] = useState<string>('');
-  const [senderName, setSenderName] = useState<string>("Let's Get Quoted Product Team");
+  const [senderName, setSenderName] = useState<string>(INITIAL_TEMPLATE.defaultSenderName);
   const [senderEmail, setSenderEmail] = useState<string>('hello@letsgetquoted.com');
   const [replyTo, setReplyTo] = useState<string>('hello@letsgetquoted.com');
-  const [theme, setTheme] = useState<EmailThemeId>('spotlight');
-  const [eyebrow, setEyebrow] = useState<string>('Product Update');
-  const [subject, setSubject] = useState<string>(
-    "New on Let's Get Quoted: Instant Client Approvals & Live Tracking",
-  );
-  const [preheader, setPreheader] = useState<string>(
-    'See what is new in your dashboard today to win more jobs faster.',
-  );
-  const [heading, setHeading] = useState<string>(
-    'Exciting new features are now live in your account',
-  );
-  const [body, setBody] = useState<string>(
-    `Hi {{first_name}},\n\nWe have just released a series of platform updates designed to help {{business_name}} close jobs faster and save hours on administration each week.\n\n[STAT: 3 Updates | Platform Launch | Instant quote approvals, live arrival tracking, and PDF receipts are live.]\n\n## What Is New in Your Workspace:\n\n• One-Click Quote Approvals: Homeowners can approve and sign estimates directly from their phone in seconds.\n• Live Arrival Tracking: Automated SMS notifications let your customers see when your crew is on their way.\n• Instant Payment Receipts: Clean, branded PDFs automatically delivered when deposits and invoices are cleared.\n\nTip: You can enable or customize all new features directly in your Settings tab.`,
-  );
-  const [ctaLabel, setCtaLabel] = useState<string>('Open your dashboard & explore');
-  const [ctaUrl, setCtaUrl] = useState<string>('https://letsgetquoted.com/dashboard');
+  const [theme, setTheme] = useState<EmailThemeId>('blueprint');
+  const [eyebrow, setEyebrow] = useState<string>(INITIAL_TEMPLATE.eyebrow);
+  const [subject, setSubject] = useState<string>(INITIAL_TEMPLATE.subject);
+  const [preheader, setPreheader] = useState<string>(INITIAL_TEMPLATE.preheader);
+  const [heading, setHeading] = useState<string>(INITIAL_TEMPLATE.heading);
+  const [body, setBody] = useState<string>(INITIAL_TEMPLATE.body);
+  const [ctaLabel, setCtaLabel] = useState<string>(INITIAL_TEMPLATE.ctaLabel);
+  const [ctaUrl, setCtaUrl] = useState<string>(INITIAL_TEMPLATE.ctaUrl);
 
   // Preview state
   const [previewHtml, setPreviewHtml] = useState<string>('');
@@ -361,20 +355,8 @@ export default function AdminCampaignComposer({
               />
             </div>
             <div>
-              <label className={styles.formLabel} htmlFor="email-theme-select">Email Theme Shell</label>
-              <select
-                id="email-theme-select"
-                className={styles.input}
-                value={theme}
-                onChange={(e) => setTheme(e.target.value as EmailThemeId)}
-                style={{ width: '100%', marginTop: '0.25rem' }}
-              >
-                {EMAIL_THEMES.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} — {t.outcome}
-                  </option>
-                ))}
-              </select>
+              <span className={styles.formLabel}>Email style</span>
+              <p className={styles.muted}>Let’s Get Quoted — website colors, branded header, and a readable message layout.</p>
             </div>
           </div>
         </section>
@@ -780,7 +762,7 @@ export default function AdminCampaignComposer({
                   <div><span className={styles.muted}>From:</span> {senderName} &lt;{senderEmail}&gt;</div>
                   <div><span className={styles.muted}>Subject:</span> <strong>{subject}</strong></div>
                   <div><span className={styles.muted}>Audience Count:</span> {audienceCount} deliverable recipients</div>
-                  <div><span className={styles.muted}>Theme:</span> {theme}</div>
+                  <div><span className={styles.muted}>Style:</span> Let’s Get Quoted</div>
                 </div>
 
                 <p className={styles.muted} style={{ fontSize: '0.74rem', margin: '0 0 1.2rem' }}>

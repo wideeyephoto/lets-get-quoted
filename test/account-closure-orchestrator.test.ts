@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   encryptVendorHandles,
   decryptVendorHandles,
@@ -362,3 +362,41 @@ describe('account closure orchestrator & encryption', () => {
   });
 });
 
+
+describe('vendor handle encryption key', () => {
+  const saved = { ...process.env };
+  afterEach(() => { process.env = { ...saved }; });
+
+  const handles: VendorHandles = { stripeCustomerId: 'cus_123', quickbooksRealmId: '4620816' };
+
+  it('refuses to encrypt when no key is configured', () => {
+    delete process.env.CLOSURE_ENCRYPTION_SECRET;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // There used to be a literal fallback key in this file's source. Anything
+    // sealed under it was readable by anyone with the ciphertext and a checkout.
+    expect(() => encryptVendorHandles(handles)).toThrow(/CLOSURE_ENCRYPTION_SECRET|SUPABASE_SERVICE_ROLE_KEY/);
+  });
+
+  it('refuses to decrypt when no key is configured', () => {
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'a-configured-closure-secret';
+    const sealed = encryptVendorHandles(handles);
+
+    delete process.env.CLOSURE_ENCRYPTION_SECRET;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // decryptVendorHandles swallows its own failures and returns null, so the
+    // assertion is that it does not quietly succeed under a guessable key.
+    expect(decryptVendorHandles(sealed)).toBeNull();
+  });
+
+  it('round-trips under a configured key', () => {
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'a-configured-closure-secret';
+    expect(decryptVendorHandles(encryptVendorHandles(handles))).toEqual(handles);
+  });
+
+  it('does not decrypt a payload sealed under a different key', () => {
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'first-closure-secret';
+    const sealed = encryptVendorHandles(handles);
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'second-closure-secret';
+    expect(decryptVendorHandles(sealed)).toBeNull();
+  });
+});

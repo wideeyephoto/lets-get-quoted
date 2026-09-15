@@ -15,6 +15,8 @@ import {
   type SelectionStatus,
   type SelectionTemplateBody,
 } from '@/lib/selections';
+
+export type { Selection } from '@/lib/selections';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 
 type Row = Record<string, unknown>;

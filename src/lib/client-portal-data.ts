@@ -152,6 +152,15 @@ export type PortalPayment = {
   refunded: boolean;
 };
 
+export type PortalActionItem = {
+  id: string;
+  kind: 'change_order' | 'selection' | 'form';
+  title: string;
+  jobRef: string;
+  url: string;
+  createdAt: string;
+};
+
 export type PortalPayload = PortalView & {
   warranties: ClientWarranty[];
   brand: ContractorBrand;
@@ -165,6 +174,7 @@ export type PortalPayload = PortalView & {
   propertyPassports: PropertyPassport[];
   /** Across every open invoice — the one number a customer opens this to find. */
   outstanding: number;
+  actionQueue: PortalActionItem[];
 };
 
 const QUOTE_STATUS_LABEL: Record<string, string> = {
@@ -289,6 +299,59 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
   // Bills and receipts. Scoped to this customer's own jobs — the job ids are the
   // ones already loaded above, so a token cannot reach an invoice belonging to
   // anybody else even if a job_id were somehow wrong.
+  
+  // Action queue items
+  const [{ data: coRows }, { data: selRows }, { data: formRows }] = jobIds.length
+    ? await Promise.all([
+        admin.from('change_orders').select('id, title, job_id, created_at').eq('account_id', accountId).in('job_id', jobIds).eq('status', 'sent'),
+        admin.from('job_selections').select('id, title, job_id, created_at').eq('account_id', accountId).in('job_id', jobIds).eq('status', 'open').is('chosen_option_id', null),
+        admin.from('job_form_submissions').select('id, template_snapshot, job_id, created_at').eq('account_id', accountId).in('job_id', jobIds).eq('status', 'submitted').is('customer_signature', null),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
+
+  const actionQueue: PortalActionItem[] = [];
+  const refByJob = new Map(jobs.map((job) => [job.id, job.ref] as const));
+  
+  for (const row of coRows ?? []) {
+    actionQueue.push({
+      id: row.id as string,
+      kind: 'change_order',
+      title: (row.title as string) || 'Change Order',
+      jobRef: refByJob.get(row.job_id as string) ?? 'Work',
+      url: `/client/jobs/${row.job_id}#change-orders`,
+      createdAt: row.created_at as string,
+    });
+  }
+
+  for (const row of selRows ?? []) {
+    actionQueue.push({
+      id: row.id as string,
+      kind: 'selection',
+      title: (row.title as string) || 'Selection',
+      jobRef: refByJob.get(row.job_id as string) ?? 'Work',
+      url: `/client/jobs/${row.job_id}#selections`,
+      createdAt: row.created_at as string,
+    });
+  }
+
+  for (const row of formRows ?? []) {
+    // Check if the form requires customer signature
+    const snap = row.template_snapshot as any;
+    if (snap && snap.requireCustomerSignature) {
+      actionQueue.push({
+        id: row.id as string,
+        kind: 'form',
+        title: snap.title || 'Form',
+        jobRef: refByJob.get(row.job_id as string) ?? 'Work',
+        url: `/client/jobs/${row.job_id}#forms`,
+        createdAt: row.created_at as string,
+      });
+    }
+  }
+  
+  // Sort queue by date desc
+  actionQueue.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   const [{ data: invoiceRows }, { data: paymentRows }] = jobIds.length
     ? await Promise.all([
         admin
@@ -319,7 +382,6 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
     kind: string;
   })[];
   const scopeByJob = new Map(jobs.map((job) => [job.id, job.scope] as const));
-  const refByJob = new Map(jobs.map((job) => [job.id, job.ref] as const));
 
   const invoices: PortalInvoice[] = (invoiceRows ?? []).map((row) => {
     const total = Number(row.total) || 0;
@@ -653,6 +715,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
     membership: membershipSummary,
     propertyPassports: propertyPassports ?? [],
     outstanding: Math.round(invoices.reduce((sum, invoice) => sum + invoice.due, 0) * 100) / 100,
+    actionQueue,
   };
 }
 
@@ -708,7 +771,7 @@ export async function submitPortalMessage(
   if (targetJobId) {
     try {
       await createJobFeedEvent(admin, input.accountId, targetJobId, {
-        kind: 'note',
+        kind: 'portal_note',
         title: `Portal note from ${clientName}`,
         body,
         visibility: 'client',
@@ -716,6 +779,20 @@ export async function submitPortalMessage(
       });
     } catch (err) {
       console.error('Failed to write job feed event from portal message:', err);
+    }
+  } else {
+    // If no job found, fallback to client_feed
+    try {
+      await admin.from('client_feed').insert({
+        account_id: input.accountId,
+        client_id: input.clientId,
+        kind: 'portal_note',
+        title: `Portal note from ${clientName}`,
+        body,
+        author: 'Client',
+      });
+    } catch (err) {
+      console.error('Failed to write client feed event from portal message:', err);
     }
   }
 
@@ -741,15 +818,17 @@ export async function submitPortalMessage(
         accountId: input.accountId,
         recipientEmail: ownerEmail,
         businessName,
-        subject: `New portal message from ${clientName}`,
-        heading: `Message from ${clientName}`,
+        subject: `New portal note from ${clientName}`,
+        heading: `Note from ${clientName}`,
         bodyLines: [
           `"${body}"`,
           ...(client?.phone ? [`Phone: ${client.phone}`] : []),
           ...(client?.email ? [`Email: ${client.email}`] : []),
         ],
-        ctaLabel: 'Open Messages',
-        ctaUrl: `${APP_ORIGIN}/dashboard/messages`,
+        ctaLabel: targetJobId ? 'View Job' : 'View Client',
+        ctaUrl: targetJobId
+          ? `${APP_ORIGIN}/dashboard/jobs/${targetJobId}`
+          : `${APP_ORIGIN}/dashboard/clients/${input.clientId}`,
         tone: 'info',
       });
     }
@@ -762,7 +841,9 @@ export async function submitPortalMessage(
     try {
       const dashboardUrl = normalizedClientPhone
         ? `${APP_ORIGIN}/dashboard/messages?thread=${encodeURIComponent(normalizedClientPhone)}`
-        : `${APP_ORIGIN}/dashboard/messages`;
+        : targetJobId
+        ? `${APP_ORIGIN}/dashboard/jobs/${targetJobId}`
+        : `${APP_ORIGIN}/dashboard/clients/${input.clientId}`;
 
       await sendOwnerPortalMessageAlertSms({
         accountId: input.accountId,

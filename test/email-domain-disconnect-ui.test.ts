@@ -123,4 +123,22 @@ describe('email domain disconnect confirmation', () => {
     expect(actions.remove).toHaveBeenCalledTimes(2);
     expect(text(renderer.root)).toContain('Sending domain disconnected.');
   });
+
+  it('renders reply-to routing and free email alias guidance when domain is verified', async () => {
+    expect(text(renderer.root)).toContain('Where do customer replies go?');
+    expect(text(renderer.root)).toContain('Reply-To');
+    expect(text(renderer.root)).toContain('Recommended tip for your email provider');
+    expect(text(renderer.root)).toContain('hello@contractor.example');
+  });
+
+  it('omits reply-to guidance when domain is not verified', async () => {
+    await act(async () => {
+      renderer.unmount();
+      renderer = create(React.createElement(EmailSendingDomainSection, {
+        initialDomain: { ...domain, status: 'pending' }, isEnabled: true,
+      }));
+    });
+    expect(text(renderer.root)).not.toContain('Where do customer replies go?');
+    expect(text(renderer.root)).toContain('Required DNS Records');
+  });
 });

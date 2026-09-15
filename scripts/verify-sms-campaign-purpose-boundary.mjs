@@ -229,7 +229,9 @@ try {
   await client.query("set lock_timeout = '5s'");
   await client.query(BASE);
 
-  const migration = readFileSync(MIGRATION, 'utf8');
+  // JavaScript template fixtures use LF even on Windows. Match that encoding
+  // when loading SQL whose exact function-text guards compare line endings.
+  const migration = readFileSync(MIGRATION, 'utf8').replace(/\r\n/g, '\n');
   await client.query(migration);
   await client.query(migration);
   check('migration applies twice', true);

@@ -368,7 +368,7 @@ try {
 
   // Apply the stricter v1 limit after checking the original schema contract.
   await client.query('delete from public.email_sending_domains where account_id = $1', [accB.id]);
-  await client.query(readFileSync(join(REPO, 'migrations', '20260909210950_email_sending_domain_account_limit.sql'), 'utf8'));
+  await client.query(readFileSync(join(REPO, 'migrations', '20260909212723_email_sending_domain_account_limit.sql'), 'utf8'));
   const contenders = [0, 1].map(() => pgInstance
     ? pgInstance.getPgClient('lgq_test')
     : new Client({ connectionString: process.env.LGQ_PG17_DATABASE_URL }));

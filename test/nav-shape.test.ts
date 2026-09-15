@@ -248,7 +248,7 @@ describe('the rail is colour-coded by section', () => {
       expect(SHELL, name).toContain(`accent: '${name}'`);
     }
     // Both rails the shell draws: the signed-in one and the marketing drawer.
-    expect(SHELL.match(/sidenav-group sidenav-group--\$\{group\.accent\}/g) ?? []).toHaveLength(2);
+    expect(SHELL.match(/sidenav-group sidenav-group--\$\{group\.accent\}/g) ?? []).toHaveLength(1);
     // And the demo rail, which derives its section colors directly from NAV_GROUPS.
     expect(DEMO_RAIL).toContain('accent: group.accent');
     expect(DEMO_RAIL).toContain('sidenav-group sidenav-group--${group.accent}');

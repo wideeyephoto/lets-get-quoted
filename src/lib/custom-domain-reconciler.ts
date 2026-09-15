@@ -67,6 +67,8 @@ export type CustomDomainReconcileSummary = {
   /** Bindings on the project with no site row behind them. Reported, never deleted. */
   orphanedAtProject: number;
   errors: number;
+  /** Transient site SELECTs retried once, including recovered reads. */
+  readRetries?: number;
   /** Present only when the run was bounded, so a cap is never silent. */
   remaining?: number;
   skipped?: true;
@@ -83,6 +85,26 @@ function emptySummary(): CustomDomainReconcileSummary {
     orphanedAtProject: 0,
     errors: 0,
   };
+}
+
+async function readSitesWithRetry<T extends { error: { message: string } | null; status?: number }>(
+  read: () => PromiseLike<T>,
+  summary: CustomDomainReconcileSummary,
+  label: string,
+): Promise<T> {
+  const result = await read();
+  if (!result.error) return result;
+  const transient = result.status
+    ? [502, 503, 504].includes(result.status)
+    : /^gateway timeout$/i.test(result.error.message.trim());
+  if (!transient) return result;
+
+  // Retry only these read-only queries. Replaying the worker after an orphan
+  // sweep failure could repeat a promotion or an already accepted owner email.
+  summary.readRetries = (summary.readRetries ?? 0) + 1;
+  console.warn(`[custom-domain-reconcile] ${label} transient read failure; retrying once`);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  return await read();
 }
 
 /**
@@ -136,16 +158,20 @@ export async function runCustomDomainReconcile(
   const admin = client ?? createAdminClient();
   const since = new Date(Date.now() - PENDING_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data, error } = await admin
-    .from('sites')
-    .select('id, account_id, custom_domain, subdomain, company_name')
-    .not('custom_domain', 'is', null)
-    .is('custom_domain_verified_at', null)
-    .gte('updated_at', since)
-    // Oldest first, so a bounded run still reaches everything over a few
-    // cycles rather than starving the tail forever.
-    .order('updated_at', { ascending: true })
-    .limit(MAX_DOMAINS_PER_RUN + 1);
+  const { data, error } = await readSitesWithRetry(
+    () => admin
+      .from('sites')
+      .select('id, account_id, custom_domain, subdomain, company_name')
+      .not('custom_domain', 'is', null)
+      .is('custom_domain_verified_at', null)
+      .gte('updated_at', since)
+      // Oldest first, so a bounded run still reaches everything over a few
+      // cycles rather than starving the tail forever.
+      .order('updated_at', { ascending: true })
+      .limit(MAX_DOMAINS_PER_RUN + 1),
+    summary,
+    'pending sites',
+  );
   if (error) throw new Error(`Could not load pending custom domains: ${error.message}`);
 
   const all = ((data ?? []) as ReconcileRow[]).filter((row) => Boolean(row.custom_domain));
@@ -214,10 +240,11 @@ export async function runCustomDomainReconcile(
   try {
     const attached = await listProjectDomains();
     if (attached) {
-      const { data: known, error: knownError } = await admin
-        .from('sites')
-        .select('custom_domain')
-        .not('custom_domain', 'is', null);
+      const { data: known, error: knownError } = await readSitesWithRetry(
+        () => admin.from('sites').select('custom_domain').not('custom_domain', 'is', null),
+        summary,
+        'orphan ownership',
+      );
       if (knownError) throw new Error(knownError.message);
       const claimed = new Set(
         ((known ?? []) as Array<{ custom_domain: string | null }>)

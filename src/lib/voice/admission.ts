@@ -25,10 +25,11 @@ import {
 } from '@/lib/voice/grounding';
 import { recordProvisionalVoiceCall } from '@/lib/voice/settlement';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { reconcileVoiceTerminalAdmission } from '@/lib/voice/terminal-reconciliation';
 import { ensureSmsConsentBaseline } from '@/lib/sms';
 
 /**
- * Deciding what happens to an inbound call, with no HTTP anywhere in it.
+ * Deciding what happens to an inbound call independently of its webhook route.
  *
  * SEPARATE FROM THE ROUTE ON PURPOSE. This is the only place in AI Voice where a
  * caller is on the line while LGQ makes a decision, and every branch of it needs
@@ -175,10 +176,9 @@ export async function resolveVoiceWorkspace(
 /**
  * How many AI calls this workspace has running.
  *
- * Counted as admissions inside the cap window with no receipt yet. There is no
- * call-started or call-ended event to maintain a live count from — the provider
- * sends one callback, at the end — so the window IS the liveness signal, and it
- * follows the maximum call duration.
+ * Count admissions inside the cap window without a receipt or terminal proof.
+ * A hangup during the opening can produce no AI receipt. At capacity, bounded
+ * provider reads recover exact ended admissions before refusing another call.
  *
  * Errs toward refusing: an unreadable count returns the limit itself, so an
  * outage sheds AI calls to voicemail rather than admitting an unbounded number
@@ -195,7 +195,7 @@ export async function countOpenAiCalls(
   try {
     const { data, error } = await admin
       .from('voice_call_admissions')
-      .select('provider_call_id, provider_terminal_at, provider_terminal_status')
+      .select('provider_call_id, provider_terminal_at, provider_terminal_status, dialed_number, caller_number')
       .eq('account_id', accountId)
       .gte('admitted_at', since);
 
@@ -224,7 +224,14 @@ export async function countOpenAiCalls(
     const settled = new Set(
       finished.map((row) => String((row as { provider_call_id: string }).provider_call_id)),
     );
-    return ids.filter((id) => !settled.has(id)).length;
+    const pending = liveAdmissions.filter((row) => !settled.has(String(row.provider_call_id)));
+    if (pending.length < limit) return pending.length;
+    // A caller who hangs up during the opening has no AI receipt. Before
+    // sending the next caller to voicemail, verify at most three candidates
+    // against the provider. Each request is bounded and uncertainty stays full.
+    const closed = await Promise.all(pending.slice(0, 3).map((row) =>
+      reconcileVoiceTerminalAdmission(admin, accountId, row)));
+    return pending.length - closed.filter(Boolean).length;
   } catch (error) {
     console.error('open AI call count threw:', error);
     return limit;
@@ -337,9 +344,12 @@ export async function planInboundCall(
   const callerKind = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.role
     : 'customer';
-  const callerNumber = effectiveIdentity.status === 'staff'
+  const rawCallerNumber = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.normalizedPhone
     : normalizeUsPhone(call.fromNumber || '');
+  // Anonymous / *67 / invalid numbers (e.g. +10000000000) must be treated as null
+  // so claim_voice_call_admission_v2 does not throw error 22023 on area code regex.
+  const callerNumber = rawCallerNumber && /^\+1[2-9]\d{9}$/.test(rawCallerNumber) ? rawCallerNumber : null;
 
   // After-hours is the homeowner answering schedule. Registered staff keep
   // access to Dispatch all day; off/paused and entitlement gates still apply.
@@ -414,6 +424,14 @@ export async function planInboundCall(
       ),
       systemPrompt,
       postPrompt,
+      hints: [
+        ...(grounding?.serviceNames || []),
+        ...(grounding?.serviceAreas ? grounding.serviceAreas.split(',').map((s: string) => s.trim()) : []),
+        ...(grounding?.companyName ? [grounding.companyName] : []),
+        ...(grounding?.recognizedCaller?.clientName ? [grounding.recognizedCaller.clientName] : []),
+        ...(grounding?.recognizedCaller?.serviceAddress ? [grounding.recognizedCaller.serviceAddress] : []),
+        ...(grounding?.recognizedCaller?.activeJobRef ? [grounding.recognizedCaller.activeJobRef] : []),
+      ].filter(Boolean),
       capMinutes: decision.capMinutes,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.

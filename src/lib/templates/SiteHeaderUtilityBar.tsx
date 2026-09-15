@@ -2,6 +2,7 @@ import type { Site } from '@/lib/sites';
 import { getHeaderStyle, getSiteContent, getPublishedSocials } from '@/lib/site-content';
 import SocialLinks from './SocialLinks';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 // The slim accent strip above the header for the 'utility' header style — the
 // classic contractor top bar carrying phone, hours, and a licensed badge. Only
@@ -25,7 +26,7 @@ export default function SiteHeaderUtilityBar({ site }: { site: Site }) {
 
   return (
     <div className={styles.headerUtilityBar}>
-      {phone && <a href={`tel:${phone}`} data-edit="bizPhone"><span aria-hidden="true">📞</span> {phone}</a>}
+      {phone && <CallLink site={site} data-edit="bizPhone"><span aria-hidden="true">📞</span> {phone}</CallLink>}
       {hours && <span data-edit="bizHours">{hours}</span>}
       {licensed && <span data-edit="bizLicense"><span aria-hidden="true">✓</span> Licensed &amp; insured</span>}
       {showSocials && <SocialLinks site={site} variant="header" />}

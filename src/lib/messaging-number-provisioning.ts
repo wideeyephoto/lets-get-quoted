@@ -16,6 +16,7 @@ import {
   type SignalWireNumberCandidate,
   type SignalWireNumberAssignment,
 } from '@/lib/signalwire-number-provisioning';
+import { assertCampaignNumberCeiling } from '@/lib/messaging-carrier-caps';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HEX_64 = /^[a-f0-9]{64}$/;
@@ -542,7 +543,7 @@ export async function recordMessagingComplianceVerification(input: Readonly<{
 export type MessagingNumberOperationSummary = Readonly<{
   id: string;
   applicationId: string;
-  type: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+  type: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
   state: 'pending' | 'claimed' | 'request_started' | 'succeeded' | 'failed' | 'indeterminate' | 'cancelled';
   attemptCount: number;
   errorCode: string | null;
@@ -1021,6 +1022,17 @@ export async function reviewMessagingRegistrationApplication(input: Readonly<{
     p_actor_reference: input.actorReference,
   });
   if (error) throw rpcFailure('Unable to review the messaging application', error);
+
+  if (input.decision === 'approved') {
+    const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    await admin
+      .from('messaging_registration_applications')
+      .update({
+        campaign_renewal_at: oneYearFromNow,
+        brand_revet_at: oneYearFromNow,
+      })
+      .eq('id', input.applicationId);
+  }
 }
 
 export type ProvisioningClaim = Readonly<{
@@ -1044,7 +1056,7 @@ export type SignalWireAssignmentActivationEvidence = Readonly<{
 export interface MessagingNumberOperationStore {
   claim(input: Readonly<{
     applicationId: string;
-    operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+    operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
     idempotencyKey: string;
     fingerprint: string;
     payload: Record<string, unknown>;
@@ -1445,7 +1457,7 @@ function safeErrorDetail(error: unknown): string {
 
 async function executeProviderMutation<T extends { id: string }>(input: Readonly<{
   applicationId: string;
-  operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign';
+  operationType: 'purchase_number' | 'configure_inbound' | 'assign_campaign' | 'release_number';
   idempotencyKey: string;
   payload: Record<string, unknown>;
   request: (client: SignalWireNumberProvisioningClient) => Promise<T>;
@@ -1586,6 +1598,27 @@ export async function purchaseMessagingNumber(input: Readonly<{
   });
 }
 
+export async function releaseMessagingNumber(input: Readonly<{
+  applicationId: string;
+  accountId: string;
+  providerNumberId: string;
+  number: string;
+  actorReference: string;
+  runtime?: MessagingNumberOperationRuntime;
+}>) {
+  assertMutationGate(input.runtime);
+  const runtime = input.runtime ?? defaultRuntime();
+  return executeProviderMutation({
+    applicationId: input.applicationId,
+    operationType: 'release_number',
+    idempotencyKey: `messaging:${input.applicationId}:release:${input.providerNumberId}`,
+    payload: { provider_number_id: input.providerNumberId, number: input.number },
+    request: (client) => client.releasePhoneNumber({ providerNumberId: input.providerNumberId, number: input.number }),
+    result: () => ({ id: input.providerNumberId, released: true }),
+    runtime,
+  });
+}
+
 export async function configureMessagingNumberInbound(input: Readonly<{
   applicationId: string;
   accountId: string;
@@ -1663,6 +1696,7 @@ export async function assignMessagingNumberCampaign(input: Readonly<{
     store: runtime.store,
     client: runtime.client,
   });
+  await assertCampaignNumberCeiling(input.campaignId);
   const payload = {
     campaign_id: input.campaignId,
     number: input.number,

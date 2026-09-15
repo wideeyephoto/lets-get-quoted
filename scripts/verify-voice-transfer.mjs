@@ -48,7 +48,7 @@ try {
     grant usage on schema public to service_role;
     grant all on all tables in schema public to service_role;`);
   await q(read('20260905151055_voice_observation_and_recording_hardening.sql'));
-  const migration = read('20260908163021_voice_transfer_completion_evidence.sql');
+  const migration = read('20260908202628_voice_transfer_completion_evidence.sql');
   await q(migration); await q(migration);
   check('additive migration and repeat application coexist with recording triggers');
   const account = '11111111-1111-4111-8111-111111111111';

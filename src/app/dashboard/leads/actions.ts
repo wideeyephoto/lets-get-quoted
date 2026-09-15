@@ -498,11 +498,11 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     .eq('id', leadId);
   lead.triage = nextTriage;
 
-  const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
+  let job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   // Persist the itemized quote (and let it recompute quoted_amount) now that the
   // job exists — convertLeadToJob/createJob can't carry items.
   if (quoteItems.length) {
-    await saveQuoteItems(supabase, accountId, job.id, quoteItems);
+    job = await saveQuoteItems(supabase, accountId, job.id, quoteItems);
   }
 
   // Payment Plan: create the plan header + its deposit request. The deposit is a
@@ -623,6 +623,8 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const emailTheQuote = async (recipientEmail: string) => {
     const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
     await sendClientQuoteEmail({
+      jobId: job.id,
+      jobRevision: job.document_email_revision,
       recipientEmail,
       businessName,
       clientName: job.client_name,

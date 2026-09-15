@@ -579,14 +579,14 @@ export const ARTICLES: Article[] = [
     slug: 'clean-energy-rebates-permit-intel-guide',
     title: 'Clean energy rebates & permit intel: Win quotes in 2026',
     excerpt:
-      'Homeowners want IRA tax credits, utility rebates, and zero permit surprises. Here is how leading contractors present instant rebate deductions on quotes.',
+      'Homeowners want utility rebates, clean energy incentives, and zero permit surprises. See how top contractors present transparent rebate deductions on quotes.',
     category: 'Pricing & profit',
     readMinutes: 6,
     datePublished: '2026-08-26',
     body: [
       { type: 'p', text: 'High-ticket home improvement quotes are often delayed by two major homeowner hesitations: sticker shock and permitting uncertainty. Contractors who proactively calculate energy rebates and handle permit requirements win more bids at higher margins.' },
-      { type: 'h2', text: 'Inflation Reduction Act (IRA) incentives' },
-      { type: 'p', text: 'Federal Section 25C Energy Efficient Home Improvement Credits allow homeowners to claim up to 30% of project costs (up to $2,000 for heat pumps and $1,200 for insulation, windows, and electrical panel upgrades). When you show the net post-rebate price side-by-side with the gross investment, homeowners sign faster.' },
+      { type: 'h2', text: 'Clean energy incentives & utility rebates' },
+      { type: 'p', text: 'While federal Section 25C credits applied through 2025, modern contractors in 2026 leverage active Section 25D clean energy credits alongside substantial electric utility efficiency rebates (often $1,000 to $2,500 for heat pumps). When you itemize local utility cash rebates and provide clear tax credit documentation side-by-side with the gross investment, homeowners sign faster.' },
       { type: 'h2', text: 'Instant Permit Intel before sending the crew' },
       { type: 'p', text: 'Municipal permit fees and inspection requirements vary wildly across neighboring cities and counties. Forgetting to factor in permit costs or failing to submit COI documentation can trigger stop-work orders and costly municipal fines.' },
       { type: 'ul', items: [

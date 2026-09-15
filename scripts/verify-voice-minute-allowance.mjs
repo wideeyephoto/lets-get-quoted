@@ -40,8 +40,8 @@ try {
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
 const LEDGER = m('20260815213142_pricing_entitlements.sql');
-const ALLOWANCE = m('20260819190000_voice_minute_allowance.sql');
-const MOVED_PERIOD = m('20260820110000_voice_allowance_survives_a_moved_period.sql');
+const ALLOWANCE = m('20260820004438_voice_minute_allowance.sql');
+const MOVED_PERIOD = m('20260820125506_voice_allowance_survives_a_moved_period.sql');
 
 function liftTable(name) {
   const start = LEDGER.indexOf(`create table if not exists public.${name} (`);

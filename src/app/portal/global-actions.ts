@@ -8,6 +8,7 @@ import { sendClientPortalLinkSms } from '@/lib/sms';
 import { portalLinkText } from '@/lib/sms-templates';
 import { issuePortalLink } from '@/lib/client-portal-data';
 import { parsePortalIdentifier, PORTAL_REQUEST_ACK } from '@/lib/client-portal';
+import { portalViewUrlFull } from '@/lib/portal-urls';
 
 /**
  * Global portal lookup action for homeowners visiting /portal directly.
@@ -74,7 +75,7 @@ export async function requestGlobalPortalLinkAction(formData: FormData): Promise
         const issued = await issuePortalLink(admin, client.account_id, identifier);
         if (issued) {
           const businessName = account.business_name || "Let's Get Quoted";
-          const linkUrl = `${origin}/portal/view/${issued.token}`;
+          const linkUrl = portalViewUrlFull(issued.token);
 
           if (identifier.kind === 'email') {
             await sendClientPortalLinkEmail({
