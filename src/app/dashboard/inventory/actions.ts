@@ -426,3 +426,35 @@ export async function searchStoreCatalogAction(query: string) {
   return searchStoreCatalog(sanitizeString(query, 100));
 }
 
+
+export async function fetchRestockOrdersAction(): Promise<RestockOrder[]> {
+  const { supabase, accountId } = await requireOfficeContextAny('inventory.read', 'jobs.read');
+  return fetchRestockOrders(supabase, accountId);
+}
+
+export async function saveRestockOrderAction(
+  order: Omit<RestockOrder, 'id' | 'createdAt' | 'updatedAt' | 'lines'> & { id?: string; lines: Omit<RestockOrderLine, 'id' | 'orderId' | 'receivedQuantity'>[] }
+): Promise<RestockOrder> {
+  const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
+  return saveRestockOrder(supabase, accountId, order);
+}
+
+export async function receiveRestockOrderLineAction(params: {
+  orderId: string;
+  lineId: string;
+  quantity: number;
+  requestId?: string;
+}) {
+  const { supabase, accountId, userEmail } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
+  if (!params.orderId || !params.lineId) throw new Error('Order ID and Line ID are required');
+  const qty = sanitizeNumber(params.quantity, 1, 1);
+  return receiveRestockOrderLine(
+    supabase, 
+    accountId, 
+    sanitizeString(params.orderId, 100), 
+    sanitizeString(params.lineId, 100), 
+    qty, 
+    userEmail || 'Office Staff',
+    params.requestId || crypto.randomUUID()
+  );
+}
