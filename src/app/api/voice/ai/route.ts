@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
@@ -181,17 +181,19 @@ export async function POST(request: Request) {
     // A valid signed call to this route is the only durable proof LGQ can get
     // that the provider actually points this customer-facing number here. Stamp
     // it even when the product is still off: that is how an owner completes the
-    // test call before activating Answering. Await the write so a serverless
-    // response cannot terminate the proof before it commits.
+    // test call before activating Answering. Next's response-lifecycle hook
+    // keeps the write alive without delaying the provider's short read window.
     if (accountId) {
-      const verified = await recordVoiceRouteVerification(admin, {
-        accountId,
-        number: call.toNumber,
-        providerCallId: call.providerCallId,
+      after(async () => {
+        const verified = await recordVoiceRouteVerification(admin, {
+          accountId,
+          number: call.toNumber,
+          providerCallId: call.providerCallId,
+        });
+        if (!verified) {
+          console.error('AI voice route verification evidence was not persisted');
+        }
       });
-      if (!verified) {
-        console.error('AI voice route verification evidence was not persisted');
-      }
     }
 
     // A decline is not a failure and is not logged as one — every reason below

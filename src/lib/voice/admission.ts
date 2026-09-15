@@ -361,7 +361,9 @@ export async function planInboundCall(
 
   if (open >= workspace.concurrentCallLimit) return fallback(workspace, 'at_capacity');
 
-  const decision = await admitVoiceCall(admin, {
+  // Identity is already resolved. These context reads do not depend on the
+  // reservation and may overlap it; neither result bypasses admission.
+  const [decision, grounding] = await Promise.all([admitVoiceCall(admin, {
     accountId: workspace.accountId,
     providerCallId: call.providerCallId,
     dialedNumber: workspace.voiceNumber,
@@ -370,7 +372,12 @@ export async function planInboundCall(
   }, {
     mode: voiceMinuteMode(),
     concurrencyLimit: workspace.concurrentCallLimit,
-  });
+  }), loadVoiceGroundingContext(
+    admin, workspace.accountId, call.fromNumber, effectiveIdentity,
+  ).catch((err) => {
+    console.error('Failed to load voice grounding context:', err);
+    return null;
+  })]);
 
   if (decision.outcome === 'refused') return fallback(workspace, decision.reason);
 
@@ -388,15 +395,6 @@ export async function planInboundCall(
     startedAt: (options.now ?? (() => new Date()))().toISOString(),
   }).catch(() => null);
 
-  const grounding = await loadVoiceGroundingContext(
-    admin,
-    workspace.accountId,
-    call.fromNumber,
-    effectiveIdentity,
-  ).catch((err) => {
-    console.error('Failed to load voice grounding context:', err);
-    return null;
-  });
   // Never bridge the caller to themselves or back into this receptionist.
   const safeDestination = (value: string | null | undefined) => {
     const number = normalizeUsPhone(value || '');
