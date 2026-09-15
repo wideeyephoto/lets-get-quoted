@@ -1,11 +1,13 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
   analyzePhotoDefectsAction,
+  uploadEstimatePhotoAction,
   type AnalyzePhotoDefectsResponse,
 } from './photo-estimate-actions';
 import type { PhotoDefectEstimateResult, DefectItem } from '@/lib/multimodal-defect-estimator';
+import { supabase } from '@/lib/supabase';
 
 export interface PhotoDefectEstimatorModalProps {
   isOpen: boolean;
@@ -26,6 +28,15 @@ const COMMON_TRADES = [
   'General Repair',
 ];
 
+interface PhotoItem {
+  id: string;
+  file?: File;
+  preview: string;
+  uploading: boolean;
+  url?: string;
+  error?: string;
+}
+
 export default function PhotoDefectEstimatorModal({
   isOpen,
   onClose,
@@ -35,8 +46,7 @@ export default function PhotoDefectEstimatorModal({
 }: PhotoDefectEstimatorModalProps) {
   const [trade, setTrade] = useState(defaultTrade);
   const [notes, setNotes] = useState(defaultNotes);
-  const [photoUrl, setPhotoUrl] = useState<string>('');
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<PhotoDefectEstimateResult | null>(null);
@@ -48,6 +58,8 @@ export default function PhotoDefectEstimatorModal({
       setNotes(defaultNotes);
       setApplied(false);
       setError(null);
+      setPhotos([]);
+      setEstimate(null);
     }
   }, [isOpen, defaultTrade, defaultNotes]);
 
@@ -63,27 +75,66 @@ export default function PhotoDefectEstimatorModal({
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setPhotoPreview(result);
-        setPhotoUrl(result);
-      };
-      reader.readAsDataURL(file);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (photos.length + files.length > 8) {
+      setError('You can only upload up to 8 photos at a time.');
+      return;
+    }
+
+    const newPhotos = files.map((file) => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      preview: URL.createObjectURL(file),
+      uploading: true,
+    }));
+
+    setPhotos((prev) => [...prev, ...newPhotos]);
+
+    for (const photo of newPhotos) {
+      try {
+        const ext = photo.file.name.split('.').pop() || 'jpg';
+        const formData = new FormData();
+        formData.append('photo', photo.file);
+        
+        const { url } = await uploadEstimatePhotoAction(formData);
+        
+        setPhotos((prev) =>
+          prev.map((p) => (p.id === photo.id ? { ...p, uploading: false, url } : p))
+        );
+      } catch (err: any) {
+        setPhotos((prev) =>
+          prev.map((p) => (p.id === photo.id ? { ...p, uploading: false, error: err.message } : p))
+        );
+      }
     }
   };
 
+  const removePhoto = (id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const handleRunAnalysis = async () => {
+    if (photos.length === 0) {
+      setError('Please add at least one photo.');
+      return;
+    }
+    
+    const validUrls = photos.filter(p => p.url).map(p => p.url as string);
+    if (validUrls.length === 0) {
+      setError('No successfully uploaded photos to analyze.');
+      return;
+    }
+
     setAnalyzing(true);
     setError(null);
     try {
       const res: AnalyzePhotoDefectsResponse = await analyzePhotoDefectsAction({
         trade,
         notes: notes || undefined,
-        photoUrl: photoUrl || undefined,
+        photoUrls: validUrls,
       });
 
       if (res.ok && res.estimate) {
@@ -139,6 +190,8 @@ export default function PhotoDefectEstimatorModal({
         return <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'var(--rule-t12, rgba(255,255,255,0.1))', color: 'var(--text-secondary, #94a3b8)', fontSize: '0.75rem', fontWeight: 600 }}>ROUTINE</span>;
     }
   };
+  
+  const isUploading = photos.some(p => p.uploading);
 
   return (
     <div
@@ -277,14 +330,16 @@ export default function PhotoDefectEstimatorModal({
 
           {/* Photo Selection / Upload */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary, #d4d4d8)' }}>
-              Damage / Inspection Photo
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary, #d4d4d8)' }}>
+              Damage / Inspection Photos (Up to 8)
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #71717a)' }}>{photos.length}/8</span>
             </label>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {photos.length < 8 && (
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileChange}
                   style={{
                     width: '100%',
@@ -297,45 +352,64 @@ export default function PhotoDefectEstimatorModal({
                     cursor: 'pointer',
                   }}
                 />
-                <input
-                  type="text"
-                  value={photoUrl.startsWith('data:') ? '' : photoUrl}
-                  onChange={(e) => {
-                    setPhotoUrl(e.target.value);
-                    setPhotoPreview(e.target.value || null);
-                  }}
-                  placeholder="...or paste photo image URL"
-                  style={{
-                    width: '100%',
-                    marginTop: '0.4rem',
-                    padding: '0.45rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--rule-t12, rgba(255,255,255,0.15))',
-                    background: 'var(--bg-input, rgba(0,0,0,0.25))',
-                    color: 'var(--text-primary, #fff)',
-                  }}
-                />
-              </div>
-              {photoPreview ? (
-                <div
-                  style={{
-                    width: '72px',
-                    height: '72px',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    border: '1px solid var(--rule-t12, rgba(255,255,255,0.2))',
-                    flexShrink: 0,
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoPreview}
-                    alt="Damage preview"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+              )}
+              
+              {photos.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {photos.map(photo => (
+                    <div
+                      key={photo.id}
+                      style={{
+                        position: 'relative',
+                        width: '72px',
+                        height: '72px',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid var(--rule-t12, rgba(255,255,255,0.2))',
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.preview}
+                        alt="Damage preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: photo.uploading ? 0.5 : 1 }}
+                      />
+                      {photo.uploading && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: '0.75rem', color: 'white' }}>
+                          ⏳
+                        </div>
+                      )}
+                      {photo.error && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.7)', fontSize: '0.75rem', color: 'white', textAlign: 'center' }}>
+                          Error
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(photo.id)}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          right: '2px',
+                          background: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
 
@@ -367,7 +441,7 @@ export default function PhotoDefectEstimatorModal({
             <button
               type="button"
               onClick={handleRunAnalysis}
-              disabled={analyzing}
+              disabled={analyzing || isUploading || photos.length === 0}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -379,11 +453,16 @@ export default function PhotoDefectEstimatorModal({
                 border: 'none',
                 fontWeight: 600,
                 fontSize: '0.875rem',
-                cursor: analyzing ? 'wait' : 'pointer',
-                opacity: analyzing ? 0.7 : 1,
+                cursor: (analyzing || isUploading || photos.length === 0) ? 'not-allowed' : 'pointer',
+                opacity: (analyzing || isUploading || photos.length === 0) ? 0.5 : 1,
               }}
             >
-              {analyzing ? (
+              {isUploading ? (
+                <>
+                  <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
+                  Uploading Photos...
+                </>
+              ) : analyzing ? (
                 <>
                   <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
                   Analyzing Visual Defects...

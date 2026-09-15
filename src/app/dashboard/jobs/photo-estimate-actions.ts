@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { requireOfficeContext } from '@/lib/auth';
 import {
@@ -9,7 +9,7 @@ import {
 
 export interface AnalyzePhotoDefectsParams {
   trade: string;
-  photoUrl?: string;
+  photoUrls?: string[];
   notes?: string;
 }
 
@@ -18,6 +18,21 @@ export interface AnalyzePhotoDefectsResponse {
   estimate?: PhotoDefectEstimateResult;
   message?: string;
 }
+
+export async function uploadEstimatePhotoAction(formData: FormData) {
+  const context = await requireOfficeContext('jobs.write');
+  const file = formData.get('photo') as File;
+  if (!file) throw new Error('Missing photo');
+
+  // We need uploadJobPhoto from job-photo-storage
+  const { uploadJobPhoto, createJobPhotoUrls } = await import('@/lib/job-photo-storage');
+  
+  const path = await uploadJobPhoto(context.accountId, file);
+  const [url] = await createJobPhotoUrls(context.accountId, [path]);
+  
+  return { path, url };
+}
+
 
 /**
  * Server action: Analyzes job or site photos for defects, recommending structured repairs
@@ -31,11 +46,11 @@ export async function analyzePhotoDefectsAction(
 
     const trade = params.trade?.trim() || 'General Repair';
     const notes = params.notes?.trim() || undefined;
-    const photoUrl = params.photoUrl?.trim() || undefined;
+    const photoUrls = params.photoUrls || [];
 
     const estimate = await analyzePhotoDefectsAndEstimate({
       trade,
-      photoUrl,
+      photoUrls,
       notes,
     });
 
