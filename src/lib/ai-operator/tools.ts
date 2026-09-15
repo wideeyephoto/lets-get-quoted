@@ -32,6 +32,7 @@ import {
 import { staffCan } from '@/lib/staff';
 import { scanContractorsForChurnRisk } from './churn-detector';
 import { generateLiveFinancialForecast } from './financial-forecasting';
+import { getLiveIndexAdvisorReport } from './index-advisor';
 import { diagnoseDomainHealth } from './domain-health-resolver';
 
 type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
@@ -61,6 +62,15 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
     name: 'get_system_health',
     description:
       'Retrieves holistic SRE health metrics, including SMS queue errors, webhook failures, cron trouble, and open incidents.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'get_database_health',
+    description:
+      'Retrieves database index health, identifies tables with excessive sequential scans, un-used indexes, and uses AI to recommend Postgres RLS/index optimizations.',
     parameters: {
       type: Type.OBJECT,
       properties: {},
@@ -382,6 +392,40 @@ export async function executeOperatorTool(
         };
       } catch (e: any) {
         return { status: 'error', message: e.message || 'Error diagnosing domain' };
+      }
+    }
+    case 'get_database_health': {
+      try {
+        const report = await getLiveIndexAdvisorReport(supabase);
+        // We will call the AI model to synthesize the report
+        const { callModel } = await import('@/lib/ai-model-call');
+        
+        const systemPrompt = `You are a Postgres Database SRE for Let's Get Quoted.
+Analyze the following live database stats. Focus on tables with excessive sequential scans relative to index scans, and unused indexes that are consuming size.
+Provide specific EXPLAIN ANALYZE and CREATE INDEX optimization recommendations. Do not use the word "atomically" in any suggestions.`;
+        
+        const response = await callModel({
+          model: 'gemini-1.5-pro',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: JSON.stringify(report, null, 2) }
+          ],
+          temperature: 0.1
+        }, { purpose: 'operations', accountId: 'operator-system' } as any);
+
+        let aiRecommendations = 'Could not generate AI recommendations.';
+        if (response.ok) {
+           const data = await response.json() as any;
+           aiRecommendations = data?.choices?.[0]?.message?.content || data?.candidates?.[0]?.content?.parts?.[0]?.text || aiRecommendations;
+        }
+
+        return {
+          status: 'success',
+          data: { report, aiRecommendations },
+          display: 'raw'
+        };
+      } catch (e: any) {
+        return { status: 'error', message: e.message || 'Error fetching database health' };
       }
     }
     case 'get_system_health': {
