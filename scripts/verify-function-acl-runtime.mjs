@@ -9,7 +9,9 @@
 
 import assert from 'node:assert/strict';
 import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
@@ -41,6 +43,7 @@ process.env.PATH =
 
 const { default: EmbeddedPostgres } = await import('embedded-postgres');
 const dataDir = mkdtempSync(join(os.tmpdir(), 'lgq-function-acl-'));
+assert(resolve(dataDir).startsWith(`${resolve(os.tmpdir())}${sep}lgq-function-acl-`));
 const pg = new EmbeddedPostgres({
   databaseDir: dataDir,
   user: 'postgres',
@@ -59,10 +62,13 @@ const passed = (name) => {
 };
 
 const schemaSql = readFileSync(join(root, 'schema.sql'), 'utf8');
+assert(!/^(<<<<<<<|=======|>>>>>>>)/m.test(schemaSql), 'schema.sql must not contain unresolved merge conflicts');
 const anchor = '-- SOFT DELETION, RECOVERY & IMMUTABLE TENANT AUDIT LEDGER (Hardened against F1)';
 const softDeleteSectionIndex = schemaSql.indexOf(anchor);
 assert(softDeleteSectionIndex >= 0, 'Hardened soft deletion section must exist in schema.sql');
-const softDeleteSectionSql = schemaSql.slice(softDeleteSectionIndex);
+const sectionEnd = schemaSql.indexOf('-- END SOFT DELETION, RECOVERY & IMMUTABLE TENANT AUDIT LEDGER', softDeleteSectionIndex);
+assert(sectionEnd > softDeleteSectionIndex, 'Hardened soft deletion section must have an explicit end');
+const softDeleteSectionSql = schemaSql.slice(softDeleteSectionIndex, sectionEnd);
 
 try {
   await pg.initialise();
@@ -343,12 +349,15 @@ try {
   throw err;
 } finally {
   if (db) await db.end().catch(() => {});
-  await pg.stop().catch(() => {});
+  if (process.platform === 'win32' && pg.process?.exitCode === null) {
+    await promisify(execFile)(join(root, 'node_modules/@embedded-postgres/windows-x64/native/bin/pg_ctl.exe'),
+      ['stop', '-D', dataDir, '-m', 'fast', '-w', '-t', '8'], { windowsHide: true, timeout: 12000 });
+    pg.process = undefined;
+  } else await pg.stop().catch(() => {});
   try {
     rmSync(dataDir, { recursive: true, force: true });
   } catch {
     // Windows process file lock cleanup is best-effort
   }
 }
-
 

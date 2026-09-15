@@ -1,4 +1,5 @@
-import { PlatformBlogPost, DEFAULT_AUTHOR } from './platform-blog';
+import type { PlatformBlogPost } from './platform-blog';
+import { DEFAULT_AUTHOR } from './platform-blog-author';
 
 /**
  * 17 Comprehensive Draft Articles completing the 26-article platform blog portfolio.
