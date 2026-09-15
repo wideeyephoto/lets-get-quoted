@@ -37160,6 +37160,127 @@ after insert or update of sms_event_id on public.sms_webhook_receipts
 for each row execute function public.project_sms_carrier_opt_out();
 
 commit;
+
+-- Source: migrations/20260915000000_sms_marketing_consent_scope.sql
+-- Migration: 20260915000000_sms_marketing_consent_scope.sql
+-- Description: Expand consent scope CHECK constraints to admit 'marketing' in sms_consent_scopes and sms_consent_evidence; add index and map marketing sources in trigger.
+
+begin;
+
+-- 1. Expand CHECK constraint on sms_consent_scopes
+alter table public.sms_consent_scopes
+  drop constraint if exists sms_consent_scopes_consent_scope_check;
+
+alter table public.sms_consent_scopes
+  add constraint sms_consent_scopes_consent_scope_check
+  check (consent_scope in ('customer', 'crew', 'owner', 'marketing'));
+
+-- 2. Expand CHECK constraint on sms_consent_evidence
+alter table public.sms_consent_evidence
+  drop constraint if exists sms_consent_evidence_consent_scope_check;
+
+alter table public.sms_consent_evidence
+  add constraint sms_consent_evidence_consent_scope_check
+  check (consent_scope in ('customer', 'crew', 'owner', 'marketing'));
+
+-- 3. Partial index for marketing consent lookups
+create index if not exists sms_consent_scopes_marketing_lookup_idx
+  on public.sms_consent_scopes (account_id, phone_number)
+  where consent_scope = 'marketing';
+
+-- 4. Update trigger function to classify marketing sources
+create or replace function public.establish_sms_consent_scope_from_source()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_scope text;
+begin
+  if new.status <> 'opted_in' or new.consented_at is null then
+    return new;
+  end if;
+  v_scope := case
+    when new.source in (
+      'payment_request', 'lead_quote_visit', 'lead_quote_visit_options',
+      'client_job_dashboard', 'lead_decline', 'job_update',
+      'review_request', 'arrival_time_changed', 'reschedule_offer',
+      'estimate_offer', 'schedule_request', 'lead_verification_request',
+      'portal_link_request', 'missed_call_text_back', 'authenticated_inbound'
+    ) then 'customer'
+    when new.source in (
+      'marketing_opt_in', 'campaign_opt_in', 'promo_opt_in',
+      'web_form_marketing_opt_in', 'broadcast_marketing_consent'
+    ) then 'marketing'
+    when new.source in ('crew_added', 'subcontractor_added') then 'crew'
+    when new.source = 'owner_alerts' then 'owner'
+    else null
+  end;
+  if v_scope is not null then
+    insert into public.sms_consent_scopes (
+      account_id, phone_number, consent_scope, evidence_source, established_at
+    ) values (
+      new.account_id, new.phone_number, v_scope, new.source,
+      coalesce(new.consented_at, pg_catalog.clock_timestamp())
+    ) on conflict (account_id, phone_number, consent_scope) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+commit;
+
+-- Source: migrations/20260915010000_sms_campaign_lifecycle_and_canary.sql
+-- Migration: 20260915010000_sms_campaign_lifecycle_and_canary.sql
+-- Description: Add 10DLC campaign lifecycle and carrier rate limit columns to messaging_registration_applications, and create sms_canary_probes for reachability health tracking.
+
+begin;
+
+-- 1. Campaign lifecycle and carrier limits on messaging_registration_applications
+alter table public.messaging_registration_applications
+  add column if not exists campaign_renewal_at timestamptz,
+  add column if not exists brand_revet_at timestamptz,
+  add column if not exists max_assigned_numbers integer not null default 49,
+  add column if not exists att_sms_per_minute_cap integer not null default 75,
+  add column if not exists att_mms_per_minute_cap integer not null default 50,
+  add column if not exists tmobile_daily_brand_cap integer not null default 2000;
+
+-- 2. Create sms_canary_probes table
+create table if not exists public.sms_canary_probes (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid,
+  phone_number text not null
+    check (phone_number ~ '^\+[1-9][0-9]{7,14}$'),
+  provider text not null
+    check (provider in ('signalwire', 'twilio', 'simulated')),
+  provider_message_id text,
+  status text not null
+    check (status in ('dispatched', 'confirmed', 'failed', 'timeout')),
+  dispatched_at timestamptz not null default clock_timestamp(),
+  confirmed_at timestamptz,
+  latency_ms integer,
+  error_message text,
+  created_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists idx_sms_canary_probes_dispatched
+  on public.sms_canary_probes (dispatched_at desc);
+
+create index if not exists idx_sms_canary_probes_provider_msg
+  on public.sms_canary_probes (provider_message_id)
+  where provider_message_id is not null;
+
+-- 3. RLS and Grants
+alter table public.sms_canary_probes enable row level security;
+alter table public.sms_canary_probes force row level security;
+
+revoke all on table public.sms_canary_probes from anon, public;
+grant select, insert, update on table public.sms_canary_probes to service_role;
+grant select on table public.sms_canary_probes to authenticated;
+
+commit;
 -- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 
 

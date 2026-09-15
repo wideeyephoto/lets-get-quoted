@@ -85,21 +85,14 @@ export const AFFIRMATIVE_MARKETING_SOURCES = new Set([
 
 async function loadOptedInPhones(supabase: SupabaseClient, accountId: string): Promise<Set<string>> {
   const { data } = await supabase
-    .from('sms_consent')
-    .select('phone_number, source')
+    .from('sms_consent_scopes')
+    .select('phone_number')
     .eq('account_id', accountId)
-    .eq('status', 'opted_in');
+    .eq('consent_scope', 'marketing');
 
   if (!data) return new Set();
 
-  const marketingPhones = data
-    .filter((row) => {
-      const src = (row.source || '').toLowerCase().trim();
-      return AFFIRMATIVE_MARKETING_SOURCES.has(src);
-    })
-    .map((row) => row.phone_number as string);
-
-  return new Set(marketingPhones);
+  return new Set(data.map((row) => row.phone_number as string));
 }
 
 export async function loadRecipients(supabase: SupabaseClient, accountId: string): Promise<CampaignRecipient[]> {

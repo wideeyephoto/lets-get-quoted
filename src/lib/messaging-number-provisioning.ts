@@ -16,6 +16,7 @@ import {
   type SignalWireNumberCandidate,
   type SignalWireNumberAssignment,
 } from '@/lib/signalwire-number-provisioning';
+import { assertCampaignNumberCeiling } from '@/lib/messaging-carrier-caps';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HEX_64 = /^[a-f0-9]{64}$/;
@@ -1021,6 +1022,17 @@ export async function reviewMessagingRegistrationApplication(input: Readonly<{
     p_actor_reference: input.actorReference,
   });
   if (error) throw rpcFailure('Unable to review the messaging application', error);
+
+  if (input.decision === 'approved') {
+    const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    await admin
+      .from('messaging_registration_applications')
+      .update({
+        campaign_renewal_at: oneYearFromNow,
+        brand_revet_at: oneYearFromNow,
+      })
+      .eq('id', input.applicationId);
+  }
 }
 
 export type ProvisioningClaim = Readonly<{
@@ -1684,6 +1696,7 @@ export async function assignMessagingNumberCampaign(input: Readonly<{
     store: runtime.store,
     client: runtime.client,
   });
+  await assertCampaignNumberCeiling(input.campaignId);
   const payload = {
     campaign_id: input.campaignId,
     number: input.number,

@@ -134,7 +134,7 @@ describe('draining the top-up inbox one lease at a time', () => {
     const result = await runTopUpProjectionBatch(10, { queue: { claimNext }, process });
 
     expect(result.status).toBe('claim_failed');
-    expect(result.errorCode).toBe('projection_worker_claim_error');
+    expect(result.errorCode).toBe('rpc exploded');
     expect(result.results).toHaveLength(1);
   });
 

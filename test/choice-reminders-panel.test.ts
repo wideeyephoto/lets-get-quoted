@@ -402,7 +402,7 @@ describe('the settings are really persisted, and really acted on', () => {
 
   it('runs hourly, because the send hour belongs to the account and not to the cron', () => {
     const spec = CRON_JOBS.find((job) => job.job === 'selection-chase');
-    expect(spec?.schedule).toBe('0 * * * *');
+    expect(spec?.schedule).toBe('35 * * * *');
     // test/cron-jobs.test.ts already asserts this registry agrees with
     // vercel.json, so pinning it here pins both.
   });
