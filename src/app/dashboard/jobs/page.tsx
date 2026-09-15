@@ -326,7 +326,6 @@ export default async function JobsPage({
           summary="Create a job for approved work."
           defaultOpen={shouldAutoOpenCreate(allJobs.length, searchParams.new)}
         >
-        <div style={{ marginBottom: '1rem', padding: '0.65rem 0.85rem', background: 'var(--bg-2, #f8fafc)', border: '1px solid var(--line, #e2e8f0)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <form action={createJobAction} className="job-intake-form">
           <fieldset className="job-intake-section">
             <legend>Client & Location</legend>
