@@ -19,6 +19,10 @@ import { stripeAdminLinks } from '@/lib/admin-payments';
 import { AlertCard, type AlertItem } from './AlertCard';
 import { CommandCenterBoard, type BoardCard } from './CommandCenterBoard';
 import { StatCard } from './StatCard';
+import { AutoRefresh } from './AutoRefresh';
+import { ShiftNotesWidget } from './ShiftNotesWidget';
+import { getRecentShiftNotes, addShiftNote } from './shift-actions';
+import { forceRunCron, assignCase } from './triage-actions';
 import styles from './admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -215,6 +219,12 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
     title: row.subject,
     owner: row.assigned_to ?? 'Unassigned',
     age: relativeAge(row.created_at, now),
+    actionNode: !row.assigned_to ? (
+      <form action={assignCase} style={{ display: 'inline' }}>
+        <input type="hidden" name="caseId" value={row.id} />
+        <button type="submit" className="btn secondary" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', lineHeight: 1 }}>Assign to me</button>
+      </form>
+    ) : undefined,
     actionLabel: 'Open case',
     actionHref: `/admin/cases/${row.id}`,
   }));
@@ -350,6 +360,12 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
     title: row.label,
     subtitle: row.error ?? row.consequence,
     age: row.lastSuccessAt ? `last worked ${relativeAge(row.lastSuccessAt, now)}` : 'never succeeded',
+    actionNode: (
+      <form action={forceRunCron} style={{ display: 'inline' }}>
+        <input type="hidden" name="job" value={row.job} />
+        <button type="submit" className="btn secondary" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', lineHeight: 1 }}>Run now</button>
+      </form>
+    ),
     actionLabel: 'Service health',
     actionHref: '/admin/health',
   }));
@@ -459,10 +475,15 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
     boardCard({ key: 'webhookFailures', title: 'Webhook failures', items: webhookFailureItems, empty: 'No unresolved webhook failures.', viewAllHref: '/admin/failures#webhooks', viewAllLabel: 'All grouped webhook failures' }),
   ].map((card) => ({ ...card, available: !unavailableSignals.has(card.key) }));
 
+  const shiftNotes = await getRecentShiftNotes();
+
   return (
     <>
       <header className={styles.pageHead}>
-        <p className={styles.eyebrow}>Staff console</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p className={styles.eyebrow}>Staff console</p>
+          <AutoRefresh />
+        </div>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>Command Center</h1>
         </div>
@@ -493,6 +514,8 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
           </StatCard>
         ))}
       </section>
+
+      <ShiftNotesWidget notes={shiftNotes} onAddNote={addShiftNote} />
 
       <CommandCenterBoard role={role} staffKey={adminEmail} cards={boardCards} defaultOrder={defaultCardOrder(role)} />
     </>
