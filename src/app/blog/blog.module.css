@@ -431,46 +431,78 @@
 
 /* Call to Action Banner */
 .ctaBanner {
-  background: linear-gradient(135deg, rgba(255, 113, 55, 0.15) 0%, rgba(78, 224, 188, 0.1) 100%);
-  border: 1px solid rgba(255, 113, 55, 0.3);
-  border-radius: 20px;
-  padding: clamp(28px, 4vw, 44px);
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(255, 113, 55, 0.15) 0%, rgba(18, 30, 49, 0.95) 45%, rgba(9, 18, 32, 0.98) 100%);
+  border: 1px solid rgba(255, 113, 55, 0.28);
+  border-radius: 24px;
+  padding: clamp(36px, 5vw, 56px) clamp(24px, 4vw, 48px);
   text-align: center;
-  margin-top: 56px;
+  margin-top: 64px;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), 0 0 35px -5px rgba(255, 113, 55, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .ctaTitle {
-  font-size: clamp(22px, 3vw, 28px);
+  font-size: clamp(24px, 3.2vw, 34px);
   font-weight: 800;
-  margin: 0 0 12px;
-  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 14px;
+  color: #f7f5ef;
 }
 
 .ctaLead {
-  font-size: 16px;
-  color: var(--muted);
-  max-width: 580px;
-  margin: 0 auto 24px;
+  font-size: clamp(15px, 1.8vw, 17px);
+  line-height: 1.6;
+  color: rgba(247, 245, 239, 0.82);
+  max-width: 680px;
+  margin: 0 auto 28px;
+}
+
+.ctaFeatures {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px 24px;
+  margin: 0 auto 32px;
+  max-width: 860px;
+}
+
+.ctaFeatureItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.ctaCheck {
+  color: #34d399;
+  font-weight: 800;
+  font-size: 15px;
 }
 
 .ctaButton {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 28px;
+  padding: 14px 34px;
   border-radius: 12px;
-  background: var(--orange);
-  color: #fff;
-  font-size: 15px;
+  background: linear-gradient(135deg, #ff7a22 0%, #ff5200 100%);
+  color: #ffffff;
+  font-size: 16px;
   font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 6px 20px rgba(255, 113, 55, 0.4);
-  transition: transform 0.2s ease, background 0.2s ease;
+  box-shadow: 0 8px 24px rgba(255, 90, 0, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .ctaButton:hover {
-  background: var(--orange-light);
   transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(255, 90, 0, 0.6);
+  color: #ffffff;
 }
 
 /* ==========================================================================

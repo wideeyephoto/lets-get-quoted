@@ -46490,8 +46490,9 @@ button.plan-badge.warn.is-action:focus-visible {
    person, and giving it 1900px strands the pane's buttons a screen-width from
    the list you picked them from. `.crew-shell` is the stable hook; `crew-wide`
    is toggled per view, server-side from the cookie and again on the client. */
-.app-main-sidenav .wide-shell.crew-shell:not(.crew-wide) {
-  max-width: 1100px;
+.app-main-sidenav .wide-shell.crew-shell {
+  width: 100%;
+  max-width: none;
 }
 
 /* The colour of this stop's incoming leg, matching the line on the map. Purely
