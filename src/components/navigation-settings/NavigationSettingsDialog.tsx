@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { NavView, NavigationPreferences, NavGroupDef } from '@/lib/navigation/types';
 import { saveNavigationPreferencesAction } from '@/app/dashboard/navigation-actions';
 import { PRESETS } from '@/lib/navigation/presets';
@@ -11,6 +12,11 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [customLayout, setCustomLayout] = useState<NavigationPreferences['customLayout'] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -29,17 +35,17 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
-  return (
+  const modalContent = (
     <div className="nav-settings-modal-overlay" style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div className="nav-settings-modal" style={{
-        backgroundColor: 'white', padding: '2rem', borderRadius: '8px', maxWidth: '600px', width: '100%',
-        maxHeight: '90vh', overflowY: 'auto'
+        backgroundColor: 'white', padding: '2rem', borderRadius: '8px', maxWidth: '600px', width: '90%',
+        maxHeight: '90vh', overflowY: 'auto', position: 'relative'
       }}>
-        <h2 style={{marginTop: 0}}>Navigation settings</h2>
+        <h2 style={{marginTop: 0, color: 'black'}}>Navigation settings</h2>
         <div style={{ margin: '1rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {(Object.entries(PRESETS) as [Exclude<NavView, 'custom'>, { description: string }][]).map(([key, preset]) => (
             <label key={key} style={{ display: 'flex', gap: '1rem', cursor: 'pointer', padding: '0.5rem', border: '1px solid #eee', borderRadius: '4px', backgroundColor: selectedView === key ? '#f0f9ff' : 'transparent' }}>
@@ -51,7 +57,7 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
                 onChange={() => setSelectedView(key)}
               />
               <div>
-                <strong>{key.charAt(0).toUpperCase() + key.slice(1)}</strong>
+                <strong style={{color: 'black'}}>{key.charAt(0).toUpperCase() + key.slice(1)}</strong>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>{preset.description}</p>
               </div>
             </label>
@@ -65,7 +71,6 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
               onChange={() => {
                 setSelectedView('custom');
                 if (!customLayout) {
-                  // Initialize custom layout from balanced
                   setCustomLayout({
                     basePreset: 'balanced',
                     presentation: 'grouped',
@@ -80,7 +85,7 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
               }}
             />
             <div>
-              <strong>My custom layout</strong>
+              <strong style={{color: 'black'}}>My custom layout</strong>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>Create and edit your own layout.</p>
             </div>
           </label>
@@ -88,15 +93,15 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
 
         {selectedView === 'custom' && customLayout && (
           <div className="custom-layout-editor" style={{ marginTop: '1rem', padding: '1rem', border: '1px dashed #ccc', borderRadius: '4px' }}>
-            <h4>Customize Layout</h4>
+            <h4 style={{color: 'black'}}>Customize Layout</h4>
             <p style={{ fontSize: '0.9rem', color: '#666' }}>Drag and drop is not fully implemented in this demo. Here you would order groups and assign items.</p>
             {customLayout.groups.map((g: any) => (
               <div key={g.id} style={{ marginBottom: '1rem' }}>
-                <strong>{g.label}</strong>
+                <strong style={{color: 'black'}}>{g.label}</strong>
                 <div style={{ paddingLeft: '1rem' }}>
                   {g.itemIds.map((itemId: string) => {
                     const item = CATALOG_ITEMS.find(i => i.id === itemId);
-                    return item ? <div key={item.id} style={{ fontSize: '0.9rem' }}>• {item.label}</div> : null;
+                    return item ? <div key={item.id} style={{ fontSize: '0.9rem', color: 'black' }}>- {item.label}</div> : null;
                   })}
                 </div>
               </div>
@@ -105,7 +110,7 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '2rem' }}>
-          <button onClick={onClose} disabled={isSaving} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>Cancel</button>
+          <button onClick={onClose} disabled={isSaving} style={{ padding: '0.5rem 1rem', cursor: 'pointer', color: 'black', backgroundColor: '#e5e7eb', border: 'none', borderRadius: '4px' }}>Cancel</button>
           <button onClick={handleSave} disabled={isSaving} style={{ padding: '0.5rem 1rem', backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
             {isSaving ? 'Saving...' : 'Save navigation'}
           </button>
@@ -113,4 +118,7 @@ export function NavigationSettingsDialog({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(modalContent, document.body);
 }
