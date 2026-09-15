@@ -572,18 +572,21 @@ export default function PhotoDefectEstimatorModal({
                             {defect.severity}
                           </span>
                         </div>
-                        <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--accent, #38bdf8)' }}>
-                          ${defect.estimatedTotalDollars.toLocaleString('en-US')}
-                        </span>
+                          <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--accent, #38bdf8)' }}>
+                            ${getCalculatedCost(defect).toLocaleString('en-US')}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted, #94a3b8)' }}>
+                          {defect.recommendedRepair}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted, #71717a)' }}>
+                          {defect.suggestedServiceId && priceBook.find(s => s.id === defect.suggestedServiceId) && (
+                            <span>🏷️ Match: {priceBook.find(s => s.id === defect.suggestedServiceId)!.name} ({defect.suggestedQuantity || 1} {priceBook.find(s => s.id === defect.suggestedServiceId)!.unit})</span>
+                          )}
+                          {defect.uncertaintyExplanation && <span>⚠️ {defect.uncertaintyExplanation}</span>}
+                          {defect.missingInformation && <span>❓ Needs info: {defect.missingInformation}</span>}
+                        </div>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted, #94a3b8)' }}>
-                        {defect.recommendedRepair}
-                      </p>
-                      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-muted, #71717a)' }}>
-                        <span>⏱️ {defect.estimatedLaborHours} hrs labor</span>
-                        <span>📦 ${defect.estimatedMaterialCostDollars} materials</span>
-                      </div>
-                    </div>
                   ))}
                 </div>
               </div>
