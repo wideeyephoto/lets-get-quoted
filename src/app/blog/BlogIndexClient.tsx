@@ -279,7 +279,7 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
       <section className={styles.ctaBanner}>
         <h2 className={styles.ctaTitle}>Ready to run your trade business without software bloat?</h2>
         <p className={styles.ctaLead}>
-          Start with a free high-converting contractor website, 24/7 AI intake, and quotes-to-paid workflow. Flex starts at $0/mo with unlimited crew members.
+          Start with a free high-converting contractor website, 24/7 AI intake, and quotes-to-paid workflow. Flex starts at $0/mo with 2 office seats and 2 crew members included.
         </p>
         <div className={styles.ctaPillsRow}>
           <span className={styles.ctaPillItem}>

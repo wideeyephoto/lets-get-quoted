@@ -1182,7 +1182,7 @@ export const GOOD_BETTER_BEST_ASSEMBLIES: Record<string, MultiTierAssemblyDefini
         materialCostPerUnit: 7400.00,
         laborHoursPerUnit: 18.0,
         features: [
-          '20.5+ SEER2 Modulating Inverter (Federal 25C Tax Credit Eligible)',
+          '20.5+ SEER2 Modulating Inverter (Maximum Electric Utility Rebate Eligible)',
           'Continuous Micro-Adjusting Temperature ±0.5°F',
           'Whole-Home MERV 16 Air Purifier & UV Disinfection',
           'Whisper Quiet Operation (as low as 48 dBA)',

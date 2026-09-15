@@ -274,7 +274,7 @@ export async function runTopUpProjectionBatch(
     let claim: TopUpProjectorClaim | null;
     try {
       claim = await dependencies.queue.claimNext();
-    } catch {
+    } catch (err) {
       return Object.freeze({
         status: 'claim_failed',
         requestedBatchSize,

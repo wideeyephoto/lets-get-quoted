@@ -7,12 +7,15 @@ type AppShellContextValue = {
   openNav: () => void;
   closeNav: () => void;
   toggleNav: () => void;
+  switchingWorkspace: string | null;
+  setSwitchingWorkspace: (name: string | null) => void;
 };
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
 
 export function AppShellProvider({ children }: { children: ReactNode }) {
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const [switchingWorkspace, setSwitchingWorkspace] = useState<string | null>(null);
 
   // Stable identities — otherwise a new closeNav on every isNavOpen change
   // retriggers the "close nav on route change" effect in AppShell, which
@@ -23,8 +26,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const toggleNav = useCallback(() => setIsNavOpen((open) => !open), []);
 
   const value = useMemo<AppShellContextValue>(
-    () => ({ isNavOpen, openNav, closeNav, toggleNav }),
-    [isNavOpen, openNav, closeNav, toggleNav],
+    () => ({ isNavOpen, openNav, closeNav, toggleNav, switchingWorkspace, setSwitchingWorkspace }),
+    [isNavOpen, openNav, closeNav, toggleNav, switchingWorkspace],
   );
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

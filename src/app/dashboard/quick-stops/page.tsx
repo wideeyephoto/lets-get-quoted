@@ -24,6 +24,7 @@ import { loadRecipients, matchesAudience } from '@/lib/campaigns';
 import { loadRefundTiers } from '@/lib/quick-stop-refunds';
 import { quickStopState, quickStopStateDetail, quickStopStateHeadline } from '@/lib/quick-stop-state';
 import { normalizeQuickStopTab } from '@/lib/quick-stop-tabs';
+import ScheduleNav from '../schedule/ScheduleNav';
 
 /** How far back the demand panel looks. A quarter is enough to be a pattern. */
 const DEMAND_WINDOW_DAYS = 90;
@@ -495,6 +496,9 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
 
   return (
     <main className="wide-shell workspace-shell bset">
+      <div style={{ marginBottom: '1.25rem' }}>
+        <ScheduleNav />
+      </div>
       <QuickStopHead />
       <QuickStopTabs
         today={todayPanel}

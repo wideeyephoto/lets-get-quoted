@@ -14,7 +14,12 @@ import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { sendIntakeConfirmationSms, sendOwnerHighValueLeadSms, ensureSmsConsentBaseline } from '@/lib/sms';
+import {
+  sendIntakeConfirmationSms,
+  sendOwnerHighValueLeadSms,
+  ensureSmsConsentBaseline,
+  recordCustomerSmsConsentEvidence,
+} from '@/lib/sms';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
@@ -485,6 +490,14 @@ export async function POST(request: NextRequest) {
     if (normalizedPhone) {
       try {
         await ensureSmsConsentBaseline(site.account_id, normalizedPhone, 'portal_link_request');
+        await recordCustomerSmsConsentEvidence({
+          accountId: site.account_id,
+          phone: normalizedPhone,
+          scope: 'customer',
+          source: 'web_form_intake',
+          sourcePage: request.headers.get('referer') || '/contact',
+          disclosureVersion: 'intake_v1_2026',
+        });
       } catch (consentErr) {
         console.warn('SMS baseline consent registration skipped:', consentErr);
       }

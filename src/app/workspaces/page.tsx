@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { selectWorkspaceAction } from './actions';
+import { WorkspaceChooserItem } from './WorkspaceChooserItem';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +19,14 @@ export default async function WorkspacesPage() {
       <p>You are signed in as {user.email || 'an account without an email address'}. Your access depends on the workspace you choose.</p>
       {memberships.map((member) => {
         const account = Array.isArray(member.accounts) ? member.accounts[0] : member.accounts;
-        return <form key={member.account_id} action={selectWorkspaceAction} style={{ marginTop: 20 }}>
-          <input type="hidden" name="accountId" value={member.account_id} />
-          <button className="btn secondary" type="submit">{account?.business_name || 'Workspace'} — {member.role === 'owner' ? 'Owner' : 'Office'}</button>
-        </form>;
+        return (
+          <WorkspaceChooserItem
+            key={member.account_id}
+            accountId={member.account_id}
+            businessName={account?.business_name || 'Workspace'}
+            role={member.role}
+          />
+        );
       })}
       {memberships.length === 0 ? <p>No active office or owner workspaces are available.</p> : null}
     </main>

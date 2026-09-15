@@ -135,19 +135,19 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
         items: [
           'Per-Seat Subscription: Charges a fixed monthly fee per active user login. Predictable if headcount never changes, but can penalize businesses that bring on seasonal helpers or apprentices.',
           'Tiered User Bundles: Software includes a set allocation of users (e.g., up to 5 users on a mid-tier plan) before tier upgrades are required. Economical if your team count sits comfortably within the threshold.',
-          'Platform-Aligned Pricing: Base software includes unlimited field and dispatch logins without per-head surcharges, pairing core tooling with activity- or transaction-based platform fees as revenue is collected.',
+          'Platform-Aligned Pricing: Base software includes generous field crew and office seats with low $5/mo add-ons, pairing core tooling with transparent activity- or transaction-based platform fees as revenue is collected.',
         ],
       },
       {
         type: 'p',
-        text: 'At Let’s Get Quoted, we believe operational communication should never be rationed. Every plan includes unlimited field crew and office logins so your entire team stays aligned on schedules, customer notes, and site photos without per-head subscription penalties.',
+        text: 'At Let’s Get Quoted, we believe operational communication should never be priced out of reach. Every plan includes dedicated office and field crew seats, plus affordable $5/mo field logins so your entire team stays aligned on schedules, customer notes, and site photos without enterprise subscription bloat.',
       },
     ],
     featureLinks: [
       {
         href: '/pricing',
         label: 'Transparent Platform Pricing',
-        blurb: 'Equip your entire field crew with dispatch accounts without per-seat monthly license bloat.',
+        blurb: 'Equip your field crew with mobile dispatch accounts and low $5/mo team scaling.',
       },
       {
         href: '/features/crew',

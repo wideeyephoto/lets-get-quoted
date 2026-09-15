@@ -801,7 +801,23 @@ export default function EstimateGeneratorClient() {
                 >
                   + Add Permit to Estimate
                 </button>
-                {rebateData && rebateData.federalCredit > 0 && (
+                {rebateData && rebateData.utilityRebate > 0 && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      background: '#ecfdf5',
+                      color: '#065f46',
+                      border: '1px solid #a7f3d0',
+                    }}
+                    title="Estimated cash rebate offered by local electric utility"
+                  >
+                    💡 Est. Utility Rebate: {formatCurrency(rebateData.utilityRebate)}
+                  </span>
+                )}
+                {rebateData && estimate.selectedTrade === 'solar_pv' && rebateData.federalCredit > 0 && (
                   <span
                     style={{
                       fontSize: 11,
@@ -812,8 +828,25 @@ export default function EstimateGeneratorClient() {
                       color: '#92400e',
                       border: '1px solid #fde68a',
                     }}
+                    title="Non-refundable clean energy tax credit claimed via IRS Form 5695"
                   >
-                    ⚡ IRA 25C Rebate: {formatCurrency(rebateData.federalCredit)} Credit
+                    ☀️ IRA 25D Tax Credit: {formatCurrency(rebateData.federalCredit)} (Form 5695)
+                  </span>
+                )}
+                {rebateData && estimate.selectedTrade === 'ev_charger' && rebateData.federalCredit > 0 && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 800,
+                      padding: '5px 10px',
+                      borderRadius: 6,
+                      background: '#fef3c7',
+                      color: '#92400e',
+                      border: '1px solid #fde68a',
+                    }}
+                    title="Alternative fuel vehicle refueling credit for eligible census tracts via IRS Form 8911"
+                  >
+                    ⚡ Section 30C Tax Credit: {formatCurrency(rebateData.federalCredit)} (Form 8911)
                   </span>
                 )}
               </div>
