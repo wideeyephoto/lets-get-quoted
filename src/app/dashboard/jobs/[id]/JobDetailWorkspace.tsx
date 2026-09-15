@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { JobDetailLayout } from '@/lib/dashboard-views';
 import { setJobDetailLayoutAction } from '@/app/dashboard/view-actions';
 import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
-import PhotoDefectEstimatorModal from '../PhotoDefectEstimatorModal';
+
 
 export type JobDetailTab = 'overview' | 'financials' | 'execution' | 'permits' | 'selections' | 'settings';
 
