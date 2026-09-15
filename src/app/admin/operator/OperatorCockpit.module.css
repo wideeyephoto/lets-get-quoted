@@ -302,12 +302,21 @@
 }
 
 /* HITL Action Cards */
+.hitlSection {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
 .hitlList {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  max-height: 480px;
+  flex: 1 1 0%;
+  min-height: 0;
   overflow-y: auto;
+  padding-right: 4px;
 }
 
 .hitlCard {

@@ -159,7 +159,7 @@
   position: absolute;
   top: -10px;
   right: 12px;
-  background: var(--accent, #f97316);
+  background: #c2410c;
   color: #ffffff;
   font-size: 0.65rem;
   font-weight: 800;
@@ -167,7 +167,7 @@
   border-radius: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.4);
 }
 
 .bundleName {
@@ -1892,7 +1892,7 @@
 }
 
 .knowledgeHubTabBtnActive {
-  background: var(--accent, #f97316) !important;
+  background: #c2410c !important;
   color: #ffffff !important;
 }
 
@@ -3251,7 +3251,7 @@
 :root[data-theme='sunlight'] .knowledgeHubTabBtnActive,
 :root[data-theme='clarity'] .knowledgeHubTabBtnActive,
 :root[data-theme='parchment'] .knowledgeHubTabBtnActive {
-  background: #ea580c !important;
+  background: #c2410c !important;
   color: #ffffff !important;
 }
 
@@ -3358,14 +3358,14 @@
 :root[data-theme='sunlight'] .launchSummaryStatus,
 :root[data-theme='clarity'] .launchSummaryStatus,
 :root[data-theme='parchment'] .launchSummaryStatus {
-  color: #059669;
+  color: #047857;
 }
 
 :root[data-theme='light'] .launchSummaryPipeline,
 :root[data-theme='sunlight'] .launchSummaryPipeline,
 :root[data-theme='clarity'] .launchSummaryPipeline,
 :root[data-theme='parchment'] .launchSummaryPipeline {
-  color: #0284c7;
+  color: #0369a1;
 }
 
 :root[data-theme='light'] .trustChip,
@@ -3407,4 +3407,126 @@
   color: #0f172a;
 }
 
+/* WCAG 2.2 AA Contrast Overrides for Light & Sunlight Themes */
+:root[data-theme='light'] .strategyBriefingTitle,
+:root[data-theme='sunlight'] .strategyBriefingTitle,
+:root[data-theme='clarity'] .strategyBriefingTitle,
+:root[data-theme='parchment'] .strategyBriefingTitle {
+  color: #0f172a !important;
+}
 
+:root[data-theme='light'] .strategyBriefingSub,
+:root[data-theme='sunlight'] .strategyBriefingSub,
+:root[data-theme='clarity'] .strategyBriefingSub,
+:root[data-theme='parchment'] .strategyBriefingSub {
+  color: #475569 !important;
+}
+
+:root[data-theme='light'] .strategyBriefingAction,
+:root[data-theme='sunlight'] .strategyBriefingAction,
+:root[data-theme='clarity'] .strategyBriefingAction,
+:root[data-theme='parchment'] .strategyBriefingAction {
+  color: #c2410c !important;
+}
+
+:root[data-theme='light'] .transparentFeeTag,
+:root[data-theme='sunlight'] .transparentFeeTag,
+:root[data-theme='clarity'] .transparentFeeTag,
+:root[data-theme='parchment'] .transparentFeeTag {
+  color: #047857 !important;
+  background: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
+}
+
+.transparentFeeTagBlue {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .transparentFeeTagBlue,
+:root[data-theme='sunlight'] .transparentFeeTagBlue,
+:root[data-theme='clarity'] .transparentFeeTagBlue,
+:root[data-theme='parchment'] .transparentFeeTagBlue {
+  color: #0369a1 !important;
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+}
+
+:root[data-theme='light'] .costBreakdown,
+:root[data-theme='sunlight'] .costBreakdown,
+:root[data-theme='clarity'] .costBreakdown,
+:root[data-theme='parchment'] .costBreakdown {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.costBreakdownPill {
+  font-size: 0.68rem;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+:root[data-theme='light'] .costBreakdownPill,
+:root[data-theme='sunlight'] .costBreakdownPill,
+:root[data-theme='clarity'] .costBreakdownPill,
+:root[data-theme='parchment'] .costBreakdownPill {
+  color: #047857 !important;
+  background: #d1fae5 !important;
+}
+
+.costBreakdownToggle {
+  font-size: 0.74rem;
+  color: var(--accent, #f97316);
+  font-weight: 600;
+}
+
+:root[data-theme='light'] .costBreakdownToggle,
+:root[data-theme='sunlight'] .costBreakdownToggle,
+:root[data-theme='clarity'] .costBreakdownToggle,
+:root[data-theme='parchment'] .costBreakdownToggle {
+  color: #c2410c !important;
+}
+
+:root[data-theme='light'] .onboardingStepText strong,
+:root[data-theme='sunlight'] .onboardingStepText strong,
+:root[data-theme='clarity'] .onboardingStepText strong,
+:root[data-theme='parchment'] .onboardingStepText strong {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .knowledgeHubCard h2,
+:root[data-theme='sunlight'] .knowledgeHubCard h2,
+:root[data-theme='clarity'] .knowledgeHubCard h2,
+:root[data-theme='parchment'] .knowledgeHubCard h2 {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .knowledgeHubCard :global(.page-intro),
+:root[data-theme='sunlight'] .knowledgeHubCard :global(.page-intro),
+:root[data-theme='clarity'] .knowledgeHubCard :global(.page-intro),
+:root[data-theme='parchment'] .knowledgeHubCard :global(.page-intro) {
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] .knowledgeHubCard :global(.eyebrow),
+:root[data-theme='sunlight'] .knowledgeHubCard :global(.eyebrow),
+:root[data-theme='clarity'] .knowledgeHubCard :global(.eyebrow),
+:root[data-theme='parchment'] .knowledgeHubCard :global(.eyebrow) {
+  color: #c2410c !important;
+}
+
+:root[data-theme='light'] .stepNumber,
+:root[data-theme='sunlight'] .stepNumber,
+:root[data-theme='clarity'] .stepNumber,
+:root[data-theme='parchment'] .stepNumber {
+  color: #c2410c !important;
+  opacity: 1 !important;
+}

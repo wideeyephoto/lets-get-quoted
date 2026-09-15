@@ -87,7 +87,7 @@ export default async function TextToJobDashboardPage({
   const ownerAlertPhone = ownerAlerts.kind === 'ok' ? ownerAlerts.phone : null;
   const formattedOwnerAlertPhone = ownerAlertPhone ? formatUsPhone(ownerAlertPhone) : null;
 
-  const mappedCrew: CrewRow[] = (crewRows || []).map((c) => {
+  const mappedCrew: CrewRow[] = (crewRows || []).map((c: any) => {
     const verified = isCrewPhoneVerified(c);
     const verificationInfo = resolveCrewPhoneVerification(c);
     return {
@@ -103,7 +103,7 @@ export default async function TextToJobDashboardPage({
 
   type InboundMessageWithTime = InboundMessage & { createdAtMs: number };
 
-  const feedMessages: InboundMessageWithTime[] = (feedRows || []).map((row) => {
+  const feedMessages: InboundMessageWithTime[] = (feedRows || []).map((row: any) => {
     const jobTitle = (row.jobs as unknown as { title?: string } | null)?.title;
     const isVoice = row.kind === 'field_voice_note';
     const isCost = row.kind === 'cost_added';
@@ -145,7 +145,7 @@ export default async function TextToJobDashboardPage({
     };
   });
 
-  const leadMessages: InboundMessageWithTime[] = (fieldLeads || []).map((lead) => {
+  const leadMessages: InboundMessageWithTime[] = (fieldLeads || []).map((lead: any) => {
     const leadCreatedDate = new Date(lead.createdAt);
     const timeFormatted = formatFeedTime(lead.createdAt, accountTimeZone);
     const rawText = lead.rawSmsText;

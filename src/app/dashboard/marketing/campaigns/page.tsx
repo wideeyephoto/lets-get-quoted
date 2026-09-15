@@ -66,8 +66,8 @@ export default async function CampaignsPage({
 
   const customerTextingReady = messagingReadiness.kind === 'ready';
 
-  const emailUnits = balanceRows?.find((r) => r.resource_code === 'marketing_email_sends')?.available_units;
-  const smsUnits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
+  const emailUnits = balanceRows?.find((r: any) => r.resource_code === 'marketing_email_sends')?.available_units;
+  const smsUnits = balanceRows?.find((r: any) => r.resource_code === 'text_segments')?.available_units;
   const availableEmailCredits = typeof emailUnits === 'number' && Number.isFinite(emailUnits) ? Math.max(0, emailUnits) : null;
   const availableSmsCredits = typeof smsUnits === 'number' && Number.isFinite(smsUnits) ? Math.max(0, smsUnits) : null;
 

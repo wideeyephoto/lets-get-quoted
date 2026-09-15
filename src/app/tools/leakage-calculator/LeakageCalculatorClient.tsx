@@ -1083,7 +1083,7 @@ Audit Report Link: https://letsgetquoted.com/tools/leakage-calculator`;
 
       {/* Cross-Link Hub */}
       <section className={styles.hideOnPrint} style={{ maxWidth: 1000, margin: '60px auto 80px', padding: '0 20px', textAlign: 'center' }}>
-        <h3 style={{ fontSize: 20, color: '#f5f0e7', marginBottom: 16 }}>Explore More Free Contractor Tools</h3>
+        <h3 style={{ fontSize: 20, color: 'var(--text, #f5f0e7)', marginBottom: 16 }}>Explore More Free Contractor Tools</h3>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
           <Link href="/tools/hourly-rate-calculator" className={styles.toolActionBtn}>
             🧮 Contractor True Hourly Rate Calculator &rarr;

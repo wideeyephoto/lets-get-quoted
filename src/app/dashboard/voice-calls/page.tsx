@@ -173,7 +173,7 @@ export default async function VoiceCallsPage({
     || account?.call_tracking_number
     || null;
 
-  const voiceMinutes = balanceError ? null : Number(balanceRows?.find((r) => r.resource_code === 'voice_minutes')?.available_units ?? 0);
+  const voiceMinutes = balanceError ? null : Number(balanceRows?.find((r: any) => r.resource_code === 'voice_minutes')?.available_units ?? 0);
   const hasVoiceBalance = typeof voiceMinutes === 'number' && Number.isFinite(voiceMinutes);
 
   const resolvedBusinessName = site?.company_name || account?.business_name || account?.company_name || null;

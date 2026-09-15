@@ -28,6 +28,7 @@ import type { MapPin } from '@/components/pin-map';
 import type { LeadViewItem } from '@/app/dashboard/leads/LeadsWorkspace';
 import type { ActionCard, ActiveRecordContext } from './types';
 import { ilikeAcross } from '@/lib/postgrest-filter';
+import { draftChangeOrder } from '@/lib/change-order-ai';
 
 export interface ToolExecutionContext {
   supabase: SupabaseClient;
@@ -111,6 +112,29 @@ export const ASSISTANT_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
         },
       },
       required: ['label', 'amount'],
+    },
+  },
+  {
+    name: 'draft_change_order',
+    description: 'Drafts a change order (using AI) by analyzing a field note and comparing it against the active job scope. Automatically surfaces the drafted change order for the contractor to review.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        jobId: {
+          type: Type.STRING,
+          description: 'Job ID (optional; defaults to the active job)',
+        },
+        fieldNote: {
+          type: Type.STRING,
+          description: 'The dictated text or description from the crew member detailing the additional work needed',
+        },
+        photos: {
+          type: Type.ARRAY,
+          items: { type: Type.STRING },
+          description: 'Optional array of image URLs to assist with drafting the change order',
+        },
+      },
+      required: ['fieldNote'],
     },
   },
   {
@@ -383,6 +407,40 @@ export async function executeAssistantTool(
   const { supabase, accountId, activeRecord } = ctx;
 
   switch (toolName) {
+    case 'draft_change_order': {
+      const targetJobId = (args.jobId as string) || (activeRecord?.type === 'job' ? activeRecord.id : null);
+      if (!targetJobId) {
+        throw new Error('No active job specified or detected to draft a change order against.');
+      }
+      
+      const existingJob = await getJob(supabase, accountId, targetJobId);
+      if (!existingJob) {
+        throw new Error(`Job not found for ID ${targetJobId}`);
+      }
+
+      const draft = await draftChangeOrder({
+        accountId,
+        trade: null, // Depending on if we know the contractor trade, we can pass null
+        jobScope: existingJob.scope || 'No existing scope specified.',
+        fieldNote: args.fieldNote as string,
+        photos: (args.photos as string[]) || [],
+        services: [] // Pass empty array if we don't fetch pricebook immediately
+      });
+
+      if (!draft) {
+        return { data: { success: false, message: 'Could not draft change order. The field note might be too vague.' } };
+      }
+
+      return {
+        data: { success: true, draft },
+        actionCard: {
+          type: 'draft_change_order',
+          title: 'Drafted Change Order',
+          description: draft.title,
+          data: { draft, jobId: targetJobId },
+        },
+      };
+    }
     case 'modify_active_job': {
       const targetJobId = (args.jobId as string) || (activeRecord?.type === 'job' ? activeRecord.id : null);
       if (!targetJobId) {

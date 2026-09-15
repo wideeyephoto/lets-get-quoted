@@ -29,6 +29,7 @@ export type ToolAsset = {
   brand: string;
   modelNumber?: string | null;
   serialNumber?: string | null;
+  retailerSku?: string | null;
   assetTag: string;
   purchasePrice?: number | null;
   purchaseDate?: string | null;
@@ -96,6 +97,8 @@ export type FleetVehicle = {
   nextServiceDueMileage?: number | null;
   inspectionExpiresAt?: string | null;
   insuranceExpiresAt?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
   notes?: string | null;
 };
 
@@ -113,6 +116,7 @@ export type VanStockItem = {
   location: string;
   locationId?: string | null;
   notes?: string | null;
+  incomingQuantity?: number;
 };
 
 export type StockTransfer = {
@@ -140,7 +144,7 @@ export type InventoryPayload = {
 
 export type MaintenanceRecord = {
   id: string;
-  assetType: 'tool' | 'vehicle';
+  assetType: 'vehicle' | 'tool';
   assetId: string;
   assetName: string;
   serviceType: string;
@@ -150,6 +154,44 @@ export type MaintenanceRecord = {
   nextDueAt?: string | null;
   mileageAtService?: number | null;
   notes?: string | null;
+};
+
+export type RestockOrderStatus = 'draft' | 'ordered' | 'partially_received' | 'received' | 'cancelled';
+
+export type RestockOrderLine = {
+  id: string;
+  orderId: string;
+  itemId?: string | null;
+  sku: string;
+  itemName: string;
+  destinationLocationName: string;
+  destinationLocationId?: string | null;
+  orderedQuantity: number;
+  receivedQuantity: number;
+  unit: string;
+  unitCost: number;
+};
+
+export type RestockOrder = {
+  id: string;
+  orderNumber: string;
+  supplierName: string;
+  status: RestockOrderStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  lines: RestockOrderLine[];
+};
+
+export type RestockReceipt = {
+  id: string;
+  orderId: string;
+  lineId: string;
+  quantity: number;
+  destinationLocationName: string;
+  destinationLocationId?: string | null;
+  receivedBy: string;
+  createdAt: string;
 };
 
 export type VehicleMaintenanceAudit = {

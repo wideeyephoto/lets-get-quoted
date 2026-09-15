@@ -13,7 +13,7 @@ interface Props {
   onOpenManualPayment: (jobId: string, invoiceId?: string, amount?: number) => void;
   onOpenBatchSettle?: () => void;
   onOpenPromiseToPay?: (payment: { id: string; clientName: string; amount: number }) => void;
-  onOpenNoiGenerator?: (payment: { id: string; clientName: string; amount: number }) => void;
+  onOpenNoiGenerator?: (payment: { id: string; clientName: string; amount: number; jobId?: string }) => void;
   onOpenLienWaiver?: (payment: { id: string; clientName: string; amount: number; jobId?: string }) => void;
   onOpenConsolidatedBilling?: () => void;
   onOpenRetainageTracker?: () => void;
@@ -379,7 +379,7 @@ export default function ReceivablesAgingBoard({
                               className="btn secondary"
                               style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: '#dc2626', fontWeight: 700 }}
                               title="Generate Statutory Notice of Intent to Lien"
-                              onClick={() => onOpenNoiGenerator({ id: item.id, clientName: item.clientName, amount: item.amountDue })}
+                              onClick={() => onOpenNoiGenerator({ id: item.id, clientName: item.clientName, amount: item.amountDue, jobId: item.jobId })}
                             >
                               🛡️
                             </button>

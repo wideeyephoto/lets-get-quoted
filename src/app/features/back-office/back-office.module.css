@@ -714,12 +714,17 @@
 :global(:root[data-theme='light']) .cashDetail,
 :global(:root[data-theme='light']) .cashVerdictLabel,
 :global(:root[data-theme='light']) .cashDate,
+:global(:root[data-theme='light']) .cashHeadLabel,
 :global(:root[data-theme='light']) .bandLabel,
 :global(:root[data-theme='light']) .showcaseNote,
 :global(:root[data-theme='light']) .planWhen,
 :global(:root[data-theme='light']) .stageWhen,
 :global(:root[data-theme='light']) .stageNext,
 :global(:root[data-theme='light']) .msgWho,
+:global(:root[data-theme='light']) .who,
+:global(:root[data-theme='light']) .upgrade > span,
+:global(:root[data-theme='light']) .msg,
+:global(:root[data-theme='light']) .moneyRow > span,
 :global(:root[data-theme='light']) .stageDone > span,
 :global(:root[data-theme='light']) .stageNext > span {
   color: #94a3b8 !important;

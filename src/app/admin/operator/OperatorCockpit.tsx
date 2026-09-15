@@ -511,7 +511,7 @@ export default function OperatorCockpit({
         </section>
 
         {/* Action Approvals (HITL Queue) */}
-        <section className={styles.card}>
+        <section className={`${styles.card} ${styles.hitlSection}`}>
           <div className={styles.cardHeader}>
             <h2>⚡ Action Approval Queue</h2>
             <span className={styles.categoryTag}>{pendingActions.length} Pending</span>

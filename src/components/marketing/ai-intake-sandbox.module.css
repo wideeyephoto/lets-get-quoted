@@ -172,6 +172,10 @@
   letter-spacing: 0.5px;
 }
 
+:global(:root[data-theme]) .inputLabel {
+  color: #f8fafc !important;
+}
+
 .textarea {
   width: 100%;
   min-height: 80px;

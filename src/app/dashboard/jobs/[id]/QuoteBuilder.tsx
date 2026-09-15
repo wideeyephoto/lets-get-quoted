@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
@@ -69,6 +69,7 @@ function ago(at: number): string {
 // mirrors what the client will see; Save persists the items and recomputes the
 // job's quoted amount server-side.
 export default function QuoteBuilder({
+  jobId,
   action,
   notifyAction,
   autosaveKey,
@@ -87,6 +88,7 @@ export default function QuoteBuilder({
   changeOrderHref,
   printHref,
 }: {
+  jobId?: string;
   businessName?: string;
   jobRef?: string;
   clientPhone?: string | null;
@@ -620,15 +622,17 @@ export default function QuoteBuilder({
                 {reviewing ? 'Checking…' : 'Check before sending'}
               </button>
             ) : null}
-            <button
-              type="button"
-              className="quote-tool"
-              onClick={() => setPhotoModalOpen(true)}
-              title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
-            >
-              <span aria-hidden="true">📸</span>
-              AI Photo Estimate
-            </button>
+            {process.env.NEXT_PUBLIC_ENABLE_PHOTO_ESTIMATE === 'true' && (
+              <button
+                type="button"
+                className="quote-tool"
+                onClick={() => setPhotoModalOpen(true)}
+                title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
+              >
+                <span aria-hidden="true">📸</span>
+                AI Photo Estimate
+              </button>
+            )}
           </div>
           {printHref ? (
             <a href={printHref} className="quote-print">
@@ -658,6 +662,7 @@ export default function QuoteBuilder({
         isOpen={photoModalOpen}
         onClose={() => setPhotoModalOpen(false)}
         onApplyLineItems={handleApplyPhotoDefects}
+        jobId={jobId}
       />
 
       {rows.length === 0 ? (

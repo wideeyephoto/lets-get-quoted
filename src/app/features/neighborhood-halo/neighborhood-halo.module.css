@@ -285,10 +285,20 @@
   transition: all 0.15s ease;
 }
 
+:global(:root[data-theme]) .photoToggleBtn,
+:global(:root[data-theme='sunlight']) .photoToggleBtn {
+  color: #94a3b8 !important;
+}
+
 .photoToggleBtnActive {
   background: rgba(56, 189, 248, 0.2);
   border-color: #38bdf8;
   color: #f8fafc;
+}
+
+:global(:root[data-theme]) .photoToggleBtnActive,
+:global(:root[data-theme='sunlight']) .photoToggleBtnActive {
+  color: #f8fafc !important;
 }
 
 .craftsmanshipCard {
@@ -1344,6 +1354,11 @@
   transition: all 0.15s ease;
 }
 
+:global(:root[data-theme]) .simulateLeadTriggerBtn,
+:global(:root[data-theme='sunlight']) .simulateLeadTriggerBtn {
+  color: #38bdf8 !important;
+}
+
 .simulateLeadTriggerBtn:hover {
   background: rgba(56, 189, 248, 0.2);
   border-color: #38bdf8;
@@ -1690,3 +1705,92 @@
 
 .storyDiagramFooterBad { color: #f87171; }
 .storyDiagramFooterGood { color: #34d399; }
+
+.storyDiagramTitleGood {
+  color: #34d399;
+  font-size: 0.85rem;
+}
+
+.routeArrowBad {
+  color: #f87171;
+  font-size: 0.75rem;
+}
+
+.routeArrowGood {
+  color: #34d399;
+  font-size: 0.75rem;
+}
+
+/* Light / Workbench theme overrides */
+:global(:root[data-theme='light']) .routePointBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='light']) .routePointGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='light']) .storyBadgeGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='light']) .storyBadgeBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='light']) .storyDiagramTitleGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='light']) .routeArrowBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='light']) .routeArrowGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='light']) .storyDiagramFooterBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='light']) .storyDiagramFooterGood {
+  color: #065f46 !important;
+}
+
+/* Sunlight theme overrides */
+:global(:root[data-theme='sunlight']) .routePointBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='sunlight']) .routePointGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='sunlight']) .storyBadgeGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='sunlight']) .storyBadgeBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='sunlight']) .storyDiagramTitleGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='sunlight']) .routeArrowBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='sunlight']) .routeArrowGood {
+  color: #065f46 !important;
+}
+
+:global(:root[data-theme='sunlight']) .storyDiagramFooterBad {
+  color: #991b1b !important;
+}
+
+:global(:root[data-theme='sunlight']) .storyDiagramFooterGood {
+  color: #065f46 !important;
+}

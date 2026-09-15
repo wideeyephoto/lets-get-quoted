@@ -56,14 +56,14 @@ export default async function InsuranceClaimsPage({
 
   const canWrite = role === 'owner' || capabilities.has('jobs.write');
 
-  const activeJobs = (rawJobs || []).map((j) => ({
+  const activeJobs = (rawJobs || []).map((j: any) => ({
     id: j.id,
     label: `${j.ref ? `#${j.ref} - ` : ''}${j.client_name}${j.address ? ` (${j.address})` : ''}`,
     status: j.status,
     clientId: j.client_id || null,
   }));
 
-  const clients = (clientsRes?.data || []).map((c) => ({
+  const clients = (clientsRes?.data || []).map((c: any) => ({
     id: c.id,
     name: c.name,
     phone: c.phone,
@@ -71,7 +71,7 @@ export default async function InsuranceClaimsPage({
     address: c.address,
   }));
 
-  const aiWritingUnits = balanceRes?.data?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
+  const aiWritingUnits = balanceRes?.data?.find((r: any) => r.resource_code === 'ai_writing_drafts')?.available_units;
 
   return (
     <main className="wide-shell workspace-shell">

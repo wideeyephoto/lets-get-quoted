@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { cache } from 'react';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { signingKeys } from '@/lib/auth-jwks';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
@@ -473,6 +473,22 @@ const loadSessionMember = perRequest(async () => {
   const user = await verifiedUser(supabase);
   if (!user) return null;
 
+  // Impersonation mode
+  const impersonateId = (await cookies()).get('lgq_impersonate')?.value;
+  if (impersonateId) {
+    // Only allow if actual user is admin
+    const adminClient = createAdminClient();
+    const { data: staff } = await adminClient.from('staff').select('role').eq('email', user.email).single();
+    if (staff) {
+      const { createReadOnlyAdminClient } = await import('@/lib/readonly-client');
+      return {
+        supabase: createReadOnlyAdminClient(),
+        user: { ...user, id: impersonateId },
+        member: { account_id: impersonateId, role: 'owner' }
+      };
+    }
+  }
+
   const admin = createAdminClient();
   let rows = await readMemberRows(admin, user.id);
 
@@ -526,7 +542,7 @@ const loadSessionMember = perRequest(async () => {
    * read fails too, acct stays null and the gates fail open exactly as they did
    * before the port -- no worse than what it replaced, and no quieter.
    */
-  if (member?.account_id && !embeddedAccount(member)) {
+  if (member?.account_id && !embeddedAccount(member as any)) {
     const { data: fallbackAccount } = await admin
       .from('accounts')
       .select('*')
@@ -567,7 +583,7 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   // "not suspended" so this never breaks the dashboard before it's deployed.
   // The row arrived embedded in the membership read above, so the gates cost
   // nothing extra here.
-  const acct = embeddedAccount(member);
+  const acct = embeddedAccount(member as any);
   applyAccountGates(acct as AccountGateRow, { role: 'owner', skipFirstRunGate: options.skipFirstRunGate });
 
   // userEmail is who to write into an audit trail. Anything that records a
@@ -944,7 +960,7 @@ async function resolveOfficeCapableMember() {
   // returns nothing and every gate below would silently pass -- letting somebody
   // keep working inside a business staff had suspended. An owner sees the same
   // row either way, so the two guards agree wherever they overlap.
-  const acct = embeddedAccount(member);
+  const acct = embeddedAccount(member as any);
 
   applyAccountGates(acct as AccountGateRow, { role });
 

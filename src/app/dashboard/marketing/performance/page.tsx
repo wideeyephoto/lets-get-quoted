@@ -84,21 +84,21 @@ export default async function MarketingPerformancePage() {
   );
 
   const printSpendDollars = (merchandiseRows ?? []).reduce(
-    (sum, o) => sum + (Number(o.total_amount) || 0),
+    (sum: any, o: any) => sum + (Number(o.total_amount) || 0),
     0,
   );
 
   const smsSentCount = (campaignRows ?? []).reduce(
-    (sum, c) => sum + (Number(c.sms_sent) || 0),
+    (sum: any, c: any) => sum + (Number(c.sms_sent) || 0),
     0,
   );
 
   const hasActiveCampaigns = (campaignRows ?? []).some(
-    (c) => (Number(c.email_sent) || 0) > 0 || (Number(c.sms_sent) || 0) > 0,
+    (c: any) => (Number(c.email_sent) || 0) > 0 || (Number(c.sms_sent) || 0) > 0,
   );
 
   const blogPosts = ((siteContent?.blog as Record<string, unknown> | null | undefined)?.posts as Array<{ status?: string }> | undefined) || [];
-  const publishedBlogCount = blogPosts.filter((p) => p.status === 'published').length;
+  const publishedBlogCount = blogPosts.filter((p: any) => p.status === 'published').length;
 
   const hasLsaConnection = Boolean(lsaConnectionRow?.customer_id && !lsaConnectionRow?.disconnected_at);
 

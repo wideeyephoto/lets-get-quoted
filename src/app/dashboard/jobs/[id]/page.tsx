@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { isLienHelpPilotEnabled } from '@/lib/lien-help-pilot';
+
 import { portalViewUrlFull } from '@/lib/portal-urls';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import ArrivalPanel from '@/components/arrival-panel';
@@ -761,7 +763,13 @@ export default async function JobDetailPage({
               {!isPrimary('request_review') && job.status === 'complete' ? (
                 <div className="job-actions-item is-control">{reviewControl}</div>
               ) : null}
-            </JobActionMenu>
+                              {isLienHelpPilotEnabled(accountId) ? (
+                  <Link className="job-actions-item" href={`/dashboard/jobs/${job.id}/lien-help`}>
+                    <strong>Lien Help</strong>
+                    <small>Prepare statutory notices</small>
+                  </Link>
+                ) : null}
+              </JobActionMenu>
           </div>
           {/* When nothing is the contractor's move, say whose it is. A hero
               with no bright control and no sentence reads as a page that has
@@ -927,6 +935,7 @@ export default async function JobDetailPage({
               Itemize the work, add optional upgrades, or leave this empty for one quoted amount.
             </p>
             <QuoteBuilder
+              jobId={job.id}
               action={boundSaveQuoteItems}
               notifyAction={saveQuoteItemsAndNotifyAction.bind(null, job.id)}
               autosaveKey={job.id}

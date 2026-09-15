@@ -39,6 +39,7 @@ export const METERED_STORAGE_BUCKETS = [
   'site-images',
   'site-videos',
   'account-attachments',
+  'lien-help',
 ] as const;
 
 export type MeteredStorageBucket = (typeof METERED_STORAGE_BUCKETS)[number];

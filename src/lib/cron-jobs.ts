@@ -65,15 +65,20 @@ export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
     reason:
       'Dispatched on-demand and via synthetic reachability monitoring probes to avoid exceeding the Vercel 50-cron platform limit.',
   },
+  {
+    job: 'ops-metrics-snapshot',
+    reason:
+      'Parked temporarily to allow subsystem-prober to run within the 50 limit.',
+  },
 ];
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
-    job: 'ops-metrics-snapshot',
-    label: 'Daily operational metrics snapshot',
-    schedule: '0 6 * * *',
+    job: 'subsystem-prober',
+    label: 'Subsystem Prober',
+    schedule: '*/5 * * * *',
     importance: 'housekeeping',
-    consequence: 'AI Operator trend history becomes stale and the get_ops_trend_history tool returns empty results.',
+    consequence: 'Cached health checks become stale.',
   },
 
   {

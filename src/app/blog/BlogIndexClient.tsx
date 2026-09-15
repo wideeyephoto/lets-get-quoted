@@ -10,16 +10,6 @@ interface BlogIndexClientProps {
   categories: string[];
 }
 
-function getCategoryBadgeClass(category: string): string {
-  const cat = category.toLowerCase();
-  if (cat.includes('pricing') || cat.includes('cash')) return styles.badgePricing;
-  if (cat.includes('software') || cat.includes('tech')) return styles.badgeSoftware;
-  if (cat.includes('marketing') || cat.includes('lead') || cat.includes('growth')) return styles.badgeMarketing;
-  if (cat.includes('operation') || cat.includes('crew') || cat.includes('dispatch')) return styles.badgeOperations;
-  if (cat.includes('review') || cat.includes('trust') || cat.includes('brand')) return styles.badgeTrust;
-  return styles.badgeMarketing;
-}
-
 export default function BlogIndexClient({ posts, categories }: BlogIndexClientProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -56,8 +46,6 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
     });
   }, [posts, selectedCategory, searchQuery]);
 
-  const isFiltering = selectedCategory !== 'All' || Boolean(searchQuery.trim());
-
   return (
     <>
       {/* Featured Post Card (Hero Highlight) */}
@@ -66,44 +54,31 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
           <Link href={`/blog/${featuredPost.slug}`} className={styles.featuredCard}>
             <div className={styles.featuredContent}>
               <div className={styles.featuredTag}>
-                <span className={styles.featuredTagBadge}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                  </svg>
-                  Featured Guide
-                </span>
-                <span>·</span>
-                <span>{featuredPost.category}</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span>Featured Guide · {featuredPost.category}</span>
               </div>
               <h2 className={styles.featuredTitle}>{featuredPost.title}</h2>
               <p className={styles.featuredExcerpt}>{featuredPost.excerpt}</p>
-              <div className={styles.featuredActionRow}>
-                <div className={styles.articleMeta}>
-                  <span className={styles.metaItem}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    {featuredPost.readMinutes} min read
-                  </span>
-                  <span className={styles.metaItem}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    {formatDate(featuredPost.datePublished)}
-                  </span>
-                  <span className={styles.metaItem}>By {featuredPost.author.name}</span>
-                </div>
-                <span className={styles.featuredReadBtn}>
-                  Read Playbook
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
+              <div className={styles.articleMeta}>
+                <span className={styles.metaItem}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
                   </svg>
+                  {featuredPost.readMinutes} min read
                 </span>
+                <span className={styles.metaItem}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  {formatDate(featuredPost.datePublished)}
+                </span>
+                <span className={styles.metaItem}>By {featuredPost.author.name}</span>
               </div>
             </div>
             {featuredPost.coverImage && (
@@ -130,8 +105,7 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
             onClick={() => setSelectedCategory('All')}
             className={`${styles.categoryPill} ${selectedCategory === 'All' ? styles.categoryPillActive : ''}`}
           >
-            All Topics
-            <span className={styles.categoryPillCount}>{posts.length}</span>
+            All Topics ({posts.length})
           </button>
           {categories.map((category) => {
             const count = posts.filter((p) => p.category.toLowerCase() === category.toLowerCase()).length;
@@ -147,8 +121,7 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
                   selectedCategory === category ? styles.categoryPillActive : ''
                 }`}
               >
-                {category}
-                <span className={styles.categoryPillCount}>{count}</span>
+                {category} ({count})
               </button>
             );
           })}
@@ -167,57 +140,14 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
             className={styles.searchInput}
             aria-label="Search articles"
           />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className={styles.searchClearBtn}
-              title="Clear search"
-              aria-label="Clear search"
-            >
-              ✕
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Real-time Result Count */}
-      {isFiltering && (
-        <div className={styles.resultsCounter}>
-          <span>
-            Showing <b>{filteredPosts.length}</b> {filteredPosts.length === 1 ? 'playbook' : 'playbooks'}
-            {selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}
-            {searchQuery ? ` matching "${searchQuery}"` : ''}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedCategory('All');
-              setSearchQuery('');
-            }}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--orange-light)',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}
-          >
-            Clear Filters
-          </button>
-        </div>
-      )}
-
       {/* Articles Grid */}
       {filteredPosts.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '72px 20px', color: 'var(--muted)' }}>
-          <p style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px', color: 'var(--ink)' }}>
-            No playbooks matched your criteria.
-          </p>
-          <p style={{ fontSize: '15px', color: 'var(--dim)', maxWidth: '440px', margin: '0 auto 20px' }}>
-            Try adjusting your search terms or selecting a different category to view more guides.
-          </p>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
+          <p style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>No articles matched your criteria.</p>
+          <p style={{ fontSize: '14px', color: 'var(--dim)' }}>Try clearing your search or picking another category.</p>
           <button
             type="button"
             onClick={() => {
@@ -225,6 +155,7 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
               setSearchQuery('');
             }}
             className={styles.categoryPill}
+            style={{ marginTop: '16px' }}
           >
             Reset Filters
           </button>
@@ -241,34 +172,14 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
                     className={styles.cardImage}
                     loading="lazy"
                   />
-                  <span className={`${styles.cardFloatingBadge} ${getCategoryBadgeClass(post.category)}`}>
-                    {post.category}
-                  </span>
-                  <span className={styles.cardReadChip}>
-                    ⏱ {post.readMinutes}m
-                  </span>
                 </div>
               )}
+              <span className={styles.cardCategory}>{post.category}</span>
               <h3 className={styles.cardTitle}>{post.title}</h3>
               <p className={styles.cardExcerpt}>{post.excerpt}</p>
               <div className={styles.cardFooter}>
-                <div className={styles.cardFooterAuthor}>
-                  <img
-                    src={post.author.avatarUrl || '/apple-icon.png'}
-                    alt={post.author.name}
-                    className={styles.cardFooterAvatar}
-                    width={20}
-                    height={20}
-                  />
-                  <span>{formatDate(post.datePublished)}</span>
-                </div>
-                <span className={styles.cardReadLink}>
-                  Read Guide
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </span>
+                <span>{post.readMinutes} min read</span>
+                <span>{formatDate(post.datePublished)}</span>
               </div>
             </Link>
           ))}
@@ -281,31 +192,23 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
         <p className={styles.ctaLead}>
           Start with a free high-converting contractor website, 24/7 AI intake, and quotes-to-paid workflow. Flex starts at $0/mo with 2 office seats and 2 crew members included.
         </p>
-        <div className={styles.ctaPillsRow}>
-          <span className={styles.ctaPillItem}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Free High-Converting Website
-          </span>
-          <span className={styles.ctaPillItem}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            24/7 AI Call &amp; SMS Intake
-          </span>
-          <span className={styles.ctaPillItem}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Instant Price Calculators
-          </span>
-          <span className={styles.ctaPillItem}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            $0/mo Free Tier · Unlimited Crew
-          </span>
+        <div className={styles.ctaFeatures}>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>Free High-Converting Website</span>
+          </div>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>24/7 AI Call &amp; SMS Intake</span>
+          </div>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>Instant Price Calculators</span>
+          </div>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>$0/mo Free Tier · Unlimited Crew</span>
+          </div>
         </div>
         <a href="https://app.letsgetquoted.com/start?goal=build_site&source=blog_cta" className={styles.ctaButton}>
           Build Your Free Site &rarr;

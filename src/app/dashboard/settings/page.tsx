@@ -293,7 +293,7 @@ export default async function SettingsPage({
     )
     : null;
 
-  const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
+  const providers = (identityData?.identities ?? []).map((identity: any) => identity.provider);
   const businessName = pickBusinessName(site, account);
 
   // Whether customers may change their own extras. Read on its own rather than

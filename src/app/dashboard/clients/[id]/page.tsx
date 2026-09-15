@@ -181,7 +181,7 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
               <p className="empty-state">No jobs linked to this client yet.</p>
             ) : (
               <div className="cost-list">
-                {jobs.map((job) => (
+                {jobs.map((job: any) => (
                   <Link href={`/dashboard/jobs/${job.id}`} className="cost-item" key={job.id}>
                     <div className="cost-item-main">
                       <span className="cost-item-desc">{job.ref}</span>
@@ -204,7 +204,7 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
                   <h2>Requests</h2>
                 </div>
                 <div className="cost-list">
-                  {leads.map((lead) => (
+                  {leads.map((lead: any) => (
                     <Link href={`/dashboard/leads/${lead.id}`} className="cost-item" key={lead.id}>
                       <div className="cost-item-main">
                         <span className="cost-item-desc">{lead.project_type || 'Lead'}</span>

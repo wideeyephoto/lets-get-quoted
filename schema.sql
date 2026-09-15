@@ -42104,3 +42104,5 @@ create policy "Users can delete their own preferences for active memberships"
   using (
     auth.uid() = user_id
   );
+
+create table public.voice_call_transcripts (call_id uuid primary key, transcript_text text);

@@ -1632,7 +1632,7 @@ export async function reviewQuoteAction(
     .not('quote_items', 'is', null)
     .order('created_at', { ascending: false })
     .limit(60);
-  const history = (past ?? []).map((row) => ({
+  const history = (past ?? []).map((row: any) => ({
     labels: parseQuoteItems(row.quote_items).filter((item) => item.kind !== 'subscription').map((item) => item.label),
   }));
 

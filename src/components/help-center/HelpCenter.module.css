@@ -2533,3 +2533,49 @@ button.quickStepItem {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Ensure HelpCenter retained dark canvas maintains high contrast across all global themes */
+:global(:root[data-theme]) .helpRoot,
+:global(:root[data-theme='light']) .helpRoot,
+:global(:root[data-theme='sunlight']) .helpRoot,
+:global(:root[data-theme='dim']) .helpRoot,
+:global(:root[data-theme='dark']) .helpRoot {
+  color-scheme: dark !important;
+  background-color: #081014 !important;
+  color: #e2e8f0 !important;
+}
+
+:global(:root[data-theme]) .helpRoot :global(h1),
+:global(:root[data-theme]) .helpRoot :global(h2),
+:global(:root[data-theme]) .helpRoot :global(h3),
+:global(:root[data-theme]) .helpRoot :global(h4),
+:global(:root[data-theme]) .helpRoot .heroTitle,
+:global(:root[data-theme]) .helpRoot .sectionTitle,
+:global(:root[data-theme]) .helpRoot .commonFixTitle,
+:global(:root[data-theme]) .helpRoot .bentoTitle,
+:global(:root[data-theme]) .helpRoot .bentoCardTitle,
+:global(:root[data-theme]) .helpRoot .channelTitle,
+:global(:root[data-theme]) .helpRoot .articleCardTitle,
+:global(:root[data-theme]) .helpRoot .stepTitle,
+:global(:root[data-theme]) .helpRoot .troubleTitle {
+  color: #ffffff !important;
+}
+
+:global(:root[data-theme]) .helpRoot :global(p),
+:global(:root[data-theme]) .helpRoot .heroSubtitle,
+:global(:root[data-theme]) .helpRoot .sectionSubtitle,
+:global(:root[data-theme]) .helpRoot .commonFixAudience,
+:global(:root[data-theme]) .helpRoot .bentoDesc,
+:global(:root[data-theme]) .helpRoot .channelDesc,
+:global(:root[data-theme]) .helpRoot .templateDesc,
+:global(:root[data-theme]) .helpRoot .troubleDesc {
+  color: #94a3b8 !important;
+}
+
+:global(:root[data-theme]) .helpRoot .commonFixCard,
+:global(:root[data-theme]) .helpRoot .bentoCard,
+:global(:root[data-theme]) .helpRoot .templateCard,
+:global(:root[data-theme]) .helpRoot .supportChannelCard {
+  background-color: #0e1a1f !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}

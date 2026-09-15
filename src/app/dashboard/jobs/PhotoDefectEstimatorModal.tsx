@@ -1,13 +1,16 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import {
   analyzePhotoDefectsAction,
+  uploadEstimatePhotoAction,
   type AnalyzePhotoDefectsResponse,
 } from './photo-estimate-actions';
 import type { PhotoDefectEstimateResult, DefectItem } from '@/lib/multimodal-defect-estimator';
+import { supabase } from '@/lib/supabase';
 
 export interface PhotoDefectEstimatorModalProps {
+  jobId?: string;
   isOpen: boolean;
   onClose: () => void;
   defaultTrade?: string;
@@ -26,7 +29,18 @@ const COMMON_TRADES = [
   'General Repair',
 ];
 
+interface PhotoItem {
+  id: string;
+  file?: File;
+  preview: string;
+  uploading: boolean;
+  url?: string;
+  path?: string;
+  error?: string;
+}
+
 export default function PhotoDefectEstimatorModal({
+  jobId,
   isOpen,
   onClose,
   defaultTrade = 'Roofing',
@@ -35,11 +49,12 @@ export default function PhotoDefectEstimatorModal({
 }: PhotoDefectEstimatorModalProps) {
   const [trade, setTrade] = useState(defaultTrade);
   const [notes, setNotes] = useState(defaultNotes);
-  const [photoUrl, setPhotoUrl] = useState<string>('');
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<PhotoDefectEstimateResult | null>(null);
+  const [priceBook, setPriceBook] = useState<Array<{ id: string; name: string; unitPrice: number; unit: string }>>([]);
+  const [estimateId, setEstimateId] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
 
   useEffect(() => {
@@ -48,6 +63,9 @@ export default function PhotoDefectEstimatorModal({
       setNotes(defaultNotes);
       setApplied(false);
       setError(null);
+      setPhotos([]);
+      setEstimate(null);
+      setEstimateId(null);
     }
   }, [isOpen, defaultTrade, defaultNotes]);
 
@@ -63,31 +81,75 @@ export default function PhotoDefectEstimatorModal({
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        setPhotoPreview(result);
-        setPhotoUrl(result);
-      };
-      reader.readAsDataURL(file);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (photos.length + files.length > 8) {
+      setError('You can only upload up to 8 photos at a time.');
+      return;
+    }
+
+    const newPhotos = files.map((file) => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      preview: URL.createObjectURL(file),
+      uploading: true,
+    }));
+
+    setPhotos((prev) => [...prev, ...newPhotos]);
+
+    for (const photo of newPhotos) {
+      try {
+        const ext = photo.file.name.split('.').pop() || 'jpg';
+        const formData = new FormData();
+        formData.append('photo', photo.file);
+        
+        const { url, path } = await uploadEstimatePhotoAction(formData);
+        
+        setPhotos((prev) =>
+          prev.map((p) => (p.id === photo.id ? { ...p, uploading: false, url, path } : p))
+        );
+      } catch (err: any) {
+        setPhotos((prev) =>
+          prev.map((p) => (p.id === photo.id ? { ...p, uploading: false, error: err.message } : p))
+        );
+      }
     }
   };
 
+  const removePhoto = (id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const handleRunAnalysis = async () => {
+    if (photos.length === 0) {
+      setError('Please add at least one photo.');
+      return;
+    }
+    
+    const validUrls = photos.filter(p => p.url).map(p => p.url as string);
+    const validPaths = photos.filter(p => p.path).map(p => p.path as string);
+    if (validUrls.length === 0 || validPaths.length === 0) {
+      setError('No successfully uploaded photos to analyze.');
+      return;
+    }
+
     setAnalyzing(true);
     setError(null);
     try {
       const res: AnalyzePhotoDefectsResponse = await analyzePhotoDefectsAction({
         trade,
         notes: notes || undefined,
-        photoUrl: photoUrl || undefined,
+        photoUrls: validUrls,
+        photoPaths: validPaths,
+        jobId,
       });
 
       if (res.ok && res.estimate) {
         setEstimate(res.estimate);
+        if (res.priceBook) setPriceBook(res.priceBook);
+        if (res.estimateId) setEstimateId(res.estimateId);
       } else {
         setError(res.message || 'Inspection failed. Please try again.');
       }
@@ -98,20 +160,50 @@ export default function PhotoDefectEstimatorModal({
     }
   };
 
-  const handleApplyToQuote = () => {
-    if (!estimate || !onApplyLineItems) return;
-    const items = estimate.suggestedQuoteDraft.lineItems.length > 0
-      ? estimate.suggestedQuoteDraft.lineItems
-      : estimate.defects.map((d) => ({
-          name: d.defectName,
-          cost: d.estimatedTotalDollars,
-        }));
+  const getCalculatedCost = (defect: DefectItem) => {
+    let cost = 0;
+    if (defect.suggestedServiceId) {
+      const svc = priceBook.find(s => s.id === defect.suggestedServiceId);
+      if (svc) {
+        cost = svc.unitPrice * (defect.suggestedQuantity || 1);
+      }
+    }
+    return cost;
+  };
+  const totalCost = estimate?.defects.reduce((acc, curr) => acc + getCalculatedCost(curr), 0) || 0;
 
-    onApplyLineItems(items);
-    setApplied(true);
-    setTimeout(() => {
-      onClose();
-    }, 1200);
+  const handleApplyToQuote = async () => {
+    if (!estimate || !onApplyLineItems || !jobId) return;
+    
+    const items = estimate.defects.map((d) => ({
+      name: d.defectName + ' - ' + d.recommendedRepair,
+      cost: getCalculatedCost(d),
+      suggestedServiceId: d.suggestedServiceId,
+      quantity: d.suggestedQuantity || 1,
+      defectName: d.defectName,
+      recommendedRepair: d.recommendedRepair,
+      severity: d.severity,
+    }));
+
+    try {
+      if (estimateId) {
+        const { applyPhotoDefectsAction } = await import('./photo-estimate-actions');
+        await applyPhotoDefectsAction({
+          jobId,
+          estimateId,
+          items,
+          priceBook,
+        });
+      }
+      
+      onApplyLineItems(items);
+      setApplied(true);
+      setTimeout(() => {
+        onClose();
+      }, 1200);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save estimate link.');
+    }
   };
 
   const getSeverityStyle = (severity: DefectItem['severity']) => {
@@ -139,6 +231,8 @@ export default function PhotoDefectEstimatorModal({
         return <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'var(--rule-t12, rgba(255,255,255,0.1))', color: 'var(--text-secondary, #94a3b8)', fontSize: '0.75rem', fontWeight: 600 }}>ROUTINE</span>;
     }
   };
+  
+  const isUploading = photos.some(p => p.uploading);
 
   return (
     <div
@@ -277,14 +371,16 @@ export default function PhotoDefectEstimatorModal({
 
           {/* Photo Selection / Upload */}
           <div>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary, #d4d4d8)' }}>
-              Damage / Inspection Photo
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.4rem', color: 'var(--text-secondary, #d4d4d8)' }}>
+              Damage / Inspection Photos (Up to 8)
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #71717a)' }}>{photos.length}/8</span>
             </label>
-            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {photos.length < 8 && (
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileChange}
                   style={{
                     width: '100%',
@@ -297,45 +393,64 @@ export default function PhotoDefectEstimatorModal({
                     cursor: 'pointer',
                   }}
                 />
-                <input
-                  type="text"
-                  value={photoUrl.startsWith('data:') ? '' : photoUrl}
-                  onChange={(e) => {
-                    setPhotoUrl(e.target.value);
-                    setPhotoPreview(e.target.value || null);
-                  }}
-                  placeholder="...or paste photo image URL"
-                  style={{
-                    width: '100%',
-                    marginTop: '0.4rem',
-                    padding: '0.45rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    borderRadius: '6px',
-                    border: '1px solid var(--rule-t12, rgba(255,255,255,0.15))',
-                    background: 'var(--bg-input, rgba(0,0,0,0.25))',
-                    color: 'var(--text-primary, #fff)',
-                  }}
-                />
-              </div>
-              {photoPreview ? (
-                <div
-                  style={{
-                    width: '72px',
-                    height: '72px',
-                    borderRadius: '6px',
-                    overflow: 'hidden',
-                    border: '1px solid var(--rule-t12, rgba(255,255,255,0.2))',
-                    flexShrink: 0,
-                  }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photoPreview}
-                    alt="Damage preview"
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+              )}
+              
+              {photos.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {photos.map(photo => (
+                    <div
+                      key={photo.id}
+                      style={{
+                        position: 'relative',
+                        width: '72px',
+                        height: '72px',
+                        borderRadius: '6px',
+                        overflow: 'hidden',
+                        border: '1px solid var(--rule-t12, rgba(255,255,255,0.2))',
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.preview}
+                        alt="Damage preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: photo.uploading ? 0.5 : 1 }}
+                      />
+                      {photo.uploading && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', fontSize: '0.75rem', color: 'white' }}>
+                          ⏳
+                        </div>
+                      )}
+                      {photo.error && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(239, 68, 68, 0.7)', fontSize: '0.75rem', color: 'white', textAlign: 'center' }}>
+                          Error
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(photo.id)}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          right: '2px',
+                          background: 'rgba(0,0,0,0.6)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : null}
+              )}
             </div>
           </div>
 
@@ -367,7 +482,7 @@ export default function PhotoDefectEstimatorModal({
             <button
               type="button"
               onClick={handleRunAnalysis}
-              disabled={analyzing}
+              disabled={analyzing || isUploading || photos.length === 0}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -379,11 +494,16 @@ export default function PhotoDefectEstimatorModal({
                 border: 'none',
                 fontWeight: 600,
                 fontSize: '0.875rem',
-                cursor: analyzing ? 'wait' : 'pointer',
-                opacity: analyzing ? 0.7 : 1,
+                cursor: (analyzing || isUploading || photos.length === 0) ? 'not-allowed' : 'pointer',
+                opacity: (analyzing || isUploading || photos.length === 0) ? 0.5 : 1,
               }}
             >
-              {analyzing ? (
+              {isUploading ? (
+                <>
+                  <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
+                  Uploading Photos...
+                </>
+              ) : analyzing ? (
                 <>
                   <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>
                   Analyzing Visual Defects...
@@ -430,12 +550,12 @@ export default function PhotoDefectEstimatorModal({
                     {estimate.overallDamageSummary}
                   </p>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #a1a1aa)' }}>Estimated Total</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent, #38bdf8)' }}>
-                    ${estimate.totalEstimatedRepairDollars.toLocaleString('en-US')}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #a1a1aa)' }}>Calculated Total</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent, #38bdf8)' }}>
+                      ${totalCost.toLocaleString('en-US')}
+                    </div>
                   </div>
-                </div>
               </div>
 
               {/* Defect Items */}
@@ -475,18 +595,21 @@ export default function PhotoDefectEstimatorModal({
                             {defect.severity}
                           </span>
                         </div>
-                        <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--accent, #38bdf8)' }}>
-                          ${defect.estimatedTotalDollars.toLocaleString('en-US')}
-                        </span>
+                          <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--accent, #38bdf8)' }}>
+                            ${getCalculatedCost(defect).toLocaleString('en-US')}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted, #94a3b8)' }}>
+                          {defect.recommendedRepair}
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted, #71717a)' }}>
+                          {defect.suggestedServiceId && priceBook.find(s => s.id === defect.suggestedServiceId) && (
+                            <span>🏷️ Match: {priceBook.find(s => s.id === defect.suggestedServiceId)!.name} ({defect.suggestedQuantity || 1} {priceBook.find(s => s.id === defect.suggestedServiceId)!.unit})</span>
+                          )}
+                          {defect.uncertaintyExplanation && <span>⚠️ {defect.uncertaintyExplanation}</span>}
+                          {defect.missingInformation && <span>❓ Needs info: {defect.missingInformation}</span>}
+                        </div>
                       </div>
-                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted, #94a3b8)' }}>
-                        {defect.recommendedRepair}
-                      </p>
-                      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-muted, #71717a)' }}>
-                        <span>⏱️ {defect.estimatedLaborHours} hrs labor</span>
-                        <span>📦 ${defect.estimatedMaterialCostDollars} materials</span>
-                      </div>
-                    </div>
                   ))}
                 </div>
               </div>

@@ -1,0 +1,97 @@
+﻿-- Phase 1: Photo Estimate Tables
+
+create table if not exists photo_estimates (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references accounts(id) on delete cascade,
+  job_id uuid not null references jobs(id) on delete cascade,
+  creator_id uuid not null references users(id) on delete cascade,
+  trade text not null,
+  current_input_revision integer not null default 1,
+  current_review_revision integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists photo_estimate_inputs (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid not null references photo_estimates(id) on delete cascade,
+  revision integer not null,
+  notes text,
+  measurement_sources jsonb default '[]'::jsonb,
+  selected_photo_ids jsonb not null default '[]'::jsonb,
+  created_by uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (estimate_id, revision)
+);
+
+create table if not exists photo_estimate_runs (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid not null references photo_estimates(id) on delete cascade,
+  input_revision integer not null,
+  provider text not null default 'gemini',
+  model_version text,
+  prompt_version text,
+  schema_version text,
+  status text not null default 'pending',
+  lease_token text,
+  lease_expires_at timestamptz,
+  attempt_count integer not null default 0,
+  result jsonb,
+  error_category text,
+  usage_metadata jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists photo_estimate_reviews (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid not null references photo_estimates(id) on delete cascade,
+  revision integer not null,
+  reviewed_findings jsonb default '[]'::jsonb,
+  dismissed_findings jsonb default '[]'::jsonb,
+  confirmed_quantities jsonb default '[]'::jsonb,
+  service_snapshots jsonb default '[]'::jsonb,
+  calculated_lines jsonb default '[]'::jsonb,
+  reviewer_id uuid not null references users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (estimate_id, revision)
+);
+
+create table if not exists photo_estimate_quote_links (
+  id uuid primary key default gen_random_uuid(),
+  estimate_id uuid not null references photo_estimates(id) on delete cascade,
+  review_revision integer not null,
+  job_id uuid not null references jobs(id) on delete cascade,
+  stable_quote_item_id text not null,
+  source_line_id text not null,
+  applied_at timestamptz not null default now(),
+  unique (estimate_id, stable_quote_item_id)
+);
+
+-- RLS Policies
+alter table photo_estimates enable row level security;
+alter table photo_estimate_inputs enable row level security;
+alter table photo_estimate_runs enable row level security;
+alter table photo_estimate_reviews enable row level security;
+alter table photo_estimate_quote_links enable row level security;
+
+-- Create basic indexes for lookups
+create index if not exists idx_photo_estimates_account_job on photo_estimates(account_id, job_id);
+create index if not exists idx_photo_estimate_inputs_estimate on photo_estimate_inputs(estimate_id);
+create index if not exists idx_photo_estimate_runs_estimate on photo_estimate_runs(estimate_id);
+create index if not exists idx_photo_estimate_runs_status on photo_estimate_runs(status) where status = 'pending' or status = 'processing';
+create index if not exists idx_photo_estimate_reviews_estimate on photo_estimate_reviews(estimate_id);
+create index if not exists idx_photo_estimate_quote_links_job on photo_estimate_quote_links(job_id);
+
+-- Enforce account/job consistency
+-- This would be handled via app logic and row level security, but adding triggers if needed.
+
+create policy photo_estimates_owner on photo_estimates for all using ( is_owner(account_id) );
+create policy photo_estimate_inputs_owner on photo_estimate_inputs for all using ( estimate_id in (select id from photo_estimates where is_owner(account_id)) );
+create policy photo_estimate_runs_owner on photo_estimate_runs for all using ( estimate_id in (select id from photo_estimates where is_owner(account_id)) );
+create policy photo_estimate_reviews_owner on photo_estimate_reviews for all using ( estimate_id in (select id from photo_estimates where is_owner(account_id)) );
+create policy photo_estimate_quote_links_owner on photo_estimate_quote_links for all using ( estimate_id in (select id from photo_estimates where is_owner(account_id)) );
+
+
+
+

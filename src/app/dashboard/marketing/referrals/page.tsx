@@ -72,7 +72,7 @@ export default async function ReferralsPage() {
   ]);
 
   const rawLeads = leadRows ?? [];
-  const leadIds = rawLeads.map((l) => l.id as string);
+  const leadIds = rawLeads.map((l: any) => l.id as string);
 
   // Revenue attribution lookup: join jobs tied to referred leads
   const jobMap = new Map<string, number>();
@@ -99,7 +99,7 @@ export default async function ReferralsPage() {
 
   type ReferredLeadRow = ReferralQueueLead & { triage: LeadTriage | null };
   const referredBy = new Map<string, string>();
-  const referred: ReferralQueueLead[] = (rawLeads as unknown as ReferredLeadRow[]).filter((lead) => {
+  const referred: ReferralQueueLead[] = (rawLeads as unknown as ReferredLeadRow[]).filter((lead: any) => {
     const who = getLeadTriage(lead).referredBy;
     if (!who) return false;
     referredBy.set(lead.id, who);
@@ -163,7 +163,7 @@ export default async function ReferralsPage() {
 
   const queue = buildReferralQueue(
     referred,
-    (lead) => referredBy.get(lead.id) ?? null,
+    (lead: any) => referredBy.get(lead.id) ?? null,
     (clientId) => names.get(clientId) || null,
   );
 
@@ -215,7 +215,7 @@ export default async function ReferralsPage() {
   const advocates: AdvocateItem[] = [...advocateMap.entries()]
     .map(([clientId, stats]) => {
       const name = names.get(clientId) || 'Past customer';
-      const clientRecord = (allClients ?? []).find((c) => c.id === clientId);
+      const clientRecord = (allClients ?? []).find((c: any) => c.id === clientId);
       let refUrl = '';
       if (configured && bookingUrl) {
         try {

@@ -1433,7 +1433,7 @@ export default async function AdminAccountDetailPage({
 
       {/* Hero Header */}
       <header className={styles.accountHero}>
-        <div className={styles.accountHeroTop}>
+        <div className={styles.accountHeroTop} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div className={styles.accountHeroIdentity}>
             <div className={styles.accountAvatar}>{initials(displayName)}</div>
             <div className={styles.accountTitleGroup}>

@@ -296,14 +296,6 @@ export default async function JobsPage({
             canCreate={canCreate}
             toolbarAccessory={
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Link
-                  href="/dashboard/text-to-job"
-                  className="btn secondary"
-                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
-                  title="Create or update jobs via SMS & voice memo"
-                >
-                  🎙️ Text-to-Job
-                </Link>
                 <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
               </div>
             }
@@ -334,75 +326,87 @@ export default async function JobsPage({
           summary="Create a job for approved work."
           defaultOpen={shouldAutoOpenCreate(allJobs.length, searchParams.new)}
         >
-        <div style={{ marginBottom: '1rem', padding: '0.65rem 0.85rem', background: 'var(--bg-2, #f8fafc)', border: '1px solid var(--line, #e2e8f0)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.86rem' }}>📱 <strong>Text or dictate from the road:</strong> Voice notes &amp; text descriptions automatically attach to job files.</span>
-          <Link href="/dashboard/text-to-job" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem' }}>
-            Open Text-to-Job →
-          </Link>
-        </div>
-        <form action={createJobAction} className="form-grid">
-          <PastClientsPicker clients={pastClients} />
-          <div className="field">
-            <label htmlFor="clientPhone">Client phone</label>
-            <input id="clientPhone" name="clientPhone" placeholder="(248) 555-0117" />
-          </div>
-          <div className="field">
-            <label htmlFor="clientEmail">Client email</label>
-            <input id="clientEmail" name="clientEmail" type="email" placeholder="sarah@example.com" />
-          </div>
-          <div className="field full">
-            <label htmlFor="address">Address</label>
-            <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
-          </div>
-          <div className="field job-intake-description">
-            <label htmlFor="scope">Job Description</label>
-            <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle..." />
-          </div>
-          <div className="field job-intake-photos">
-            <label htmlFor="photos">Photos</label>
-            <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
-          </div>
-          <div className="full job-intake-schedule-grid">
-            <div className="job-intake-schedule-stack">
+        <form action={createJobAction} className="job-intake-form">
+          <fieldset className="job-intake-section">
+            <legend>Client & Location</legend>
+            <div className="form-grid">
+              <PastClientsPicker clients={pastClients} />
               <div className="field">
-                <label htmlFor="scheduledFor">Scheduled for</label>
-                <ScheduledDatePicker id="scheduledFor" name="scheduledFor" />
+                <label htmlFor="clientPhone">Client phone</label>
+                <input id="clientPhone" name="clientPhone" placeholder="(248) 555-0117" />
               </div>
               <div className="field">
-                <label htmlFor="scheduledTime">Time of day</label>
-                <TimeSlotSelect id="scheduledTime" name="scheduledTime" />
+                <label htmlFor="clientEmail">Client email</label>
+                <input id="clientEmail" name="clientEmail" type="email" placeholder="sarah@example.com" />
+              </div>
+              <div className="field full">
+                <label htmlFor="address">Address</label>
+                <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
               </div>
             </div>
-            <div className="field job-intake-metric hours-metric">
-              <label htmlFor="estimatedHours">Estimated hours</label>
-              <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" placeholder="16" />
-              <QuickFillButtons
-                label="Quick add:"
-                targetId="estimatedHours"
-                values={[
-                  { label: '2 hrs', value: '2' },
-                  { label: '4 hrs', value: '4' },
-                  { label: '8 hrs', value: '8' },
-                  { label: '16 hrs', value: '16' },
-                ]}
-              />
+          </fieldset>
+
+          <fieldset className="job-intake-section">
+            <legend>Scope of Work</legend>
+            <div className="form-grid">
+              <div className="field job-intake-description">
+                <label htmlFor="scope">Job Description</label>
+                <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle..." />
+              </div>
+              <div className="field job-intake-photos">
+                <label htmlFor="photos">Photos</label>
+                <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+              </div>
             </div>
-          </div>
-          <div className="field full job-intake-metric quote-metric">
-            <label htmlFor="quotedAmount">Quoted amount ($)</label>
-            <FormattedCurrencyInput id="quotedAmount" name="quotedAmount" placeholder="$12,840" />
-          </div>
-          <label className="field full sms-consent-check job-intake-client-text">
-            <input name="sendClientText" type="checkbox" defaultChecked />
-            <span>
-              <strong>Send Client Text</strong>
-              <small>Text the client their dashboard link after this job is created.</small>
-            </span>
-          </label>
-          <div className="field full">
-            <button type="submit" className="btn primary">
-              Create job
-            </button>
+          </fieldset>
+
+          <fieldset className="job-intake-section">
+            <legend>Scheduling & Financials</legend>
+            <div className="job-intake-schedule-grid">
+              <div className="job-intake-schedule-stack">
+                <div className="field">
+                  <label htmlFor="scheduledFor">Scheduled for</label>
+                  <ScheduledDatePicker id="scheduledFor" name="scheduledFor" />
+                </div>
+                <div className="field">
+                  <label htmlFor="scheduledTime">Time of day</label>
+                  <TimeSlotSelect id="scheduledTime" name="scheduledTime" />
+                </div>
+              </div>
+              <div className="field job-intake-metric hours-metric">
+                <label htmlFor="estimatedHours">Estimated hours</label>
+                <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" placeholder="16" />
+                <QuickFillButtons
+                  label="Quick add:"
+                  targetId="estimatedHours"
+                  values={[
+                    { label: '2 hrs', value: '2' },
+                    { label: '4 hrs', value: '4' },
+                    { label: '8 hrs', value: '8' },
+                    { label: '16 hrs', value: '16' },
+                  ]}
+                />
+              </div>
+              <div className="field job-intake-metric quote-metric">
+                <label htmlFor="quotedAmount">Quoted amount ($)</label>
+                <FormattedCurrencyInput id="quotedAmount" name="quotedAmount" placeholder="$12,840" />
+              </div>
+            </div>
+          </fieldset>
+
+          <div className="job-intake-form-bottom">
+            <label className="field sms-consent-check job-intake-client-text">
+              <input name="sendClientText" type="checkbox" defaultChecked />
+              <span>
+                <strong>Send Client Text</strong>
+                <small>Text the client their dashboard link after this job is created.</small>
+              </span>
+            </label>
+            <div className="field">
+              <button type="submit" className="btn primary">
+                Create job
+              </button>
+            </div>
           </div>
         </form>
       </WorkspaceDisclosure>

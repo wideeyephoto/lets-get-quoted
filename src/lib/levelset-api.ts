@@ -1,0 +1,2 @@
+﻿export async function placeLevelsetOrder(request: any): Promise<any> { throw new Error('Simulated filing is disabled in production.'); }
+export async function getLevelsetOrderStatus(orderId: string): Promise<string> { throw new Error('Tracking simulation is disabled.'); }

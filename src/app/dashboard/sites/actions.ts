@@ -428,9 +428,9 @@ export async function generateSiteTextAction(
     const { cities, serviceArea: generatedServiceArea } = anchorServiceArea({
       primaryCity,
       modelCities: asArray(parsed.cities)
-        .filter((c): c is string => typeof c === 'string')
+        .filter((c: any): c is string => typeof c === 'string')
         .slice(0, 12)
-        .map((c) => c.slice(0, 50)),
+        .map((c: any) => c.slice(0, 50)),
       modelServiceArea: asString(parsed.service_area, 120),
       locationKnown: Boolean(zip || serviceArea),
     });
@@ -597,7 +597,7 @@ export async function searchPexelsAction(query: string, orientation?: ImageOrien
   const pool = await fetchStockPool([trimmed], orientation);
   return {
     configured,
-    photos: pool.map((photo) => ({
+    photos: pool.map((photo: any) => ({
       id: `pexels-${photo.id}`,
       providerImageId: String(photo.id),
       url: photo.imageUrl,
@@ -702,16 +702,16 @@ export async function listCompletedJobPhotoOptionsAction(): Promise<JobPhotoImpo
 
   if (error) throw error;
 
-  const photos = (data ?? []).flatMap((job) => {
-    const paths = Array.isArray(job.photo_paths) ? job.photo_paths.filter((path): path is string => typeof path === 'string') : [];
-    return paths.map((path, index) => ({
+  const photos = (data ?? []).flatMap((job: any) => {
+    const paths = Array.isArray(job.photo_paths) ? job.photo_paths.filter((path: any): path is string => typeof path === 'string') : [];
+    return paths.map((path: any, index: number) => ({
       path,
       label: `${job.ref || 'Completed job'}${job.scope ? ` - ${job.scope}` : job.client_name ? ` - ${job.client_name}` : ''} photo ${index + 1}`,
     }));
-  }).filter((photo) => photo.path.startsWith(`${accountId}/`)).slice(0, 24);
+  }).filter((photo: any) => photo.path.startsWith(`${accountId}/`)).slice(0, 24);
 
-  const urls = await createJobPhotoUrls(accountId, photos.map((photo) => photo.path));
-  return photos.map((photo, index) => ({ ...photo, url: urls[index] })).filter((photo): photo is JobPhotoImportOption => Boolean(photo.url));
+  const urls = await createJobPhotoUrls(accountId, photos.map((photo: any) => photo.path));
+  return photos.map((photo: any, index: number) => ({ ...photo, url: urls[index] })).filter((photo: any): photo is JobPhotoImportOption => Boolean(photo.url));
 }
 
 export async function importJobPhotoToSiteImageAction(path: string, label: string) {
@@ -751,8 +751,8 @@ export async function listCompletedJobReviewsAction(): Promise<CompletedJobRevie
       .limit(25);
     if (fallbackError) return [];
     return (fallbackData ?? [])
-      .filter((row) => (row.rating && row.rating >= 4) || (row.feedback && row.feedback.trim().length > 0))
-      .map((row) => ({
+      .filter((row: any) => (row.rating && row.rating >= 4) || (row.feedback && row.feedback.trim().length > 0))
+      .map((row: any) => ({
         id: row.id,
         clientName: row.client_name?.trim() || 'Verified Customer',
         rating: Math.max(1, Math.min(5, Math.round(row.rating || 5))),
@@ -763,8 +763,8 @@ export async function listCompletedJobReviewsAction(): Promise<CompletedJobRevie
   }
 
   return (data ?? [])
-    .filter((row) => (row.rating && row.rating >= 4) || (row.feedback && row.feedback.trim().length > 0))
-    .map((row) => {
+    .filter((row: any) => (row.rating && row.rating >= 4) || (row.feedback && row.feedback.trim().length > 0))
+    .map((row: any) => {
       const job = row.jobs as { ref?: string; scope?: string } | null;
       const label = job?.scope ? job.scope : job?.ref ? `Job ${job.ref}` : '';
       return {
@@ -1005,7 +1005,7 @@ export async function generateAiLogoAction(params: {
       siteId = siteRow.id;
       currentContent = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
       if (params.parentLogoId && Array.isArray(currentContent.ai_logos)) {
-        const found = (currentContent.ai_logos as GeneratedAiLogo[]).find((l) => l.id === params.parentLogoId);
+        const found = (currentContent.ai_logos as GeneratedAiLogo[]).find((l: any) => l.id === params.parentLogoId);
         if (found?.prompt) {
           parentPrompt = found.prompt;
         }
@@ -1132,7 +1132,7 @@ export async function generateAiLogoAction(params: {
       const { data: freshSite } = await admin.from('sites').select('content').eq('id', siteId).maybeSingle();
       const freshContent = (freshSite?.content && typeof freshSite.content === 'object' ? freshSite.content : {}) as Record<string, unknown>;
       const existingLogos = Array.isArray(freshContent.ai_logos) ? (freshContent.ai_logos as GeneratedAiLogo[]) : [];
-      nextLogos = [newLogo, ...existingLogos.filter((l) => l.id !== newLogo.id && l.storagePath !== newLogo.storagePath)];
+      nextLogos = [newLogo, ...existingLogos.filter((l: any) => l.id !== newLogo.id && l.storagePath !== newLogo.storagePath)];
 
       await admin.from('sites').update({
         content: {
@@ -1367,7 +1367,7 @@ export async function saveAdjustedAiLogoAction(params: {
 
     const content = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
     const existingLogos = Array.isArray(content.ai_logos) ? (content.ai_logos as GeneratedAiLogo[]) : [];
-    const parent = existingLogos.find((l) => l.id === params.originalLogoId);
+    const parent = existingLogos.find((l: any) => l.id === params.originalLogoId);
 
     const newLogo: GeneratedAiLogo = {
       id: stored.id,
@@ -1378,7 +1378,7 @@ export async function saveAdjustedAiLogoAction(params: {
       createdAt: new Date().toISOString(),
     };
 
-    const nextLogos = [newLogo, ...existingLogos.filter((l) => l.id !== newLogo.id && l.storagePath !== newLogo.storagePath)];
+    const nextLogos = [newLogo, ...existingLogos.filter((l: any) => l.id !== newLogo.id && l.storagePath !== newLogo.storagePath)];
 
     await admin.from('sites').update({
       content: {
@@ -1404,8 +1404,8 @@ export async function getAvailableAiCreditsAction(): Promise<number | null> {
       .select('resource_code, available_units')
       .eq('account_id', accountId);
 
-    const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
-    const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
+    const aiIntakeUnits = balanceRows?.find((r: any) => r.resource_code === 'ai_intake_threads')?.available_units;
+    const aiWritingUnits = balanceRows?.find((r: any) => r.resource_code === 'ai_writing_drafts')?.available_units;
     const hasAiBalance = typeof aiIntakeUnits === 'number' || typeof aiWritingUnits === 'number';
     if (!hasAiBalance) return null;
     return (typeof aiIntakeUnits === 'number' ? aiIntakeUnits : 0) + (typeof aiWritingUnits === 'number' ? aiWritingUnits : 0);
@@ -1455,7 +1455,7 @@ export async function suggestNearbyCitiesAction(options: {
         centerPlace: resolvedCenter,
         radiusMiles,
         cities: fallbackList,
-        candidates: fallbackList.map((c) => ({ name: c, miles: 0 })),
+        candidates: fallbackList.map((c: any) => ({ name: c, miles: 0 })),
       };
     }
 
@@ -1491,16 +1491,16 @@ export async function suggestNearbyCitiesAction(options: {
 
     if (Array.isArray(parsed.candidates) && parsed.candidates.length > 0) {
       candidates = parsed.candidates
-        .map((c) => {
+        .map((c: any) => {
           const name = typeof c?.name === 'string' ? c.name.trim() : '';
           const miles = typeof c?.miles === 'number' && Number.isFinite(c.miles) ? Math.round(c.miles * 10) / 10 : undefined;
           return { name, miles };
         })
-        .filter((c) => c.name.length > 0 && c.name.length <= 60);
+        .filter((c: any) => c.name.length > 0 && c.name.length <= 60);
     } else if (Array.isArray(parsed.cities)) {
       candidates = parsed.cities
-        .map((c) => (typeof c === 'string' ? c.trim() : ''))
-        .filter((c) => c.length > 0 && c.length <= 60)
+        .map((c: any) => (typeof c === 'string' ? c.trim() : ''))
+        .filter((c: any) => c.length > 0 && c.length <= 60)
         .map((name, i) => ({ name, miles: Math.round((i * 1.5 + 2) * 10) / 10 }));
     }
 
@@ -1515,7 +1515,7 @@ export async function suggestNearbyCitiesAction(options: {
       }
     }
 
-    const flatCities = deduplicatedCandidates.map((c) => c.name);
+    const flatCities = deduplicatedCandidates.map((c: any) => c.name);
 
     return {
       ok: true,
@@ -1548,7 +1548,7 @@ export async function testIntakeLocationAction(params: {
   servedCities: string[];
 }): Promise<IntakeLocationTestResult> {
   const query = (params.testLocation || '').trim();
-  const served = (params.servedCities || []).map((c) => c.trim()).filter(Boolean);
+  const served = (params.servedCities || []).map((c: any) => c.trim()).filter(Boolean);
 
   if (!query) {
     return { ok: false, matched: false, locationLabel: '', message: 'Enter a city or ZIP code to test.' };

@@ -187,7 +187,13 @@ export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
    * gstatic is deliberately NOT here: it serves map TILES, which are images,
    * and the SDK never XHRs to it. img-src https: has always covered that.
    */
-  const connect = ["'self'", 'https://*.googleapis.com', ...ANALYTICS_ENDPOINTS];
+  const connect = [
+    "'self'",
+    'https://letsgetquoted.com',
+    'https://*.letsgetquoted.com',
+    'https://*.googleapis.com',
+    ...ANALYTICS_ENDPOINTS,
+  ];
   if (supabaseOrigin) {
     connect.push(supabaseOrigin);
     // Supabase realtime/auth refresh uses a websocket on the same host.
