@@ -53,6 +53,7 @@ describe('outbound SMS producer boundary', () => {
       return /\bsendProviderMessage\s*\(/.test(executableSource(path));
     });
     expect(callers.sort()).toEqual([
+      'src/lib/sms-canary.ts',
       'src/lib/sms-delivery-worker.ts',
       'src/lib/voice/staff-step-up.ts',
     ]);

@@ -151,8 +151,11 @@ export async function confirmSmsCanaryCallback(
   providerMessageId: string,
   deliveryStatus: string,
 ): Promise<boolean> {
-  const { data: probe } = await admin
-    .from('sms_canary_probes')
+  if (!admin || typeof admin.from !== 'function') return false;
+  const table = admin.from('sms_canary_probes');
+  if (!table || typeof table.select !== 'function') return false;
+
+  const { data: probe } = await table
     .select('id, dispatched_at, status')
     .eq('provider_message_id', providerMessageId)
     .maybeSingle();

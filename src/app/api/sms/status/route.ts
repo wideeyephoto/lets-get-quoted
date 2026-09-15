@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       requestUrl: request.url,
     });
 
-    if (status.providerEventId) {
+    if (!ingressResult.smsEventId && status.providerEventId) {
       await confirmSmsCanaryCallback(admin, status.providerEventId, status.providerStatus).catch((err) => {
         console.error('Failed to confirm SMS canary callback:', err);
       });
