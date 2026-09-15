@@ -301,12 +301,12 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         play: {
           urls: [
-            `say: ${AI_VOICE_DISCLOSURE}`,
+            new URL('/audio/ai-disclosure-eyre-v1.wav', plan.receiptUrl).toString(),
             new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
             ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
           ],
-          // Pin the opening voice separately from the accepted conversational
-          // profile. An engine-qualified voice avoids a provider-default switch.
+          // The fixed disclosure clip avoids live synthesis startup artifacts.
+          // Keep the same voice for the remaining, account-specific greeting.
           say_voice: 'rime.eyre:coda',
           // Reduce the opening's playback level for speakerphone comfort.
           volume: -2,
