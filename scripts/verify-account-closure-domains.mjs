@@ -6,6 +6,7 @@ import { join, resolve, sep } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
+import { verifyMessagingLifecycleDisposal } from './verify-messaging-lifecycle-disposal.mjs';
 try { os.userInfo(); } catch { os.userInfo = () => ({ uid: -1, gid: -1, username: process.env.USERNAME || 'windows-user', homedir: process.env.USERPROFILE || '', shell: null }); syncBuiltinESMExports(); }
 const root = resolve(import.meta.dirname, '..');
 const platform = process.platform === 'win32' ? 'windows-x64' : process.platform === 'darwin' ? 'darwin-arm64' : 'linux-x64';
@@ -157,6 +158,7 @@ try {
   assert(observedLock, 'The second connection must actually wait on the account lock');
   await db.query('commit'); await blockedInsert;
   passed('concurrent domain enrollment cannot cross the atomic closure snapshot');
+  await verifyMessagingLifecycleDisposal({ db, other, source, section, passed });
   console.log(`${checks}/${checks} checks passed`);
 } finally {
   if (other) await other.end(); if (db) await db.end();

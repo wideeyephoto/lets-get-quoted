@@ -2914,7 +2914,8 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
   // Lifecycle email notifications
   messaging_lifecycle_notifications: {
     tableName: 'messaging_lifecycle_notifications',
-    relationship: 'system_global',
+    // Existing database trigger requires an eligible leased closure without a hold.
+    relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'delete',
     portability: 'internal_system',
@@ -2925,7 +2926,8 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
   // Lifecycle email evidence
   messaging_lifecycle_email_evidence: {
     tableName: 'messaging_lifecycle_email_evidence',
-    relationship: 'system_global',
+    // Uses the same disposal guard, including when the notification FK cascades.
+    relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'delete',
     portability: 'internal_system',
