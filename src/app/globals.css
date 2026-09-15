@@ -25307,6 +25307,7 @@ button.inbox-thread-item {
    or dark themes. Uses background-image gradient overlay rather than background
    shorthand so the panel fill stays intact underneath. */
 :root[data-theme] .next-opportunity-panel {
+  box-sizing: border-box;
   border: 1.5px solid var(--line, rgba(var(--tint), 0.12));
   border-left: 4px solid var(--accent, #ff7a21);
   background-image: linear-gradient(135deg, rgba(255, 122, 33, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
