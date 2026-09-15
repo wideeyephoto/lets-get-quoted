@@ -31,6 +31,9 @@ describe('Dispatch latency contract', () => {
       expect(ai.params.transparent_barge).toBe(true);
       expect(ai.params.enable_barge).toBe('all');
       expect(ai.params.barge_functions).toBe(false);
+      expect(ai.params.attention_timeout).toBe(0);
+      expect(ai.SWAIG.native_functions).toEqual(['wait_for_user']);
+      expect(ai.SWAIG.internal_fillers.wait_for_user).toEqual({ default: [] });
       expect(ai.params.interrupt_prompt).toContain('do not restart or summarize');
       const lookup = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'lookup_jobs');
       expect(lookup.purpose).toContain('current total or recorded quote');
@@ -42,6 +45,8 @@ describe('Dispatch latency contract', () => {
       expect(note.purpose).toContain('Do not call this function merely to draft, preview, or read back text');
     } else {
       expect(ai.params.interrupt_prompt).toBeUndefined();
+      expect(ai.params.attention_timeout).toBeUndefined();
+      expect(ai.SWAIG.native_functions).toBeUndefined();
       expect(ai.params.utility_model).toBeUndefined();
       expect(ai.params.auto_correct).toBeUndefined();
       expect(ai.params.enable_text_normalization).toBeUndefined();
@@ -78,7 +83,8 @@ describe('Dispatch latency contract', () => {
     });
     const ai = JSON.parse(answer.body).sections.main.find((item: { ai?: unknown }) => item.ai).ai;
     expect(ai.params).toMatchObject({ barge_min_words: 1, enable_barge: 'all', barge_functions: false });
-    expect(ai.params.interrupt_prompt).toContain('For stop, pause, or hold on alone, wait');
+    expect(ai.params.interrupt_prompt).toContain('call the native wait_for_user function without speaking');
+    expect(ai.params.hard_stop_time).toBe('583s');
   });
 
   const context: VoiceGroundingContext = {
