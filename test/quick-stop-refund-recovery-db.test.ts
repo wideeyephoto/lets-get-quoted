@@ -33,12 +33,12 @@ describe('Quick Stop cancellation and refund SQL', () => {
         actor text,from_status text,to_status text,meta jsonb,dedupe_key text);
       create unique index on extra_stop_events(request_id,dedupe_key) where dedupe_key is not null;
     `);
-    const windowMigration = readFileSync(join(process.cwd(), 'migrations/20260914132825_quick_stop_atomic_sweep.sql'), 'utf8');
+    const windowMigration = readFileSync(join(process.cwd(), 'migrations/20260914145752_quick_stop_atomic_sweep.sql'), 'utf8');
     const helperStart = windowMigration.indexOf('create or replace function public.quick_stop_window_instant');
     const helperEnd = windowMigration.indexOf('$$;', helperStart) + 3;
     await db.exec(windowMigration.slice(helperStart, helperEnd));
-    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914132411_quick_stop_refund_recovery.sql'), 'utf8'));
-    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914134359_quick_stop_no_show_lock.sql'), 'utf8'));
+    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914145738_quick_stop_refund_recovery.sql'), 'utf8'));
+    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914145814_quick_stop_no_show_lock.sql'), 'utf8'));
   }, 30_000);
   afterAll(async () => { await db?.close(); });
   beforeEach(async () => {

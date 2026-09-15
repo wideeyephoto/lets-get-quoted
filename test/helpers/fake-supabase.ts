@@ -56,31 +56,18 @@ function matches(row: Row, filters: Filter[]): boolean {
   });
 }
 
-/**
- * A stand-in for one `admin.rpc(name, args)`. It receives the same live `tables`
- * the query builder mutates, so a handler and a later `.select()` agree about the
- * state of the world. Handlers are FIXTURES MIRRORING A MIGRATION, never a second
- * implementation of it: give them the narrowest behaviour the test needs and say
- * in the test which migration they stand for.
- */
-export type RpcHandler = (args: Row, tables: Tables) => unknown;
-
 export type FakeAdmin = {
   from: (table: string) => unknown;
-  rpc: (name: string, args?: Row) => Promise<{ data: unknown; error: { message: string } | null }>;
-  /** Every rpc call, in order — name and arguments. */
-  rpcCalls: Array<{ name: string; args: Row }>;
   /** Live rows, so a test can assert on the end state of the table. */
   tables: Tables;
   /** Every table touched by a write, in order — handy for "did it even try?". */
   writes: Array<{ table: string; patch: Row; count: number }>;
 };
 
-export function makeFakeAdmin(tables: Tables, rpcs: Record<string, RpcHandler> = {}): FakeAdmin {
+export function makeFakeAdmin(tables: Tables): FakeAdmin {
   const store: Tables = {};
   for (const [name, rows] of Object.entries(tables)) store[name] = rows.map((r) => ({ ...r }));
   const writes: FakeAdmin['writes'] = [];
-  const rpcCalls: FakeAdmin['rpcCalls'] = [];
 
   function builder(table: string) {
     const filters: Filter[] = [];
@@ -155,19 +142,5 @@ export function makeFakeAdmin(tables: Tables, rpcs: Record<string, RpcHandler> =
     return q;
   }
 
-  // Unstubbed is a loud failure, not an empty result: an rpc the test did not
-  // think about is exactly the case where a silent null would let a real
-  // regression pass.
-  const rpc = async (name: string, args: Row = {}) => {
-    rpcCalls.push({ name, args });
-    const handler = rpcs[name];
-    if (!handler) throw new Error(`fake-supabase: no stub for rpc('${name}')`);
-    try {
-      return { data: await handler(args, store), error: null };
-    } catch (error) {
-      return { data: null, error: { message: error instanceof Error ? error.message : String(error) } };
-    }
-  };
-
-  return { from: (table: string) => builder(table), rpc, rpcCalls, tables: store, writes };
+  return { from: (table: string) => builder(table), tables: store, writes };
 }

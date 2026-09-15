@@ -138,9 +138,7 @@ export async function resolveQuickStopCancellation(
     return { pct: 0, refundCents: req.refund_cents ?? 0, refundPending: Boolean(req.refund_due_cents && req.refund_state !== 'completed') };
   }
   if (!RESOLVABLE_FROM[opts.kind].includes(req.status as QuickStopStatus)) {
-    throw new Error(
-      `A ${opts.kind.replace(/_/g, ' ')} can't be recorded against a request that is ${req.status.replace(/_/g, ' ')}.`,
-    );
+    throw new Error('This Quick Stop cannot be resolved from its current state.');
   }
   const timeZone = await loadQuickStopTimeZone(admin, accountId);
   if (!timeZone) throw new Error('The account time zone could not be verified.');

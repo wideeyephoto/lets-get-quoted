@@ -17,21 +17,16 @@
  *
  * lib/arrival already had zonedInstant for exactly this, with a docstring naming
  * the bug ("how an 8 AM appointment becomes a 3 AM text message on a UTC host").
- *
- * Two of the three sites have since moved into SQL, where the window is resolved
- * with quick_stop_window_instant against the account's own zone, so the guard for
- * those reads the migration rather than driving a fake client past a decision the
- * database now makes. The refund tier is still computed in TypeScript and is
- * still tested as such. The last block stops the pattern coming back anywhere in
- * the feature.
+ * These tests hold the three sites to it, and the last one stops the pattern
+ * coming back anywhere in the feature.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { PGlite } from '@electric-sql/pglite';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { computeCustomerRefundPercent } from '@/lib/quick-stop-refunds';
 import { zonedInstant } from '@/lib/arrival';
 import type { QuickStopRequest } from '@/lib/quick-stop-requests';
-
 const DAY = '2026-07-29';
 const END = '15:00'; // 3 PM, in the contractor's own zone
 
@@ -76,41 +71,72 @@ describe('the missed-window refund tier respects the contractor’s zone', () =>
   });
 });
 
-describe('auto-complete waits for the zoned window, not the server’s', () => {
-  /**
-   * THIS MOVED INTO SQL, so the guard did too.
-   *
-   * The auto-complete used to run in TypeScript, which is where the bug lived and
-   * where the first version of this block drove it through a fake client. It is
-   * now one step of sweep_quick_stop_requests, chosen and committed under the
-   * row lock; sweepQuickStopOffers is a coordinator that counts what came back
-   * (test/lib-quick-stop-sweep.test.ts covers that part). Driving a fake `rpc`
-   * from here would assert nothing about the code that actually decides.
-   *
-   * So this reads the migration. Crude, but it pins the two properties the bug
-   * was about, at the layer that now holds them: the window is resolved in the
-   * ACCOUNT'S zone, and the 2-hour no-show grace has to elapse on top of it.
-   * quick_stop_window_instant itself is exercised against a real PostgreSQL in
-   * the database-backed suite.
-   */
-  const sweepSql = readFileSync(join(process.cwd(), 'migrations/20260914132825_quick_stop_atomic_sweep.sql'), 'utf8');
-
-  it('resolves the arrival window in the account’s zone, never the server’s', () => {
-    // Both ends, and both from the account row rather than a server default.
-    expect(sweepSql).toMatch(/quick_stop_window_instant\(\s*\w+\.arrival_date\s*,\s*\w+\.arrival_start\s*,[^)]*timezone/);
-    expect(sweepSql).toMatch(/quick_stop_window_instant\(\s*\w+\.arrival_date\s*,\s*\w+\.arrival_end\s*,[^)]*timezone/);
-    // An account with no zone falls back to the documented default, not to UTC.
-    expect(sweepSql).toMatch(/coalesce\(nullif\(a\.timezone,''\),'America\/New_York'\)/);
+// Completion now runs inside PostgreSQL. Exercise the actual migration instead
+// of a query-builder fake that cannot execute or validate its predicates.
+describe('auto-complete waits for the account-local window in SQL', () => {
+  let db: PGlite;
+  const account = '10000000-0000-4000-8000-000000000001';
+  const request = '20000000-0000-4000-8000-000000000001';
+  beforeAll(async () => {
+    db = new PGlite();
+    await db.exec(`
+      create role anon; create role authenticated; create role service_role;
+      create table accounts(id uuid primary key, timezone text);
+      create table jobs(id uuid primary key, account_id uuid, status text);
+      create table payments(id uuid primary key, account_id uuid, status text, paid_at timestamptz, failed_at timestamptz);
+      create table extra_stop_requests(id uuid primary key, account_id uuid, client_name text,
+        status text, payment_id uuid, job_id uuid, paid_at timestamptz,
+        arrival_date date, arrival_start time, arrival_end time,
+        response_deadline_at timestamptz, payment_deadline_at timestamptz,
+        hold_expires_at timestamptz, no_show_reported_at timestamptz,
+        completed_at timestamptz, arrived_at timestamptz, updated_at timestamptz);
+      create table extra_stop_events(account_id uuid, request_id uuid, actor text, from_status text, to_status text, meta jsonb);
+    `);
+    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914145752_quick_stop_atomic_sweep.sql'), 'utf8'));
+    await db.query('insert into accounts values($1,$2)', [account, 'America/Los_Angeles']);
+  }, 30_000);
+  afterAll(async () => { await db?.close(); });
+  beforeEach(async () => {
+    await db.exec('truncate extra_stop_requests, jobs, payments, extra_stop_events');
   });
-
-  it('will not complete a visit until the zoned window plus the no-show grace has elapsed', () => {
-    // `end_at + 2 hours < now` in the candidate scan, and again under the lock.
-    const guards = sweepSql.match(/end_at \+ interval '2 hours'|v_end \+ interval '2 hours'/g) ?? [];
-    expect(guards.length, 'the grace is checked when selecting AND when committing').toBeGreaterThanOrEqual(2);
+  async function seed(hoursAfterEnd: number, reported = false) {
+    await db.query("insert into jobs values($1,$2,'in_progress')", [request, account]);
+    await db.query("insert into payments values($1,$2,'paid',now()-interval '3 days',null)", [request, account]);
+    // Set the fixture relative to the database clock; JavaScript fake timers do
+    // not control PostgreSQL. The arrival fields are still account-local values.
+    await db.query(`insert into extra_stop_requests(id,account_id,client_name,status,payment_id,job_id,paid_at,
+        arrival_date,arrival_start,arrival_end,no_show_reported_at)
+      select $1,$2,'Customer','confirmed',$1,$1,now()-interval '3 days',
+        wall::date,'00:00',wall::time,case when $4 then now() end
+      from (select (now()-make_interval(hours=>$3)) at time zone 'America/Los_Angeles' as wall) w`,
+      [request, account, hoursAfterEnd, reported]);
+  }
+  const sweep = () => db.query('select * from sweep_quick_stop_requests($1,25)', [account]);
+  async function expectStatus(status: string, jobStatus: string) {
+    expect((await db.query('select status from extra_stop_requests')).rows).toEqual([{ status }]);
+    expect((await db.query('select status from jobs')).rows).toEqual([{ status: jobStatus }]);
+  }
+  it('leaves a paid visit alone before its account-local window ends', async () => {
+    await seed(-1);
+    expect((await sweep()).rows).toEqual([]);
+    await expectStatus('confirmed', 'in_progress');
   });
-
-  it('never steals a visit whose no-show is already being reported', () => {
-    expect(sweepSql).toMatch(/no_show_reported_at is null/);
+  it('does not complete during the two-hour no-show grace period', async () => {
+    await seed(1);
+    expect((await sweep()).rows).toEqual([]);
+    await expectStatus('confirmed', 'in_progress');
+  });
+  it('completes the visit and job once the window and grace have elapsed', async () => {
+    await seed(3);
+    expect((await sweep()).rows).toEqual([expect.objectContaining({ kind: 'auto_completed', request_id: request })]);
+    await expectStatus('completed', 'complete');
+    expect((await sweep()).rows).toEqual([]);
+    expect((await db.query('select from_status,to_status from extra_stop_events')).rows).toEqual([{ from_status: 'confirmed', to_status: 'completed' }]);
+  });
+  it('does not complete a visit with a no-show report in progress', async () => {
+    await seed(3, true);
+    expect((await sweep()).rows).toEqual([]);
+    await expectStatus('confirmed', 'in_progress');
   });
 });
 
