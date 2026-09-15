@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as terminalReconciliation from '@/lib/voice/terminal-reconciliation';
 
 import {
   AI_VOICE_FLAG,
@@ -463,6 +464,28 @@ describe('concurrency, without a call-started event to count from', () => {
     };
     replies.voice_events = { data: [{ provider_call_id: 'done-1' }], error: null };
     expect(await countOpenAiCalls(admin, ACCOUNT, 3)).toBe(1);
+  });
+
+  it('rechecks a full slot and admits the next caller after provider-confirmed termination', async () => {
+    workspace({ voice_concurrent_calls: 1 });
+    replies.voice_call_admissions = { data: [{ provider_call_id: 'ended-before-ai', dialed_number: TO }], error: null };
+    replies.voice_events = { data: [], error: null };
+    const reconcile = vi.spyOn(terminalReconciliation, 'reconcileVoiceTerminalAdmission').mockResolvedValue(true);
+    try {
+      expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
+      expect(reconcile).toHaveBeenCalledOnce();
+      expect(admitVoiceCall).toHaveBeenCalledOnce();
+    } finally { reconcile.mockRestore(); }
+  });
+
+  it('bounds full-slot provider recovery to three candidates', async () => {
+    replies.voice_call_admissions = { data: Array.from({ length: 5 }, (_, i) => ({ provider_call_id: `pending-${i}` })), error: null };
+    replies.voice_events = { data: [], error: null };
+    const reconcile = vi.spyOn(terminalReconciliation, 'reconcileVoiceTerminalAdmission').mockResolvedValue(true);
+    try {
+      expect(await countOpenAiCalls(admin, ACCOUNT, 1)).toBe(2);
+      expect(reconcile).toHaveBeenCalledTimes(3);
+    } finally { reconcile.mockRestore(); }
   });
 
   it('stops counting a provider-terminal admission before its delayed receipt arrives', async () => {
