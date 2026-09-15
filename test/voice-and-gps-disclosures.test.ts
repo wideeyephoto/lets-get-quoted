@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   AI_VOICE_DISCLOSURE,
+  CUSTOMER_AI_VOICE_DISCLOSURE,
   RECORDING_DISCLOSURE,
+  customerGreetingWithAiDisclosure,
   greetingWithAiDisclosure,
 } from '@/lib/voice/provider';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
@@ -46,6 +48,19 @@ describe('Voice & GPS Compliance Disclosures', () => {
       expect(greetingWithAiDisclosure(greeting)).toBe(greeting);
     });
 
+    it('uses a natural homeowner disclosure and removes a duplicated opening question', () => {
+      const greeting = customerGreetingWithAiDisclosure(
+        'Thanks for calling Apex Roofing. How can I help you today?',
+        { recordingEnabled: true },
+      );
+      expect(greeting).toBe(
+        `Thanks for calling Apex Roofing. ${CUSTOMER_AI_VOICE_DISCLOSURE} ${RECORDING_DISCLOSURE}`,
+      );
+      expect(greeting).not.toContain(AI_VOICE_DISCLOSURE);
+      expect(greeting).not.toMatch(/how can I help/i);
+      expect(customerGreetingWithAiDisclosure(greeting, { recordingEnabled: true })).toBe(greeting);
+    });
+
     it('renders SignalWire SWML with spoken disclosures when recording calls', () => {
       const plan = {
         kind: 'ai_agent' as const,
@@ -70,8 +85,10 @@ describe('Voice & GPS Compliance Disclosures', () => {
 
       expect(recordAction).toBeDefined();
       expect(playAction).toBeDefined();
-      expect(playAction.play.urls[0]).toBe('https://app.letsgetquoted.com/audio/ai-disclosure-eyre-v2.wav');
-      expect(playAction.play.urls[2]).toContain(RECORDING_DISCLOSURE);
+      expect(playAction.play.urls).toEqual([
+        `say: Hello from Royal Oak Heating & Cooling. ${CUSTOMER_AI_VOICE_DISCLOSURE} ${RECORDING_DISCLOSURE}`,
+      ]);
+      expect(JSON.stringify(playAction)).not.toContain('ai-disclosure-eyre-v2.wav');
       expect(mainSections.indexOf(playAction)).toBeLessThan(mainSections.indexOf(recordAction));
       // Pin the approved spoken disclosure itself, not only its URL. Changing
       // this clip requires checking its wording and listening to it again.

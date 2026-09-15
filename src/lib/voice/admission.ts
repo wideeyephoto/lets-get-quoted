@@ -14,6 +14,7 @@ import { loadSignalWireVoiceNumberReadiness } from '@/lib/voice/number-readiness
 import { normalizeUsPhone } from '@/lib/phone';
 import {
   AI_VOICE_DISCLOSURE,
+  customerGreetingWithAiDisclosure,
   greetingWithAiDisclosure,
   type InboundCall,
   type VoiceAnswerPlan,
@@ -415,11 +416,9 @@ export async function planInboundCall(
       kind: 'ai_agent' as const,
       receiptUrl: options.receiptUrl,
       receiptAuthorization: options.receiptAuthorization,
-      greeting: greetingWithAiDisclosure(
-        grounding?.contractorStaffCaller
-          ? AI_VOICE_DISCLOSURE
-          : (settings.greeting?.trim() || DEFAULT_GREETING)
-      ),
+      greeting: grounding?.contractorStaffCaller
+        ? greetingWithAiDisclosure(AI_VOICE_DISCLOSURE)
+        : customerGreetingWithAiDisclosure(settings.greeting?.trim() || DEFAULT_GREETING),
       systemPrompt,
       postPrompt,
       hints: [
@@ -443,7 +442,11 @@ export async function planInboundCall(
       swaigUrl: options.swaigUrl
         ? options.swaigUrl(workspace.accountId, {
             providerCallId: call.providerCallId,
-            callerPhone: call.fromNumber,
+            // Bind the token to the same normalized value saved in the
+            // admission. Providers represent anonymous callers with sentinel
+            // values such as +10000000000, which are intentionally stored as
+            // null and must remain null at the authorization check.
+            callerPhone: callerNumber,
           })
         : undefined,
       contractorMode: Boolean(grounding?.contractorStaffCaller),

@@ -293,7 +293,7 @@ export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
     `You are the AI phone receptionist for "${context.companyName}", ${licenseClause} serving ${context.serviceAreas}.`,
     toneDirectives,
     `Never ask for verification codes, one-time passwords, or SMS authorization. Access is checked by the tools; direct denied requests to the office or signed-in dashboard.`,
-    `The opening greeting and AI disclosure have already been played to the caller; do not repeat them unless asked.`,
+    `The prerecorded opening has already introduced the business and identified you as its AI receptionist. It deliberately did not ask a question. Begin with one brief invitation such as "How can I help you today?" Ask it only once, and do not repeat it after the caller starts speaking.`,
   ];
 
   if (context.recognizedCaller?.clientName) {
@@ -318,10 +318,10 @@ export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
   sections.push(
     `[REAL CAPACITY & SCHEDULING]`,
     slotsText,
-    `Use check_available_slots to check appointment windows and book_appointment_slot to submit an appointment request for office review. A saved request or temporary slot hold is not a confirmed appointment. Repeat the exact returned date/window and say the team must confirm it. Never promise a technician arrival or a delivered text; say a text is queued only when the tool confirms that.`,
+    `Use check_available_slots to check appointment windows and book_appointment_slot to submit an appointment request for office review. A saved request or temporary slot hold is not a confirmed appointment. Repeat the exact returned date/window and say the team must confirm it. Never promise a technician arrival or a delivered text; say a text is queued only when the tool confirms that. If online time selection is unavailable, continue the intake: save the homeowner's details and preferred time with capture_lead for office follow-up instead of ending with instructions to contact the office.`,
     `[INTAKE GOALS & BEHAVIOR]`,
     `Warmly collect or verify the caller's intake details: (1) Full name and callback number (phone number is optional if unavailable), (2) Exact service address, (3) Detailed issue description and urgency, (4) Preferred appointment window.`,
-    `- Use the capture_lead tool to save the customer's contact and request details as soon as they provide them.`,
+    `- Use the capture_lead tool to save the customer's contact and request details as soon as they provide their name and the work requested. Include any preferred appointment date or time in notes. Do this before checking appointment availability so the request is not lost when online time selection is paused or full.`,
     `- Keep replies concise, polite, and natural for phone audio (1 to 2 sentences per turn).`,
     `- When speaking, repeating, confirming, or reading back any phone number to the caller, ALWAYS speak it as a natural 10-digit number starting directly with the area code (for example: "810-304-2061" or "eight one zero, three zero four, two zero six one"). NEVER say "plus one", "+1", or prefix it with "1" unless the caller explicitly dictated a "1" first.`,
     `- If the caller speaks Spanish, converse naturally in Spanish and assist them with their needs.`,

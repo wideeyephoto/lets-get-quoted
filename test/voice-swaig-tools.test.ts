@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 import type { VoiceAnswerPlan } from '@/lib/voice/provider';
 import { callerVoiceBookingLinkText, callerVoiceBookingConfirmationText } from '@/lib/sms-templates';
+import { getAvailableBookingDays } from '@/lib/booking';
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: vi.fn().mockReturnValue({
@@ -152,6 +153,30 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     expect(data.response).toContain('Thursday, Aug 27');
     expect(data.response).toContain('Morning: 9 AM – 12 PM');
   }, 15000);
+
+  it('continues with an office callback request when online appointment selection is unavailable', async () => {
+    vi.mocked(getAvailableBookingDays).mockResolvedValueOnce([]);
+    process.env.LGQ_VOICE_RECEIPT_BASIC = 'test-user:test-password';
+    process.env.SIGNALWIRE_SIGNING_KEY = 'test-secret';
+    const { POST: swaigHandler } = await import('@/app/api/voice/swaig/route');
+    const { signVoiceToolToken } = await import('@/lib/voice/auth');
+    const token = signVoiceToolToken(
+      { accountId: 'acc-123', providerCallId: 'call-xyz' },
+      3600,
+      { LGQ_VOICE_RECEIPT_BASIC: 'test-user:test-password', SIGNALWIRE_SIGNING_KEY: 'test-secret' },
+    );
+    const response = await swaigHandler(new Request(`https://example.com/api/voice/swaig?token=${token}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${Buffer.from('test-user:test-password').toString('base64')}`,
+      },
+      body: JSON.stringify({ function: 'check_available_slots', argument: { preferred_date: 'tomorrow' } }),
+    }));
+    const data = await response.json();
+    expect(data.response).toContain('save your details and preferred time as a callback request');
+    expect(data.response).not.toContain('contact our office');
+  });
 
   it.each([
     'Basic !!!not-base64!!!',
