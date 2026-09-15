@@ -196,6 +196,18 @@
   white-space: pre-line;
 }
 
+:global(:root[data-theme]) .aiResponseText,
+:global(:root[data-theme='light']) .aiResponseText,
+:global(:root[data-theme='sunlight']) .aiResponseText {
+  color: #f1f5f9 !important;
+}
+
+:global(:root[data-theme]) .messageText,
+:global(:root[data-theme='light']) .messageText,
+:global(:root[data-theme='sunlight']) .messageText {
+  color: #ffffff !important;
+}
+
 /* Right: Impact & Outcome */
 .outcomeSide {
   display: flex;

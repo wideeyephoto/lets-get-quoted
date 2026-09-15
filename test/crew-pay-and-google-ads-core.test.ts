@@ -359,7 +359,7 @@ describe('Crew Pay Data Engine & Google Ads API Core Logic', () => {
       expect(resolveServingCustomerId(undefined, validConfig)).toBe('9876543210');
     });
 
-    it('buildGoogleAdsHeaders formats authorization, developer token, and manager login headers', () => {
+    it('buildGoogleAdsHeaders formats authorization and manager login headers without a developer token', () => {
       const config = {
         developerToken: 'dev-token-abc',
         mccCustomerId: '111-222-3333',
@@ -367,7 +367,7 @@ describe('Crew Pay Data Engine & Google Ads API Core Logic', () => {
 
       const headers = buildGoogleAdsHeaders(config, 'access-token-xyz');
       expect(headers.Authorization).toBe('Bearer access-token-xyz');
-      expect(headers['developer-token']).toBe('dev-token-abc');
+      expect(headers).not.toHaveProperty('developer-token');
       expect(headers['login-customer-id']).toBe('1112223333');
       expect(headers['Content-Type']).toBe('application/json');
     });

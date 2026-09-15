@@ -46,12 +46,12 @@ describe('Permit History Provider Adapters', () => {
     expect(provider.providerId).toBe('manual_link');
   });
 
-  it('returns verified history records and AccessMyGov portal search link for Royal Oak pilot', async () => {
+  it('returns verified history records and BS&A Online portal search link for Royal Oak pilot', async () => {
     const history = await getPropertyPermitHistory('211 S Williams St, Royal Oak, MI 48067');
 
     expect(history.authorityId).toBe('mi-royal-oak');
     expect(history.authorityName).toBe('City of Royal Oak');
-    expect(history.portalSearchUrl).toContain('accessmygov.com/BuildingPermits/Search?uid=1349');
+    expect(history.portalSearchUrl).toContain('bsaonline.com/BuildingPermits/Search?uid=1652');
     expect(history.records.length).toBeGreaterThan(0);
 
     const roofPermit = history.records.find((r) => r.permitType.includes('Roofing'));

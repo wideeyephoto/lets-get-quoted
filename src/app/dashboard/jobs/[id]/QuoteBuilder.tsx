@@ -8,6 +8,7 @@ import { AiRefineChips } from '@/components/ai';
 import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
 import SmsPreview from '@/components/sms/SmsPreview';
 import { quoteUpdatedText } from '@/lib/sms-templates';
+import PhotoDefectEstimatorModal from '../PhotoDefectEstimatorModal';
 
 type Row = QuoteItem;
 
@@ -68,6 +69,7 @@ function ago(at: number): string {
 // mirrors what the client will see; Save persists the items and recomputes the
 // job's quoted amount server-side.
 export default function QuoteBuilder({
+  jobId,
   action,
   notifyAction,
   autosaveKey,
@@ -86,6 +88,7 @@ export default function QuoteBuilder({
   changeOrderHref,
   printHref,
 }: {
+  jobId?: string;
   businessName?: string;
   jobRef?: string;
   clientPhone?: string | null;
@@ -174,6 +177,20 @@ export default function QuoteBuilder({
   const [review, setReview] = useState<{ findings: QuoteFinding[]; aiRan: boolean } | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+
+  function handleApplyPhotoDefects(items: Array<{ name: string; cost: number }>) {
+    const newRows: Row[] = items.map((item) => ({
+      id: nextId(),
+      label: item.name,
+      amount: item.cost,
+      kind: 'base',
+      selected: true,
+      recommended: false,
+    }));
+    setRows((current) => [...current, ...newRows]);
+    setResult(null);
+  }
 
   // Report every edit up to a parent in live mode, without re-firing when the
   // parent hands us a new callback identity.
@@ -605,6 +622,17 @@ export default function QuoteBuilder({
                 {reviewing ? 'Checking…' : 'Check before sending'}
               </button>
             ) : null}
+            {process.env.NEXT_PUBLIC_ENABLE_PHOTO_ESTIMATE === 'true' && (
+              <button
+                type="button"
+                className="quote-tool"
+                onClick={() => setPhotoModalOpen(true)}
+                title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
+              >
+                <span aria-hidden="true">📸</span>
+                AI Photo Estimate
+              </button>
+            )}
           </div>
           {printHref ? (
             <a href={printHref} className="quote-print">
@@ -629,6 +657,13 @@ export default function QuoteBuilder({
           onRefine={runDraft}
         />
       ) : null}
+
+      <PhotoDefectEstimatorModal
+        isOpen={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        onApplyLineItems={handleApplyPhotoDefects}
+        jobId={jobId}
+      />
 
       {rows.length === 0 ? (
         <p className="empty-state">No line items yet. Add what&apos;s included, then optional add-ons the client can accept.</p>

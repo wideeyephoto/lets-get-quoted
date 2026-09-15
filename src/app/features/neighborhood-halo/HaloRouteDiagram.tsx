@@ -16,9 +16,9 @@ export default function HaloRouteDiagram() {
         </p>
         <div className={styles.routeVisualStripBad}>
           <div className={styles.routePointBad}>Job #1: North Hills</div>
-          <span style={{ color: '#f87171', fontSize: '0.75rem' }}>&rarr; 14.2 mi (35m) &rarr;</span>
+          <span className={styles.routeArrowBad}>&rarr; 14.2 mi (35m) &rarr;</span>
           <div className={styles.routePointBad}>Job #2: West End</div>
-          <span style={{ color: '#f87171', fontSize: '0.75rem' }}>&rarr; 18.5 mi (42m) &rarr;</span>
+          <span className={styles.routeArrowBad}>&rarr; 18.5 mi (42m) &rarr;</span>
           <div className={styles.routePointBad}>Job #3: South Valley</div>
         </div>
         <div className={styles.storyDiagramFooterBad}>
@@ -32,16 +32,16 @@ export default function HaloRouteDiagram() {
       <div className={styles.storyDiagramBoxGood}>
         <div className={styles.storyDiagramHeader}>
           <span className={styles.storyBadgeGood}>✓ NEIGHBORHOOD HALO CLUSTERS</span>
-          <strong style={{ color: '#34d399', fontSize: '0.85rem' }}>Maximum Route Density</strong>
+          <strong className={styles.storyDiagramTitleGood}>Maximum Route Density</strong>
         </div>
         <p style={{ fontSize: '0.78rem', color: '#94a3b8', margin: '0.35rem 0 0.75rem' }}>
           3 jobs on the same street. Crews and equipment stay parked in 1 spot.
         </p>
         <div className={styles.routeVisualStripGood}>
           <div className={styles.routePointGood}>1428 Maple Ave</div>
-          <span style={{ color: '#34d399', fontSize: '0.75rem' }}>&rarr; Walk (100 ft) &rarr;</span>
+          <span className={styles.routeArrowGood}>&rarr; Walk (100 ft) &rarr;</span>
           <div className={styles.routePointGood}>1436 Maple Ave</div>
-          <span style={{ color: '#34d399', fontSize: '0.75rem' }}>&rarr; Walk (80 ft) &rarr;</span>
+          <span className={styles.routeArrowGood}>&rarr; Walk (80 ft) &rarr;</span>
           <div className={styles.routePointGood}>1442 Maple Ave</div>
         </div>
         <div className={styles.storyDiagramFooterGood}>

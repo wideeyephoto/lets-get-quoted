@@ -86,8 +86,8 @@ export default async function MarketingPage() {
     }
   }
 
-  const leadsMonth = leads.filter((l) => (l.created_at || '').startsWith(currentMonthPrefix));
-  const leads30d = leads.filter((l) => (l.created_at || '') >= thirtyDaysAgoIso);
+  const leadsMonth = leads.filter((l: any) => (l.created_at || '').startsWith(currentMonthPrefix));
+  const leads30d = leads.filter((l: any) => (l.created_at || '') >= thirtyDaysAgoIso);
 
   const roiSummaryMonth = calculateCampaignRoi(leadsMonth, jobLookupMonth, { actualAdSpend: spendThisMonthDollars });
   const roiSummary30d = calculateCampaignRoi(leads30d, jobLookup30d, { actualAdSpend: spendLast30dDollars });
@@ -97,7 +97,7 @@ export default async function MarketingPage() {
     ((userData?.user?.email as string | null) ?? '').trim()
   );
 
-  const serviceNames = (serviceRows ?? []).map((row) => String((row as { name?: unknown }).name ?? ''));
+  const serviceNames = (serviceRows ?? []).map((row: any) => String((row as { name?: unknown }).name ?? ''));
   const view = await buildCalendarView(supabase, accountId, 4, {
     recipients,
     sentBeats,
@@ -154,7 +154,7 @@ export default async function MarketingPage() {
       upcoming={upcoming}
       counts={counts}
       hasBlog={Boolean(blogData)}
-      rebookDue={rebookCandidates.filter((c) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
+      rebookDue={rebookCandidates.filter((c: any) => (c.smsReady || c.hasEmail) && !c.invitedAt).length}
       emailTheme={{
         currentTheme: (siteRow?.email_theme as string | null) ?? null,
       }}

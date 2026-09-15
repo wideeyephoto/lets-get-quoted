@@ -1,6 +1,7 @@
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export type ActionCardType =
+  | 'draft_change_order'
   | 'quote_created'
   | 'job_updated'
   | 'task_created'

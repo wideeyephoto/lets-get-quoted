@@ -525,11 +525,15 @@
 }
 
 /* Multi-theme contrast overrides */
+:global(:root[data-theme='light']) .rungTitle {
+  color: #f8fafc !important;
+}
+
 :global(:root[data-theme='light']) .rungBody,
 :global(:root[data-theme='light']) .ladderNote,
 :global(:root[data-theme='light']) .rung[data-tone='quiet'] .rungChannel,
 :global(:root[data-theme='light']) .faq details > p {
-  color: #475569 !important;
+  color: #cbd5e1 !important;
 }
 
 :global(:root[data-theme='sunlight']) .rungBody,
@@ -544,4 +548,32 @@
 :global(:root[data-theme='dim']) .rung[data-tone='quiet'] .rungChannel,
 :global(:root[data-theme='dim']) .faq details > p {
   color: #9ca3af !important;
+}
+
+.stylesSection {
+  margin: 48px 0;
+  background: var(--bg-elevated);
+  padding: 2rem;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+:global(:root[data-theme='light']) .stylesSection h2 {
+  color: #f8fafc !important;
+}
+
+:global(:root[data-theme='light']) .stylesSection p {
+  color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='sunlight']) .stylesSection {
+  background: #ffffff !important;
+}
+
+:global(:root[data-theme='sunlight']) .stylesSection h2 {
+  color: #0f172a !important;
+}
+
+:global(:root[data-theme='sunlight']) .stylesSection p {
+  color: #334155 !important;
 }

@@ -511,7 +511,7 @@ export function renderCardCredential(
 }
 
 export default function BusinessCardMockup({
-  templateId = 'executive',
+  templateId = 'traditional',
   side,
   primaryColor,
   activeColor,

@@ -10,11 +10,11 @@ describe('50-State + DC Building Code & Licensing Coverage', () => {
     'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
     'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
     'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
-    'DC',
+    'DC', 'PR', 'VI', 'GU', 'MP', 'AS',
   ];
 
-  it('contains valid registry profiles for all 50 US States + District of Columbia', () => {
-    expect(Object.keys(STATE_CODE_REGISTRY)).toHaveLength(51);
+  it('contains valid registry profiles for all 50 US States + DC + US Territories', () => {
+    expect(Object.keys(STATE_CODE_REGISTRY)).toHaveLength(56);
 
     for (const stateCode of allStates) {
       const profile = STATE_CODE_REGISTRY[stateCode];
@@ -44,6 +44,9 @@ describe('50-State + DC Building Code & Licensing Coverage', () => {
     expect(normalizeStateCode('Ohio')).toBe('OH');
     expect(normalizeStateCode('Illinois')).toBe('IL');
     expect(normalizeStateCode('District of Columbia')).toBe('DC');
+    expect(normalizeStateCode('Puerto Rico')).toBe('PR');
+    expect(normalizeStateCode('Guam')).toBe('GU');
+    expect(normalizeStateCode('U.S. Virgin Islands')).toBe('VI');
     expect(normalizeStateCode('MI')).toBe('MI');
   });
 

@@ -46,6 +46,7 @@ import {
   Clock,
   Slash,
   Eye,
+  ChevronRight,
 } from 'lucide-react';
 import {
   type ToolAsset,
@@ -61,6 +62,8 @@ import {
   type DepreciationSchedule,
   type ToolCustodyLogEntry,
   type VanKitTemplate,
+  type RestockOrder,
+  type RestockOrderLine,
   TAX_GUIDANCE_SCHEDULES,
   COMMERCIAL_VEHICLE_TAX_TIP,
   calculateAssetDepreciation,
@@ -91,8 +94,12 @@ import {
   autofillToolFromStoreAction,
   searchStoreCatalogAction,
   seedStarterInventoryAction,
+
   uploadToolPhotoAction,
   applyVanKitTemplateAction,
+  transferToolAction,
+  saveRestockOrderAction,
+  receiveRestockOrderLineAction,
 } from './actions';
 import { getTodayDateString, type StoreAutofillResult } from '@/lib/store-autofill';
 import AccessibleModal from './components/AccessibleModal';
@@ -108,6 +115,7 @@ interface InventoryClientProps {
   initialPayload?: InventoryPayload;
   crewMembers?: Array<{ id: string; name: string; role?: string }>;
   activeJobs?: Array<{ id: string; label: string; status?: string }>;
+  initialRestockOrders?: RestockOrder[];
   canWrite?: boolean;
   canCustody?: boolean;
 }
@@ -233,16 +241,17 @@ export default function InventoryClient({
   initialPayload,
   crewMembers = [],
   activeJobs = [],
-  canWrite = true,
-  canCustody = true,
+  initialRestockOrders = [],
+  canWrite = false,
+  canCustody = false,
 }: InventoryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const initialTab = (searchParams.get('tab') as 'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations') || 'tools';
-  const [activeTab, setActiveTab] = useState<'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations'>(
-    ['tools', 'fleet', 'stock', 'maintenance', 'locations'].includes(initialTab) ? initialTab : 'tools'
+  const [activeTab, setActiveTab] = useState<'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations' | 'orders'>(
+    ['tools', 'fleet', 'stock', 'maintenance', 'locations', 'orders'].includes(initialTab) ? initialTab : 'tools'
   );
   const [asOfDate, setAsOfDate] = useState<string>(searchParams.get('asOf') || getTodayDateString());
   const [isPending, startTransition] = useTransition();
@@ -333,7 +342,7 @@ export default function InventoryClient({
   const pendingStockDeltas = useRef<Map<string, { delta: number; timer: ReturnType<typeof setTimeout> }>>(new Map());
 
   // URL synchronization
-  const handleTabChange = useCallback((tab: 'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations') => {
+  const handleTabChange = useCallback((tab: 'tools' | 'fleet' | 'stock' | 'maintenance' | 'locations' | 'orders') => {
     setActiveTab(tab);
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', tab);
@@ -409,6 +418,9 @@ export default function InventoryClient({
   const totalToolValue = tools.reduce((sum, t) => sum + (t.purchasePrice || 0), 0);
   const totalVehicleValue = vehicles.reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
   const totalEquipmentValue = totalToolValue + totalVehicleValue;
+  const toolsMissingCost = tools.filter(t => t.purchasePrice === null || t.purchasePrice === undefined).length;
+  const vehiclesMissingCost = vehicles.filter(v => v.purchasePrice === null || v.purchasePrice === undefined).length;
+  const totalAssetsMissingCost = toolsMissingCost + vehiclesMissingCost;
   const totalDepreciatedToolValue = tools.reduce(
     (sum, t) =>
       sum +
@@ -427,6 +439,23 @@ export default function InventoryClient({
 
   const totalStockValue = stock.reduce((sum, s) => sum + s.quantityOnHand * s.unitCost, 0);
   const checkedOutToolsCount = tools.filter((t) => t.status === 'checked_out').length;
+
+  const todayStr = getTodayDateString();
+  const overdueTools = tools.filter((t) => isToolOverdue(t, todayStr));
+  const vehiclesWithIssues = vehicles.map(v => ({ v, audit: auditVehicleMaintenance(v, todayStr) })).filter(x => x.audit.statusTone !== 'success');
+
+  const attentionOverdue: { id: string; type: string; title: string; subtitle: string; action: string }[] = [
+    ...overdueTools.map(t => ({ id: t.id, type: 'tool_overdue', title: t.name, subtitle: `Assigned to ${t.assignedCrewName || 'Unknown'}`, action: 'Review' })),
+    ...vehiclesWithIssues.filter(x => x.audit.statusTone === 'danger').map(x => ({ id: x.v.id, type: 'vehicle_danger', title: x.v.name, subtitle: x.audit.summaryAlert || '', action: 'View Vehicle' }))
+  ];
+  const attentionDueSoon: { id: string; type: string; title: string; subtitle: string; action: string }[] = [
+    ...vehiclesWithIssues.filter(x => x.audit.statusTone === 'warn').map(x => ({ id: x.v.id, type: 'vehicle_warn', title: x.v.name, subtitle: x.audit.summaryAlert || '', action: 'Schedule' }))
+  ];
+  const attentionLowStock: { id: string; type: string; title: string; subtitle: string; action: string }[] = lowStockResult.lowStockItems.map(s => ({
+    id: s.id, type: 'low_stock', title: s.name, subtitle: `${s.quantityOnHand} on hand (min ${s.minThreshold})`, action: 'Restock'
+  }));
+
+  const hasAttentionItems = attentionOverdue.length > 0 || attentionDueSoon.length > 0 || attentionLowStock.length > 0;
 
   // Categorized & unified locations (auto-syncs active registered fleet vehicles into location pool)
   const facilityLocations = Array.from(
@@ -506,7 +535,8 @@ export default function InventoryClient({
         category: res.category,
         modelNumber: res.modelNumber,
         assetTag: prev.tool?.assetTag || res.assetTagSuggestion,
-        serialNumber: res.sku || prev.tool?.serialNumber || null,
+        retailerSku: res.sku || prev.tool?.retailerSku || null,
+        serialNumber: prev.tool?.serialNumber || null,
         purchasePrice: res.purchasePrice,
         purchaseDate: res.purchaseDate,
         depreciationSchedule: res.depreciationSchedule,
@@ -820,6 +850,7 @@ export default function InventoryClient({
       nextServiceDueMileage: fd.get('nextServiceDueMileage') ? Number(fd.get('nextServiceDueMileage')) : null,
       inspectionExpiresAt: (fd.get('inspectionExpiresAt') as string) || null,
       insuranceExpiresAt: (fd.get('insuranceExpiresAt') as string) || null,
+      locationName: (fd.get('locationName') as string) || 'Main Shop & Warehouse',
       notes: (fd.get('notes') as string)?.trim() || null,
     };
 
@@ -871,7 +902,7 @@ export default function InventoryClient({
     const timer = setTimeout(async () => {
       pendingStockDeltas.current.delete(item.id);
       try {
-        const updated = await adjustStockQuantityAction({ stockId: item.id, delta: combinedDelta });
+        const updated = await adjustStockQuantityAction({ stockId: item.id, delta: combinedDelta, requestId: crypto.randomUUID() });
         setStock((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
       } catch (err: unknown) {
         showToast(err instanceof Error ? err.message : 'Failed to update stock quantity', 'error');
@@ -915,6 +946,7 @@ export default function InventoryClient({
           toLocation,
           quantity,
           notes,
+          requestId: crypto.randomUUID(),
         });
 
         // Update source, destination, and transfers cleanly using real persisted DB entities
@@ -1322,10 +1354,10 @@ export default function InventoryClient({
           }}
         >
           <div>
-            <h4 style={{ margin: 0, fontSize: '0.98rem', color: '#ffffff', fontWeight: 700 }}>
+            <h4 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--inv-text-primary)', fontWeight: 700 }}>
               Welcome to Inventory &amp; Fleet Tracker
             </h4>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#cbd5e1' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--inv-text-muted)' }}>
               Your workspace is empty. Add your own locations, tools, and fleet vehicles, or load sample starter data to explore features.
             </p>
           </div>
@@ -1362,7 +1394,7 @@ export default function InventoryClient({
           title="View all equipment & asset tax basis"
         >
           <div className={styles.kpiHeader}>
-            <span className={styles.kpiLabel}>Fleet Asset Basis</span>
+            <span className={styles.kpiLabel}>Known Fleet Asset Basis</span>
             <div className={styles.kpiIconWrap}>
               <Wrench size={16} />
             </div>
@@ -1371,6 +1403,11 @@ export default function InventoryClient({
           <div className={`${styles.kpiNote} ${styles.kpiNoteGood}`}>
             <DollarSign size={13} /> Tax Book Basis: {formatUsdExact(totalDepreciatedBookValue)}
           </div>
+          {totalAssetsMissingCost > 0 && (
+            <div className={`${styles.kpiNote} ${styles.kpiNoteWarn}`} style={{ marginTop: '4px' }}>
+              <AlertTriangle size={13} /> {totalAssetsMissingCost} asset{totalAssetsMissingCost === 1 ? '' : 's'} missing cost
+            </div>
+          )}
         </div>
 
         <div
@@ -1393,13 +1430,13 @@ export default function InventoryClient({
         >
           <div className={styles.kpiHeader}>
             <span className={styles.kpiLabel}>Low Stock Alert</span>
-            <div className={styles.kpiIconWrap} style={{ color: lowStockResult.lowStockCount > 0 ? '#fbbf24' : '#34d399' }}>
+            <div className={styles.kpiIconWrap} style={{ color: lowStockResult.lowStockCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}>
               <Boxes size={16} />
             </div>
           </div>
           <div
             className={styles.kpiValue}
-            style={{ color: lowStockResult.lowStockCount > 0 ? '#fbbf24' : '#34d399' }}
+            style={{ color: lowStockResult.lowStockCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}
           >
             {lowStockResult.lowStockCount} {lowStockResult.lowStockCount === 1 ? 'item' : 'items'}
           </div>
@@ -1432,13 +1469,13 @@ export default function InventoryClient({
         >
           <div className={styles.kpiHeader}>
             <span className={styles.kpiLabel}>Vehicle Service Due</span>
-            <div className={styles.kpiIconWrap} style={{ color: maintenanceDueCount > 0 ? '#fbbf24' : '#34d399' }}>
+            <div className={styles.kpiIconWrap} style={{ color: maintenanceDueCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}>
               <Truck size={16} />
             </div>
           </div>
           <div
             className={styles.kpiValue}
-            style={{ color: maintenanceDueCount > 0 ? '#fbbf24' : '#34d399' }}
+            style={{ color: maintenanceDueCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}
           >
             {maintenanceDueCount} {maintenanceDueCount === 1 ? 'vehicle' : 'vehicles'}
           </div>
@@ -1475,11 +1512,11 @@ export default function InventoryClient({
         >
           <div className={styles.kpiHeader}>
             <span className={styles.kpiLabel}>Field Custody</span>
-            <div className={styles.kpiIconWrap} style={{ color: '#38bdf8' }}>
+            <div className={styles.kpiIconWrap} style={{ color: 'var(--inv-status-info-text, #38bdf8)' }}>
               <User size={16} />
             </div>
           </div>
-          <div className={styles.kpiValue} style={{ color: '#38bdf8' }}>
+          <div className={styles.kpiValue} style={{ color: 'var(--inv-status-info-text, #38bdf8)' }}>
             {checkedOutToolsCount} {checkedOutToolsCount === 1 ? 'tool' : 'tools'}
           </div>
           <div className={`${styles.kpiNote} ${styles.kpiNoteNeutral}`}>
@@ -1487,6 +1524,94 @@ export default function InventoryClient({
           </div>
         </div>
       </div>
+
+      {/* Needs Attention Section */}
+      {hasAttentionItems ? (
+        <div className={styles.attentionSection}>
+          <div className={styles.attentionHeader}>
+            <AlertTriangle size={18} style={{ color: 'var(--inv-status-warn-text, #fbbf24)' }} />
+            <h3>Needs Attention</h3>
+          </div>
+          <div className={styles.attentionGrid}>
+            {attentionOverdue.map(item => (
+              <div key={item.id} className={styles.attentionCard}>
+                <div className={styles.attentionCardTop}>
+                  <div className={styles.attentionCardIcon} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                    <AlertCircle size={16} />
+                  </div>
+                  <div className={styles.attentionCardContent}>
+                    <div className={styles.attentionCardTitle}>{item.title}</div>
+                    <div className={styles.attentionCardSub}>{item.subtitle}</div>
+                  </div>
+                </div>
+                <button
+                  className={styles.attentionActionBtn}
+                  onClick={() => {
+                    if (item.type === 'tool_overdue') {
+                      const t = tools.find(x => x.id === item.id);
+                      if (t) setDetailModal({ open: true, asset: t, type: 'tool' });
+                    } else if (item.type === 'vehicle_danger') {
+                      const v = vehicles.find(x => x.id === item.id);
+                      if (v) setDetailModal({ open: true, asset: v, type: 'vehicle' });
+                    }
+                  }}
+                >
+                  {item.action} <ChevronRight size={14} />
+                </button>
+              </div>
+            ))}
+            {attentionDueSoon.map(item => (
+              <div key={item.id} className={styles.attentionCard}>
+                <div className={styles.attentionCardTop}>
+                  <div className={styles.attentionCardIcon} style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>
+                    <Wrench size={16} />
+                  </div>
+                  <div className={styles.attentionCardContent}>
+                    <div className={styles.attentionCardTitle}>{item.title}</div>
+                    <div className={styles.attentionCardSub}>{item.subtitle}</div>
+                  </div>
+                </div>
+                <button
+                  className={styles.attentionActionBtn}
+                  onClick={() => {
+                    const v = vehicles.find(x => x.id === item.id);
+                    if (v) setDetailModal({ open: true, asset: v, type: 'vehicle' });
+                  }}
+                >
+                  {item.action} <ChevronRight size={14} />
+                </button>
+              </div>
+            ))}
+            {attentionLowStock.map(item => (
+              <div key={item.id} className={styles.attentionCard}>
+                <div className={styles.attentionCardTop}>
+                  <div className={styles.attentionCardIcon} style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8' }}>
+                    <Boxes size={16} />
+                  </div>
+                  <div className={styles.attentionCardContent}>
+                    <div className={styles.attentionCardTitle}>{item.title}</div>
+                    <div className={styles.attentionCardSub}>{item.subtitle}</div>
+                  </div>
+                </div>
+                <button
+                  className={styles.attentionActionBtn}
+                  onClick={() => {
+                    handleTabChange('stock');
+                    setShowPoModal(true);
+                  }}
+                >
+                  {item.action} <ChevronRight size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className={styles.attentionClearState}>
+          <ShieldCheck size={20} style={{ color: '#34d399' }} />
+          <span>All clear. No overdue tools, expired inspections, or low stock.</span>
+        </div>
+      )}
 
       {/* Segmented Navigation Tabs */}
       <div className={styles.tabNavWrapper}>
@@ -1558,6 +1683,20 @@ export default function InventoryClient({
             <span>Depots &amp; Vans</span>
             <span className={`${styles.tabBadge} ${activeTab === 'locations' ? styles.tabBadgeActive : ''}`}>
               {locations.length + vehicles.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'orders'}
+            onClick={() => handleTabChange('orders')}
+            className={`${styles.tabButton} ${activeTab === 'orders' ? styles.tabButtonActive : ''}`}
+          >
+            <ShoppingBag size={18} />
+            <span>Restock Orders</span>
+            <span className={`${styles.tabBadge} ${activeTab === 'orders' ? styles.tabBadgeActive : ''}`}>
+              {initialRestockOrders?.filter(o => o.status !== 'cancelled' && o.status !== 'received').length || 0}
             </span>
           </button>
         </nav>
@@ -1736,17 +1875,17 @@ export default function InventoryClient({
                               </div>
                             )}
                             <div>
-                              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.9rem', textDecoration: 'underline' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)', fontSize: '0.9rem', textDecoration: 'underline' }}>
                                 {tool.name}
                               </div>
-                              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--inv-text-caption, #94a3b8)' }}>
                                 {tool.brand} {tool.modelNumber ? `• Mod: ${tool.modelNumber}` : ''}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className={styles.toolsTd}>
-                          <span style={{ color: '#cbd5e1', fontSize: '0.84rem' }}>{tool.category}</span>
+                          <span style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.84rem' }}>{tool.category}</span>
                         </td>
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
@@ -1778,24 +1917,28 @@ export default function InventoryClient({
                         <td className={styles.toolsTd}>
                           {isCheckedOut ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#ffb580', fontWeight: 600 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--inv-tag-orange-text, #ffb580)', fontWeight: 600 }}>
                                 <User size={13} /> {tool.assignedCrewName || 'Assigned Tech'}
                               </div>
-                              {tool.expectedReturnDate && (
-                                <span style={{ fontSize: '0.72rem', color: isOverdue ? '#f87171' : '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                              {tool.expectedReturnDate ? (
+                                <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-muted, #cbd5e1)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <Clock size={11} /> Due: {tool.expectedReturnDate}
                                 </span>
+                              ) : (
+                                <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-muted, #cbd5e1)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <Clock size={11} /> Return date not set
+                                </span>
                               )}
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                 {isVehicleLocation(tool.locationName) ? <Truck size={11} /> : <MapPin size={11} />} Base: {tool.locationName || 'Main Shop & Warehouse'}
                               </span>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#cbd5e1' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                               {isVehicleLocation(tool.locationName) ? (
                                 <Truck size={13} style={{ color: '#60a5fa' }} />
                               ) : (
-                                <MapPin size={13} style={{ color: '#94a3b8' }} />
+                                <MapPin size={13} style={{ color: 'var(--inv-text-caption, #94a3b8)' }} />
                               )}
                               <span>{tool.locationName || 'Main Shop & Warehouse'}</span>
                               {isVehicleLocation(tool.locationName) && (
@@ -1808,7 +1951,7 @@ export default function InventoryClient({
                         </td>
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#e2e8f0' }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--inv-text-primary, #e2e8f0)' }}>
                               {tool.purchaseDate || 'N/A'}
                             </span>
                             <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
@@ -1817,10 +1960,10 @@ export default function InventoryClient({
                         </td>
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                            <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
-                              Cost: <strong>{tool.purchasePrice ? formatUsdExact(tool.purchasePrice) : 'N/A'}</strong>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
+                              Cost: <strong>{tool.purchasePrice !== null && tool.purchasePrice !== undefined ? formatUsdExact(tool.purchasePrice) : 'Cost not entered'}</strong>
                             </span>
-                            <span style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 700 }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--inv-status-good-text, #34d399)', fontWeight: 700 }}>
                               Basis: {formatUsdExact(depr.currentBookValue)}
                             </span>
                           </div>
@@ -1895,12 +2038,6 @@ export default function InventoryClient({
                 const isCheckedOut = tool.status === 'checked_out';
                 const isLarge = toolViewMode === 'large';
                 const isOverdue = isToolOverdue(tool);
-                const depr = calculateAssetDepreciation(
-                  tool.purchasePrice,
-                  tool.purchaseDate,
-                  tool.depreciationSchedule,
-                  asOfDate
-                );
 
                 return (
                   <div key={tool.id} className={`${styles.assetCard} ${isLarge ? styles.assetCardLarge : ''}`}>
@@ -1970,125 +2107,31 @@ export default function InventoryClient({
                         {tool.brand} {tool.modelNumber ? `• Mod: ${tool.modelNumber}` : ''} • {tool.category}
                       </div>
 
-                      {/* Checked out custody well */}
-                      {isCheckedOut ? (
-                        <div className={styles.custodyBlock}>
-                          <div className={styles.custodyRow}>
-                            <span className={styles.custodyLabel}>
-                              <User size={13} /> Assigned Tech:
-                            </span>
-                            <span className={styles.custodyValue}>
-                              {tool.assignedCrewName || 'Assigned'}
-                            </span>
-                          </div>
-                          {tool.assignedJobLabel && (
-                            <div className={styles.custodyRow}>
-                              <span className={styles.custodyLabel}>
-                                <MapPin size={13} /> Destination:
-                              </span>
-                              <span
-                                className={styles.custodyValue}
-                                style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                              >
-                                {tool.assignedJobLabel}
-                              </span>
-                            </div>
-                          )}
-                          <div className={styles.custodyRow}>
-                            <span className={styles.custodyLabel}>
-                              {isVehicleLocation(tool.locationName) ? <Truck size={13} /> : <MapPin size={13} />} Home Base:
-                            </span>
-                            <span className={styles.custodyValue}>
-                              {tool.locationName || 'Main Shop & Warehouse'}
-                            </span>
-                          </div>
-                          {tool.expectedReturnDate && (
-                            <div className={styles.custodyRow} style={{ color: isOverdue ? '#fca5a5' : '#cbd5e1', fontSize: '0.85rem' }}>
-                              <span className={styles.custodyLabel}>
-                                <Clock size={14} /> Expected Return:
-                              </span>
-                              <span style={{ fontWeight: 700, color: isOverdue ? '#f87171' : '#ffffff' }}>
-                                {tool.expectedReturnDate} {isOverdue && '(OVERDUE)'}
-                              </span>
-                            </div>
-                          )}
-                          {tool.checkedOutAt && (
-                            <div className={styles.custodyRow} style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>
-                              <span className={styles.custodyLabel}>
-                                <Calendar size={14} /> Checked Out:
-                              </span>
-                              <span style={{ fontWeight: 600, color: '#ffffff' }}>
-                                {new Date(tool.checkedOutAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        /* Storage Depot for Available / In-Maintenance tools */
-                        <div className={styles.locationBlock}>
-                          <div className={styles.locationRow}>
-                            <span className={styles.locationLabel}>
-                              {isVehicleLocation(tool.locationName) ? <Truck size={13} /> : <MapPin size={13} />} Storage Depot:
-                            </span>
-                            <span className={styles.locationValue}>
-                              <span>{tool.locationName || 'Main Shop & Warehouse'}</span>
-                              <span
-                                className={`${styles.locationTypeTag} ${
-                                  isVehicleLocation(tool.locationName)
-                                    ? styles.locationTypeTagVehicle
-                                    : styles.locationTypeTagFacility
-                                }`}
-                              >
-                                {isVehicleLocation(tool.locationName) ? 'Vehicle' : 'Facility'}
-                              </span>
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.75rem' }}>
+                        <span className={styles.badgeNeutral}>
+                          <Tag size={12} /> {tool.category}
+                        </span>
+                        {isCheckedOut && (
+                          <span className={styles.badgeNeutral}>
+                            <User size={12} /> {tool.assignedCrewName || 'Assigned'}
+                          </span>
+                        )}
+                        <span className={styles.badgeNeutral}>
+                          {isVehicleLocation(tool.locationName) ? <Truck size={12} /> : <MapPin size={12} />}{' '}
+                          {tool.locationName || 'Main Shop & Warehouse'}
+                        </span>
+                        {isCheckedOut && tool.expectedReturnDate && isOverdue && (
+                          <span className={styles.badgeDanger}>
+                            <Clock size={12} /> Overdue: {tool.expectedReturnDate}
+                          </span>
+                        )}
+                      </div>
 
                       {tool.notes && (
                         <p className={styles.notesQuote}>&ldquo;{tool.notes}&rdquo;</p>
                       )}
 
-                      {/* Tax Depreciation & Book Basis Strip */}
-                      <div
-                        style={{
-                          marginTop: '0.75rem',
-                          padding: isLarge ? '0.65rem 0.85rem' : '0.45rem 0.65rem',
-                          borderRadius: '8px',
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid var(--inv-border-subtle)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontSize: '0.8rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          <span style={{ color: 'var(--inv-text-muted)' }}>
-                            Cost Basis:{' '}
-                            <strong style={{ color: '#ffffff' }}>
-                              {tool.purchasePrice ? formatUsdExact(tool.purchasePrice) : 'N/A'}
-                            </strong>
-                            {tool.purchaseDate && (
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '0.35rem' }}>
-                                ({tool.purchaseDate})
-                              </span>
-                            )}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
-                            <TaxHelpBubble schedule={tool.depreciationSchedule} />
-                            <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>{depr.statusText}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-                            Book Value
-                          </div>
-                          <div className={styles.taxBookValue}>{formatUsdExact(depr.currentBookValue)}</div>
-                        </div>
-                      </div>
+
                     </div>
 
                     {/* Card Footer */}
@@ -2207,7 +2250,6 @@ export default function InventoryClient({
                     ? styles.statusMaintenance
                     : styles.statusDanger;
 
-                const depr = calculateAssetDepreciation(v.purchasePrice, v.purchaseDate, v.depreciationSchedule, asOfDate);
 
                 return (
                   <div key={v.id} className={styles.assetCard}>
@@ -2217,9 +2259,16 @@ export default function InventoryClient({
                           <span className={styles.assetTagBadge}>{v.licensePlate}</span>
                           {v.vin ? <span className={styles.serialNumberTag}>VIN: {v.vin}</span> : null}
                         </div>
-                        <span className={`${styles.statusBadge} ${statusBadgeClass}`}>
-                          {isRetired ? <Slash size={14} /> : statusDesc.tone === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />} {statusDesc.label}
-                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span className={`${styles.statusBadge} ${statusBadgeClass}`}>
+                            {isRetired ? <Slash size={14} /> : statusDesc.tone === 'success' ? <Check size={14} /> : <AlertTriangle size={14} />} {statusDesc.label}
+                          </span>
+                          {!isRetired && audit.statusTone !== 'success' && (
+                            <span className={audit.statusTone === 'danger' ? styles.badgeDanger : styles.badgeNeutral}>
+                              <AlertCircle size={12} /> {audit.isServiceOverdue ? 'Service Overdue' : audit.isInspectionExpired ? 'Inspection Expired' : 'Service Due Soon'}
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <h3
@@ -2237,7 +2286,7 @@ export default function InventoryClient({
                       {/* Mileage & PM Alerts */}
                       <div style={{ marginTop: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                         <div className={styles.mileageMeter}>
-                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#cbd5e1' }}>Current Odometer</span>
+                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--inv-text-muted, #cbd5e1)' }}>Current Odometer</span>
                           <span className={styles.mileageFigure}>{v.currentMileage.toLocaleString()} mi</span>
                         </div>
 
@@ -2294,7 +2343,7 @@ export default function InventoryClient({
                             <Gauge size={15} /> Odometer:
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#ffffff' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)' }}>
                               {v.currentMileage.toLocaleString()} mi
                             </span>
                             <button
@@ -2303,7 +2352,7 @@ export default function InventoryClient({
                               style={{
                                 background: 'transparent',
                                 border: 'none',
-                                color: '#ff9d5c',
+                                color: 'var(--inv-tag-orange-text, #c2410c)',
                                 fontSize: '0.85rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
@@ -2324,10 +2373,10 @@ export default function InventoryClient({
                               fontFamily: 'monospace',
                               fontWeight: 700,
                               color: audit.isServiceOverdue
-                                ? '#f87171'
+                                ? 'var(--inv-status-danger-text, #f87171)'
                                 : audit.isServiceDueSoon
-                                ? '#fbbf24'
-                                : '#ffffff',
+                                ? 'var(--inv-status-warn-text, #fbbf24)'
+                                : 'var(--inv-text-primary, #ffffff)',
                             }}
                           >
                             {v.nextServiceDueMileage ? `${v.nextServiceDueMileage.toLocaleString()} mi` : 'Not set'}
@@ -2335,56 +2384,18 @@ export default function InventoryClient({
                         </div>
 
                         {v.inspectionExpiresAt && (
-                          <div className={styles.custodyRow} style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
+                          <div className={styles.custodyRow} style={{ fontSize: '0.85rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                             <span className={styles.custodyLabel}>
                               <ShieldCheck size={15} /> State Inspection:
                             </span>
-                            <span style={{ color: audit.isInspectionExpired ? '#f87171' : '#ffffff', fontWeight: audit.isInspectionExpired ? 700 : 600 }}>
+                            <span style={{ color: audit.isInspectionExpired ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-primary, #ffffff)', fontWeight: audit.isInspectionExpired ? 700 : 600 }}>
                               {v.inspectionExpiresAt}
                             </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Tax Depreciation & Book Value */}
-                      <div
-                        className={styles.taxBasisRow}
-                        style={{
-                          marginTop: '0.85rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.65rem 0.85rem',
-                          background: 'rgba(15, 23, 42, 0.65)',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          <span style={{ color: 'var(--inv-text-muted)' }}>
-                            Cost Basis:{' '}
-                            <strong style={{ color: '#ffffff' }}>
-                              {v.purchasePrice ? formatUsdExact(v.purchasePrice) : 'N/A'}
-                            </strong>
-                            {v.purchaseDate && (
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '0.35rem' }}>
-                                ({v.purchaseDate})
-                              </span>
-                            )}
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
-                            <TaxHelpBubble schedule={v.depreciationSchedule} isVehicle />
-                            <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>{depr.statusText}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
-                            Book Value
-                          </div>
-                          <div className={styles.taxBookValue}>{formatUsdExact(depr.currentBookValue)}</div>
-                        </div>
-                      </div>
+
                     </div>
 
                     {/* Card Footer */}
@@ -2576,11 +2587,12 @@ export default function InventoryClient({
                   <th>Item &amp; SKU</th>
                   <th>Category</th>
                   <th>Location</th>
-                  <th style={{ textAlign: 'center' }}>On Hand / Min Level</th>
+                  <th style={{ textAlign: 'center' }}>On Hand / Min</th>
+                  <th style={{ textAlign: 'center' }}>Incoming</th>
                   <th style={{ textAlign: 'right' }}>Unit Cost</th>
                   <th style={{ textAlign: 'right' }}>Total Value</th>
                   <th>Preferred Supplier</th>
-                  <th style={{ textAlign: 'center' }}>Stock Health</th>
+                  <th style={{ textAlign: 'center' }}>Health</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
@@ -2592,12 +2604,12 @@ export default function InventoryClient({
                   return (
                     <tr key={item.id}>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1rem' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: '#cbd5e1' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>{item.name}</div>
+                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                           {item.sku}
                         </div>
                       </td>
-                      <td style={{ color: '#cbd5e1', fontSize: '0.92rem' }}>{item.category}</td>
+                      <td style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.92rem' }}>{item.category}</td>
                       <td>
                         <span
                           style={{
@@ -2606,11 +2618,11 @@ export default function InventoryClient({
                             gap: '0.35rem',
                             padding: '0.3rem 0.65rem',
                             borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.08))',
+                            border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.18))',
                             fontSize: '0.85rem',
                             fontWeight: 600,
-                            color: '#ffffff',
+                            color: 'var(--inv-text-primary, #ffffff)',
                           }}
                         >
                           <MapPin size={13} /> {item.location}
@@ -2629,7 +2641,7 @@ export default function InventoryClient({
                           </button>
                           <span
                             className={styles.stepperValue}
-                            style={{ color: isLow ? '#fbbf24' : '#ffffff' }}
+                            style={{ color: isLow ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-text-primary, #ffffff)' }}
                           >
                             {item.quantityOnHand} {item.unit}
                           </span>
@@ -2643,17 +2655,28 @@ export default function InventoryClient({
                             +
                           </button>
                         </div>
-                        <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginTop: '0.3rem', fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--inv-text-muted, #cbd5e1)', marginTop: '0.3rem', fontWeight: 600 }}>
                           Min: {item.minThreshold} {item.unit}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: '#f1f5f9' }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{ fontWeight: 800, color: '#38bdf8' }}>
+                          {
+                            (initialRestockOrders || [])
+                              .filter(o => o.status !== 'cancelled' && o.status !== 'received' && o.status !== 'draft')
+                              .flatMap(o => o.lines)
+                              .filter(l => l.sku === item.sku && l.destinationLocationName === item.location)
+                              .reduce((sum, l) => sum + Math.max(0, l.orderedQuantity - l.receivedQuantity), 0)
+                          }
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: 'var(--inv-text-primary, #f1f5f9)' }}>
                         {formatUsdExact(item.unitCost)}
                       </td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#ffffff', fontSize: '1rem' }}>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>
                         {formatUsdExact(item.quantityOnHand * item.unitCost)}
                       </td>
-                      <td style={{ color: '#cbd5e1', fontSize: '0.92rem' }}>{item.preferredSupplier || '—'}</td>
+                      <td style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.92rem' }}>{item.preferredSupplier || '—'}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span
                           className={`${styles.statusBadge} ${isLow ? styles.statusMaintenance : styles.statusAvailable}`}
@@ -2712,7 +2735,7 @@ export default function InventoryClient({
             <div style={{ background: 'var(--inv-surface-elevated)', border: '1px solid var(--inv-border-strong)', borderRadius: '18px', padding: '1.4rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '1rem' }}>
                 <ArrowLeftRight size={18} style={{ color: 'var(--accent)' }} />
-                <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
+                <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)' }}>
                   Recent Inter-Location Parts Transfers
                 </h3>
               </div>
@@ -2726,21 +2749,21 @@ export default function InventoryClient({
                       justifyContent: 'space-between',
                       padding: '0.75rem 1rem',
                       borderRadius: '12px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))',
+                      border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))',
                     }}
                   >
                     <div>
-                      <strong style={{ color: '#ffffff' }}>
+                      <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
                         {tr.quantity} × {tr.itemName}
                       </strong>
-                      <span style={{ color: '#cbd5e1' }}> from </span>
-                      <span style={{ color: '#ffffff', fontWeight: 600 }}>{tr.fromLocation}</span>
-                      <span style={{ color: '#cbd5e1' }}> → </span>
-                      <span style={{ color: '#ffffff', fontWeight: 600 }}>{tr.toLocation}</span>
-                      {tr.notes && <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}> ({tr.notes})</span>}
+                      <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}> from </span>
+                      <span style={{ color: 'var(--inv-text-primary, #ffffff)', fontWeight: 600 }}>{tr.fromLocation}</span>
+                      <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}> → </span>
+                      <span style={{ color: 'var(--inv-text-primary, #ffffff)', fontWeight: 600 }}>{tr.toLocation}</span>
+                      {tr.notes && <span style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontStyle: 'italic' }}> ({tr.notes})</span>}
                     </div>
-                    <span style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontFamily: 'monospace', fontSize: '0.85rem' }}>
                       {new Date(tr.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -2756,10 +2779,10 @@ export default function InventoryClient({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className={styles.controlsBar}>
             <div>
-              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)' }}>
                 Equipment &amp; Fleet Service Ledger
               </h2>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: '#cbd5e1' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                 Immutable audit records of oil changes, factory recalibrations, and safety inspections.
               </p>
             </div>
@@ -2802,17 +2825,17 @@ export default function InventoryClient({
               <tbody>
                 {maintenance.map((m) => (
                   <tr key={m.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#ffffff' }}>{m.performedAt}</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--inv-text-primary, #ffffff)' }}>{m.performedAt}</td>
                     <td>
-                      <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1rem' }}>{m.assetName}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>{m.assetName}</div>
                       <span
                         style={{
                           fontSize: '0.82rem',
                           fontFamily: 'monospace',
                           textTransform: 'uppercase',
-                          color: '#ff9d5c',
-                          background: 'rgba(255, 122, 33, 0.16)',
-                          border: '1px solid rgba(255, 122, 33, 0.35)',
+                          color: 'var(--inv-tag-orange-text, #ff9d5c)',
+                          background: 'var(--inv-tag-orange-bg, rgba(255, 122, 33, 0.16))',
+                          border: '1px solid var(--inv-tag-orange-border, rgba(255, 122, 33, 0.35))',
                           padding: '2px 8px',
                           borderRadius: '6px',
                           fontWeight: 700,
@@ -2821,20 +2844,20 @@ export default function InventoryClient({
                         {m.assetType}
                       </span>
                     </td>
-                    <td style={{ fontWeight: 600, color: '#f8fafc' }}>
+                    <td style={{ fontWeight: 600, color: 'var(--inv-text-body, #f8fafc)' }}>
                       {m.serviceType}
                       {m.mileageAtService && (
-                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: '#cbd5e1', marginTop: '0.2rem' }}>
+                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--inv-text-muted, #cbd5e1)', marginTop: '0.2rem' }}>
                           At {m.mileageAtService.toLocaleString()} mi
                         </div>
                       )}
                     </td>
-                    <td style={{ color: '#cbd5e1' }}>{m.performedBy}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#ffffff', fontSize: '1rem' }}>
+                    <td style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>{m.performedBy}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>
                       {formatUsdExact(m.cost)}
                     </td>
-                    <td style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{m.nextDueAt || '—'}</td>
-                    <td style={{ fontStyle: 'italic', color: '#e2e8f0', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--inv-text-muted, #cbd5e1)' }}>{m.nextDueAt || '—'}</td>
+                    <td style={{ fontStyle: 'italic', color: 'var(--inv-text-muted, #e2e8f0)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {m.notes || '—'}
                     </td>
                   </tr>
@@ -2850,10 +2873,10 @@ export default function InventoryClient({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className={styles.controlsBar}>
             <div>
-              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)' }}>
                 Depots, Warehouses &amp; Fleet Vehicles
               </h2>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: '#cbd5e1' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                 Configure physical stock locations and vehicles for granular supply chain replenishment.
               </p>
             </div>
@@ -2882,9 +2905,9 @@ export default function InventoryClient({
                           textTransform: 'uppercase',
                           padding: '0.25rem 0.65rem',
                           borderRadius: '999px',
-                          background: 'rgba(255, 255, 255, 0.08)',
-                          border: '1px solid rgba(255, 255, 255, 0.18)',
-                          color: '#ffffff',
+                          background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.08))',
+                          border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.18))',
+                          color: 'var(--inv-text-primary, #ffffff)',
                           fontWeight: 700,
                         }}
                       >
@@ -2893,18 +2916,18 @@ export default function InventoryClient({
                     </div>
 
                     <h3 className={styles.cardTitle}>{loc.name}</h3>
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: '#cbd5e1' }}>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                       {loc.address || 'Standard Company Depot'}
                     </p>
 
-                    <div style={{ marginTop: '0.95rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.92rem' }}>
-                      <span style={{ color: '#cbd5e1' }}>Stock items stocked: </span>
-                      <strong style={{ fontFamily: 'monospace', color: '#ffffff', fontWeight: 800 }}>{stockCount} items</strong>
+                    <div style={{ marginTop: '0.95rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))', border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))', fontSize: '0.92rem' }}>
+                      <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>Stock items stocked: </span>
+                      <strong style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary, #ffffff)', fontWeight: 800 }}>{stockCount} items</strong>
                     </div>
                   </div>
 
                   <div className={styles.cardFooter}>
-                    <span style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 600 }}>Active Facility</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--inv-status-good-text, #34d399)', fontWeight: 600 }}>Active Facility</span>
                     <div className={styles.cardActions}>
                       <button
                         type="button"
@@ -2933,10 +2956,10 @@ export default function InventoryClient({
           {vehicles.length > 0 && (
             <div style={{ marginTop: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Truck size={18} style={{ color: '#60a5fa' }} /> Mobile Fleet Units ({vehicles.length} Synced)
                 </h3>
-                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--inv-text-caption, #94a3b8)' }}>
                   Auto-synced from Fleet Vehicles • Available in all tool &amp; stock location pickers
                 </span>
               </div>
@@ -2956,18 +2979,18 @@ export default function InventoryClient({
                         </div>
 
                         <h3 className={styles.cardTitle}>{v.name}</h3>
-                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: '#cbd5e1' }}>
-                          {v.year} {v.make} {v.model} • Driver: <strong style={{ color: '#ffffff' }}>{v.primaryDriverName || 'Unassigned'}</strong>
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
+                          {v.year} {v.make} {v.model} • Driver: <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>{v.primaryDriverName || 'Unassigned'}</strong>
                         </p>
 
                         <div style={{ marginTop: '0.95rem', display: 'flex', gap: '0.65rem' }}>
-                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.85rem' }}>
-                            <span style={{ color: '#cbd5e1' }}>Tools: </span>
-                            <strong style={{ fontFamily: 'monospace', color: '#ffffff' }}>{toolsCount} assigned</strong>
+                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))', border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))', fontSize: '0.85rem' }}>
+                            <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>Tools: </span>
+                            <strong style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary, #ffffff)' }}>{toolsCount} assigned</strong>
                           </div>
-                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.85rem' }}>
-                            <span style={{ color: '#cbd5e1' }}>Parts: </span>
-                            <strong style={{ fontFamily: 'monospace', color: '#ffffff' }}>{stockCount} stocked</strong>
+                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))', border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))', fontSize: '0.85rem' }}>
+                            <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>Parts: </span>
+                            <strong style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary, #ffffff)' }}>{stockCount} stocked</strong>
                           </div>
                         </div>
                       </div>
@@ -2992,6 +3015,103 @@ export default function InventoryClient({
         </div>
       )}
 
+      {activeTab === 'orders' && (
+        <div className={styles.tabContent} role="tabpanel">
+          <div className={styles.sectionHeader}>
+            <div>
+              <h2 className={styles.sectionTitle}>Restock Orders</h2>
+              <p className={styles.sectionSubtitle}>
+                Manage purchase orders for stock replenishment
+              </p>
+            </div>
+            {canWrite && (
+              <div className={styles.actionsGroup}>
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  onClick={() => setShowPoModal(true)}
+                >
+                  <ShoppingBag size={16} />
+                  <span>New Draft</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.tableWrap}>
+            <table className={styles.stockTable}>
+              <thead>
+                <tr>
+                  <th>Order #</th>
+                  <th>Supplier</th>
+                  <th>Status</th>
+                  <th>Lines</th>
+                  <th>Created</th>
+                  {canWrite && <th>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {initialRestockOrders && initialRestockOrders.length > 0 ? (
+                  initialRestockOrders.map(order => (
+                    <tr key={order.id}>
+                      <td style={{ fontFamily: 'monospace' }}>{order.orderNumber}</td>
+                      <td>{order.supplierName}</td>
+                      <td>
+                        <span className={styles.badge} data-status={order.status}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td>{order.lines.length} items</td>
+                      <td>{new Date(order.createdAt).toLocaleDateString()}</td>
+                      {canWrite && (
+                        <td>
+                          {order.status === 'draft' ? (
+                            <button
+                              type="button"
+                              className={styles.btnSecondary}
+                              onClick={async () => {
+                                try {
+                                  await saveRestockOrderAction({
+                                    ...order,
+                                    status: 'ordered',
+                                  });
+                                  window.location.reload();
+                                } catch(e: any) {
+                                  showToast(e.message || 'Error', 'error');
+                                }
+                              }}
+                            >
+                              Mark Ordered
+                            </button>
+                          ) : (order.status === 'ordered' || order.status === 'partially_received') ? (
+                            <button
+                              type="button"
+                              className={styles.btnPrimary}
+                              onClick={() => {
+                                // For simplicity we receive all outstanding in this prototype
+                                // Or we could open a receiving modal
+                                alert('In a real app, this would open a line-item receiving modal');
+                              }}
+                            >
+                              Receive Lines
+                            </button>
+                          ) : null}
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={canWrite ? 6 : 5} style={{ textAlign: 'center', padding: '2rem' }}>
+                      <p style={{ color: 'var(--inv-text-muted)' }}>No restock orders found.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {/* ── MODALS ──────────────────────────────────────────────────────────── */}
 
       {/* Check Out Tool Modal */}
@@ -3797,15 +3917,34 @@ export default function InventoryClient({
             </div>
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.fieldLabel}>Primary Driver Name</label>
-            <input
-              type="text"
-              name="primaryDriverName"
-              defaultValue={vehicleModal.vehicle?.primaryDriverName || ''}
-              placeholder="e.g. Carlos Ramirez"
-              className={styles.fieldInput}
-            />
+          <div className={styles.formGrid2Col}>
+            <div className={styles.formField}>
+              <label className={styles.fieldLabel}>Primary Driver Name</label>
+              <input
+                type="text"
+                name="primaryDriverName"
+                defaultValue={vehicleModal.vehicle?.primaryDriverName || ''}
+                placeholder="e.g. Carlos Ramirez"
+                className={styles.fieldInput}
+              />
+            </div>
+            <div className={styles.formField}>
+              <label className={styles.fieldLabel}>Base Location</label>
+              <select
+                aria-label="Base location"
+                name="locationName"
+                defaultValue={vehicleModal.vehicle?.locationName || availableLocationNames[0]}
+                className={styles.fieldSelect}
+              >
+                <optgroup label="Shop & Facilities">
+                  {facilityLocations.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
           </div>
 
           <div className={styles.formGrid2Col}>

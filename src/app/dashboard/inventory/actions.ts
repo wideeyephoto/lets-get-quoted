@@ -10,6 +10,8 @@ import type {
   StockTransfer,
   InventoryPayload,
   ToolAssetStatus,
+  RestockOrder,
+  RestockOrderLine,
 } from '@/lib/inventory-tracker';
 import {
   loadInventoryData,
@@ -30,6 +32,9 @@ import {
   updateVehicleMileage,
   seedInitialInventory,
   applyVanKitTemplate,
+  fetchRestockOrders,
+  saveRestockOrder,
+  receiveRestockOrderLine,
 } from '@/lib/inventory-db';
 import { uploadToolPhoto } from '@/lib/tool-photo-storage';
 
@@ -214,7 +219,7 @@ export async function transferToolAction(params: {
 }
 
 export async function saveVehicleAction(
-  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string },
+  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string; locationName?: string | null },
 ): Promise<FleetVehicle> {
   const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
   const sanitized = {
@@ -230,6 +235,7 @@ export async function saveVehicleAction(
     purchaseDate: vehicle.purchaseDate ? sanitizeString(vehicle.purchaseDate, 20) : null,
     primaryDriverId: vehicle.primaryDriverId ? sanitizeString(vehicle.primaryDriverId, 100) : null,
     primaryDriverName: vehicle.primaryDriverName ? sanitizeString(vehicle.primaryDriverName, 100) : null,
+    locationName: vehicle.locationName ? sanitizeString(vehicle.locationName, 100) : null,
     notes: vehicle.notes ? sanitizeString(vehicle.notes, 2000) : null,
     inspectionExpiresAt: vehicle.inspectionExpiresAt ? sanitizeString(vehicle.inspectionExpiresAt, 20) : null,
     insuranceExpiresAt: vehicle.insuranceExpiresAt ? sanitizeString(vehicle.insuranceExpiresAt, 20) : null,
@@ -295,6 +301,7 @@ export async function adjustStockQuantityAction(params: {
   stockId: string;
   delta: number;
   reason?: string;
+  requestId?: string;
 }): Promise<VanStockItem> {
   const { supabase, accountId } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
   if (!params.stockId) throw new Error('Stock ID is required');
@@ -305,6 +312,7 @@ export async function adjustStockQuantityAction(params: {
     sanitizeString(params.stockId, 100),
     delta,
     params.reason ? sanitizeString(params.reason, 255) : undefined,
+    params.requestId,
   );
 }
 
@@ -314,6 +322,7 @@ export async function transferStockAction(input: {
   toLocation: string;
   quantity: number;
   notes?: string;
+  requestId?: string;
 }): Promise<{ transfer: StockTransfer; sourceStock: VanStockItem; destinationStock?: VanStockItem }> {
   const { supabase, accountId, userEmail } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
   if (!input.stockId) throw new Error('Stock ID is required');
@@ -326,6 +335,7 @@ export async function transferStockAction(input: {
     quantity: qty,
     performedBy: userEmail || 'Office Staff',
     notes: input.notes ? sanitizeString(input.notes, 500) : undefined,
+    requestId: input.requestId,
   });
 }
 
@@ -421,3 +431,35 @@ export async function searchStoreCatalogAction(query: string) {
   return searchStoreCatalog(sanitizeString(query, 100));
 }
 
+
+export async function fetchRestockOrdersAction(): Promise<RestockOrder[]> {
+  const { supabase, accountId } = await requireOfficeContextAny('inventory.read', 'jobs.read');
+  return fetchRestockOrders(supabase, accountId);
+}
+
+export async function saveRestockOrderAction(
+  order: Omit<RestockOrder, 'id' | 'createdAt' | 'updatedAt' | 'lines'> & { id?: string; lines: Omit<RestockOrderLine, 'id' | 'orderId' | 'receivedQuantity'>[] }
+): Promise<RestockOrder> {
+  const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
+  return saveRestockOrder(supabase, accountId, order);
+}
+
+export async function receiveRestockOrderLineAction(params: {
+  orderId: string;
+  lineId: string;
+  quantity: number;
+  requestId?: string;
+}) {
+  const { supabase, accountId, userEmail } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
+  if (!params.orderId || !params.lineId) throw new Error('Order ID and Line ID are required');
+  const qty = sanitizeNumber(params.quantity, 1, 1);
+  return receiveRestockOrderLine(
+    supabase, 
+    accountId, 
+    sanitizeString(params.orderId, 100), 
+    sanitizeString(params.lineId, 100), 
+    qty, 
+    userEmail || 'Office Staff',
+    params.requestId || crypto.randomUUID()
+  );
+}

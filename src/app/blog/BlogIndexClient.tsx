@@ -190,8 +190,26 @@ export default function BlogIndexClient({ posts, categories }: BlogIndexClientPr
       <section className={styles.ctaBanner}>
         <h2 className={styles.ctaTitle}>Ready to run your trade business without software bloat?</h2>
         <p className={styles.ctaLead}>
-          Start with a free high-converting contractor website, 24/7 AI intake, and quotes-to-paid workflow. Flex starts at $0/mo with unlimited crew members.
+          Start with a free high-converting contractor website, 24/7 AI intake, and quotes-to-paid workflow. Flex starts at $0/mo with 2 office seats and 2 crew members included.
         </p>
+        <div className={styles.ctaFeatures}>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>Free High-Converting Website</span>
+          </div>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>24/7 AI Call &amp; SMS Intake</span>
+          </div>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>Instant Price Calculators</span>
+          </div>
+          <div className={styles.ctaFeatureItem}>
+            <span className={styles.ctaCheck}>✓</span>
+            <span>$0/mo Free Tier · Unlimited Crew</span>
+          </div>
+        </div>
         <a href="https://app.letsgetquoted.com/start?goal=build_site&source=blog_cta" className={styles.ctaButton}>
           Build Your Free Site &rarr;
         </a>

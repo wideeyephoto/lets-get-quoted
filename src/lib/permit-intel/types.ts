@@ -4,6 +4,12 @@ import type {
   ParsedAddress,
 } from '../location-context/types';
 
+export type {
+  JurisdictionDiscipline,
+  JurisdictionMatch,
+  ParsedAddress,
+};
+
 export type PermitRequirementVerdict = 'required' | 'not_required' | 'verify';
 
 export type PermitConfidence = 'verified' | 'high' | 'medium' | 'low';

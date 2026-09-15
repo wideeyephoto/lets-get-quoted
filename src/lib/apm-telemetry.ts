@@ -5,6 +5,7 @@
  * route-level throughput/error metrics, uncaught exception buffers, and
  * compatibility hooks for external APM ingest (Sentry / Datadog / OpenTelemetry).
  */
+import * as Sentry from '@sentry/nextjs';
 
 export interface RequestMetric {
   id: string;
@@ -123,6 +124,15 @@ export function captureException(
     message: captured.message,
     severity: captured.severity,
   });
+
+  // Wire Sentry
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error, {
+      tags: { path: captured.path || 'unknown' },
+      extra: context?.context,
+      level: captured.severity,
+    });
+  }
 
   return captured;
 }

@@ -927,6 +927,7 @@ export default async function JobDetailPage({
               Itemize the work, add optional upgrades, or leave this empty for one quoted amount.
             </p>
             <QuoteBuilder
+              jobId={job.id}
               action={boundSaveQuoteItems}
               notifyAction={saveQuoteItemsAndNotifyAction.bind(null, job.id)}
               autosaveKey={job.id}

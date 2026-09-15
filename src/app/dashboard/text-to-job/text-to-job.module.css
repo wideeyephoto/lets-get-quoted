@@ -3255,3 +3255,73 @@
   border-color: rgba(255, 255, 255, 0.16);
 }
 
+/* WCAG 2.2 AA Color Contrast Overrides for Light & Sunlight Themes */
+:root[data-theme='light'] .composerTitle,
+:root[data-theme='sunlight'] .composerTitle {
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .composerPresetsLabel,
+:root[data-theme='sunlight'] .composerPresetsLabel,
+:root[data-theme='light'] .receiptQualityTitle,
+:root[data-theme='sunlight'] .receiptQualityTitle,
+:root[data-theme='light'] .receiptLinesHead,
+:root[data-theme='sunlight'] .receiptLinesHead,
+:root[data-theme='light'] .receiptFooterNote,
+:root[data-theme='sunlight'] .receiptFooterNote {
+  color: #475569 !important;
+}
+
+:root[data-theme='light'] .receiptQualityReasonItem,
+:root[data-theme='sunlight'] .receiptQualityReasonItem {
+  color: #1e293b !important;
+}
+
+:root[data-theme='light'] .accordionChevron,
+:root[data-theme='sunlight'] .accordionChevron {
+  color: #9a3412 !important;
+}
+
+:root[data-theme='light'] .filterBtnActive,
+:root[data-theme='sunlight'] .filterBtnActive {
+  background: #ffedd5 !important;
+  border-color: #fdba74 !important;
+  color: #9a3412 !important;
+}
+
+:root[data-theme='light'] .searchInput,
+:root[data-theme='sunlight'] .searchInput {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .feedSenderTag,
+:root[data-theme='sunlight'] .feedSenderTag {
+  color: #9a3412 !important;
+}
+
+:root[data-theme='light'] .feedMatchedBadge,
+:root[data-theme='sunlight'] .feedMatchedBadge {
+  background: #e0f2fe !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+
+:root[data-theme='light'] .feedConfidenceBadgeReview,
+:root[data-theme='sunlight'] .feedConfidenceBadgeReview {
+  background: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+:root[data-theme='light'] .feedConfidenceBadgeLow,
+:root[data-theme='sunlight'] .feedConfidenceBadgeLow {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+:root[data-theme='light'] .receiptBadge,
+:root[data-theme='sunlight'] .receiptBadge {
+  color: #9a3412 !important;
+}
+

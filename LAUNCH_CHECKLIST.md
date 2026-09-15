@@ -1,5 +1,35 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Workstream Updates (2026-09-14)
+
+- [x] **Permit Intelligence & Jurisdiction Portal Audit (50 States, Municipalities, Canada & Mexico):**
+  - **Defunct AccessMyGov Deprecation Migration:** Fully deprecated `www.accessmygov.com` across the codebase following total DNS failure. Migrated all portals to `bsaonline.com`. Researched and verified official BS&A UIDs: Royal Oak (`uid=1652`, was dead `1349`), Troy (`uid=250`), Birmingham (`uid=241`), and Oakland Township (`uid=657`).
+  - **Michigan Municipal UID & Service URL Audit:** Audited and corrected inaccurate municipal UIDs across all Michigan jurisdictions: Southfield (`272`, was `380`), Pontiac (`825`, was `364`), Westland (`294`, was `396`), Clinton Township (`2622`, was `323`), and Shelby Township (`300`, was `376`). Resolved broken TLS certificate error on Grand Rapids Citizen Access (`https://inspections.grcity.us/citizenaccess`), corrected Pittsfield Township to Washtenaw County EnerGov portal (`https://www.washtenaw.org/1007/Online-Permitting`), and repointed Ann Arbor from non-existent OpenGov permit portal to official STREAM portal (`https://stream.a2gov.org`).
+  - **50-State Licensing Boards Live Verification:** Probed all 51 US state licensing boards (50 states + DC). Remediated broken paths and redirected links:
+    - **Arkansas:** Updated to official `https://labor.arkansas.gov/licensing/arkansas-contractors-licensing-board/`.
+    - **Florida:** Fixed 404 path to `https://www.myfloridalicense.com/DBPR/construction-industry/`.
+    - **Iowa:** Canonicalized to `https://dial.iowa.gov/` (DIAL portal).
+    - **Kansas:** Fixed 404 to active registration directory `https://www.ag.ks.gov/divisions/public-protection/resources/roofing-registration-directory`.
+    - **Louisiana:** Canonicalized to `https://lslbc.gov/`.
+    - **Maine:** Corrected MUBEC oversight from DACF to Dept. of Public Safety `https://www.maine.gov/dps/fmo/building-codes`.
+    - **Maryland:** Migrated from deprecated DLLR domain to `https://labor.maryland.gov/license/mhic/`.
+    - **Nevada:** Canonicalized to `https://www.nvcontractorsboard.com/`.
+    - **New Hampshire:** Updated to live fire marshal portal `https://www.nh.gov/safety/divisions/firesafety/boards/bcrb.html`.
+    - **New Mexico:** Fixed 404 path to `https://www.rld.nm.gov/construction-industries/`.
+    - **Oklahoma:** Canonicalized to `https://oklahoma.gov/cib.html`.
+    - **Pennsylvania:** Updated to dedicated HIC portal `https://hic.attorneygeneral.gov/`.
+    - **Utah:** Canonicalized to `https://commerce.utah.gov/dopl/`.
+  - **US Territories (PR, VI, GU, MP, AS) Coverage & Verification:**
+    - **Puerto Rico (PR):** Oficina de Gerencia de Permisos (OGPe) / CIAPR at `https://www.permisos.pr.gov/`.
+    - **U.S. Virgin Islands (VI):** Dept. of Planning and Natural Resources (DPNR) at `https://dpnr.vi.gov/`.
+    - **Guam (GU):** Contractors License Board (CLB) at `https://clb.guam.gov/`.
+    - **Northern Mariana Islands (MP):** CNMI Department of Public Works at `https://dpw.gov.mp/`.
+    - **American Samoa (AS):** Department of Public Works at `https://www.americansamoa.gov/`.
+  - **International (Canada & Mexico) Verification:**
+    - **Canada:** Repaired Nova Scotia to `https://www.novascotia.ca/building-code-forms-and-documents`, New Brunswick to `https://www.gnb.ca/en/org/justice-public-safety.html`, and Newfoundland to `https://www.gov.nl.ca/gs`.
+    - **Mexico:** Canonicalized Monterrey to `https://www.monterrey.gob.mx/` and Guadalajara to `https://guadalajara.gob.mx/`.
+  - **Verification:** All 18 permit tests passing across 7 suites (`permit-providers`, `permit-workspace-tabs`, `permit-customer-portal`, `permit-history-api`, `permit-customer-api`, `permit-pay-embed`, `permit-tracking-embed`). 12/12 state rules and 56-profile national coverage tests passing (50 states + DC + 5 territories).
+
 ## Workstream Updates (2026-09-12)
 
 - [ ] **R04 (Domains Day 2 Checkpoint):** First complete 24-hour observation day recorded (16:23 UTC checkpoint). **1/7 qualifying scheduled checks** (run `27eccf15-459d-4852-ae9a-e1dc5aa34661` passed with zero errors/backlog). Real $0 J-1004 Gmail quote delivered with aligned SPF/DKIM/DMARC PASS. Deployed closure job `169e2cbf-b53b-46a6-84ca-ef72b702c5ba` created for empty test account fixture #100074. Active sending domain unchanged; earliest 7-day review remains September 18. Commit `2e1c46a3d`.
@@ -229,15 +259,18 @@ evidence: [sms-setup-gap-audit-2026-09-12.md](docs/sms-setup-gap-audit-2026-09-1
 - [x] **A1 — Shared quiet-hours category policy (2026-09-14, implementation verified):** one explicit five-category table defers customer and payment messages and explains existing owner-alert, crew-coordination, and requested-code exemptions. Queue scheduling corrects overnight/stale explicit timestamps and retains later permitted times. Tests cover the whole table, the cutoff, recipient time zones, and both daylight-saving transitions. [Evidence](docs/prelaunch-hour-2026-09-14.md).
 - [x] **A2 — Quiet hours checked at final egress (2026-09-14, implementation verified):** the worker rechecks on retries, after sender/credit preparation, and after the final request-marker database call. Crossing the cutoff releases credits and safely defers; an uncertain marker rollback is quarantined. Tests prove zero carrier calls across both cutoff races. Deployed real-carrier deferred-release acceptance remains open. [Evidence](docs/prelaunch-hour-2026-09-14.md).
 - [x] **A3 — The recipient time zone is guessed from the area code before the address:** `resolveRecipientTimeZone` (`src/lib/phone-timezone.ts:553`) consults area code second and address third. Fixed in commit `e23db364b`: ranked customer address above area code where an address exists, persisted resolution source next to the message, and added regression test.
-- [ ] **A4 — No marketing consent scope; campaigns ride transactional consent:** `sms_consent_scopes.consent_scope` admits only `customer`, `crew`, `owner`. `sendCampaignSms` enqueues seasonal-offer blasts as `customer_message` on the `customer` scope. Close by giving marketing its own scope and capture, requiring it in the campaign sender.
-- [ ] **A5 — Consent evidence is captured for crew only:** `sms_consent_evidence` has exactly one writer in the application at `consent_scope: 'crew'`. Customer and lead consent writes `sms_consent` rows and no evidence row. Close by writing a versioned, hashed evidence row on every consent-establishing path.
+- [x] **A4 — Marketing consent scope and campaign enforcement (2026-09-15, implementation verified):** added explicit `'marketing'` value to `sms_consent_scopes` and `sms_consent_evidence` check constraints via migration `20260915000000_sms_marketing_consent_scope.sql`. Updated `loadOptedInPhones` to query `sms_consent_scopes` directly for `consent_scope = 'marketing'` rather than legacy transactional consent. Added fail-closed pre-queue check in `sendCampaignSms` requiring explicit marketing consent. Automated tests (`test/sms-marketing-consent.test.ts`) verify scope separation, marketing exclusion of transactional-only recipients, and campaign sending blocks.
+- [ ] **A4 production acceptance:** apply `20260915000000_sms_marketing_consent_scope.sql` to production database before launching seasonal campaigns; verify that campaign enrollment flows present the distinct promotional disclosure (`MARKETING_SMS_DISCLOSURE_VERSION`) and capture express written consent.
+- [x] **A5 — Customer & lead consent evidence capture (2026-09-15, implementation verified):** expanded `sms_consent_evidence` writer coverage across all customer and lead consent paths (`ensureSmsConsentBaseline`, `recordCustomerSmsConsentEvidence`, and `reaffirmSmsConsent`). Every capture now stores the versioned disclosure string (`CUSTOMER_SMS_FULL_DISCLOSURE` or `MARKETING_SMS_FULL_DISCLOSURE`), SHA-256 disclosure hash, timestamp, source, and route/page metadata. Automated tests (`test/sms-consent-evidence.test.ts`) verify that both customer and marketing scopes record durable evidence with immutable hashes and handle non-blocking DB insertion.
+- [ ] **A5 production acceptance:** deploy the evidence capture functions and verify customer intake submissions, portal link requests, and missed call text-backs record durable audit records in `sms_consent_evidence`.
 - [x] **A6 — Free-form message bodies bypass the opt-out guard:** `formatPrivateSmsText` (`src/lib/sms-templates.ts:644`) prefixed a business name onto arbitrary operator text without an opt-out line. Remediated in commit `362b52151`: added opt-out handling and segment count constraints to free-form composer.
 
 ### Carrier and 10DLC operations
 
 - [x] **B1 — Carrier opt-out projection (2026-09-14, implementation verified):** explicit `21610` failures atomically project the canonical receipt into sender/Campaign suppression. A request-time sender snapshot prevents reassignment mistakes; duplicate or late callbacks preserve later START decisions. Missing historical scope opens operator review. Ambiguous failure codes remain delivery failures without inventing consent withdrawal. Fourteen focused PostgreSQL checks and real ingress/replay/recovery checks in the full 29-check schema harness passed. [Evidence](docs/prelaunch-hour-2026-09-14.md).
 - [ ] **B1 production acceptance:** apply `20260914134735_sms_carrier_opt_out_projection.sql` before deploying the reviewed route; verify service-only RPC access and new-send scope capture, then complete authorized carrier opt-out/START/replay acceptance. Historical unbound receipts require operator review; no historical scope is guessed or backfilled.
-- [ ] **B2 — No brand or campaign lifecycle tracking:** Campaign approval is treated as a one-time event. Nothing tracks brand re-vetting or campaign renewal dates, or volume against approved carrier caps. Close by recording approved limits as data and alerting before a ceiling.
+- [x] **B2 — Carrier caps and campaign lifecycle tracking (2026-09-15, implementation verified):** added `campaign_renewal_at`, `brand_revet_at`, `max_assigned_numbers` (49 ceiling), `att_sms_per_minute_cap` (75/min), `att_mms_per_minute_cap` (50/min), and `tmobile_daily_brand_cap` (2,000/day) to `messaging_registration_applications` via migration `20260915010000_sms_campaign_lifecycle_and_canary.sql`. Created `src/lib/messaging-carrier-caps.ts` implementing `assertCampaignNumberCeiling` (enforced during number assignment in `assignMessagingNumberCampaign`), `checkCarrierOutboundAllowance`, and `getCampaignLifecycleWarnings` (alerting at 60 and 30 days before renewal/re-vetting). Unit tests (`test/sms-carrier-caps.test.ts`) verify 49-number enforcement, rate limit tracking, and renewal alerting.
+- [ ] **B2 production acceptance:** apply `20260915010000_sms_campaign_lifecycle_and_canary.sql` to production database; set `campaign_renewal_at` and `brand_revet_at` on approved 10DLC campaign records in production.
 - [x] **B3 — No throughput governor, and a low hard ceiling:** Outbound was capped near 20 messages per minute across every workspace with no per-account fairness. Remediated in commit `47fcb93e0`: implemented per-workspace throughput fairness limits, queue depth monitoring, and adaptive batching.
 - [x] **B4 — No outbound MMS:** Provisioned numbers report `["voice","fax","sms","mms"]` while outbound had no media support. Addressed in commit `47fcb93e0`: bounded media parameters and type checking.
 - [x] **B5 — No number release path, and recycled numbers inherit consent:** Remediated in commit `e23db364b`: added release and deprovision paths for owned numbers in `src/lib/messaging-number-provisioning.ts`, and enforced last-affirmed dates on consent rows.
@@ -250,7 +283,8 @@ evidence: [sms-setup-gap-audit-2026-09-12.md](docs/sms-setup-gap-audit-2026-09-1
 - [x] **C3 — No per-workspace outbound volume or spend ceiling:** Exempt traffic had no ceiling. Remediated in commit `47fcb93e0`: implemented per-workspace daily outbound message and spend ceilings.
 - [x] **C4 — The legacy Twilio signing key is a second live credential with no sunset:** Addressed in commit `1cd78df8f`: separated webhook signature verification key dependencies from runtime tokens.
 - [x] **C5 — `.env.example` carries three divergent Twilio blocks:** Cleaned up and consolidated duplicate declarations in commit `1cd78df8f`.
-- [ ] **C6 — The SMS health signal reports configuration, not reachability:** Close with a scheduled canary that sends to a controlled number, confirms the status callback, and drives both the badge and an alert.
+- [x] **C6 — Synthetic SMS canary reachability probe (2026-09-15, implementation verified):** created `sms_canary_probes` table via migration `20260915010000_sms_campaign_lifecycle_and_canary.sql`. Implemented `runSmsCanaryProbe` in `src/lib/sms-canary.ts` to dispatch periodic reachability probes to `LGQ_SMS_CANARY_TO_PHONE` with unbilled verification context, and `confirmSmsCanaryCallback` in `/api/sms/status` to record round-trip confirmation latency. Added scheduled probe route `/api/cron/sms-canary` (parked in `src/lib/cron-jobs.ts` to respect Vercel's 50-cron platform limit). Upgraded `src/lib/uptime-monitoring.ts` so `sms-gateway` status reports `operational` when confirmed within 2 hours and `degraded` on failure/timeout. Automated tests (`test/sms-canary.test.ts`) verify probe lifecycle, callback confirmation, and status reporting.
+- [ ] **C6 production acceptance:** configure `LGQ_SMS_CANARY_TO_PHONE` in production Vercel environment with a controlled test device; verify round-trip delivery receipt and confirm uptime badge transitions to `operational` with measured latency.
 - [x] **C7 — Registry-callback signature enforcement is tracked only in the runbook:** Addressed in commit `1cd78df8f`: surfaced signature enforcement tracking directly on the checklist and codebase.
 
 ## Top-up add-on rail setup gaps — 2026-09-12
@@ -329,8 +363,7 @@ Ten requirements no prior item covered. Verified absent against this checklist a
   RPC and row-level locks, enforced integer cents calculations across `src/lib/billing/fee-basis.ts`,
   `plan-change.ts`, `text-credit-usage.ts`, `usage-overage.ts`, `invoice-pay.ts`, `invoices.ts`, and
   `payments.ts`, and added negative-value bounds.
-- [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31, never tracked.
-  SMS pumping fraud bills to this account. Close with recorded console values.
+- [ ] **Supabase Auth SMS rate limits and spend caps:** flagged as B4 on 2026-08-31. SMS pumping fraud bills to this account. Operational audit protocol established in [docs/runbooks/supabase-auth-sms-caps-inspection.md](docs/runbooks/supabase-auth-sms-caps-inspection.md). Operator must log into Supabase Project Console (Authentication -> Rate Limits / Phone Auth & Twilio/MessageBird Spend Caps), verify limits, and record confirmed values on this checklist.
 - [ ] **Vercel log retention:** sets the forensics window; never recorded. Close with the retention
   figure stated in the DR posture doc.
 - [ ] **Ads conversion recording:** attribution gap is tracked (lines 368, 457) but not whether the

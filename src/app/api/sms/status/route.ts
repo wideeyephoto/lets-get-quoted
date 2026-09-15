@@ -9,6 +9,7 @@ import {
   type ParsedStatusWebhook,
 } from '@/lib/sms-webhook-ingress';
 import { logWebhookFailure } from '@/lib/webhook-failures';
+import { confirmSmsCanaryCallback } from '@/lib/sms-canary';
 
 export const runtime = 'nodejs';
 
@@ -70,6 +71,12 @@ export async function POST(request: Request) {
       contentType,
       requestUrl: request.url,
     });
+
+    if (!ingressResult.smsEventId && status.providerEventId) {
+      await confirmSmsCanaryCallback(admin, status.providerEventId, status.providerStatus).catch((err) => {
+        console.error('Failed to confirm SMS canary callback:', err);
+      });
+    }
 
     if (ingressResult.smsEventId) {
       if (status.providerErrorCode === '21610'

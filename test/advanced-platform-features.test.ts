@@ -290,15 +290,13 @@ describe('20 Advanced Platform Features Suite', () => {
     expect(claim.feeAmountDollars).toBe(50);
   });
 
-  // 17. Multimodal Defect Estimator
-  it('17. parses damage photos and produces itemized labor & material line items', async () => {
-    const result = await analyzePhotoDefectsAndEstimate({
+  // 17. Multimodal Defect Estimator (Disabled in Phase 0)
+  it('17. rejects analysis because the feature is undergoing upgrades', async () => {
+    await expect(analyzePhotoDefectsAndEstimate({
       trade: 'Roofing',
       notes: 'Missing shingles and active moisture drip near skylight',
-    });
-    expect(result.trade).toBe('Roofing');
-    expect(result.defects.length).toBeGreaterThan(0);
-    expect(result.totalEstimatedRepairDollars).toBeGreaterThan(0);
+      photoUrls: ['data:image/jpeg;base64,dummy'],
+    })).rejects.toThrow('AI photo analysis is currently undergoing upgrades');
   });
 
   // 18. SRE Self-Healing Daemon

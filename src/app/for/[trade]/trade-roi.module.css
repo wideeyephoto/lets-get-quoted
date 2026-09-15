@@ -282,6 +282,15 @@
   text-align: center;
 }
 
+.disclaimerText {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--mkt-muted) !important;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(174, 199, 211, 0.15);
+}
+
 @media (max-width: 860px) {
   .calculatorGrid {
     grid-template-columns: 1fr;

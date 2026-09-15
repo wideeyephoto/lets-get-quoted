@@ -145,6 +145,10 @@ alter table accounts add column if not exists daily_digest_enabled boolean not n
 -- The UTC date the digest was last sent, so a cron re-run in the same day is a
 -- no-op (account-level idempotency; the daily cron is the only writer).
 alter table accounts add column if not exists last_digest_date date;
+-- Contractor compliance & tax identification (permits and business filing).
+alter table accounts add column if not exists fein text;
+alter table accounts add column if not exists state_employer_number text;
+alter table accounts add column if not exists license_type text;
 
 -- Intake AI tuning + lead priority (see src/lib/estimate-posture.ts).
 -- estimate_posture: biases the AI instant-estimate lower/higher — one of
@@ -8757,7 +8761,7 @@ grant execute on function public.workspace_purchased_capacity_units(uuid, text)
 
 commit;
 
--- Source: migrations/20260819080000_usage_overage_authorization.sql
+-- Source: migrations/20260820114124_usage_overage_authorization.sql
 -- Overage a contractor asked for, capped at a number they chose.
 --
 -- WHY THE SHAPE IS WHAT IT IS. The price book's rule is absolute: LGQ never
@@ -9982,7 +9986,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819170000_revoke_truncate_from_browser_roles.sql
+-- Source: migrations/20260820004313_revoke_truncate_from_browser_roles.sql
 -- Take TRUNCATE away from anon and authenticated, on every table in public.
 --
 -- WHY. A survey of production found 84 tables with TRUNCATE granted to both
@@ -10088,7 +10092,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819180000_top_up_ledger_voice_skus.sql
+-- Source: migrations/20260820004414_top_up_ledger_voice_skus.sql
 -- Let the top-up purchase ledger record the four voice SKUs.
 --
 -- WHY. `billing_top_up_purchase_operations` binds every top-up id to its
@@ -10200,7 +10204,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819190000_voice_minute_allowance.sql
+-- Source: migrations/20260820004438_voice_minute_allowance.sql
 -- Grant voice minutes, so the meter has something to measure.
 --
 -- THE BLOCKER THIS REMOVES. Nothing fills a `voice_minutes` ledger. The monthly
@@ -10392,7 +10396,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819200000_assert_canonical_reset_untouched.sql
+-- Source: migrations/20260820005035_assert_canonical_reset_untouched.sql
 -- Actually assert what 20260819190000 claimed to assert.
 --
 -- WHAT WENT WRONG. That migration ended with a post-condition labelled "THE ONE
@@ -10471,7 +10475,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819260000_overage_settlement.sql
+-- Source: migrations/20260820074457_overage_settlement.sql
 -- Turn accrued overage into something that can be charged.
 --
 -- THE GAP. `workspace_overage_accruals` has been written since 20260819080000
@@ -10853,7 +10857,7 @@ end $post$;
 
 commit;
 
--- Source: migrations/20260819290000_overage_accrual_idempotency.sql
+-- Source: migrations/20260820120240_overage_accrual_idempotency.sql
 -- Give the overage accrual an idempotency anchor.
 --
 -- THE HOLE. authorize_usage_overage took the cap lock, compared the accrued
@@ -11233,7 +11237,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260819300000_release_respects_settled_period.sql
+-- Source: migrations/20260820120250_release_respects_settled_period.sql
 -- A settled period's accruals are frozen.
 --
 -- THE INTERACTION. close_overage_period takes a snapshot of the accrual rows
@@ -11364,7 +11368,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260819310000_cap_counts_overlapping_periods.sql
+-- Source: migrations/20260820120304_cap_counts_overlapping_periods.sql
 -- Stop a spending cap re-arming itself when the period boundary moves.
 --
 -- THE DOUBLE SPEND. The cap is one number per workspace with no period attached
@@ -11571,7 +11575,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260820110000_voice_allowance_survives_a_moved_period.sql
+-- Source: migrations/20260820125506_voice_allowance_survives_a_moved_period.sql
 -- A moved billing boundary must not hand out a second month of voice minutes.
 --
 -- THE LEAK. grant_voice_minute_allowance built its idempotency key out of
@@ -11772,7 +11776,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260820120000_settle_a_voice_overage_for_what_was_used.sql
+-- Source: migrations/20260820125518_settle_a_voice_overage_for_what_was_used.sql
 -- A twenty-second wrong number costs $21, and nothing ever gives it back.
 --
 -- THE SHAPE OF IT. A phone call cannot be measured before it happens, so the
@@ -27087,7 +27091,7 @@ $$;
 
 commit;
 
--- Source: migrations/20260903172223_owner_shared_field_command_routing.sql
+-- Source: migrations/20260903202613_owner_shared_field_command_routing.sql
 -- Keep LGQ platform-lane traffic out of the contractor's customer inbox.
 --
 -- The transcript row remains durable and keeps every receipt/task foreign key
@@ -27696,7 +27700,7 @@ $$;
 
 commit;
 
--- Source: migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql
+-- Source: migrations/20260903203149_sms_enqueue_delivery_overload_cleanup.sql
 -- Remove the obsolete enqueue_sms_delivery overload left behind when
 -- p_available_at was added as an optional thirteenth argument. Keeping both
 -- signatures makes named twelve-argument calls ambiguous inside PostgreSQL,
@@ -27821,7 +27825,7 @@ notify pgrst, 'reload schema';
 
 commit;
 
--- Source: migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql
+-- Source: migrations/20260903203757_sms_enqueue_delivery_replay_hardening.sql
 -- Preserve the legacy enqueue contract after consolidating onto the delayed
 -- delivery signature. Idempotent replays must return the real delivery-task
 -- state and must fail closed if an event ever exists without its task.
@@ -36629,7 +36633,7 @@ $verify_registry_callback_fail_closed$;
 
 commit;
 
--- Source: migrations/20260908173107_sms_dispatch_help_account_binding.sql
+-- Source: migrations/20260908173701_sms_dispatch_help_account_binding.sql
 -- A dispatch HELP receipt previously had no account binding, even for one
 -- consented active crew workspace. The production canary gate consequently
 -- suppressed its compliance acknowledgment. Use the existing STOP/START
@@ -36675,7 +36679,7 @@ $migration$;
 
 commit;
 
--- Source: migrations/20260908175833_subcontractor_sms_projection_service_grant.sql
+-- Source: migrations/20260908201549_subcontractor_sms_projection_service_grant.sql
 -- The offer-link trigger runs as the server's service_role. Its nested
 -- projector call needs EXECUTE; browser roles must remain excluded.
 begin;
@@ -36683,7 +36687,7 @@ grant execute on function public.apply_subcontractor_sms_event_projection(uuid)
   to service_role;
 commit;
 
--- Source: migrations/20260914134735_sms_carrier_opt_out_projection.sql
+-- Source: migrations/20260914145820_sms_carrier_opt_out_projection.sql
 -- Carrier 21610 means an explicit recipient opt-out for Twilio and SignalWire.
 -- Project it with the canonical receipt transaction, including reconciliation.
 -- No carrier call or historical-consent rewrite is performed by this migration.
@@ -36863,6 +36867,127 @@ drop trigger if exists sms_status_project_carrier_opt_out on public.sms_webhook_
 create trigger sms_status_project_carrier_opt_out
 after insert or update of sms_event_id on public.sms_webhook_receipts
 for each row execute function public.project_sms_carrier_opt_out();
+
+commit;
+
+-- Source: migrations/20260915000000_sms_marketing_consent_scope.sql
+-- Migration: 20260915000000_sms_marketing_consent_scope.sql
+-- Description: Expand consent scope CHECK constraints to admit 'marketing' in sms_consent_scopes and sms_consent_evidence; add index and map marketing sources in trigger.
+
+begin;
+
+-- 1. Expand CHECK constraint on sms_consent_scopes
+alter table public.sms_consent_scopes
+  drop constraint if exists sms_consent_scopes_consent_scope_check;
+
+alter table public.sms_consent_scopes
+  add constraint sms_consent_scopes_consent_scope_check
+  check (consent_scope in ('customer', 'crew', 'owner', 'marketing'));
+
+-- 2. Expand CHECK constraint on sms_consent_evidence
+alter table public.sms_consent_evidence
+  drop constraint if exists sms_consent_evidence_consent_scope_check;
+
+alter table public.sms_consent_evidence
+  add constraint sms_consent_evidence_consent_scope_check
+  check (consent_scope in ('customer', 'crew', 'owner', 'marketing'));
+
+-- 3. Partial index for marketing consent lookups
+create index if not exists sms_consent_scopes_marketing_lookup_idx
+  on public.sms_consent_scopes (account_id, phone_number)
+  where consent_scope = 'marketing';
+
+-- 4. Update trigger function to classify marketing sources
+create or replace function public.establish_sms_consent_scope_from_source()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_scope text;
+begin
+  if new.status <> 'opted_in' or new.consented_at is null then
+    return new;
+  end if;
+  v_scope := case
+    when new.source in (
+      'payment_request', 'lead_quote_visit', 'lead_quote_visit_options',
+      'client_job_dashboard', 'lead_decline', 'job_update',
+      'review_request', 'arrival_time_changed', 'reschedule_offer',
+      'estimate_offer', 'schedule_request', 'lead_verification_request',
+      'portal_link_request', 'missed_call_text_back', 'authenticated_inbound'
+    ) then 'customer'
+    when new.source in (
+      'marketing_opt_in', 'campaign_opt_in', 'promo_opt_in',
+      'web_form_marketing_opt_in', 'broadcast_marketing_consent'
+    ) then 'marketing'
+    when new.source in ('crew_added', 'subcontractor_added') then 'crew'
+    when new.source = 'owner_alerts' then 'owner'
+    else null
+  end;
+  if v_scope is not null then
+    insert into public.sms_consent_scopes (
+      account_id, phone_number, consent_scope, evidence_source, established_at
+    ) values (
+      new.account_id, new.phone_number, v_scope, new.source,
+      coalesce(new.consented_at, pg_catalog.clock_timestamp())
+    ) on conflict (account_id, phone_number, consent_scope) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+commit;
+
+-- Source: migrations/20260915010000_sms_campaign_lifecycle_and_canary.sql
+-- Migration: 20260915010000_sms_campaign_lifecycle_and_canary.sql
+-- Description: Add 10DLC campaign lifecycle and carrier rate limit columns to messaging_registration_applications, and create sms_canary_probes for reachability health tracking.
+
+begin;
+
+-- 1. Campaign lifecycle and carrier limits on messaging_registration_applications
+alter table public.messaging_registration_applications
+  add column if not exists campaign_renewal_at timestamptz,
+  add column if not exists brand_revet_at timestamptz,
+  add column if not exists max_assigned_numbers integer not null default 49,
+  add column if not exists att_sms_per_minute_cap integer not null default 75,
+  add column if not exists att_mms_per_minute_cap integer not null default 50,
+  add column if not exists tmobile_daily_brand_cap integer not null default 2000;
+
+-- 2. Create sms_canary_probes table
+create table if not exists public.sms_canary_probes (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid,
+  phone_number text not null
+    check (phone_number ~ '^\+[1-9][0-9]{7,14}$'),
+  provider text not null
+    check (provider in ('signalwire', 'twilio', 'simulated')),
+  provider_message_id text,
+  status text not null
+    check (status in ('dispatched', 'confirmed', 'failed', 'timeout')),
+  dispatched_at timestamptz not null default clock_timestamp(),
+  confirmed_at timestamptz,
+  latency_ms integer,
+  error_message text,
+  created_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists idx_sms_canary_probes_dispatched
+  on public.sms_canary_probes (dispatched_at desc);
+
+create index if not exists idx_sms_canary_probes_provider_msg
+  on public.sms_canary_probes (provider_message_id)
+  where provider_message_id is not null;
+
+-- 3. RLS and Grants
+alter table public.sms_canary_probes enable row level security;
+alter table public.sms_canary_probes force row level security;
+
+revoke all on table public.sms_canary_probes from anon, public;
+grant select, insert, update on table public.sms_canary_probes to service_role;
+grant select on table public.sms_canary_probes to authenticated;
 
 commit;
 -- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
@@ -40914,3 +41039,53 @@ create index if not exists quick_stop_refund_tasks_account_idx on public.quick_s
 create index if not exists quick_stop_refund_tasks_payment_idx on public.quick_stop_refund_tasks(payment_id);
 create index if not exists quick_stop_manual_refund_account_idx on public.quick_stop_manual_refund_reservations(account_id);
 create index if not exists quick_stop_no_show_enforcements_account_idx on public.quick_stop_no_show_enforcements(account_id);
+
+-- Session document email revision projection
+-- Expose the document version through the session view after the send-ledger
+-- migration added it to jobs. Keep every existing financial mask and RLS guard.
+begin;
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+do $view$
+declare
+  cols text;
+  extra_columns text[];
+  protected text[] := array['quoted_amount','quote_items','deposit_gate',
+    'reschedule_discount_percent','reschedule_discount_note','reschedule_discount_agreed_at',
+    'quote_signer_name','quote_signed_at','quote_signature_path','quote_signature_method'];
+begin
+  if not exists (select 1 from pg_attribute where attrelid='public.jobs'::regclass
+      and attname='document_email_revision' and atttypid='uuid'::regtype and attnotnull and not attisdropped) then
+    raise exception 'Document email revision migration must be applied first';
+  end if;
+  if not exists (select 1 from pg_class where oid='public.job_access'::regclass
+      and reloptions @> array['security_invoker=true','security_barrier=true']) then
+    raise exception 'Expected invoker and financial masking view';
+  end if;
+  -- Never expose unrelated columns introduced by another migration.
+  select array_agg(j.attname::text order by j.attnum) into extra_columns
+    from pg_attribute j where j.attrelid='public.jobs'::regclass and j.attnum>0 and not j.attisdropped
+      and not exists (select 1 from pg_attribute v where v.attrelid='public.job_access'::regclass
+        and v.attnum>0 and not v.attisdropped and v.attname=j.attname);
+  if extra_columns is not null and extra_columns <> array['document_email_revision'] then
+    raise exception 'Unexpected unprojected job columns: %', extra_columns;
+  end if;
+  select string_agg(case
+    when a.attname='quoted_amount' then 'coalesce(q.quoted_amount,0)::numeric(12,2) as quoted_amount'
+    when a.attname=any(protected) then format('q.%I',a.attname)
+    else format('j.%I',a.attname) end,', ' order by a.attnum)
+    into cols from pg_attribute a where a.attrelid='public.job_access'::regclass and a.attnum>0 and not a.attisdropped;
+  if extra_columns is not null then cols := cols || ', j.document_email_revision'; end if;
+  execute 'create or replace view public.job_access with (security_invoker=true,security_barrier=true) as select '
+    ||cols||' from public.jobs j left join lateral jsonb_populate_record(null::public.jobs,private.job_quote_values(j.id)) q on true';
+end;
+$view$;
+
+-- This UUID is an optimistic document version, not a client access token.
+-- Existing quote columns still require the permission-checked private helper.
+grant select(document_email_revision) on public.jobs to authenticated;
+alter view public.job_access alter column document_email_revision set default gen_random_uuid();
+notify pgrst,'reload schema';
+commit;
+create table public.voice_call_transcripts (call_id uuid primary key, transcript_text text);

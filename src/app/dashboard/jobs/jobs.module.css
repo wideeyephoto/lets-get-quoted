@@ -9,7 +9,7 @@
 
 /* board */
 .board { display: grid; grid-template-columns: repeat(4, minmax(220px, 1fr)); gap: .8rem; overflow-x: auto; padding: .2rem 0 .8rem; }
-.column { min-height: 260px; padding: .8rem; border: 1px solid var(--edge-t10); border-radius: 10px; background: rgba(var(--tint), .025); }
+.column { min-height: 260px; padding: .8rem; border: 1px solid var(--edge-t10); border-radius: 10px; background: rgba(var(--tint), .025); box-sizing: border-box; }
 .col_new_lead { border-top: 3px solid #ff7a21; border-color: var(--cedge-orange-66); background: linear-gradient(180deg, rgba(255,122,33,.09), rgba(var(--tint), .02) 44%); }
 .col_in_progress { border-top: 3px solid #60a5fa; border-color: var(--cedge-sky-17); background: linear-gradient(180deg, rgba(96,165,250,.09), rgba(var(--tint), .02) 44%); }
 .col_complete { border-top: 3px solid var(--good); border-color: var(--cedge-green-32); background: linear-gradient(180deg, rgba(74,222,128,.1), rgba(var(--tint), .02) 44%); }
@@ -22,7 +22,7 @@
 .cards { display: grid; gap: .55rem; max-height: min(58vh, 560px); overflow-y: auto; padding-right: .2rem; scrollbar-width: thin; scrollbar-color: rgba(var(--tint), .22) transparent; }
 .cards::-webkit-scrollbar { width: 8px; }
 .cards::-webkit-scrollbar-thumb { background: rgba(var(--tint), .18); border-radius: 999px; }
-.jobCard { display: grid; gap: .4rem; padding: .8rem; border: 1px solid var(--edge-t11); border-radius: 10px; background: var(--bg-3); color: #fff; text-decoration: none; transition: border-color .15s ease, transform .15s ease; }
+.jobCard { display: grid; gap: .4rem; padding: .8rem; border: 1px solid var(--edge-t11); border-radius: 10px; background: var(--bg-3); color: #fff; text-decoration: none; transition: border-color .15s ease, transform .15s ease; box-sizing: border-box; }
 .jobCard:hover { border-color: var(--cedge-orange-67); transform: translateY(-1px); }
 .cardTop { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
 .cardTop strong { font-size: .9rem; }
@@ -33,9 +33,33 @@
 .empty { margin: .4rem 0; color: var(--mute-t36); font-size: .78rem; }
 
 /* table */
-.tableWrap { overflow-x: auto; border: 1px solid var(--edge-t08); border-radius: 12px; }
+.tableWrap { 
+  overflow-x: auto; 
+  overflow-y: auto;
+  max-height: 65vh;
+  scrollbar-width: thin;
+  border: 1px solid var(--edge-t08); 
+  border-radius: 12px; 
+}
+.tableWrap::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.tableWrap::-webkit-scrollbar-thumb {
+  background: var(--edge-t22, rgba(255, 255, 255, 0.2));
+  border-radius: 999px;
+}
 .jobTable { width: 100%; min-width: 640px; border-collapse: collapse; font-size: .86rem; }
-.jobTable th { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--rule-t12); white-space: nowrap; }
+.jobTable th { 
+  text-align: left; 
+  padding: .7rem .8rem; 
+  border-bottom: 1px solid var(--rule-t12); 
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--bg, #070a11);
+  z-index: 10;
+}
 .jobTable th button { background: none; border: 0; color: var(--muted-2); font: inherit; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; font-size: .68rem; cursor: pointer; }
 .jobTable th button:hover { color: var(--text); }
 .jobTable td { padding: .7rem .8rem; border-bottom: 1px solid var(--rule-t06); vertical-align: middle; }

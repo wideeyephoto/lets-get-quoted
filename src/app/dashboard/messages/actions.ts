@@ -522,7 +522,7 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { ok: false, message: 'AI generation is not configured.' };
 
-  const { data: messages } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+  const { data: messages } = (await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
     let query = supabase
       .from('sms_messages')
       .select('direction, body, created_at')
@@ -530,7 +530,7 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
       .eq('phone_number', normalized);
     if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
     return query.order('created_at', { ascending: false }).limit(5);
-  });
+  })) as any;
 
   if (!messages || messages.length === 0) {
     return {
@@ -545,7 +545,7 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
 
   const threadContext = messages
     .reverse()
-    .map((m) => `${m.direction === 'inbound' ? 'Customer' : 'Contractor'}: ${m.body}`)
+    .map((m: any) => `${m.direction === 'inbound' ? 'Customer' : 'Contractor'}: ${m.body}`)
     .join('\n');
 
   const instructions = [

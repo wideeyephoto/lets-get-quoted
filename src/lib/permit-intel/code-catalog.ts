@@ -180,9 +180,9 @@ export const ROYAL_OAK_LOCAL_AMENDMENTS: CodeReference[] = [
     section: 'Inspection Milestones',
     title: 'Trade Inspection Scheduling Windows',
     plainEnglishSummary:
-      'Rough and final trade inspections may be requested online via AccessMyGov or by phone between 8:00 AM and 9:00 AM daily.',
+      'Rough and final trade inspections may be requested online via BS&A Online or by phone between 8:00 AM and 9:00 AM daily.',
     amendmentType: 'local_ordinance',
-    citationUrl: 'https://www.accessmygov.com/?uid=1349',
+    citationUrl: 'https://bsaonline.com/?uid=1652',
   },
 ];
 

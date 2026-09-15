@@ -144,7 +144,7 @@ export async function saveScheduledPaymentAction(formData: FormData) {
     .eq('active', true)
     .ilike('label', label)
     .limit(2);
-  const duplicate = (clash.data ?? []).find((row) => row.id !== id);
+  const duplicate = (clash.data ?? []).find((row: any) => row.id !== id);
   if (duplicate) {
     const existing = `$${Number(duplicate.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
     throw new Error(

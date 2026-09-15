@@ -104,7 +104,9 @@ For each real defect found:
 1. Provide a normalized 2D bounding box [ymin, xmin, ymax, xmax] in the 0-1000 integer range.
 2. Provide a concise label (e.g. "Water Staining", "Damaged Shingles", "Cracked Tile", "Missing Flashing").
 3. Severity ("critical" | "moderate" | "cosmetic").
-4. A concise contractor recommendation note.`,
+4. A concise contractor recommendation note.
+
+Finally, based on the defects and scope, generate an array of recommended line-item repairs as 'quoteItems' (each with a label, estimated dollar amount, and kind). Use "base" for essential repairs, "addon" for recommended/optional repairs.`,
             },
           ],
         },
@@ -131,6 +133,18 @@ For each real defect found:
                   recommendation: { type: Type.STRING },
                 },
                 required: ['label', 'severity', 'box2d'],
+              },
+            },
+            quoteItems: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  amount: { type: Type.NUMBER, description: 'Estimated dollar amount' },
+                  kind: { type: Type.STRING, description: '"base" or "addon"' },
+                },
+                required: ['label', 'amount', 'kind'],
               },
             },
           },
@@ -214,6 +228,7 @@ For each real defect found:
     return NextResponse.json({
       success: true,
       suggestions,
+      quoteItems: Array.isArray(parsed.quoteItems) ? parsed.quoteItems : [],
       summary: parsed.summary || `AI detected ${suggestions.filter((s) => s.type === 'rect').length} potential defect zone(s).`,
     });
   } catch (error: unknown) {

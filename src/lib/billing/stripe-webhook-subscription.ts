@@ -24,6 +24,7 @@ export const REQUIRED_LIVE_WEBHOOK_EVENTS = [
   'charge.dispute.closed',
   'charge.dispute.created',
   'charge.failed',
+  
   'charge.refunded',
   'checkout.session.async_payment_failed',
   'checkout.session.async_payment_succeeded',

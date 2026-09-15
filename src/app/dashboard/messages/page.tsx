@@ -115,7 +115,7 @@ export default async function MessagesPage({
     supabase.from('sites').select('content').eq('account_id', accountId).maybeSingle(),
     supabase.from('workspace_usage_credit_balances').select('resource_code, available_units').eq('account_id', accountId),
   ]);
-  const textCreditUnits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
+  const textCreditUnits = balanceRows?.find((r: any) => r.resource_code === 'text_segments')?.available_units;
   const availableTextCredits = typeof textCreditUnits === 'number' && Number.isFinite(textCreditUnits) ? Math.max(0, textCreditUnits) : null;
   const topUpHref = topUpPurchaseEnabled() ? '/dashboard/settings#buy-credits' : '/dashboard/settings#usage-balances';
   const siteContent = getSiteContent((site?.content as Record<string, unknown> | null) ?? null);

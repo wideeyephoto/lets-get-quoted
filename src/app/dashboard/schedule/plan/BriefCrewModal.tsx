@@ -387,7 +387,7 @@ export default function BriefCrewModal({
           ) : null}
         </span>
       }
-      triggerClassName="btn ghost brief-crew-btn"
+      triggerClassName="btn primary brief-crew-btn"
       title="Morning Crew Dispatch & Briefing"
     >
       <form action={sendCrewMorningBriefingAction} className="brief-crew-form">

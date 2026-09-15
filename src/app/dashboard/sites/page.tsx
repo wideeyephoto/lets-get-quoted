@@ -43,8 +43,8 @@ export default async function SitesPage({ searchParams }: { searchParams?: Promi
   ]);
 
   const balanceRows = balanceRes?.data;
-  const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
-  const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
+  const aiIntakeUnits = balanceRows?.find((r: any) => r.resource_code === 'ai_intake_threads')?.available_units;
+  const aiWritingUnits = balanceRows?.find((r: any) => r.resource_code === 'ai_writing_drafts')?.available_units;
   const hasAiBalance = typeof aiIntakeUnits === 'number' || typeof aiWritingUnits === 'number';
   const aiCredits = hasAiBalance
     ? (typeof aiIntakeUnits === 'number' ? aiIntakeUnits : 0) + (typeof aiWritingUnits === 'number' ? aiWritingUnits : 0)

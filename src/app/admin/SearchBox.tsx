@@ -3,12 +3,18 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SearchResult, SearchResults, SearchSection } from '@/lib/admin-search';
+import { ITEMS as NAV_ITEMS } from './AdminNav';
 import styles from './admin.module.css';
 
 const RECENT_KEY = 'admin_recent_searches';
 const RECENT_MAX = 8;
 const EMPTY_RESULTS: SearchResults = { accounts: [], clients: [], quickStops: [], payments: [], unavailable: [] };
 const SECTIONS: { key: SearchSection }[] = [{ key: 'accounts' }, { key: 'clients' }, { key: 'quickStops' }, { key: 'payments' }];
+
+const getNavResults = (q: string) => {
+  const lq = q.toLowerCase();
+  return NAV_ITEMS.filter(i => i.label.toLowerCase().includes(lq)).map(i => ({ href: i.href, label: i.label, sub: 'Navigation', term: q }));
+};
 
 function loadRecent(): string[] {
   if (typeof window === 'undefined') return [];
@@ -109,7 +115,7 @@ export default function SearchBox() {
   const showingRecent = query.trim().length === 0;
   const list: ListItem[] = showingRecent
     ? recent.map((term) => ({ href: `/admin/search?q=${encodeURIComponent(term)}`, label: term, term }))
-    : SECTIONS.flatMap((s) => results[s.key]).map((r: SearchResult) => ({ href: r.href, label: r.title, sub: r.subtitle, term: query.trim() }));
+    : [...getNavResults(query.trim()), ...SECTIONS.flatMap((s) => results[s.key]).map((r: SearchResult) => ({ href: r.href, label: r.title, sub: r.subtitle, term: query.trim() }))];
 
   const goTo = useCallback(
     (href: string, term: string) => {

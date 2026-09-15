@@ -60,7 +60,7 @@ export default function GoogleLocalServicesSection({
       </p>
 
       {status.state === 'unconfigured' ? (
-        <p className="empty-state">Add the Google OAuth credentials and developer token to enable this connection.</p>
+        <p className="empty-state">Google Local Services is not configured yet. Contact support to enable this connection.</p>
       ) : null}
 
       {status.state === 'not_connected' ? (

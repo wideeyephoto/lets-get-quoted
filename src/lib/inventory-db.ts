@@ -11,6 +11,9 @@ import type {
   DepreciationSchedule,
   ToolCustodyLogEntry,
   VanKitTemplate,
+  RestockOrder,
+  RestockOrderLine,
+  RestockOrderStatus,
 } from '@/lib/inventory-tracker';
 import {
   DEFAULT_TOOLS,
@@ -81,15 +84,15 @@ export const DEFAULT_LOCATIONS: InventoryLocation[] = [
   },
   {
     id: 'loc-2',
-    name: 'Van #1 (Lead Tech)',
+    name: 'Service Truck 1 (Jake)',
     type: 'vehicle',
-    code: 'VAN-01',
+    code: 'TRK-01',
     address: 'Mobile Fleet Unit',
     isActive: true,
   },
   {
     id: 'loc-3',
-    name: 'Van #2 (Install Crew)',
+    name: 'Install Van 2 (Dave)',
     type: 'vehicle',
     code: 'VAN-02',
     address: 'Mobile Fleet Unit',
@@ -213,7 +216,7 @@ export async function seedInitialInventory(
     purchase_date: t.purchaseDate ?? null,
     depreciation_schedule: t.depreciationSchedule ?? null,
     status: t.status,
-    location_name: t.status === 'available' ? 'Main Shop & Warehouse' : 'Van #1 (Lead Tech)',
+    location_name: t.status === 'available' ? 'Main Shop & Warehouse' : 'Service Truck 1 (Jake)',
     assigned_crew_name: t.assignedCrewName ?? null,
     assigned_job_label: t.assignedJobLabel ?? null,
     checked_out_at: t.checkedOutAt ?? null,
@@ -383,6 +386,7 @@ export async function saveTool(
     asset_tag: tool.assetTag !== undefined ? tool.assetTag.trim() : String(existing?.asset_tag ?? '').trim(),
     model_number: tool.modelNumber !== undefined ? (tool.modelNumber?.trim() || null) : (existing?.model_number as string ?? null),
     serial_number: tool.serialNumber !== undefined ? (tool.serialNumber?.trim() || null) : (existing?.serial_number as string ?? null),
+    retailer_sku: tool.retailerSku !== undefined ? (tool.retailerSku?.trim() || null) : (existing?.retailer_sku as string ?? null),
     purchase_price: tool.purchasePrice !== undefined
       ? (tool.purchasePrice !== null ? Number(tool.purchasePrice) : null)
       : (existing?.purchase_price !== null && existing?.purchase_price !== undefined ? Number(existing.purchase_price) : null),
@@ -651,7 +655,7 @@ export async function deleteTool(
 export async function saveVehicle(
   supabase: SupabaseClient,
   accountId: string,
-  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string },
+  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string; locationId?: string | null; locationName?: string | null },
 ): Promise<FleetVehicle> {
   const isUpdate = Boolean(vehicle.id && !vehicle.id.startsWith('temp-'));
   let existing: Record<string, unknown> | null = null;
@@ -711,6 +715,8 @@ export async function saveVehicle(
       : (existing?.next_service_due_mileage ? Number(existing.next_service_due_mileage) : null),
     inspection_expires_at: vehicle.inspectionExpiresAt !== undefined ? (vehicle.inspectionExpiresAt || null) : (existing?.inspection_expires_at as string ?? null),
     insurance_expires_at: vehicle.insuranceExpiresAt !== undefined ? (vehicle.insuranceExpiresAt || null) : (existing?.insurance_expires_at as string ?? null),
+    location_id: vehicle.locationId !== undefined ? (vehicle.locationId || null) : (existing?.location_id as string ?? null),
+    location_name: vehicle.locationName !== undefined ? (vehicle.locationName || null) : (existing?.location_name as string ?? null),
     notes: notesToSave,
     updated_at: new Date().toISOString(),
   };
@@ -879,25 +885,25 @@ export async function adjustStockQuantity(
   accountId: string,
   stockId: string,
   delta: number,
-  _reason?: string,
+  reason?: string,
+  requestId?: string,
 ): Promise<VanStockItem> {
-  const { data: item, error: fetchErr } = await supabase
-    .from('inventory_stock_items')
-    .select('*')
-    .eq('id', stockId)
-    .eq('account_id', accountId)
-    .single();
-  if (fetchErr || !item) throw new Error('Stock item not found');
+  const p_quantity = -delta; // RPC subtracts p_quantity, so negative delta means add
 
-  const newQty = Math.max(0, Number(item.quantity_on_hand) + delta);
-  const { data: updated, error: updateErr } = await supabase
-    .from('inventory_stock_items')
-    .update({ quantity_on_hand: newQty, updated_at: new Date().toISOString() })
-    .eq('id', stockId)
-    .eq('account_id', accountId)
-    .select()
-    .single();
-  if (updateErr) throw updateErr;
+  const { error } = await supabase.rpc('inventory_transfer_stock', {
+    p_account_id: accountId,
+    p_source_item_id: stockId,
+    p_quantity: p_quantity,
+    p_to_location_name: null,
+    p_to_location_id: null,
+    p_performed_by: null,
+    p_notes: reason || 'Manual adjustment',
+    p_request_id: requestId || null
+  });
+
+  if (error) throw error;
+
+  const { data: updated } = await supabase.from('inventory_stock_items').select('*').eq('id', stockId).single();
   return mapStockRow(updated);
 }
 
@@ -915,101 +921,36 @@ export async function transferStock(
     quantity: number;
     performedBy?: string;
     notes?: string;
+    requestId?: string;
+    toLocationId?: string;
   },
 ): Promise<{ transfer: StockTransfer; sourceStock: VanStockItem; destinationStock?: VanStockItem }> {
-  const { data: item, error: fetchErr } = await supabase
-    .from('inventory_stock_items')
-    .select('*')
-    .eq('id', input.stockId)
-    .eq('account_id', accountId)
-    .single();
-  if (fetchErr || !item) throw new Error('Source stock item not found');
+  const { data, error } = await supabase.rpc('inventory_transfer_stock', {
+    p_account_id: accountId,
+    p_source_item_id: input.stockId,
+    p_quantity: input.quantity,
+    p_to_location_name: input.toLocation,
+    p_to_location_id: input.toLocationId || null,
+    p_performed_by: input.performedBy || null,
+    p_notes: input.notes || null,
+    p_request_id: input.requestId || null
+  });
+  
+  if (error) throw error;
 
-  if (Number(item.quantity_on_hand) < input.quantity) {
-    throw new Error(`Insufficient stock available for transfer. On hand: ${item.quantity_on_hand}, Requested: ${input.quantity}`);
+  // Re-fetch source and dest to return
+  const { data: sourceData } = await supabase.from('inventory_stock_items').select('*').eq('id', input.stockId).single();
+  let destData = undefined;
+  if (input.toLocation) {
+    const { data: dest } = await supabase.from('inventory_stock_items').select('*').eq('sku', sourceData.sku).eq('location_name', input.toLocation).eq('account_id', accountId).maybeSingle();
+    destData = dest;
   }
-
-  // Deduct from source
-  const newQty = Math.max(0, Number(item.quantity_on_hand) - input.quantity);
-  const { data: updatedSource, error: updateErr } = await supabase
-    .from('inventory_stock_items')
-    .update({ quantity_on_hand: newQty, updated_at: new Date().toISOString() })
-    .eq('id', input.stockId)
-    .eq('account_id', accountId)
-    .select()
-    .single();
-  if (updateErr) throw updateErr;
-
-  // Check if destination location already has an item with this SKU
-  const { data: destItem } = await supabase
-    .from('inventory_stock_items')
-    .select('*')
-    .eq('account_id', accountId)
-    .eq('sku', item.sku)
-    .eq('location_name', input.toLocation)
-    .maybeSingle();
-
-  let destinationStock: VanStockItem | undefined;
-  if (destItem) {
-    const updatedDestQty = Number(destItem.quantity_on_hand) + input.quantity;
-    await supabase
-      .from('inventory_stock_items')
-      .update({
-        quantity_on_hand: updatedDestQty,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', destItem.id)
-      .eq('account_id', accountId);
-    destinationStock = mapStockRow({
-      ...destItem,
-      quantity_on_hand: updatedDestQty,
-      updated_at: new Date().toISOString(),
-    });
-  } else {
-    // Create stock item entry at new location
-    const newStockRow = {
-      account_id: accountId,
-      name: item.name,
-      sku: item.sku,
-      category: item.category,
-      location_name: input.toLocation,
-      quantity_on_hand: input.quantity,
-      min_threshold: item.min_threshold,
-      unit: item.unit,
-      unit_cost: item.unit_cost,
-      preferred_supplier: item.preferred_supplier,
-      reorder_qty: item.reorder_qty,
-      notes: `Transferred from ${input.fromLocation}`,
-    };
-    const { data: createdDest } = await supabase
-      .from('inventory_stock_items')
-      .insert(newStockRow)
-      .select?.()
-      ?.single?.() || {};
-    destinationStock = createdDest ? mapStockRow(createdDest) : mapStockRow({ id: `stock-${Date.now()}`, ...newStockRow });
-  }
-
-  // Record transfer log
-  const { data: transferRecord, error: transferErr } = await supabase
-    .from('inventory_stock_transfers')
-    .insert({
-      account_id: accountId,
-      item_id: input.stockId,
-      item_name: item.name,
-      from_location: input.fromLocation,
-      to_location: input.toLocation,
-      quantity: input.quantity,
-      performed_by: input.performedBy || null,
-      notes: input.notes || null,
-    })
-    .select()
-    .single();
-  if (transferErr) throw transferErr;
+  const { data: transferData } = await supabase.from('inventory_stock_transfers').select('*').eq('id', data.transfer_id).single();
 
   return {
-    transfer: mapTransferRow(transferRecord),
-    sourceStock: mapStockRow(updatedSource),
-    destinationStock,
+    transfer: mapTransferRow(transferData),
+    sourceStock: mapStockRow(sourceData),
+    destinationStock: destData ? mapStockRow(destData) : undefined,
   };
 }
 
@@ -1187,6 +1128,7 @@ function mapToolRow(row: Record<string, unknown>): ToolAsset {
     brand: String(row.brand ?? ''),
     modelNumber: row.model_number ? String(row.model_number) : null,
     serialNumber: sn,
+    retailerSku: row.retailer_sku ? String(row.retailer_sku) : null,
     assetTag: tag,
     purchasePrice,
     purchaseDate,
@@ -1251,6 +1193,8 @@ function mapVehicleRow(row: Record<string, unknown>): FleetVehicle {
         : null,
     inspectionExpiresAt: row.inspection_expires_at ? String(row.inspection_expires_at) : null,
     insuranceExpiresAt: row.insurance_expires_at ? String(row.insurance_expires_at) : null,
+    locationId: row.location_id ? String(row.location_id) : null,
+    locationName: row.location_name ? String(row.location_name) : null,
     notes: cleanNotes,
   };
 }
@@ -1267,7 +1211,7 @@ function mapStockRow(row: Record<string, unknown>): VanStockItem {
     unitCost: Number(row.unit_cost ?? 0),
     preferredSupplier: String(row.preferred_supplier ?? ''),
     reorderQty: Number(row.reorder_qty ?? 0),
-    location: String(row.location_name ?? 'Main Shop'),
+    location: String(row.location_name ?? 'Main Shop & Warehouse'),
     locationId: row.location_id ? String(row.location_id) : null,
     notes: row.notes ? String(row.notes) : null,
   };
@@ -1371,8 +1315,9 @@ export async function applyVanKitTemplate(
         })
         .eq('id', existing.id)
         .eq('account_id', accountId)
+        .eq('quantity_on_hand', existing.quantity_on_hand) // Optimistic locking
         .select()
-        .single();
+        .maybeSingle();
       if (!updateErr && updated) {
         results.push(mapStockRow(updated));
       }
@@ -1402,4 +1347,131 @@ export async function applyVanKitTemplate(
   }
 
   return results;
+}
+export function mapRestockOrderLineRow(row: Record<string, unknown>): RestockOrderLine {
+  return {
+    id: String(row.id),
+    orderId: String(row.order_id),
+    itemId: row.item_id ? String(row.item_id) : null,
+    sku: String(row.sku ?? ''),
+    itemName: String(row.item_name ?? ''),
+    destinationLocationName: String(row.destination_location_name ?? ''),
+    destinationLocationId: row.destination_location_id ? String(row.destination_location_id) : null,
+    orderedQuantity: Number(row.ordered_quantity ?? 0),
+    receivedQuantity: Number(row.received_quantity ?? 0),
+    unit: String(row.unit ?? 'ea'),
+    unitCost: Number(row.unit_cost ?? 0),
+  };
+}
+
+export function mapRestockOrderRow(row: Record<string, unknown>, linesRow?: Record<string, unknown>[]): RestockOrder {
+  return {
+    id: String(row.id),
+    orderNumber: String(row.order_number ?? ''),
+    supplierName: String(row.supplier_name ?? ''),
+    status: (row.status as RestockOrderStatus) ?? 'draft',
+    createdBy: String(row.created_by ?? ''),
+    createdAt: String(row.created_at ?? ''),
+    updatedAt: String(row.updated_at ?? ''),
+    lines: Array.isArray(linesRow) ? linesRow.map(mapRestockOrderLineRow) : [],
+  };
+}
+
+export async function fetchRestockOrders(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<RestockOrder[]> {
+  const { data: orders, error: ordersErr } = await supabase
+    .from('inventory_restock_orders')
+    .select('*, lines:inventory_restock_order_lines(*)')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
+
+  if (ordersErr) throw ordersErr;
+  
+  return (orders || []).map((o: any) => mapRestockOrderRow(o, o.lines));
+}
+
+export async function saveRestockOrder(
+  supabase: SupabaseClient,
+  accountId: string,
+  order: Omit<RestockOrder, 'id' | 'createdAt' | 'updatedAt' | 'lines'> & { id?: string; lines: Omit<RestockOrderLine, 'id' | 'orderId' | 'receivedQuantity'>[] },
+): Promise<RestockOrder> {
+  const orderId = order.id || crypto.randomUUID();
+  
+  const { error: orderErr } = await supabase
+    .from('inventory_restock_orders')
+    .upsert({
+      id: orderId,
+      account_id: accountId,
+      order_number: order.orderNumber,
+      supplier_name: order.supplierName,
+      status: order.status,
+      created_by: order.createdBy,
+      updated_at: new Date().toISOString()
+    })
+    .select()
+    .single();
+
+  if (orderErr) throw orderErr;
+
+  // For draft orders, we can just wipe and rewrite lines
+  if (!order.id) {
+    const linesPayload = order.lines.map((l) => ({
+      account_id: accountId,
+      order_id: orderId,
+      item_id: l.itemId || null,
+      sku: l.sku,
+      item_name: l.itemName,
+      destination_location_name: l.destinationLocationName,
+      destination_location_id: l.destinationLocationId || null,
+      ordered_quantity: l.orderedQuantity,
+      unit: l.unit,
+      unit_cost: l.unitCost
+    }));
+    
+    if (linesPayload.length > 0) {
+      await supabase.from('inventory_restock_order_lines').insert(linesPayload);
+    }
+  }
+
+  return fetchRestockOrder(supabase, accountId, orderId);
+}
+
+export async function fetchRestockOrder(
+  supabase: SupabaseClient,
+  accountId: string,
+  orderId: string
+): Promise<RestockOrder> {
+  const { data, error } = await supabase
+    .from('inventory_restock_orders')
+    .select('*, lines:inventory_restock_order_lines(*)')
+    .eq('id', orderId)
+    .eq('account_id', accountId)
+    .single();
+
+  if (error) throw error;
+  return mapRestockOrderRow(data, data.lines);
+}
+
+export async function receiveRestockOrderLine(
+  supabase: SupabaseClient,
+  accountId: string,
+  orderId: string,
+  lineId: string,
+  quantity: number,
+  receivedBy: string,
+  requestId: string
+) {
+  const { data, error } = await supabase.rpc('inventory_receive_order_line', {
+    p_account_id: accountId,
+    p_order_id: orderId,
+    p_line_id: lineId,
+    p_quantity: quantity,
+    p_received_by: receivedBy,
+    p_request_id: requestId
+  });
+  
+  if (error) throw error;
+  return data;
 }

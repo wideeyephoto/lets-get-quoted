@@ -21,6 +21,7 @@ export const GOOGLE_ADS_API_BASE_URL = `https://googleads.googleapis.com/${GOOGL
 export type GoogleAdsConfig = {
   clientId?: string;
   clientSecret?: string;
+  /** @deprecated Ignored. API access comes from the OAuth Cloud project. */
   developerToken?: string;
   refreshToken?: string;
   mccCustomerId?: string;
@@ -31,7 +32,6 @@ export function getGoogleAdsConfig(): GoogleAdsConfig {
   return {
     clientId: process.env.GOOGLE_ADS_CLIENT_ID,
     clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
-    developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
     refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN,
     mccCustomerId: process.env.GOOGLE_ADS_MCC_CUSTOMER_ID,
     clientCustomerId: process.env.GOOGLE_ADS_CLIENT_CUSTOMER_ID,
@@ -43,7 +43,6 @@ export function isGoogleAdsConfigured(clientCustomerId?: string, config?: Google
   return Boolean(
     effectiveConfig.clientId &&
     effectiveConfig.clientSecret &&
-    effectiveConfig.developerToken &&
     effectiveConfig.refreshToken &&
     resolveServingCustomerId(clientCustomerId, effectiveConfig)
   );
@@ -68,7 +67,6 @@ export function resolveServingCustomerId(clientCustomerId?: string, config?: Goo
 export function buildGoogleAdsHeaders(config: GoogleAdsConfig, token: string): Record<string, string> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    'developer-token': config.developerToken || '',
     'Content-Type': 'application/json',
   };
 
@@ -990,7 +988,7 @@ export async function uploadOfflineConversion(
         const errData = await res.json().catch(() => ({}));
         let errMsg = errData.error?.message || `Google Ads conversion upload failed with HTTP ${res.status}`;
         if (JSON.stringify(errData).includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE')) {
-          errMsg = 'Google Ads API offline conversion upload restricted: Developer token requires migration to Google Data Manager API (ConversionUploadService is restricted for new developer tokens since 2026).';
+          errMsg = 'Google Ads API offline conversion upload restricted: This integration requires migration to Google Data Manager API (ConversionUploadService access is restricted).';
         }
         console.warn('Google Ads conversion upload error:', errMsg);
         return {
@@ -1075,7 +1073,7 @@ export async function updateCampaignBidModifier(params: {
   const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 
   // If credentials/config are provided (or in production), we must resolve a valid serving advertiser ID
-  const hasCredentials = Boolean(config.developerToken || config.clientId || params.config);
+  const hasCredentials = Boolean(config.clientId || params.config);
   const customerId = resolveServingCustomerId(clientCustomerId, config);
 
   if (hasCredentials && !customerId) {

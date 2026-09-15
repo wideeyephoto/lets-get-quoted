@@ -316,7 +316,7 @@ export function SmartSearch({
           aria-label="Smart Search (Cmd+K)"
           title="Search jobs, clients, crew, addresses (⌘K)"
         >
-          <svg className={styles.triggerIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg className={styles.triggerIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
           </svg>
@@ -332,7 +332,7 @@ export function SmartSearch({
           aria-label="Search workspace"
           title="Search (⌘K)"
         >
-          <svg className={styles.mobileTriggerIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg className={styles.mobileTriggerIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
           </svg>
@@ -354,7 +354,7 @@ export function SmartSearch({
               <div className={`${styles.dialog} smart-search-palette`} data-smart-search="true" ref={dialogRef}>
                 {/* Header / Search Input */}
                 <div className={styles.searchHeader}>
-                  <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                  <svg className={styles.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="11" cy="11" r="8" />
                     <path d="m21 21-4.3-4.3" />
                   </svg>
