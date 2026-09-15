@@ -542,7 +542,7 @@ const loadSessionMember = perRequest(async () => {
    * read fails too, acct stays null and the gates fail open exactly as they did
    * before the port -- no worse than what it replaced, and no quieter.
    */
-  if (member?.account_id && !embeddedAccount(member)) {
+  if (member?.account_id && !embeddedAccount(member as any)) {
     const { data: fallbackAccount } = await admin
       .from('accounts')
       .select('*')
@@ -583,7 +583,7 @@ export async function requireOwnerContext(options: { skipFirstRunGate?: boolean 
   // "not suspended" so this never breaks the dashboard before it's deployed.
   // The row arrived embedded in the membership read above, so the gates cost
   // nothing extra here.
-  const acct = embeddedAccount(member);
+  const acct = embeddedAccount(member as any);
   applyAccountGates(acct as AccountGateRow, { role: 'owner', skipFirstRunGate: options.skipFirstRunGate });
 
   // userEmail is who to write into an audit trail. Anything that records a
@@ -960,7 +960,7 @@ async function resolveOfficeCapableMember() {
   // returns nothing and every gate below would silently pass -- letting somebody
   // keep working inside a business staff had suspended. An owner sees the same
   // row either way, so the two guards agree wherever they overlap.
-  const acct = embeddedAccount(member);
+  const acct = embeddedAccount(member as any);
 
   applyAccountGates(acct as AccountGateRow, { role });
 

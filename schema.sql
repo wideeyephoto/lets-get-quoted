@@ -41088,3 +41088,4 @@ grant select(document_email_revision) on public.jobs to authenticated;
 alter view public.job_access alter column document_email_revision set default gen_random_uuid();
 notify pgrst,'reload schema';
 commit;
+create table public.voice_call_transcripts (call_id uuid primary key, transcript_text text);

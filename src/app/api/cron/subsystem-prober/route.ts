@@ -28,9 +28,9 @@ export const GET = cronRoute('subsystem-prober', async () => {
       await dispatchOnCallPage({
         title: `CRITICAL: Money Cron Failed (${item.job})`,
         incidentType: 'cron_failure',
-        severity: 'high',
+        severity: 'P2_HIGH',
         actionRequired: item.consequence,
-        metadata: {
+        summary: 'Money cron failed', details: {
           job: item.job,
           health: item.health,
           lastSuccess: item.lastSuccessAt
@@ -46,8 +46,8 @@ export const GET = cronRoute('subsystem-prober', async () => {
     await dispatchOnCallPage({
       title: `High Error Rate: ${apm.errorRatePct}%`,
       incidentType: 'uptime',
-      severity: 'high',
-      metadata: apm
+      severity: 'P2_HIGH',
+      summary: 'High APM Error Rate', details: apm as any
     });
     paged++;
   }
