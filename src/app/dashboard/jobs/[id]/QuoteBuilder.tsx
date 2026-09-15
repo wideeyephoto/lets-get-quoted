@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
@@ -8,6 +8,7 @@ import { AiRefineChips } from '@/components/ai';
 import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
 import SmsPreview from '@/components/sms/SmsPreview';
 import { quoteUpdatedText } from '@/lib/sms-templates';
+import PhotoDefectEstimatorModal from '../PhotoDefectEstimatorModal';
 
 type Row = QuoteItem;
 
@@ -174,6 +175,20 @@ export default function QuoteBuilder({
   const [review, setReview] = useState<{ findings: QuoteFinding[]; aiRan: boolean } | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+
+  function handleApplyPhotoDefects(items: Array<{ name: string; cost: number }>) {
+    const newRows: Row[] = items.map((item) => ({
+      id: nextId(),
+      label: item.name,
+      amount: item.cost,
+      kind: 'base',
+      selected: true,
+      recommended: false,
+    }));
+    setRows((current) => [...current, ...newRows]);
+    setResult(null);
+  }
 
   // Report every edit up to a parent in live mode, without re-firing when the
   // parent hands us a new callback identity.
@@ -605,6 +620,15 @@ export default function QuoteBuilder({
                 {reviewing ? 'Checking…' : 'Check before sending'}
               </button>
             ) : null}
+            <button
+              type="button"
+              className="quote-tool"
+              onClick={() => setPhotoModalOpen(true)}
+              title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
+            >
+              <span aria-hidden="true">📸</span>
+              AI Photo Estimate
+            </button>
           </div>
           {printHref ? (
             <a href={printHref} className="quote-print">
@@ -629,6 +653,12 @@ export default function QuoteBuilder({
           onRefine={runDraft}
         />
       ) : null}
+
+      <PhotoDefectEstimatorModal
+        isOpen={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        onApplyLineItems={handleApplyPhotoDefects}
+      />
 
       {rows.length === 0 ? (
         <p className="empty-state">No line items yet. Add what&apos;s included, then optional add-ons the client can accept.</p>

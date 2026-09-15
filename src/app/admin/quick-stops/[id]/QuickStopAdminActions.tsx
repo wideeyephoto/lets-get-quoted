@@ -3,17 +3,21 @@
 import { permissionsFor, type StaffRole } from '@/lib/staff';
 import { QUICK_STOP_OUTCOME, allowedQuickStopOutcomes } from '@/lib/quick-stop-outcomes';
 import styles from '../../admin.module.css';
-import { adminRefundQuickStopAction, adminResolveQuickStopAction } from './actions';
+import { adminRefundQuickStopAction, adminResolveQuickStopAction, adminReconcileQuickStopRefundAction } from './actions';
 
 export default function QuickStopAdminActions({
   requestId,
   canRefund,
+  refundPending = false,
+  refundNeedsReview = false,
   feeLabel,
   role,
 }: {
   requestId: string;
   /** Whether there is captured money to give back at all. */
   canRefund: boolean;
+  refundPending?: boolean;
+  refundNeedsReview?: boolean;
   feeLabel: string;
   role: StaffRole;
 }) {
@@ -55,10 +59,16 @@ export default function QuickStopAdminActions({
           </div>
         </form>
       ) : (
-        <p className={styles.muted} style={{ fontSize: '.82rem' }}>No captured payment to refund.</p>
+        <p className={styles.muted} style={{ fontSize: '.82rem' }}>{refundPending ? 'An existing refund is pending or needs review.' : 'No captured payment to refund.'}</p>
       )}
 
       <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+      {mayRefund && refundNeedsReview ? (
+        <form action={adminReconcileQuickStopRefundAction.bind(null, requestId)}>
+          <p className={styles.muted}>After reviewing the refund in Stripe, check its status here. This does not issue another refund.</p>
+          <button type="submit" className="btn secondary">Reconcile refund status</button>
+        </form>
+      ) : null}
 
       {outcomes.length === 0 ? (
         <p className={styles.muted} style={{ fontSize: '.82rem' }}>Resolving a Quick Stop is not part of your role.</p>

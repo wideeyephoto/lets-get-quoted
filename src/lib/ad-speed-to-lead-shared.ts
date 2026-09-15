@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import { withOptOut } from '@/lib/sms-templates';
 import {
   resolveRecipientTimeZone,
@@ -214,7 +215,7 @@ export function generateContractorAdLeadAlert(params: {
     statusText = 'Auto-SMS delivery skipped.';
   }
 
-  return `🔥 [Ad Lead] ${cleanName} requested ${cleanService}${cleanCity}. ${statusText} Phone: ${phone}. Call lead now: ${phone}`;
+  return lgqSmsText(`Ad lead: ${cleanName} requested ${cleanService}${cleanCity}. ${statusText} Phone: ${phone}. Call lead now: ${phone}. Reply STOP to opt out.`);
 }
 
 /**

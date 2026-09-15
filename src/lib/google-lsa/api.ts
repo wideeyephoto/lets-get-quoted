@@ -166,14 +166,11 @@ export function normalizeGoogleCustomerId(value: string, label = 'customer ID'):
 }
 
 function googleAdsHeaders(auth: GoogleAdsAuth, json = true): HeadersInit {
-  const developerToken = (auth.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '').trim();
-  if (!developerToken) throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN is not configured.');
   if (!auth.accessToken) throw new Error('A Google OAuth access token is required.');
 
   const headers: Record<string, string> = {
     Authorization: `Bearer ${auth.accessToken}`,
     Accept: 'application/json',
-    'developer-token': developerToken,
   };
   if (json) headers['Content-Type'] = 'application/json';
   if (auth.loginCustomerId) {

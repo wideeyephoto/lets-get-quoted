@@ -92,7 +92,6 @@ export async function runVerification(options = {}) {
 
   const clientId = options.clientId || env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = options.clientSecret || env.GOOGLE_ADS_CLIENT_SECRET;
-  const developerToken = options.developerToken || env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const refreshToken = options.refreshToken || env.GOOGLE_ADS_REFRESH_TOKEN;
   const mccCustomerId = (options.mccCustomerId || env.GOOGLE_ADS_MCC_CUSTOMER_ID || '').replace(/-/g, '').trim();
   const explicitCustomerId = (options.customerId || env.GOOGLE_ADS_CLIENT_CUSTOMER_ID || '').replace(/-/g, '').trim();
@@ -209,11 +208,10 @@ export async function runVerification(options = {}) {
   }
 
   // Live network execution
-  if (!clientId || !clientSecret || !refreshToken || !developerToken) {
+  if (!clientId || !clientSecret || !refreshToken) {
     const missing = [];
     if (!clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
     if (!clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
-    if (!developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
     if (!refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
 
     const err = `Missing required credentials for live verification: ${missing.join(', ')}. Pass via CLI flags or provide in .env.local, or run with --dry-run for contract validation.`;
@@ -256,7 +254,6 @@ export async function runVerification(options = {}) {
     // Common headers
     const baseHeaders = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
       'Content-Type': 'application/json',
     };
     if (mccCustomerId) {
@@ -269,7 +266,6 @@ export async function runVerification(options = {}) {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'developer-token': developerToken,
       },
     });
 

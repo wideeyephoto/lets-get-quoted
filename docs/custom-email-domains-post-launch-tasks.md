@@ -1,5 +1,7 @@
 # Custom Email Sending Domains: Early Post-Launch Roadmap & Task List
 
+For current customer email acceptance work, use the [September 14 T01–T20 checklist](customer-email-handling-checklist-2026-09-14.md) alongside the [go-live checklist](contractor-email-domain-go-live-checklist-2026-09-09.md). This earlier roadmap contains historical assumptions.
+
 **Date:** 2026-09-07  
 **Status:** Post-Stage 3 Operational & Rollout Task Tracker  
 **Parent Specification:** [plan-custom-email-domains-2026-09-07.md](file:///c:/dev/CLAUDE%20CODE%20FOLDER/docs/plan-custom-email-domains-2026-09-07.md)  

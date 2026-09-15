@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { normalizeSupabaseUrl } from './supabase-url';
+import { jobAccessFetch } from './job-access-fetch';
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -9,6 +10,7 @@ export async function createSupabaseServerClient() {
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
     {
+      global: { fetch: jobAccessFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();

@@ -82,7 +82,25 @@ export interface CardTemplateDefinition {
   patternType: 'pinstripe' | 'split' | 'carbon' | 'grid' | 'qr_focus' | 'trust_seal' | 'showcase' | 'traditional';
 }
 
+export const DEFAULT_CARD_TEMPLATE_ID: BusinessCardTemplateId = 'traditional';
+
 export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
+  {
+    id: 'traditional',
+    name: 'The Timeless Traditional',
+    subtitle: 'Heritage Double Pinstripe',
+    tag: 'Classic Craftsman',
+    tradeFit: 'Masonry, Fine Woodworking, Historic Renovation, Ironwork',
+    description: 'Classic heritage aesthetic with delicate concentric pinstripe borders, refined craftsman serif typography, and an established contractor seal.',
+    frontFeature: 'Concentric hairline border frame with heritage serif type',
+    backFeature: 'Established craftsmanship seal with formal contact layout',
+    recommendedFinish: 'foil_gold',
+    badgeLabel: 'MASTER CRAFTSMAN',
+    ratingBadgeText: 'HERITAGE RESTORATION & FINISH',
+    bulletText: 'Heritage Restoration & Finish',
+    footerText: 'Quality Craftsmanship • Master Tradesman',
+    patternType: 'traditional',
+  },
   {
     id: 'executive',
     name: 'The Executive Tradesman',
@@ -194,22 +212,6 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     bulletText: 'Custom Craftsmanship',
     footerText: 'Residential & Commercial Installation',
     patternType: 'showcase',
-  },
-  {
-    id: 'traditional',
-    name: 'The Timeless Traditional',
-    subtitle: 'Heritage Double Pinstripe',
-    tag: 'Classic Craftsman',
-    tradeFit: 'Masonry, Fine Woodworking, Historic Renovation, Ironwork',
-    description: 'Classic heritage aesthetic with delicate concentric pinstripe borders, refined craftsman serif typography, and an established contractor seal.',
-    frontFeature: 'Concentric hairline border frame with heritage serif type',
-    backFeature: 'Established craftsmanship seal with formal contact layout',
-    recommendedFinish: 'foil_gold',
-    badgeLabel: 'MASTER CRAFTSMAN',
-    ratingBadgeText: 'HERITAGE RESTORATION & FINISH',
-    bulletText: 'Heritage Restoration & Finish',
-    footerText: 'Quality Craftsmanship • Master Tradesman',
-    patternType: 'traditional',
   },
 ];
 

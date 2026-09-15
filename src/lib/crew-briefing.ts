@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 // Daily crew morning dispatch briefings & run-sheet generator.
 //
 // Pure, deterministic, and dependency-free.
@@ -162,7 +163,7 @@ export function buildCrewMorningBriefingSms(briefing: CrewDailyBriefing): string
     const zeroHead = briefing.isUrgentUpdate
       ? `🚨 URGENT SCHEDULE UPDATE: Hi ${crewFirst}, you have no remaining scheduled stops for ${briefing.date} with ${business}.`
       : `Good morning ${crewFirst}! You have no scheduled stops on your run-sheet for ${briefing.date} with ${business}.`;
-    return `${zeroHead}${weatherSection}${noteSection} Enjoy your day! Reply STOP to opt out.`;
+    return lgqSmsText(`${zeroHead}${weatherSection}${noteSection} Enjoy your day! Reply STOP to opt out.`);
   }
 
   const stopLabel = stopCount === 1 ? '1 stop' : `${stopCount} stops`;
@@ -189,10 +190,10 @@ export function buildCrewMorningBriefingSms(briefing: CrewDailyBriefing): string
   const portalLink = briefing.portalUrl ? `\nOpen Field App: ${briefing.portalUrl}` : '';
 
   const head = briefing.isUrgentUpdate
-    ? `🚨 URGENT SCHEDULE UPDATE from ${business}!\nHi ${crewFirst}, your route for ${briefing.date} has been updated (${stopLabel}):`
+    ? `🚨 URGENT SCHEDULE UPDATE for workspace ${business}!\nHi ${crewFirst}, your route for ${briefing.date} has been updated (${stopLabel}):`
     : `☀️ Good morning ${crewFirst}! Here is your schedule for ${briefing.date} with ${business} (${stopLabel}):`;
 
-  return `${head}${weatherSection}${noteSection}\n${stopsSummary}${materialsSection}${fullRouteSection}${portalLink}\nReply STOP to opt out.`;
+  return lgqSmsText(`${head}${weatherSection}${noteSection}\n${stopsSummary}${materialsSection}${fullRouteSection}${portalLink}\nReply STOP to opt out.`);
 }
 
 /**

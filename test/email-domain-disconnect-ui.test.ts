@@ -53,6 +53,21 @@ afterEach(async () => {
 });
 
 describe('email domain disconnect confirmation', () => {
+  it('shows a saved provider-loss reason on initial load and exposes the recovery link target', async () => {
+    const reason = 'This domain is no longer registered with the email provider. Reconnect it to start sending from it again.';
+    await act(async () => {
+      renderer.unmount();
+      renderer = create(React.createElement(EmailSendingDomainSection, {
+        initialDomain: { ...domain, status: 'failed', verified_at: null, failure_reason: reason }, isEnabled: true,
+      }));
+    });
+    expect(renderer.root.findByProps({ id: 'email-domain' })).toBeDefined();
+    expect(text(renderer.root.findByProps({ role: 'status' }))).toBe(reason);
+    expect(text(renderer.root)).toContain('Connection needs attention');
+    expect(text(renderer.root)).not.toContain('Pending DNS verification');
+    expect(actions.verify).not.toHaveBeenCalled();
+  });
+
   it('opens an on-page confirmation and lets the owner cancel without deleting anything', async () => {
     await click('Disconnect');
     expect(nativeConfirm).not.toHaveBeenCalled();
@@ -107,5 +122,23 @@ describe('email domain disconnect confirmation', () => {
     await click('Disconnect domain');
     expect(actions.remove).toHaveBeenCalledTimes(2);
     expect(text(renderer.root)).toContain('Sending domain disconnected.');
+  });
+
+  it('renders reply-to routing and free email alias guidance when domain is verified', async () => {
+    expect(text(renderer.root)).toContain('Where do customer replies go?');
+    expect(text(renderer.root)).toContain('Reply-To');
+    expect(text(renderer.root)).toContain('Recommended tip for your email provider');
+    expect(text(renderer.root)).toContain('hello@contractor.example');
+  });
+
+  it('omits reply-to guidance when domain is not verified', async () => {
+    await act(async () => {
+      renderer.unmount();
+      renderer = create(React.createElement(EmailSendingDomainSection, {
+        initialDomain: { ...domain, status: 'pending' }, isEnabled: true,
+      }));
+    });
+    expect(text(renderer.root)).not.toContain('Where do customer replies go?');
+    expect(text(renderer.root)).toContain('Required DNS Records');
   });
 });

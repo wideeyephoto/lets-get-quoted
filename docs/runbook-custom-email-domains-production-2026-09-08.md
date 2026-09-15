@@ -1,5 +1,7 @@
 # Custom Email Sending Domains — Production Runbook
 
+**Historical planning record, superseded September 10, 2026.** Use the [current support recovery guide](runbooks/contractor-email-domain-support.md), [notice-incident procedure](runbooks/email-domain-failure-notices.md), and [dated release evidence](contractor-domains-canary-2026-09-09.md) for operations. Initial deployment, fixed DNS/quota, and elapsed-day assumptions below are not current acceptance evidence. The correction in sections 6–7 replaces the earlier immediate-fallback and bulk-disable guidance.
+
 **Date:** 2026-09-08
 **Companion to:** [plan-custom-email-domains-go-live-2026-09-08.md](./plan-custom-email-domains-go-live-2026-09-08.md) — that document says *what* must be true and why; this one is the executable sequence, with the commands to run, the Codex prompts to relay verbatim, and the runbook for after it is live.
 **Production target:** Vercel project `lets-get-quoted` (`prj_bwbvxqj10cuQKKIflEdNMGhQOWEY`), origin `https://letsgetquoted.com`, Supabase `mfuvvtrkipkigwqqtcal`.
@@ -257,7 +259,7 @@ Seven consecutive `ok` runs, zero complaints, and **real send volume behind them
 ## Day 11 — Stage 6: GA
 
 - **[me]** Ship the alias-guidance callout (Google Workspace / M365) and registrar-specific guides for GoDaddy, Cloudflare, Namecheap, Squarespace.
-- **[me]** Ship complaint auto-pause if that decision was yes: threshold crossed → `status = 'disabled'` plus an owner email explaining the pause and the fallback.
+- **[me]** Before GA, implement and prove the agreed tenant abuse policy across custom and platform sending. A domain `disabled` write permits platform fallback and does not constitute a tenant-wide sending hold; thresholds, response ownership and restoration remain explicit acceptance gates.
 - **[you]** Publish the help article; brief support on the three states they will see — `pending` (DNS not visible yet), `failed` (records missing), `disabled` (we paused it).
 - **[me]** Confirm the settings copy keeps this distinct from the custom *website* domain rail, which is separately broken: it reports "Verified and connected" while the TLS handshake fails. A contractor reading both as one feature concludes we are lying about one of them.
 
@@ -268,13 +270,13 @@ Seven consecutive `ok` runs, zero complaints, and **real send volume behind them
 | Signal | Where | Cadence | Means |
 | --- | --- | --- | --- |
 | `email-domain-reconcile` status | `npm run inspect:cron-health` | Daily during soak, then weekly | `FAILING` = provider or key problem; `SILENT` = the scheduler stopped calling it |
-| `errors` in the run summary | `cron_runs.summary` | Same | Non-zero is the orphan sweep or a provider call failing; it already marks the run not-ok |
-| Rows stuck in `pending` > 72h | REST query in 5.5 | Weekly | The contractor never finished their DNS — a support prompt, not a defect |
-| Rows flipping `verified` → `failed` | Owner-notification emails | On occurrence | Their DNS changed. Fallback is automatic; the email is the only thing that tells them |
+| `errors` in the run summary | `cron_runs.summary` and durable notice incidents | Each canary review | Provider/DB/cleanup errors or unresolved notice review/backlog; preserve the incident until evidence supports resolution |
+| Rows stuck in `pending` | Exact row, provider binding and DNS | Each canary review | May be propagation, temporary provider failure or incomplete provisioning; inspect the reason before assigning responsibility |
+| Rows losing verified status | Saved reason, provider result and durable owner notice | On occurrence | DNS/provider state changed or the provider binding vanished; confirm the actual cause and notice delivery |
 | `orphanedAtProvider` | Run summary | Weekly | Domains at Resend with no row — usually a failed cleanup, and each one holds a slot against the cap |
 | Domains used vs cap | `GET /domains` | Monthly | Approaching the ceiling means the next customer is refused |
 
-Detection latency for a broken domain is **up to 24 hours** by design, and mail keeps flowing from the platform address the whole time. That is the accepted trade; it is not an incident.
+The configured reconciliation interval is daily at **06:23 UTC**. Total detection time also includes DNS caching, provider detection, outages and backlog. Before a stored downgrade, mail can still attempt the custom sender. Definitive rejection of that unverified sender domain permits one platform retry; uncertain failures do not. A green empty run or recent timestamp without a successful provider observation is not tenant-health evidence. Use the current guide for recovery and keep monitoring/response acceptance open until exercised.
 
 ---
 
@@ -282,24 +284,13 @@ Detection latency for a broken domain is **up to 24 hours** by design, and mail 
 
 | Situation | Action | Blast radius |
 | --- | --- | --- |
-| Anything wrong pre-canary | **[codex]** Remove `LGQ_EMAIL_SENDING_DOMAINS_ENABLED` from Production, redeploy | Section disappears. **Existing verified rows keep sending** — the flag gates the UI, not the send path, deliberately, so switching off does not strand a contractor on a domain nothing re-checks |
-| One tenant harming deliverability | **[me]** `disabled` write, below | That tenant reverts to `hello@letsgetquoted.com` on the next send; no deploy |
-| All tenants off, now | **[me]** Same write without the account filter | Every send reverts to the platform address; the reconciler will not re-promote a `disabled` row |
-| Reconciler itself misbehaving | **[me]** Remove from `vercel.json`, **[codex]** redeploy | Domains stop being re-checked, so a broken one keeps sending unaligned until noticed. Accept only briefly |
+| Stop new enrollment | Apply the reviewed feature/allowlist control and deploy | New connections are refused; existing management and verified custom sending remain available |
+| Technical fault on one domain | Operations reviews the exact account, row, reason and supported domain-disable procedure | Custom identity is disabled; platform traffic may continue. Verify fresh/queued behavior under H02 before claiming rollback acceptance |
+| Tenant abuse or complaint incident | Escalate to Brett / Operations and enforce a separately tested tenant outbound hold | Must include custom and platform identities and queued sends. Domain disable alone is not containment; F06/G05/H03 remain open |
+| Shared provider incident | Operations defines the affected dispatch scope, preserves queued work and verifies the selected hold | No unscoped bulk update or automatic switch to the platform is prescribed here |
+| Reconciler release failure | Preserve outstanding notice evidence and use the [notice rollback procedure](runbooks/email-domain-failure-notices.md#release-and-rollback) | Keep an incident processor or an assigned operator for every open notice; stopping the cron does not stop outbound mail |
 
-The disable write, with the check that it changed anything:
-
-```bash
-curl -s -X PATCH \
-  -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Prefer: return=representation" \
-  "https://mfuvvtrkipkigwqqtcal.supabase.co/rest/v1/email_sending_domains?account_id=eq.<ACCOUNT_ID>" \
-  -d '{"status":"disabled","failure_reason":"Paused by support pending deliverability review"}'
-```
-
-**Read the response array.** An accepted statement is not a changed row — a filter that matches nothing returns `200 []`, and that has been mistaken for success on this codebase more than once, including on a live double-billing path.
+The previous PATCH recipe and suggestion to remove its account filter are withdrawn. Any reviewed mutation must identify the exact account, current binding, expected state/reason and changed-row result, and prove that concurrent work cannot undo the intended hold. Record the operator and recovery evidence. Current administrative domain protection relies on its persisted administrative reason; do not substitute a generic label or rewrite cleanup markers to imitate a hold. No new mutation is authorized by this historical document.
 
 **Deleting the domain at Resend is not a rollback step.** It turns every row pointing at it into a provider 404, which the reconciler then downgrades on its own schedule — slower, noisier, and it emails the contractor.
 

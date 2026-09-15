@@ -80,7 +80,7 @@ describe('AI Operator Autopilot Engines', () => {
   });
 
   describe('2. Webhook Self-Healing & Dead-Letter Replay', () => {
-    it('correctly processes and auto-resolves transient webhook drops', async () => {
+    it('inspects transient failures without requiring approval or resolving source records', async () => {
       const mockSupabase = createChainableSupabase([
         {
           id: 'wh-1',
@@ -89,12 +89,29 @@ describe('AI Operator Autopilot Engines', () => {
           error_message: 'HTTP 504 Gateway Timeout',
         },
       ]);
+      const auditQuery = { upsert: vi.fn().mockReturnThis(), select: vi.fn().mockResolvedValue({ data: [{ id: 'audit-wh-1' }], error: null }) };
+      const cleanupQuery = { update: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), select: vi.fn().mockResolvedValue({ data: [], error: null }) };
+      const failuresQuery = mockSupabase.from('webhook_failures');
+      mockSupabase.from.mockImplementation((table: string) => table === 'ai_operator_logs' ? auditQuery : table === 'ai_operator_action_requests' ? cleanupQuery : failuresQuery);
 
       const report = await runWebhookAutoHealer(mockSupabase, { dryRun: false });
       expect(report.totalUnresolved).toBe(1);
-      expect(report.replayedCount).toBe(1);
-      expect(report.autoResolvedCount).toBe(1);
+      expect(report.replayedCount).toBe(0);
+      expect(report.autoResolvedCount).toBe(0);
       expect(report.escalatedToHitlCount).toBe(0);
+      expect(report.inspectionActionsLogged).toBe(1);
+      expect(mockSupabase.from('webhook_failures').update).not.toHaveBeenCalled();
+    });
+    it('does not turn database errors into a healthy empty inspection', async () => {
+      const db = createChainableSupabase([]);
+      db.from('webhook_failures').limit.mockResolvedValue({ data: null, error: { message: 'read unavailable' } });
+      await expect(runWebhookAutoHealer(db)).rejects.toThrow('inspection unavailable');
+    });
+    it('reports no executed actions during a dry run', async () => {
+      const db = createChainableSupabase([{ id: 'wh-dry', source: 'stripe' }]);
+      const report = await runWebhookAutoHealer(db, { dryRun: true });
+      expect(report).toMatchObject({ totalUnresolved: 1, replayedCount: 0, autoResolvedCount: 0, escalatedToHitlCount: 0 });
+      expect(db.from('webhook_failures').update).not.toHaveBeenCalled();
     });
   });
 

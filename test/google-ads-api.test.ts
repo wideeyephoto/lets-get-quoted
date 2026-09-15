@@ -96,7 +96,7 @@ describe('Google Ads API Module', () => {
     );
 
     expect(headers['Authorization']).toBe('Bearer test_access_token');
-    expect(headers['developer-token']).toBe('dev_token_123');
+    expect(headers).not.toHaveProperty('developer-token');
     expect(headers['login-customer-id']).toBe('1234567890');
     expect(headers['Content-Type']).toBe('application/json');
   });

@@ -123,7 +123,7 @@ export default function EmailSendingDomainSection({
   };
 
   return (
-    <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px', marginTop: '24px' }}>
+    <div id="email-domain" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px', marginTop: '24px', scrollMarginTop: '100px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a', margin: '0 0 6px 0' }}>
@@ -131,6 +131,10 @@ export default function EmailSendingDomainSection({
           </h3>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
             Send quotes, invoices, and job updates from your own business email address (e.g. <code>quotes@{domainRow?.domain || 'yourbusiness.com'}</code>).
+          </p>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: '8px 0 0', lineHeight: 1.5 }}>
+            This sets up outgoing mail and does not create an inbox. Replies go to your Customer reply email in Business basics.
+            To receive new messages sent directly to your sending address, set up that mailbox or alias with your email provider.
           </p>
         </div>
 
@@ -183,6 +187,12 @@ export default function EmailSendingDomainSection({
         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
           {successMessage}
         </div>
+      )}
+
+      {domainRow?.status !== 'verified' && domainRow?.failure_reason && (
+        <p role="status" style={{ color: '#92400e', fontSize: '14px', lineHeight: 1.5, marginBottom: '16px' }}>
+          {domainRow.failure_reason.replace(/^[A-Z_]+:\s*/, '')}
+        </p>
       )}
 
       {!domainRow ? (
@@ -255,7 +265,11 @@ export default function EmailSendingDomainSection({
               </div>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                 {domainRow.status === 'verified'
-                  ? 'Active · DKIM & SPF aligned to your domain'
+                  ? 'Active · Domain verified for sending'
+                  : domainRow.status === 'failed'
+                  ? 'Connection needs attention · Outbound mail currently uses platform default'
+                  : domainRow.status === 'disabled'
+                  ? 'Custom domain sending is disabled'
                   : 'Pending DNS verification · Outbound mail currently uses platform default'}
               </div>
             </div>
@@ -306,6 +320,33 @@ export default function EmailSendingDomainSection({
                 <button type="button" className="btn danger" disabled={isDisconnecting} onClick={handleDelete}>
                   {isDisconnecting ? 'Disconnecting…' : 'Disconnect domain'}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {domainRow.status === 'verified' && (
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '16px',
+                fontSize: '13px',
+                lineHeight: 1.6,
+                color: '#334155',
+              }}
+            >
+              <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>
+                📬 Where do customer replies go?
+              </div>
+              <p style={{ margin: '0 0 10px 0', color: '#475569' }}>
+                When customers click <strong>Reply</strong> to your quotes or invoices, their messages land directly in your regular business email address via the email <code>Reply-To</code> header.
+              </p>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px' }}>
+                <span style={{ fontWeight: 500, color: '#0f172a' }}>💡 Recommended tip for your email provider:</span>
+                <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
+                  If a customer manually copies or types <code>{domainRow.from_local_part}@{domainRow.domain}</code> into a brand new message, your existing email provider (Google Workspace, Microsoft 365, etc.) handles the delivery. We recommend setting up a free <strong>{domainRow.from_local_part}</strong> email alias or forwarder in your email provider pointing to your primary inbox so you never miss a direct email.
+                </p>
               </div>
             </div>
           )}

@@ -252,6 +252,8 @@ describe('Disposable Account Deletion 111-Table & Multi-Bucket Drill (P0 / Secti
 
       jobRecord = {
         id: 'job-disp-001',
+        lease_token: 'lease-drill', lease_expires_at: new Date(Date.now() + 300_000).toISOString(),
+        closure_state: 'processing', domain_cleanup_state: 'not_applicable',
         closure_subject_id: 'acc-disposable-111',
         local_disposal_state: 'pending',
         stripe_state: 'pending',
@@ -269,6 +271,12 @@ describe('Disposable Account Deletion 111-Table & Multi-Bucket Drill (P0 / Secti
 
       mockAdmin = {
         from: vi.fn((table: string) => {
+          if (table === 'form_templates' || table === 'job_form_submissions') {
+            return { delete: () => ({ eq: async () => {
+              deletedDirectTables.push(table);
+              return { error: { code: 'PGRST205', message: `Could not find the table 'public.${table}' in the schema cache` } };
+            } }) };
+          }
           if (table === 'account_closure_jobs') {
             return {
               select: vi.fn().mockReturnValue({
@@ -378,7 +386,7 @@ describe('Disposable Account Deletion 111-Table & Multi-Bucket Drill (P0 / Secti
         stripeCancel: mockStripeCancel,
         quickbooksRevoke: mockQuickBooksRevoke,
         storageDelete: mockStorageDelete,
-      });
+      }, 'lease-drill');
 
       expect(result.success).toBe(true);
       expect(result.completed).toBe(true);

@@ -35,7 +35,7 @@ export default function SiteVideoIndex({
   const [playing, setPlaying] = useState<string | null>(null);
 
   return (
-    <main className={styles.blogArticleShell} style={themeStyle}>
+    <main id="main-content" className={styles.blogArticleShell} style={themeStyle}>
       <div className={styles.blogIndex}>
         <a className={styles.blogBack} href="/">{site.company_name || 'Home'}</a>
         <header className={styles.blogIndexHead}>

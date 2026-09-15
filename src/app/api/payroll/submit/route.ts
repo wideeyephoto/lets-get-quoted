@@ -20,6 +20,7 @@ import {
   submitPayrollToProvider,
   type PayrollProviderConfig,
 } from '@/lib/payroll-api-integration';
+import { unstable_rethrow } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +176,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal payroll submission error.' },
       { status: 500 },

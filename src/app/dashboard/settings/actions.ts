@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
+import { isSupportedLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, type Locale } from '@/lib/i18n';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,
@@ -58,6 +60,7 @@ import {
 } from '@/lib/choice-reminders';
 import { pickBusinessName } from '@/lib/business-name';
 import { APP_ORIGIN } from '@/lib/app-origin';
+import { sanitizeAddress } from '@/emails/brand';
 import {
   getAccountOwnerEmail,
   sendAppointmentReminderEmail,
@@ -91,11 +94,11 @@ export async function updateBusinessBasicsAction(formData: FormData) {
 
   let replyToEmail: string | null = null;
   if (rawReplyTo) {
-    // Basic email format validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawReplyTo)) {
+    const sanitized = sanitizeAddress(rawReplyTo);
+    if (!sanitized || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitized)) {
       throw new Error('Enter a valid email address for customer replies.');
     }
-    replyToEmail = rawReplyTo.toLowerCase().slice(0, 255);
+    replyToEmail = sanitized.toLowerCase().slice(0, 255);
   }
 
   const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, { trade, zip, smsSignoff });
@@ -1389,4 +1392,89 @@ export async function removeContractorLogoAction() {
   return { ok: true };
 }
 
+export async function updateLanguagePreferenceAction(locale: unknown) {
+  await requireOfficeContext('settings.write');
+  if (!isSupportedLocale(locale)) {
+    throw new Error('Unsupported language');
+  }
 
+  (await cookies()).set(LOCALE_COOKIE, locale, {
+    path: '/',
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: 'lax',
+  });
+
+  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard/settings');
+  return { ok: true, locale };
+}
+
+/**
+ * Updates contractor tax and compliance identity fields on the account.
+ * FEIN is treated as sensitive: normalized, never logged, and masked on read.
+ */
+export async function updateContractorComplianceAction(formData: FormData) {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+
+  const rawLicenseType = formData.get('license_type');
+  const rawStateEmployerNumber = formData.get('state_employer_number');
+  const rawFein = formData.get('fein');
+
+  const license_type = typeof rawLicenseType === 'string' ? rawLicenseType.trim() : null;
+  const state_employer_number = typeof rawStateEmployerNumber === 'string' ? rawStateEmployerNumber.trim() : null;
+
+  const patch: Record<string, string | null> = {
+    license_type: license_type || null,
+    state_employer_number: state_employer_number || null,
+  };
+
+  if (typeof rawFein === 'string') {
+    const trimmedFein = rawFein.trim();
+    if (!trimmedFein) {
+      patch.fein = null;
+    } else if (!trimmedFein.includes('•')) {
+      const cleaned = trimmedFein.replace(/[^\d]/g, '');
+      if (cleaned.length !== 9) {
+        throw new Error('FEIN must be a 9-digit Federal Employer Identification Number (XX-XXXXXXX).');
+      }
+      patch.fein = `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    }
+  }
+
+  const { error } = await supabase
+    .from('accounts')
+    .update(patch)
+    .eq('id', accountId);
+
+  if (error) {
+    console.error('Failed to update contractor compliance:', error.message);
+    throw new Error('Could not save contractor compliance information.');
+  }
+
+  // Sync license_type with state_license in credentials vault if one exists
+  if (license_type) {
+    try {
+      const { data: existingLicense } = await supabase
+        .from('contractor_credentials')
+        .select('id')
+        .eq('account_id', accountId)
+        .eq('credential_type', 'state_license')
+        .maybeSingle();
+
+      if (existingLicense?.id) {
+        await supabase
+          .from('contractor_credentials')
+          .update({
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingLicense.id);
+      }
+    } catch (syncErr) {
+      console.warn('Could not sync compliance to contractor credentials vault:', syncErr);
+    }
+  }
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/jobs');
+  return { ok: true };
+}

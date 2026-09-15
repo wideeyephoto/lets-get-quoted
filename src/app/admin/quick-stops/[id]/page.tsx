@@ -32,7 +32,8 @@ const DONE: Record<string, string> = {
 };
 const ERR: Record<string, string> = {
   amount: 'Enter a valid dollar amount.',
-  refund: 'The refund failed at Stripe — check the payment and retry.',
+  refund: 'The refund could not be confirmed. Check its provider status before retrying.',
+  refund_pending: 'A refund is already pending or needs review. Reconcile it before issuing another refund.',
   nopayment: 'This request has no captured payment.',
   outcome: 'Pick a resolution.',
   notfound: 'Request not found.',
@@ -56,7 +57,8 @@ export default async function AdminQuickStopDetailPage({
 
   const r = detail.request;
   const status = r.status as QuickStopStatus;
-  const canRefund = Boolean(r.payment_id && r.paid_at && (r.refund_cents ?? 0) < (r.fee_cents ?? 0));
+  const refundPending = Boolean(r.refund_state && ['pending', 'processing', 'retry', 'review'].includes(r.refund_state));
+  const canRefund = Boolean(!refundPending && r.payment_id && r.paid_at && (r.refund_cents ?? 0) < (r.fee_cents ?? 0));
 
   return (
     <>
@@ -77,6 +79,19 @@ export default async function AdminQuickStopDetailPage({
 
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>{DONE[searchParams.done] ?? 'Done.'}</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERR[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {status === 'contractor_offer_sent' && detail.payment && ['paid', 'refunded', 'disputed'].includes(detail.payment.status ?? '') ? (
+        <div className={`${styles.banner} ${styles.warn}`} role="status">
+          This interrupted offer has a settled payment and needs staff review. Confirm the payment and appointment with the customer before resolving it.
+        </div>
+      ) : null}
+      {refundPending ? (
+        <div className={`${styles.banner} ${styles.warn}`} role="status">
+          {r.refund_state === 'review'
+            ? 'Refund needs staff review. Reconcile the existing operation with Stripe before issuing another refund.'
+            : 'Refund pending. Recovery will retry or reconcile the existing refund automatically.'}
+          {' '}Refund owed: {money(r.refund_due_cents)}. Confirmed refunded: {money(r.refund_cents)}.
+        </div>
+      ) : null}
 
       <div className={styles.detailGrid}>
         <div>
@@ -126,7 +141,7 @@ export default async function AdminQuickStopDetailPage({
         </div>
 
         <div>
-          <QuickStopAdminActions requestId={r.id} canRefund={canRefund} feeLabel={money(r.fee_cents)} role={role} />
+          <QuickStopAdminActions requestId={r.id} canRefund={canRefund} refundPending={refundPending} refundNeedsReview={r.refund_state === 'review'} feeLabel={money(r.fee_cents)} role={role} />
         </div>
       </div>
     </>

@@ -31,7 +31,8 @@ const stripCss = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, '');
 const LAYOUT = stripJs(read('src', 'app', 'layout.tsx'));
 const FONTS = stripJs(read('src', 'lib', 'templates', 'fonts.ts'));
 const BUILDER = stripJs(read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx'));
-const THEME_CSS = stripCss(read('src', 'lib', 'templates', 'themes.module.css'));
+const TEMPLATE_CSS_FILES = ['themes', 'coat', 'fixit', 'forge', 'guild', 'handy', 'reno', 'shine', 'vista'];
+const THEME_CSS = stripCss(TEMPLATE_CSS_FILES.map((f) => read('src', 'lib', 'templates', `${f}.module.css`)).join('\n'));
 
 /** Every `--font-*` variable a module declares through next/font. */
 const declaredVars = (source: string) =>

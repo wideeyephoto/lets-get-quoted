@@ -137,7 +137,7 @@ try {
   // Catalog shape alone missed a later migration replacing the private body
   // with legacy jobs.notes / labor-table writes. Pin the deployed contract too.
   const contractSql = await readFile(resolve(scriptDir, '..', 'migrations',
-    '20260908205505_voice_dispatch_contract_restore.sql'), 'utf8');
+    '20260908205749_voice_dispatch_contract_restore.sql'), 'utf8');
   const expectedBody = contractSql.split('as $fn$')[1]?.split('$fn$;')[0]?.replace(/\r\n/g, '\n').trim();
   const { rows: [contract] } = await client.query(`select p.prosrc,
     has_function_privilege('service_role',p.oid,'execute') as service_exec,

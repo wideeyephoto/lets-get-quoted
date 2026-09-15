@@ -29,7 +29,53 @@ export type CronJobSpec = {
   consequence: string;
 };
 
+/**
+ * Routes that exist under /api/cron on purpose but are deliberately NOT
+ * scheduled, with the reason each one is parked.
+ *
+ * This list exists because the alternative is the bug it replaces. Before
+ * 2026-09-12 four routes sat unscheduled and unregistered, and nothing reported
+ * their silence — the watchdog grades CRON_JOBS and cannot miss what it has
+ * never heard of. Scheduling all four then turned out to be wrong for two of
+ * them. Parking them silently would put us back where we started, so a parked
+ * route is recorded here with its reason and asserted by
+ * test/cron-route-coverage.ts: every route on disk is either scheduled and
+ * monitored, or listed below.
+ */
+export type ParkedCronRoute = {
+  /** Route segment under /api/cron. */
+  job: string;
+  /** Why it is not scheduled, and what would have to be true to schedule it. */
+  reason: string;
+};
+
+export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
+  {
+    job: 'audit-log-retention',
+    reason:
+      'Parked temporarily to keep Vercel cron count at 50 limit. Needs consolidation or removal of another cron before it can be re-scheduled.',
+  },
+  {
+    job: 'db-guard',
+    reason:
+      'RPC public.get_long_running_queries does not exist in the production database schema or repository migrations, causing 285 guaranteed failures/day.',
+  },
+  {
+    job: 'sms-canary',
+    reason:
+      'Dispatched on-demand and via synthetic reachability monitoring probes to avoid exceeding the Vercel 50-cron platform limit.',
+  },
+];
+
 export const CRON_JOBS: CronJobSpec[] = [
+  {
+    job: 'ops-metrics-snapshot',
+    label: 'Daily operational metrics snapshot',
+    schedule: '0 6 * * *',
+    importance: 'housekeeping',
+    consequence: 'AI Operator trend history becomes stale and the get_ops_trend_history tool returns empty results.',
+  },
+
   {
     job: 'operational-alerts', label: 'Operational failure alerts', schedule: '*/5 * * * *',
     importance: 'money', consequence: 'Webhook, billing, messaging and dispute failures stop reaching the operator by email.',
@@ -121,7 +167,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'billing-allowance-resets',
     label: 'Paid-plan allowance resets',
-    schedule: '*/15 * * * *',
+    schedule: '9,24,39,54 * * * *',
     importance: 'money',
     consequence: 'Paid contractors stop receiving their anchored monthly usage allowances after renewal.',
   },
@@ -133,7 +179,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     // promised while they are off.
     job: 'plan-change-apply',
     label: 'Scheduled plan changes',
-    schedule: '*/15 * * * *',
+    schedule: '3,18,33,48 * * * *',
     importance: 'money',
     consequence: 'Downgrades and billing-cycle switches never take effect, so contractors keep paying the old price after the date they were given.',
   },
@@ -146,14 +192,14 @@ export const CRON_JOBS: CronJobSpec[] = [
     // trying to return the rest of a deposit is simply refused.
     job: 'refund-reconciliation',
     label: 'Refund reconciliation',
-    schedule: '*/15 * * * *',
+    schedule: '6,21,36,51 * * * *',
     importance: 'money',
     consequence: 'A payment refunded once can never be refunded again, and money owed back cannot be sent.',
   },
   {
     job: 'voice-allowance',
     label: 'AI Voice minute allowances',
-    schedule: '*/15 * * * *',
+    schedule: '9,24,39,54 * * * *',
     importance: 'money',
     consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
   },
@@ -167,7 +213,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'voice-number-reconciliation',
     label: 'AI Voice number reconciliation',
-    schedule: '0 * * * *',
+    schedule: '50 * * * *',
     importance: 'customer',
     consequence: 'SignalWire number drift and stale provider proof stop being detected, so inbound AI Voice must fail closed after six hours.',
   },
@@ -209,21 +255,21 @@ export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'google-lsa-sync',
     label: 'Google Local Services import',
-    schedule: '*/15 * * * *',
+    schedule: '6,21,36,51 * * * *',
     importance: 'money',
     consequence: 'Local Services leads, charge and credit facts, spend, and signed-job revenue attribution stop updating.',
   },
   {
     job: 'appointment-reminders',
     label: 'Appointment reminders',
-    schedule: '0 * * * *',
+    schedule: '20 * * * *',
     importance: 'customer',
     consequence: 'Customers stop being reminded of appointments, which shows up as no-shows rather than as an outage.',
   },
   {
     job: 'arrival-late',
     label: 'Late arrival alerts',
-    schedule: '*/15 * * * *',
+    schedule: '3,18,33,48 * * * *',
     importance: 'customer',
     consequence: 'Customers are not told their crew is running late.',
   },
@@ -237,7 +283,7 @@ export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'quote-followups',
     label: 'Quote follow-ups',
-    schedule: '0 * * * *',
+    schedule: '5 * * * *',
     importance: 'customer',
     consequence: 'Stalled quotes stop being chased, so they age out as losses instead of closing.',
   },
@@ -246,7 +292,7 @@ export const CRON_JOBS: CronJobSpec[] = [
     label: 'Choice reminders',
     // Hourly because each account sends in its own timezone at its own chosen
     // hour, so every hour has to be offered for any of them to be pickable.
-    schedule: '0 * * * *',
+    schedule: '35 * * * *',
     importance: 'customer',
     consequence: 'Customers are not reminded about outstanding choices, which blocks the jobs waiting on them.',
   },
@@ -321,21 +367,21 @@ export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'account-closure',
     label: 'Account closure outbox drain',
-    schedule: '*/15 * * * *',
+    schedule: '3,18,33,48 * * * *',
     importance: 'housekeeping',
     consequence: 'Requested enterprise account closures stop draining their Stripe, QuickBooks, and storage disposal tasks.',
   },
   {
     job: 'ad-spend-sync',
     label: 'Managed Ads daily spend sync',
-    schedule: '*/15 * * * *',
+    schedule: '6,21,36,51 * * * *',
     importance: 'money',
     consequence: 'Daily Google Ads and Meta Ads search click spend stops syncing into contractor balances and continuous spend logs.',
   },
   {
     job: 'ad-wallet-refill',
     label: 'Managed Ads wallet auto-refill',
-    schedule: '*/15 * * * *',
+    schedule: '9,24,39,54 * * * *',
     importance: 'money',
     consequence: 'Depleted ad wallet balances below threshold stop automatically charging Stripe and refilling ad spend.',
   },
@@ -384,9 +430,16 @@ export const CRON_JOBS: CronJobSpec[] = [
   {
     job: 'custom-domain-reconcile',
     label: 'Custom website domain certificate watch',
-    schedule: '*/15 * * * *',
+    schedule: '12,27,42,57 * * * *',
     importance: 'customer',
     consequence: 'A contractor whose domain finishes provisioning its certificate is never noticed or told, so their website stays on the free subdomain and the builder keeps saying pending until they think to click Check connection again.',
+  },
+  {
+    job: 'webhook-heal',
+    label: 'Webhook auto-healer',
+    schedule: '12,27,42,57 * * * *',
+    importance: 'money',
+    consequence: 'Unresolved provider webhook failures are never retried or cleared, so payments and messaging events stay stuck in the queue waiting for somebody to notice them by hand.',
   },
 ];
 
@@ -425,6 +478,17 @@ export function expectedIntervalMs(schedule: string): number | null {
   if (everyNMinutes && hour === '*' && dow === '*') {
     const n = Number(everyNMinutes[1]);
     return n > 0 && n < 60 ? n * MINUTE : null;
+  }
+  if (minute.includes(',') && hour === '*' && dow === '*') {
+    const list = minute.split(',').map((m) => Number(m.trim()));
+    if (list.every((n) => Number.isInteger(n) && n >= 0 && n < 60)) {
+      if (list.length === 4 && list[1] - list[0] === 15 && list[2] - list[1] === 15 && list[3] - list[2] === 15) {
+        return 15 * MINUTE;
+      }
+      if (list.length === 12 && list.every((n, i) => i === 0 || n - list[i - 1] === 5)) {
+        return 5 * MINUTE;
+      }
+    }
   }
   // Everything below pins the minute to a literal.
   if (!/^\d+$/.test(minute)) return null;
@@ -466,7 +530,8 @@ export function cronSummaryHasFailures(summary: Record<string, unknown> | null |
     typeof summary.candidates === 'number' &&
     summary.candidates > 0 &&
     typeof summary.closed === 'number' &&
-    summary.closed === 0
+    summary.closed === 0 &&
+    Number(summary.already_closed ?? 0) + Number(summary.nothing_owed ?? 0) + Number(summary.deferred ?? 0) === 0
   ) {
     return true;
   }
@@ -526,6 +591,11 @@ export function scheduleInWords(schedule: string): string {
   if (minute === '*' && hour === '*' && dow === '*') return 'Every minute';
   const everyN = /^\*\/(\d+)$/.exec(minute);
   if (everyN && hour === '*') return `Every ${everyN[1]} minutes`;
+  if (minute.includes(',') && hour === '*' && dow === '*') {
+    const list = minute.split(',').map((m) => Number(m.trim()));
+    if (list.length === 4 && list[1] - list[0] === 15) return `Every 15 minutes (at :${String(list[0]).padStart(2, '0')})`;
+    if (list.length === 12 && list[1] - list[0] === 5) return `Every 5 minutes (at :${String(list[0]).padStart(2, '0')})`;
+  }
   // Everything below reads the minute as a single literal, so anything else —
   // a list like "15,45", a range — has to fall through to the raw expression.
   // Calling "15,45 * * * *" hourly would understate it by half.

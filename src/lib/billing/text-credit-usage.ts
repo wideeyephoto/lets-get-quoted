@@ -128,6 +128,13 @@ export async function beginTextCreditUsage(
   }> = {},
 ): Promise<TextCreditDecision> {
   const segments = smsSegmentCount(input.body);
+  if (!Number.isSafeInteger(segments) || segments <= 0) {
+    return Object.freeze({ outcome: 'refused' as const, segments: 0 });
+  }
+  const MAX_SEGMENTS_PER_SEND = 100;
+  if (segments > MAX_SEGMENTS_PER_SEND) {
+    return Object.freeze({ outcome: 'refused' as const, segments });
+  }
   const mode = options.mode ?? textCreditMode();
 
   if (mode === 'off') {

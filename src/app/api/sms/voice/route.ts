@@ -71,6 +71,17 @@ async function dispatchVoiceCall(request: Request, data: FormData): Promise<Next
     return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. Please try again later.</Say>');
   }
 
+  try {
+    const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');
+    const breaker = await checkCircuitBreaker('voice_routing', account.id);
+    if (breaker.blocked) {
+      console.info(`Voice routing blocked by circuit breaker (${breaker.scope}: ${breaker.reason})`);
+      return xml('<Say voice="man">We are currently experiencing technical difficulties and cannot connect your call right now. Please text or try again shortly.</Say><Hangup/>');
+    }
+  } catch (err) {
+    console.error('Circuit breaker check failed for voice routing:', err);
+  }
+
   let forwardNumber = account.call_forward_number;
   if (!forwardNumber) {
     const { data: vs } = await admin

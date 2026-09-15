@@ -27,7 +27,6 @@ describe('Google Ads v25 Write-Path & Status Toggle Verification Suite', () => {
       const config = {
         clientId: 'mock-client-id',
         clientSecret: 'mock-client-secret',
-        developerToken: 'mock-dev-token',
         refreshToken: 'mock-refresh-token',
         mccCustomerId: '111-222-3333',
       };
@@ -91,9 +90,9 @@ describe('Google Ads v25 Write-Path & Status Toggle Verification Suite', () => {
 
       const mutateReq = fetchSpy.mock.calls[1][1] as RequestInit;
       expect(mutateReq.method).toBe('POST');
+      expect(mutateReq.headers).not.toHaveProperty('developer-token');
       expect(mutateReq.headers).toMatchObject({
         Authorization: 'Bearer mock_access_token',
-        'developer-token': 'devtok',
         'login-customer-id': '1112223333',
         'Content-Type': 'application/json',
       });

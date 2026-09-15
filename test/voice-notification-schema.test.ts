@@ -61,6 +61,18 @@ const invoke = {
   emergency: (admin: ReturnType<typeof fixture>['admin']) => notifyEmergencyCall(admin, ACCOUNT, '+12485550199', 'Flooding', emergency, CALL),
 };
 
+it.each(['ordinary', 'emergency'] as const)('queues readable %s structured summaries without truncating JSON first', async (kind) => {
+  const f = fixture();
+  const summary = JSON.stringify({ caller_name: 'B'.repeat(180), caller_phone: null,
+    work_requested: 'Repair a leaking pipe', service_address: null });
+  if (kind === 'ordinary') await notifyOrdinaryCall(f.admin, ACCOUNT, '+12485550199', summary, 'Brett', CALL);
+  else await notifyEmergencyCall(f.admin, ACCOUNT, '+12485550199', summary, emergency, CALL);
+  expect(f.deliveries).toHaveLength(1);
+  expect(f.deliveries[0].p_body).toContain('Repair a leaking pipe.');
+  expect(f.deliveries[0].p_body).not.toContain('caller_name');
+  expect(f.deliveries[0].p_body).toContain(`/dashboard/voice-calls/${CALL}`);
+});
+
 describe.each(['ordinary', 'emergency'] as const)('%s notification schema and destination', (kind) => {
   it('uses existing scoped columns and the owner-alert queue with a stable replay key', async () => {
     const f = fixture();

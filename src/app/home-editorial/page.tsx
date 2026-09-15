@@ -1,3 +1,4 @@
+import { LGQ_MAILING_ADDRESS } from '@/lib/company';
 import Link from 'next/link';
 import { FLEX_PRICE, LOWEST_PLATFORM_FEE } from '@/lib/pricing';
 import styles from './home-editorial.module.css';
@@ -304,7 +305,10 @@ export default function HomeEditorialPage() {
 
         <div className={`${styles.column} ${styles.wide}`}>
           <div className={styles.foot}>
-            <span>© 2026 Let’s Get Quoted</span>
+            <div>
+              <span>© 2026 Let’s Get Quoted</span>
+              <address style={{ fontStyle: 'normal', lineHeight: 1.6 }}>{LGQ_MAILING_ADDRESS}</address>
+            </div>
             <nav className={styles.footLinks} aria-label="Footer">
               <Link href="/features">Features</Link>
               <Link href="/features/ai-intake">AI Intake</Link>

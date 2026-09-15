@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { getUnresolvedWebhookFailures } from '@/lib/admin-alerts';
-import { recordOperatorAudit, createHitlAction } from './audit';
+import { getUnresolvedWebhookFailures, createAdminSignalDiagnostics } from '@/lib/admin-alerts';
+import { recordOperatorAuditOnce, retireWebhookInspectionApprovals } from './audit';
 
 export interface WebhookHealReport {
   scannedAt: string;
@@ -8,115 +8,45 @@ export interface WebhookHealReport {
   replayedCount: number;
   autoResolvedCount: number;
   escalatedToHitlCount: number;
+  inspectionActionsLogged: number;
+  retiredInspectionApprovals: number;
   errors: string[];
 }
 
-/**
- * Transient error substrings that are safe for autonomous replay
- */
-const TRANSIENT_ERROR_PATTERNS = [
-  'timeout',
-  '502',
-  '503',
-  '504',
-  'econnreset',
-  'socket hang up',
-  'network error',
-  'rate limit',
-  'too many requests',
-  'deadlock detected',
-  'lock timeout',
-];
-
-function isTransientError(errorMessage?: string | null): boolean {
-  if (!errorMessage) return true;
-  const lower = errorMessage.toLowerCase();
-  return TRANSIENT_ERROR_PATTERNS.some((p) => lower.includes(p));
-}
-
-/**
- * Autonomous SRE worker that identifies and heals transient webhook delivery failures
- */
+/** Inspect failures until source-specific recovery can prove handler execution. */
 export async function runWebhookAutoHealer(
   supabase: SupabaseClient,
   opts: { maxBatchSize?: number; dryRun?: boolean } = {},
 ): Promise<WebhookHealReport> {
-  const limit = opts.maxBatchSize || 15;
-  const unresolved = await getUnresolvedWebhookFailures(supabase, { limit }).catch(() => []);
-
+  const diagnostics = createAdminSignalDiagnostics();
+  const unresolved = await getUnresolvedWebhookFailures(supabase, { limit: opts.maxBatchSize || 15, diagnostics });
+  if (diagnostics.failed.length) throw new Error('Webhook failure inspection unavailable');
   const report: WebhookHealReport = {
     scannedAt: new Date().toISOString(),
     totalUnresolved: unresolved.length,
     replayedCount: 0,
     autoResolvedCount: 0,
     escalatedToHitlCount: 0,
+    inspectionActionsLogged: 0,
+    retiredInspectionApprovals: 0,
     errors: [],
   };
-
-  if (unresolved.length === 0) {
-    return report;
-  }
-
+  if (opts.dryRun) return report;
+  report.retiredInspectionApprovals = await retireWebhookInspectionApprovals(supabase);
   for (const failure of unresolved) {
-    const isTransient = isTransientError(failure.error_message);
-    const retryCount = Number((failure as Record<string, unknown>).retry_count || 0);
-
-    if (isTransient && retryCount < 3) {
-      if (!opts.dryRun) {
-        try {
-          // 1. Simulate bounded replay execution
-          report.replayedCount++;
-
-          // 2. Mark as resolved in database
-          await supabase
-            .from('webhook_failures')
-            .update({
-              resolved_at: new Date().toISOString(),
-              resolution_notes: `[AI Autopilot] Self-healed after transient delivery failure (${failure.error_message || 'network timeout'})`,
-            })
-            .eq('id', failure.id);
-
-          report.autoResolvedCount++;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          report.errors.push(`Failure ${failure.id}: ${msg}`);
-        }
-      } else {
-        report.replayedCount++;
-        report.autoResolvedCount++;
-      }
-    } else {
-      // Escalated to Human-in-the-Loop approval card after max retries or non-transient schema error
-      if (!opts.dryRun) {
-        createHitlAction({
-          category: 'sre_platform',
-          title: `Inspect Persistent Webhook Failure: ${failure.source} (${failure.event_type || 'event'})`,
-          description: `Webhook ${failure.id} failed with non-transient error: "${failure.error_message || 'Unknown error'}". Manual inspection required.`,
-          actionType: 'sre.inspect_webhook_failure',
-          payload: { failureId: failure.id, source: failure.source, error: failure.error_message },
-          requiredRole: 'admin',
-        });
-
-        report.escalatedToHitlCount++;
-      } else {
-        report.escalatedToHitlCount++;
-      }
-    }
-  }
-
-  // Audit logging
-  if (!opts.dryRun && report.autoResolvedCount > 0) {
-    recordOperatorAudit({
+    const created = await recordOperatorAuditOnce({
+      id: `audit-webhook-inspection-${failure.id}`,
+      timestamp: report.scannedAt,
       category: 'sre_platform',
-      actionName: 'sre.webhook_auto_healed',
-      severity: 'safe_auto',
+      actionName: 'sre.webhook_failure_inspected',
+      severity: 'info',
       toolName: 'runWebhookAutoHealer',
-      inputPayload: { totalScanned: unresolved.length },
-      outputResult: report,
-      reasoningSummary: `Auto-replayed ${report.replayedCount} webhooks; successfully resolved ${report.autoResolvedCount}, escalated ${report.escalatedToHitlCount}.`,
+      inputPayload: { failureId: failure.id, source: failure.source, error: failure.error_message },
+      outputResult: { replayed: false, resolved: false },
+      reasoningSummary: `Webhook ${failure.id} (${failure.source}) remains unresolved: "${failure.error_message || 'Unknown error'}". Inspection is read-only. Review provider identity and business effects before source-specific recovery. No replay was attempted.`,
       status: 'success',
-    });
+    }, supabase);
+    if (created) report.inspectionActionsLogged++;
   }
-
   return report;
 }

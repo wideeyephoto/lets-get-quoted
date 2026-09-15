@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { lgqSmsText } from '@/lib/sms-brand';
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { enqueueSmsDelivery } from '@/lib/sms-delivery';
@@ -48,7 +50,7 @@ export function buildJobsiteArrivalBriefingText(params: JobsiteArrivalBriefingPa
 
   const footer = `\nHave a great shift! Reply STOP to opt out.`;
 
-  return sanitizeGsm7Text(`${header}${body}${footer}`);
+  return lgqSmsText(sanitizeGsm7Text(`${header}${body}${footer}`));
 }
 
 /**

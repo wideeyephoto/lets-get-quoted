@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import { createAdminClient } from '@/lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadBusinessName } from '@/lib/business-name';
@@ -8,6 +9,14 @@ import {
   CREW_SMS_WELCOME_MESSAGE,
   getCrewSmsDisclosureHash,
 } from '@/lib/crew-sms-disclosure';
+import {
+  CUSTOMER_SMS_DISCLOSURE_VERSION,
+  CUSTOMER_SMS_FULL_DISCLOSURE,
+  getCustomerSmsDisclosureHash,
+  MARKETING_SMS_DISCLOSURE_VERSION,
+  MARKETING_SMS_FULL_DISCLOSURE,
+  getMarketingSmsDisclosureHash,
+} from '@/lib/customer-sms-disclosure';
 import {
   adWalletRefillText,
   appointmentReminderText,
@@ -799,7 +808,7 @@ export async function sendOwnerEstimateAcceptedSms(input: {
     await queueAccountSms({
       accountId: input.accountId,
       phone: to,
-      body: withOptOut(input.message),
+      body: lgqSmsText(withOptOut(input.message)),
       messageKind: 'owner-estimate-accepted',
       category: 'owner_alert',
       context: 'owner',
@@ -925,6 +934,18 @@ export async function recordSmsConsent(accountId: string, phone: string, source 
           evidence_source: source,
           established_at: now,
         }, { onConflict: 'account_id,phone_number,consent_scope', ignoreDuplicates: true });
+
+      await admin.from('sms_consent_evidence').insert({
+        account_id: accountId,
+        phone_number: normalized,
+        consent_scope: 'customer',
+        disclosure_version: CUSTOMER_SMS_DISCLOSURE_VERSION,
+        disclosure_text: CUSTOMER_SMS_FULL_DISCLOSURE,
+        disclosure_hash: getCustomerSmsDisclosureHash(),
+        consented_at: now,
+        source: source,
+        source_page: 'system_inference',
+      });
     } catch {
       // Non-fatal if scope write fails
     }
@@ -1036,14 +1057,18 @@ export async function isOwnerPhoneVerified(accountId: string, phone: string): Pr
 // Manual compose is different from replying to an inbound message: the app
 // must already have affirmative, current consent and may not manufacture it
 // merely because an owner typed a phone number. Read failures fail closed.
-export async function hasCurrentSmsConsent(accountId: string, phone: string): Promise<boolean> {
+export async function hasCurrentSmsConsent(
+  accountId: string,
+  phone: string,
+  requiredScope: 'customer' | 'marketing' = 'customer',
+): Promise<boolean> {
   const normalized = normalizeUsPhone(phone);
   if (!normalized) return false;
   const admin = createAdminClient();
   const [baseResult, scopeResult] = await Promise.all([
     admin
       .from('sms_consent')
-      .select('status,consented_at,opted_out_at')
+      .select('status,consented_at,updated_at,opted_out_at')
       .eq('account_id', accountId)
       .eq('phone_number', normalized)
       .maybeSingle(),
@@ -1052,21 +1077,166 @@ export async function hasCurrentSmsConsent(accountId: string, phone: string): Pr
       .select('consent_scope')
       .eq('account_id', accountId)
       .eq('phone_number', normalized)
-      .eq('consent_scope', 'customer')
+      .eq('consent_scope', requiredScope)
       .maybeSingle(),
   ]);
   if (baseResult.error || scopeResult.error) {
     console.error(
-      `Current customer SMS consent check failed for ${normalized}; refusing manual compose:`,
+      `Current ${requiredScope} SMS consent check failed for ${normalized}; refusing compose:`,
       baseResult.error?.message ?? scopeResult.error?.message,
     );
     return false;
   }
   const base = baseResult.data;
-  return scopeResult.data?.consent_scope === 'customer'
-    && base?.status === 'opted_in'
-    && Boolean(base.consented_at)
-    && !base.opted_out_at;
+  if (!base || base.status !== 'opted_in' || base.opted_out_at || !base.consented_at) return false;
+  
+  const lastConfirmedDate = base.updated_at ? new Date(base.updated_at) : new Date(base.consented_at);
+  const isExpired = (Date.now() - lastConfirmedDate.getTime()) > 365 * 24 * 60 * 60 * 1000;
+
+  return scopeResult.data?.consent_scope === requiredScope && !isExpired;
+}
+
+export async function reaffirmSmsConsent(accountId: string, phone: string): Promise<void> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return;
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  await admin
+    .from('sms_consent')
+    .update({ updated_at: now })
+    .eq('account_id', accountId)
+    .eq('phone_number', normalized)
+    .eq('status', 'opted_in');
+
+  try {
+    await admin.from('sms_consent_evidence').insert({
+      account_id: accountId,
+      phone_number: normalized,
+      consent_scope: 'customer',
+      disclosure_version: CUSTOMER_SMS_DISCLOSURE_VERSION,
+      disclosure_text: 'Inbound message from contact reaffirming active consent.',
+      disclosure_hash: getCustomerSmsDisclosureHash('Inbound message from contact reaffirming active consent.'),
+      consented_at: now,
+      source: 'inbound_reaffirmation',
+      source_page: '/api/sms/inbound',
+    });
+  } catch (err) {
+    console.error('Failed to record reaffirmation SMS consent evidence:', err);
+  }
+}
+
+export interface RecordCustomerSmsConsentParams {
+  accountId: string;
+  phone: string;
+  scope?: 'customer' | 'marketing';
+  disclosureVersion?: string;
+  disclosureText?: string;
+  disclosureHash?: string;
+  userId?: string | null;
+  source?: string;
+  sourcePage?: string;
+}
+
+/**
+ * Records audited consent evidence for a customer or marketing opt-in before activating SMS sending.
+ */
+export async function recordCustomerSmsConsentEvidence(
+  params: RecordCustomerSmsConsentParams,
+): Promise<'recorded' | 'suppressed' | 'failed'> {
+  const normalized = normalizeUsPhone(params.phone);
+  if (!normalized) return 'failed';
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  const scope = params.scope ?? 'customer';
+  const source = params.source ?? (scope === 'marketing' ? 'marketing_opt_in' : 'customer_opt_in');
+  const sourcePage = params.sourcePage ?? (scope === 'marketing' ? '/dashboard/marketing' : '/portal');
+  const disclosureVersion = params.disclosureVersion ?? (scope === 'marketing' ? MARKETING_SMS_DISCLOSURE_VERSION : CUSTOMER_SMS_DISCLOSURE_VERSION);
+  const disclosureText = params.disclosureText ?? (scope === 'marketing' ? MARKETING_SMS_FULL_DISCLOSURE : CUSTOMER_SMS_FULL_DISCLOSURE);
+  const disclosureHash = params.disclosureHash ?? (scope === 'marketing' ? getMarketingSmsDisclosureHash(disclosureText) : getCustomerSmsDisclosureHash(disclosureText));
+
+  try {
+    const { error: evidenceError } = await admin.from('sms_consent_evidence').insert({
+      account_id: params.accountId,
+      phone_number: normalized,
+      consent_scope: scope,
+      disclosure_version: disclosureVersion,
+      disclosure_text: disclosureText,
+      disclosure_hash: disclosureHash,
+      consented_by_user_id: params.userId || null,
+      consented_at: now,
+      source,
+      source_page: sourcePage,
+    });
+
+    if (evidenceError) {
+      console.error('Failed to record customer SMS consent evidence:', evidenceError);
+      return 'failed';
+    }
+
+    const { data: updated, error: updateError } = await admin
+      .from('sms_consent')
+      .update({
+        status: 'opted_in',
+        source,
+        consented_at: now,
+        opted_out_at: null,
+        disclosure_version: disclosureVersion,
+        updated_at: now,
+      })
+      .eq('account_id', params.accountId)
+      .eq('phone_number', normalized)
+      .neq('status', 'opted_out')
+      .select('id');
+
+    if (updateError) {
+      console.error('Failed to update sms_consent for customer:', updateError);
+      return 'failed';
+    }
+
+    if (!updated || updated.length === 0) {
+      const { data: existing } = await admin
+        .from('sms_consent')
+        .select('status')
+        .eq('account_id', params.accountId)
+        .eq('phone_number', normalized)
+        .maybeSingle();
+      if (existing?.status === 'opted_out') {
+        return 'suppressed';
+      }
+      if (!existing) {
+        const { error: insertError } = await admin.from('sms_consent').insert({
+          account_id: params.accountId,
+          phone_number: normalized,
+          status: 'opted_in',
+          source,
+          consented_at: now,
+          disclosure_version: disclosureVersion,
+          updated_at: now,
+        });
+        if (insertError && insertError.code !== '23505') {
+          return 'failed';
+        }
+      }
+    }
+
+    await admin
+      .from('sms_consent_scopes')
+      .upsert(
+        {
+          account_id: params.accountId,
+          phone_number: normalized,
+          consent_scope: scope,
+          evidence_source: source,
+          established_at: now,
+        },
+        { onConflict: 'account_id,phone_number,consent_scope', ignoreDuplicates: true },
+      );
+
+    return 'recorded';
+  } catch (error) {
+    console.error('Customer SMS consent write failed:', error instanceof Error ? error.message : error);
+    return 'failed';
+  }
 }
 
 // Establishes the approved audience scope in one step for an insert-if-absent
@@ -1095,6 +1265,27 @@ export async function ensureSmsConsentBaseline(
   });
   if (error) throw error;
   if (typeof data !== 'boolean') throw new Error('SMS consent baseline returned an invalid result.');
+
+  if (data) {
+    const isCrew = source === 'crew_added' || source === 'subcontractor_added';
+    const scope = isCrew ? 'crew' : 'customer';
+    try {
+      await admin.from('sms_consent_evidence').insert({
+        account_id: accountId,
+        phone_number: normalized,
+        consent_scope: scope,
+        disclosure_version: CUSTOMER_SMS_DISCLOSURE_VERSION,
+        disclosure_text: CUSTOMER_SMS_FULL_DISCLOSURE,
+        disclosure_hash: getCustomerSmsDisclosureHash(),
+        consented_at: new Date().toISOString(),
+        source,
+        source_page: source === 'portal_link_request' ? '/portal' : source === 'missed_call_text_back' ? '/api/voice/admission' : 'system_baseline',
+      });
+    } catch (err) {
+      console.error('Failed to record baseline SMS consent evidence:', err);
+    }
+  }
+
   return data;
 }
 
@@ -1882,6 +2073,7 @@ export async function sendQuoteFollowupSms(params: {
   url: string;
   accountId: string;
   idempotencyKey?: string;
+  stage?: 'first' | 'intermediate' | 'final';
 }) {
   // Shared with the settings preview so the contractor is shown the message
   // their client actually receives.
@@ -1889,6 +2081,7 @@ export async function sendQuoteFollowupSms(params: {
     businessName: params.businessName,
     clientName: params.clientName,
     url: params.url,
+    stage: params.stage,
   });
   return queueAccountSms({
     accountId: params.accountId,
@@ -2124,6 +2317,11 @@ export async function sendCampaignSms(params: {
   accountId: string;
   idempotencyKey: string;
 }) {
+  const hasConsent = await hasCurrentSmsConsent(params.accountId, params.phone, 'marketing');
+  if (!hasConsent) {
+    throw new Error('Recipient has not provided express marketing SMS consent.');
+  }
+
   const message = campaignText(params);
   return queueAccountSms({
     accountId: params.accountId,
@@ -2131,6 +2329,7 @@ export async function sendCampaignSms(params: {
     body: message,
     messageKind: 'campaign',
     category: 'customer_message',
+    context: 'marketing',
     idempotencyKey: params.idempotencyKey,
   });
 }
@@ -2206,7 +2405,7 @@ export async function sendContractorAdLeadSms(params: {
   return queueAccountSms({
     accountId: params.accountId,
     phone: params.phone,
-    body: params.body,
+    body: lgqSmsText(params.body),
     messageKind: 'contractor-ad-lead-alert',
     category: 'owner_alert',
     idempotencyKey: params.idempotencyKey,

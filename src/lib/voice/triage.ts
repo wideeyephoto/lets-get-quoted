@@ -111,7 +111,7 @@ export async function notifyEmergencyCall(
     : `${appUrl}/dashboard/voice-calls`;
   const callerDisplay = callerPhone || 'Unknown caller';
   const businessName = account.business_name || 'Your Business';
-  const hazardSummary = summary.slice(0, 140) || emergency.reason;
+  const hazardSummary = summary.trim() || emergency.reason;
 
   const alertText = ownerVoiceEmergencyAlertText({
     businessName,

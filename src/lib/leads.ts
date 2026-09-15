@@ -3,6 +3,7 @@ import { createJob, deleteJob, getJob, parseQuoteItems, type Job, type QuoteItem
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeClientChannelPreference } from '@/lib/client-channel';
 import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
+import { normalizeUsPhone } from '@/lib/phone';
 import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import { sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
 export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
@@ -291,6 +292,7 @@ export type Lead = {
   status: LeadStatus;
   name: string | null;
   phone: string | null;
+  normalized_phone?: string | null;
   email: string | null;
   address: string | null;
   project_type: string | null;
@@ -450,6 +452,7 @@ export async function createLead(
     status: 'new',
     name: input.name.trim(),
     phone: input.phone?.trim() || null,
+    normalized_phone: input.phone ? normalizeUsPhone(input.phone) : null,
     email: input.email?.trim().toLowerCase() || null,
     address: input.address?.trim() || null,
     project_type: input.projectType?.trim() || null,
@@ -823,6 +826,7 @@ export async function updateLeadDetails(
     .update({
       name: input.name.trim() || null,
       phone: input.phone?.trim() || null,
+      normalized_phone: input.phone ? normalizeUsPhone(input.phone) : null,
       email: input.email?.trim().toLowerCase() || null,
       address: input.address?.trim() || null,
       project_type: input.projectType?.trim() || null,
@@ -1003,15 +1007,25 @@ export async function convertLeadToJob(
     }
   }
 
-  const { error } = await supabase
+  const { data: converted, error } = await supabase
     .from('leads')
     .update({ converted_job: job.id, status: 'quoted', updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
-    .eq('id', leadId);
+    .eq('id', leadId)
+    .is('converted_job', null)
+    .select('id')
+    .maybeSingle();
 
+  // Two Send submissions may both have read an unconverted lead. Only the
+  // winner may continue to payments, links and customer email. On an uncertain
+  // write response, retain the new job for reconciliation rather than deleting
+  // a possibly committed conversion.
   if (error) {
-    await deleteJob(supabase, accountId, job.id);
     throw error;
+  }
+  if (!converted) {
+    await deleteJob(supabase, accountId, job.id);
+    throw new Error('This lead was already converted by another request. Open its existing quote.');
   }
   return job;
 }

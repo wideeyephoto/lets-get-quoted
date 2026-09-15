@@ -60,10 +60,11 @@ export async function logIncidentAction(formData: FormData) {
   // rather than rejecting the write and losing what was typed.
   const startedAt = startedRaw ? new Date(startedRaw) : new Date();
   const started_at = Number.isFinite(startedAt.getTime()) ? startedAt.toISOString() : new Date().toISOString();
+  const published = formData.get('published') === 'true' || formData.get('published') === 'on';
 
   const { data, error } = await admin
     .from('platform_incidents')
-    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail, owner, affected_services: affectedServices, impact_summary: impactSummary, external_url: externalUrl })
+    .insert({ kind: kindRaw, title, description, severity, started_at, created_by: ctx.adminEmail, owner, affected_services: affectedServices, impact_summary: impactSummary, external_url: externalUrl, published })
     .select('id')
     .single();
   if (error || !data) {
@@ -75,7 +76,7 @@ export async function logIncidentAction(formData: FormData) {
     action: 'platform_incident_log',
     targetType: 'platform_incident',
     targetId: data.id,
-    meta: { kind: kindRaw, severity, title, owner, affectedServices, externalUrl },
+    meta: { kind: kindRaw, severity, title, owner, affectedServices, externalUrl, published },
   });
 
   if (kindRaw === 'incident' && severity === 'critical') {
@@ -133,4 +134,33 @@ export async function resolveIncidentAction(incidentId: string, formData: FormDa
   revalidatePath('/admin/incidents');
   revalidatePath('/admin');
   back('done=resolved');
+}
+export async function togglePublishIncidentAction(formData: FormData) {
+  const incidentId = String(formData.get('incident_id'));
+  const published = formData.get('published') === 'true';
+  const ctx = await requireMfaPermission('ops.manage');
+  const { admin } = ctx;
+
+  const { data, error } = await admin
+    .from('platform_incidents')
+    .update({ published })
+    .eq('id', incidentId)
+    .select('id, title, published')
+    .single();
+
+  if (error) {
+    console.error('togglePublishIncidentAction failed:', error);
+    back('error=failed');
+  }
+
+  await logAdminAction(admin, ctx, {
+    action: 'platform_incident_update',
+    targetType: 'platform_incident',
+    targetId: incidentId,
+    meta: { published },
+  });
+
+  revalidatePath('/admin/incidents');
+  revalidatePath('/status');
+  back('done=' + (published ? 'published' : 'unpublished'));
 }

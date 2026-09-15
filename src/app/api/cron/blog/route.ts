@@ -3,6 +3,7 @@ import { cronRoute } from '@/lib/cron-runs';
 import { getSiteContent, slugifyBlogTitle } from '@/lib/site-content';
 import { draftBlogPost } from '@/lib/blog-generate';
 import { shouldAutoPublish } from '@/lib/marketing-status';
+import { publishDuePlatformBlogPosts } from '@/lib/platform-blog';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -37,6 +38,15 @@ export const GET = cronRoute('blog', async () => {
   // Auto-drafting stays biweekly (1st + 15th); the daily run otherwise just
   // publishes scheduled posts whose date has arrived.
   const isDraftDay = new Date().getDate() === 1 || new Date().getDate() === 15;
+
+  // 0) Auto-publish scheduled posts on the main platform marketing blog.
+  let platformPublished = 0;
+  try {
+    const platformResult = await publishDuePlatformBlogPosts(today);
+    platformPublished = platformResult.count;
+  } catch (platformErr) {
+    console.warn('Auto-publishing platform blog posts failed:', platformErr);
+  }
 
   let drafted = 0;
   let published = 0;
@@ -110,5 +120,5 @@ export const GET = cronRoute('blog', async () => {
     if (updateError) failed++;
   }
 
-  return { drafted, published, skipped, failed };
+  return { drafted, published, skipped, failed, platformPublished };
 });

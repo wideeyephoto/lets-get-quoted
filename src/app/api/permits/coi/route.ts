@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { listContractorCredentials } from '@/lib/permit-intel/credentials-vault';
-import { generateMunicipalCoi, generateCoiHtml } from '@/lib/permit-intel/coi-generator';
+import { generateMunicipalCoi, generateCoiHtml, CoverageDataMissingError } from '@/lib/permit-intel/coi-generator';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,21 +63,31 @@ export async function POST(request: Request) {
   }
 
   // Load contractor profile and insurance credentials
-  let companyName = 'Contractor Name';
-  let generalLiabilityCarrier = 'Travelers Property Casualty';
-  let generalLiabilityPolicyNumber = 'GL-8849201';
-  let workersCompCarrier = 'Accident Fund / State Fund';
-  let workersCompPolicyNumber = 'WC-9940122';
-  let licenseNumber = 'Active State License';
+  let companyName = 'Contractor';
+  let generalLiabilityCarrier: string | undefined;
+  let generalLiabilityPolicyNumber: string | undefined;
+  let workersCompCarrier: string | undefined;
+  let workersCompPolicyNumber: string | undefined;
+  let licenseNumber: string | undefined;
 
   try {
     const [accountRes, credentials] = await Promise.all([
-      supabase.from('accounts').select('business_name').eq('id', membership.accountId).maybeSingle(),
+      supabase
+        .from('accounts')
+        .select('business_name, insurance_carrier, insurance_policy_number')
+        .eq('id', membership.accountId)
+        .maybeSingle(),
       listContractorCredentials(supabase, membership.accountId),
     ]);
 
     if (accountRes.data?.business_name) {
       companyName = accountRes.data.business_name;
+    }
+    if (accountRes.data?.insurance_carrier) {
+      generalLiabilityCarrier = accountRes.data.insurance_carrier;
+    }
+    if (accountRes.data?.insurance_policy_number) {
+      generalLiabilityPolicyNumber = accountRes.data.insurance_policy_number;
     }
 
     if (credentials && credentials.length > 0) {
@@ -85,34 +95,42 @@ export async function POST(request: Request) {
       const wc = credentials.find((c) => c.credentialType === 'workers_comp');
       const lic = credentials.find((c) => c.credentialType === 'state_license');
 
-      if (gl) {
-        if (gl.insuranceCarrier) generalLiabilityCarrier = gl.insuranceCarrier;
-        if (gl.policyNumber) generalLiabilityPolicyNumber = gl.policyNumber;
-      }
-      if (wc) {
-        if (wc.insuranceCarrier) workersCompCarrier = wc.insuranceCarrier;
-        if (wc.policyNumber) workersCompPolicyNumber = wc.policyNumber;
-      }
-      if (lic?.licenseNumber) {
-        licenseNumber = lic.licenseNumber;
-      }
+      if (gl?.insuranceCarrier) generalLiabilityCarrier = gl.insuranceCarrier;
+      if (gl?.policyNumber) generalLiabilityPolicyNumber = gl.policyNumber;
+      if (wc?.insuranceCarrier) workersCompCarrier = wc.insuranceCarrier;
+      if (wc?.policyNumber) workersCompPolicyNumber = wc.policyNumber;
+      if (lic?.licenseNumber) licenseNumber = lic.licenseNumber;
     }
   } catch {
     // Graceful fallback if credentials tables are empty
   }
 
-  const certificate = generateMunicipalCoi({
-    contractor: {
-      companyName,
-      licenseNumber,
-      generalLiabilityCarrier,
-      generalLiabilityPolicyNumber,
-      workersCompCarrier,
-      workersCompPolicyNumber,
-    },
-    municipality: body.municipality,
-    projectAddress: body.projectAddress,
-  });
+  let certificate;
+  try {
+    certificate = generateMunicipalCoi({
+      contractor: {
+        companyName,
+        licenseNumber,
+        generalLiabilityCarrier,
+        generalLiabilityPolicyNumber,
+        workersCompCarrier,
+        workersCompPolicyNumber,
+      },
+      municipality: body.municipality,
+      projectAddress: body.projectAddress,
+    });
+  } catch (err) {
+    if (err instanceof CoverageDataMissingError) {
+      return NextResponse.json(
+        {
+          error: err.message,
+          missingFields: err.missingFields,
+        },
+        { status: 409 },
+      );
+    }
+    throw err;
+  }
 
   if (body.format === 'html') {
     const html = generateCoiHtml(certificate);

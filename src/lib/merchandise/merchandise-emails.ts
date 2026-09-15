@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import type { MerchandiseOrder, ShippingAddress } from './types';
+import { formatUsdExact } from '../money-format';
 
 let resendClient: Resend | null = null;
 function getResend() {
@@ -29,7 +30,7 @@ export async function sendCustomerMerchandiseReceipt(params: {
         `<tr>
           <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${it.productName} (${it.colorName})</td>
           <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: center;">${it.quantity}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">$${it.totalPrice.toFixed(2)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">${formatUsdExact(it.totalPrice)}</td>
         </tr>`
     )
     .join('');
@@ -58,19 +59,19 @@ export async function sendCustomerMerchandiseReceipt(params: {
           <tfoot>
             <tr>
               <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">Subtotal:</td>
-              <td style="padding: 8px; text-align: right;">$${params.order.subtotal.toFixed(2)}</td>
+              <td style="padding: 8px; text-align: right;">${formatUsdExact(params.order.subtotal)}</td>
             </tr>
             <tr>
               <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">Shipping:</td>
-              <td style="padding: 8px; text-align: right;">$${params.order.shippingCost.toFixed(2)}</td>
+              <td style="padding: 8px; text-align: right;">${formatUsdExact(params.order.shippingCost)}</td>
             </tr>
             <tr>
               <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold;">Sales Tax:</td>
-              <td style="padding: 8px; text-align: right;">$${params.order.taxAmount.toFixed(2)}</td>
+              <td style="padding: 8px; text-align: right;">${formatUsdExact(params.order.taxAmount)}</td>
             </tr>
             <tr style="font-size: 16px;">
               <td colspan="2" style="padding: 8px; text-align: right; font-weight: bold; border-top: 2px solid #cbd5e1;">Total:</td>
-              <td style="padding: 8px; text-align: right; font-weight: bold; border-top: 2px solid #cbd5e1;">$${params.order.totalAmount.toFixed(2)}</td>
+              <td style="padding: 8px; text-align: right; font-weight: bold; border-top: 2px solid #cbd5e1;">${formatUsdExact(params.order.totalAmount)}</td>
             </tr>
           </tfoot>
         </table>
@@ -128,7 +129,7 @@ export async function sendStaffMerchandiseAlert(params: {
     <div style="font-family: monospace; font-size: 13px;">
       <h3>📦 New Merchandise Order: #${params.order.orderNumber}</h3>
       <p><strong>Account ID:</strong> ${params.order.accountId}</p>
-      <p><strong>Retail Total:</strong> $${params.order.totalAmount.toFixed(2)} (Subtotal: $${params.order.subtotal.toFixed(2)}, Tax: $${params.order.taxAmount.toFixed(2)}, Ship: $${params.order.shippingCost.toFixed(2)})</p>
+      <p><strong>Retail Total:</strong> ${formatUsdExact(params.order.totalAmount)} (Subtotal: ${formatUsdExact(params.order.subtotal)}, Tax: ${formatUsdExact(params.order.taxAmount)}, Ship: ${formatUsdExact(params.order.shippingCost)})</p>
       <p><strong>Status:</strong> ${params.order.status}</p>
       <p><strong>Provider:</strong> ${params.provider || 'default'}${params.isSimulated ? ' (SIMULATED)' : ''}</p>
       <p><strong>Items:</strong> ${params.order.items.map((i) => `${i.quantity}x ${i.productName}`).join(', ')}</p>
@@ -140,7 +141,7 @@ export async function sendStaffMerchandiseAlert(params: {
     await resend.emails.send({
       from: "Let's Get Quoted Alerts <alerts@letsgetquoted.com>",
       to: alertRecipient,
-      subject: `[Merchandise Order] #${params.order.orderNumber} ($${params.order.totalAmount.toFixed(2)})`,
+      subject: `[Merchandise Order] #${params.order.orderNumber} (${formatUsdExact(params.order.totalAmount)})`,
       html,
     });
     return true;

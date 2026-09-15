@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { suppressEmail, suppressionReasonFor } from '@/lib/email-suppression';
-import { resendRecipient, resendTags } from '@/lib/resend-tags';
+import { resendRecipient, resendTags, resendTagValue } from '@/lib/resend-tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -192,6 +192,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
     }
     if (error) throw new Error(error.message);
+
+    const lifecycleSendId = resendTagValue(event.data.tags, 'lifecycle_send_id');
+    if (kind === 'contractor_lifecycle' && lifecycleSendId) {
+      if (!accountId || !recipient) throw new Error('Lifecycle callback is missing its workspace or recipient');
+      const { data: confirmed, error: confirmError } = await admin.rpc('confirm_contractor_lifecycle_send', {
+        p_id: lifecycleSendId, p_account_id: accountId, p_recipient: recipient, p_provider_id: providerId,
+      });
+      if (confirmError || confirmed !== true) throw new Error('Could not reconcile lifecycle send callback');
+    }
+
+    const documentSendId = resendTagValue(event.data.tags, 'document_send_id');
+    if ((kind === 'client_quote' || kind === 'invoice') && documentSendId) {
+      const phase = resendTagValue(event.data.tags, 'send_phase');
+      if (!accountId || !recipient || !phase) throw new Error('Document callback is missing its binding');
+      const { data: confirmed, error: confirmError } = await admin.rpc('confirm_document_email_send', {
+        p_id: documentSendId, p_account_id: accountId, p_recipient: recipient, p_provider_id: providerId, p_phase: phase,
+      });
+      if (!confirmError && confirmed === false) {
+        const { data: intent, error: intentError } = await admin.from('document_email_sends')
+          .select('id').eq('id', documentSendId).maybeSingle();
+        if (intentError) throw new Error('Could not inspect missing document send');
+        if (!intent) {
+          // Deleted documents cascade their ledger. Retain an actionable
+          // routing record instead of endlessly retrying an absent intent.
+          const { error: quarantineError } = await admin.from('webhook_failures').insert({
+            source: 'resend', event_type: event.type, reference_id: providerId,
+            error_message: 'DOCUMENT_SEND_QUARANTINE: document send is absent; check deletion or environment routing.',
+            payload_excerpt: JSON.stringify({ document_send_id: documentSendId, account_id: accountId,
+              provider_id: providerId, send_phase: phase, svix_id: request.headers.get('svix-id') }),
+          });
+          if (quarantineError) throw new Error('Could not retain missing document send callback');
+          await maybeSuppress(admin, { status, accountId, recipient, bounce: event.data.bounce ?? null });
+          return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
+        }
+      }
+      if (confirmError || confirmed !== true) throw new Error('Could not reconcile document send callback');
+    }
 
     // Recording the bounce was never the point — not sending again was.
     //

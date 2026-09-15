@@ -6,6 +6,7 @@ import { MARKETING_MAIN_ID, MARKETING_PAGE_CLASS } from '@/components/marketing/
 import MarketingCta from '@/components/marketing/marketing-cta';
 import SiteFooter from '@/components/site-footer';
 import StickyCta from '@/components/sticky-cta';
+import FounderFeatureRequest from '@/components/founder-feature-request';
 import styles from './founder.module.css';
 
 /* ---- Data Constants ---- */
@@ -14,6 +15,45 @@ const HERO_POINTS = [
   'No credit card required',
   'Start at $0/month (Flex tier)',
   'One single connected product',
+] as const;
+
+const FOUNDER_TRUTHS = [
+  {
+    num: '01',
+    kicker: 'THE SECOND SHIFT',
+    pre: 'When the tools go away:',
+    quote:
+      '“When the tools go away, the business still needs you. There are quotes to send, customers to get back to, and tomorrow’s jobs to organize. I wanted to make that part of your day easier.”',
+    solve: 'Quotes assemble automatically from homeowner photos and requests.',
+    span: 'wide',
+  },
+  {
+    num: '02',
+    kicker: 'YOUR REPUTATION',
+    pre: 'Your personal name on the line:',
+    quote:
+      '“Your name is on the truck, the quote, and the finished job. Every interaction reflects on you. I want the tools behind your business to help you feel proud of the whole experience.”',
+    solve: 'High-contrast, polished estimates that earn immediate trust.',
+    span: 'compact',
+  },
+  {
+    num: '03',
+    kicker: 'BILLABLE VS. ADMIN',
+    pre: 'The invisible hours:',
+    quote:
+      '“There’s the work you get paid to do, and there are all the hours it takes to keep that work coming. I built Let’s Get Quoted to help with those hours, too.”',
+    solve: 'Replaces 5 disconnected apps with 1 single flow.',
+    span: 'compact',
+  },
+  {
+    num: '04',
+    kicker: 'LIFE BEYOND THE TRUCK',
+    pre: 'While you’re working one jobsite:',
+    quote:
+      '“While you’re finishing one customer’s job, the next customer is waiting for a reply. I wanted contractors to be able to spend more quality time with loved ones and less time on the business.”',
+    solve: 'Automatic SMS & intake dispatch prevents lost jobs while you work.',
+    span: 'wide',
+  },
 ] as const;
 
 const FOUNDER_BELIEFS = [
@@ -102,19 +142,13 @@ export default function FounderExperience() {
             </div>
 
             <h1 id="founder-title" className={styles.heroTitle}>
-              Great craftsmanship shouldn’t lose jobs to mediocre competitors with a{' '}
-              <em>better website and faster follow-up.</em>
+              “I built Let’s Get Quoted for the person{' '}
+              <em>doing the work, answering the phone, writing the quotes, and running the business.</em>”
             </h1>
-
-            <p className={styles.heroLede}>
-              I built Let’s Get Quoted so a one-truck contracting business can look—and run—like a much bigger company, with cleaner intake, faster quotes, and professional client communication from the first click.
-            </p>
 
             <div className={styles.heroActions}>
               <CtaLink spec={{ label: 'Build my free site' }} className="btn primary" arrow />
-              <a className={styles.storyLinkBtn} href="#story">
-                Read the letter <span aria-hidden="true">↓</span>
-              </a>
+              <FounderFeatureRequest />
             </div>
 
             <ul className={styles.assurancesList} aria-label="Founder assurances">
@@ -127,29 +161,29 @@ export default function FounderExperience() {
             </ul>
           </div>
 
-          {/* Right Visual: Founder Portrait Card with Glassmorphic Elements */}
+          {/* Right Visual: Founder Portrait Card with Circular Edge Fade & Deep Shadow */}
           <div className={styles.heroVisual}>
             <div className={styles.visualOrbitOne} aria-hidden="true" />
             <div className={styles.visualOrbitTwo} aria-hidden="true" />
             <div className={styles.portraitGlowBack} aria-hidden="true" />
 
-            <div className={styles.portraitEnclosure}>
-              <div className={styles.cornerBracketTopLeft} aria-hidden="true" />
-              <div className={styles.cornerBracketBottomRight} aria-hidden="true" />
+            <div className={styles.portraitWrapper}>
+              <div className={styles.portraitEnclosure}>
+                <Image
+                  src="/founder/brett-workshop.jpg"
+                  alt="Brett, founder of Let's Get Quoted, with his dog"
+                  width={750}
+                  height={750}
+                  className={styles.portraitImg}
+                  priority
+                />
+                <div className={styles.portraitEdgeFade} aria-hidden="true" />
+              </div>
 
               <div className={styles.portraitTag}>
                 <span className={styles.statusLiveDot} aria-hidden="true" />
                 <span>BUILDER · FOUNDER</span>
               </div>
-
-              <Image
-                src="/founder/brett-workshop.jpg"
-                alt="Brett, founder of Let's Get Quoted, working at a workshop workbench"
-                width={1122}
-                height={1402}
-                className={styles.portraitImg}
-                priority
-              />
 
               <div className={styles.portraitOverlayCaption}>
                 <span className={styles.portraitName}>Brett</span>
@@ -190,56 +224,56 @@ export default function FounderExperience() {
         </section>
 
         {/* ========================================================================= */}
-        {/* SECTION 1: WHERE IT STARTED & WHAT WAS BROKEN                             */}
+        {/* SECTION 1: CORE TRUTHS (BENTO GRID - ZERO PARAGRAPH ESSAYS)               */}
         {/* ========================================================================= */}
         <section id="story" className={styles.sectionWrap} aria-labelledby="story-title">
           <div className={styles.sectionHeading}>
-            <p className="eyebrow">01 · WHERE IT STARTED</p>
-            <h2 id="story-title">Good contractors were losing work before the first phone call.</h2>
+            <p className="eyebrow">01 · WHY THIS PRODUCT EXISTS</p>
+            <h2 id="story-title">Built with respect for the person doing both.</h2>
+            <p className={styles.sectionLede}>
+              No generic paragraphs or corporate mission statements. Just the four operational truths behind Let’s Get Quoted.
+            </p>
           </div>
 
-          <div className={styles.originStoryGrid}>
-            <div className={styles.originStoryText}>
-              <p>
-                I kept seeing talented, hard-working trade contractors finish an 11-hour day on the tools, only to spend their evenings typing addresses into invoices, texting photos back and forth, and chasing signatures.
-              </p>
-              <p>
-                The breakdown wasn’t their craftsmanship. The breakdown was that traditional software companies sold them <strong>five separate apps that never spoke to each other</strong>: a generic brochure website, a standalone quoting app, an unintegrated calendar, a separate invoicing tool, and an accounting plugin.
-              </p>
-              <p>
-                Let’s Get Quoted is my attempt to fix the entire chain—not just redesign the front page. I did not start with a website builder. I started with what happens on the jobsite after a homeowner requests a quote, and worked backwards until the front page and the back office became one continuous record.
-              </p>
-            </div>
-
-            <div className={styles.originManifestoCard}>
-              <div>
-                <p className={styles.manifestoCardKicker}>THE BUILDER&apos;S APPROACH</p>
-                <p className={styles.manifestoCardQuote}>
-                  “I started with what happens after somebody fills out a request, and worked backwards until the <em>front page and the back office became one continuous pipeline.</em>”
-                </p>
-              </div>
-
-              <div className={styles.manifestoCardFooter}>
-                <Image
-                  src="/founder/brett-workshop.jpg"
-                  alt="Brett"
-                  width={76}
-                  height={76}
-                  className={styles.manifestoAvatar}
-                />
-                <div className={styles.manifestoAuthorInfo}>
-                  <strong>Brett</strong>
-                  <span>FOUNDER · LET&apos;S GET QUOTED</span>
+          <div className={styles.bentoGrid}>
+            {FOUNDER_TRUTHS.map((truth) => (
+              <article
+                key={truth.num}
+                className={truth.span === 'wide' ? styles.bentoCardWide : styles.bentoCardCompact}
+              >
+                <div>
+                  <div className={styles.bentoCardHeader}>
+                    <span
+                      className={
+                        truth.num === '02'
+                          ? styles.bentoKickerOrange
+                          : truth.num === '03'
+                            ? styles.bentoKickerMint
+                            : styles.bentoKicker
+                      }
+                    >
+                      {truth.num} · {truth.kicker}
+                    </span>
+                    <span className={styles.bentoCategory}>Field Reality</span>
+                  </div>
+                  <p className={styles.bentoPre}>{truth.pre}</p>
+                  <blockquote className={styles.bentoQuote}>
+                    {truth.quote}
+                  </blockquote>
                 </div>
-              </div>
-            </div>
+                <div className={styles.bentoSolve}>
+                  <span className={styles.bentoSolveCheck} aria-hidden="true">✓</span>
+                  <span>{truth.solve}</span>
+                </div>
+              </article>
+            ))}
           </div>
 
-          {/* The 3 Core Frustrations */}
+          {/* The 3 Core Frustrations Eliminated */}
           <div className={styles.brokenGrid}>
             {BROKEN_CARDS.map((card) => (
               <article key={card.num} className={styles.brokenCard}>
-                <span className={styles.brokenCardNum}>{card.num}</span>
+                <span className={styles.brokenCardNum}>{card.num} · ELIMINATED</span>
                 <h3 className={styles.brokenCardTitle}>{card.title}</h3>
                 <p className={styles.brokenCardBody}>{card.body}</p>
               </article>
@@ -257,8 +291,15 @@ export default function FounderExperience() {
           </div>
 
           <blockquote className={styles.manifestoQuote}>
-            “A contractor starting with one truck should be able to look professional, respond intelligently, and run the work with the exact same confidence as a much larger company.”
+            “Being good at your trade and keeping a business organized are two demanding jobs. I built this with respect for the person trying to do both.”
           </blockquote>
+
+          <div className={styles.reflectionBanner}>
+            <span style={{ fontSize: '20px' }} aria-hidden="true">💡</span>
+            <p className={styles.reflectionQuote}>
+              “When you’re responsible for everything, finding time to improve the business can be difficult. I want this product to give you a little more room to think ahead.”
+            </p>
+          </div>
 
           <div className={styles.principlesGrid}>
             {PRINCIPLES.map((item) => (
@@ -278,13 +319,14 @@ export default function FounderExperience() {
           <div className={styles.sectionHeading}>
             <p className="eyebrow">03 · WHAT I AM HOLDING THIS PRODUCT TO</p>
             <h2 id="promise-title">My promise to every contractor who signs up.</h2>
-            <p className={styles.sectionLede}>
-              I will keep the free account complete rather than crippled, I will not add a monthly bill to a business that has not been paid yet, and I will never describe something as finished before it is.
-            </p>
           </div>
 
           <div className={styles.promiseCard}>
-            <p style={{ color: '#dbe7f3', fontSize: '17px', lineHeight: '1.6', margin: 0 }}>
+            <blockquote className={styles.closingAnchorQuote}>
+              “If this helps you send the quote, keep the details straight, and close out the day with fewer loose ends, it’s doing something worthwhile. <em>That’s what I want to keep building on.</em>”
+            </blockquote>
+
+            <p style={{ color: '#dbe7f3', fontSize: '16px', lineHeight: '1.6', margin: '0 0 24px' }}>
               Software should not charge you when you have no work on the books. Our Flex model gives every contractor a <strong>$0 monthly base price</strong> with full quoting, scheduling, Stripe deposits, and client intake unlocked. We earn our keep when you get paid.
             </p>
 
@@ -298,7 +340,10 @@ export default function FounderExperience() {
             </ul>
 
             <div className={styles.directionNote}>
-              <strong>Where this goes next:</strong> more of the thinking and less of the typing—intake that gets better at reading a job, and quotes that start themselves from what the homeowner already described. That is the direction I am building in. I would rather say when each piece lands than sell it in advance.
+              <p style={{ margin: '0 0 16px' }}>
+                <strong>Where this goes next:</strong> more of the thinking and less of the typing—intake that gets better at reading a job, and quotes that start themselves from what the homeowner already described. That is the direction I am building in. I would rather say when each piece lands than sell it in advance.
+              </p>
+              <FounderFeatureRequest />
             </div>
 
             <div className={styles.signatureRow}>

@@ -1,138 +1,113 @@
-/**
- * RECONCILE SUBMITTED OVERAGE SETTLEMENTS AGAINST STRIPE.
- *
- * Before the reaper goes live in production, any settlement row currently in
- * 'submitted' state predates the reaper and may or may not have reached Stripe.
- *
- * This script reconciles them deliberately:
- * 1. Inspects Stripe for an existing invoice item matching the stored
- *    `stripe_idempotency_key` or metadata `lgq_settlement_id`.
- * 2. If an invoice item exists in Stripe: marks the settlement 'charged' with that item id.
- * 3. If no invoice item exists: transitions the settlement to 'indeterminate' with
- *    last_error = 'reconciled_unsubmitted' so the worker can retry under the identical key.
- *
- * Safe to run with --dry-run (default is live if --apply is passed, otherwise dry-run).
- */
-
-import { readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+/** Read provider evidence first. A failed/empty/incomplete scan never enables retry. */
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import Stripe from 'stripe';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const requestOptions = { timeout: 20_000, maxNetworkRetries: 0 };
 
-function loadEnv() {
-  const env = { ...process.env };
-  for (const file of ['.env.local', '.env']) {
-    const p = join(ROOT, file);
-    if (!existsSync(p)) continue;
-    const lines = readFileSync(p, 'utf8').split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const eq = trimmed.indexOf('=');
-      if (eq === -1) continue;
-      const key = trimmed.slice(0, eq).trim();
-      const val = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
-      if (!env[key]) env[key] = val;
+export function verifiedItem(row, item, accountId, livemode) {
+  return typeof item?.id === 'string' && /^ii_[A-Za-z0-9]{8,}$/.test(item.id) && !item.deleted
+    && item.customer === row.stripe_customer_id && item.currency === 'usd'
+    && item.amount === Number(row.chargeable_cents) && item.livemode === row.livemode && item.livemode === livemode
+    && item.metadata?.lgq_settlement_id === row.id && item.metadata?.lgq_account_id === row.account_id
+    && (!row.stripe_account_id || row.stripe_account_id === accountId);
+}
+
+export async function inspectSettlement(stripe, row, scope, maxPages = 100) {
+  if (!stripe || !row.stripe_customer_id || typeof row.livemode !== 'boolean' || row.livemode !== scope.livemode
+    || (row.stripe_account_id && row.stripe_account_id !== scope.accountId)) return { status: 'unresolved', reason: 'provider_scope_missing' };
+  try {
+    const matches = new Map();
+    if (row.stripe_invoice_item_id) {
+      const item = await stripe.invoiceItems.retrieve(row.stripe_invoice_item_id, {}, requestOptions);
+      if (!verifiedItem(row,item,scope.accountId,scope.livemode)) return { status: 'unresolved', reason: 'stored_item_mismatch' };
+      matches.set(item.id,item);
     }
-  }
-  return env;
+    // Also scan when an ID is known, to detect duplicates rather than accepting
+    // the first valid match. Omitting pending includes attached and pending items.
+    let cursor;
+    for (let page = 0; page < maxPages; page += 1) {
+      const items = await stripe.invoiceItems.list({ customer: row.stripe_customer_id, limit: 100,
+        ...(cursor ? { starting_after: cursor } : {}) }, requestOptions);
+      if (!Array.isArray(items.data) || typeof items.has_more !== 'boolean') throw new Error('Malformed provider page');
+      for (const item of items.data) {
+        if (item.metadata?.lgq_settlement_id === row.id) matches.set(item.id,item);
+      }
+      if (!items.has_more) {
+        if (matches.size > 1) return { status: 'unresolved', reason: 'duplicate_items', itemIds: [...matches.keys()] };
+        if (!matches.size) return { status: 'unresolved', reason: 'no_matching_item' };
+        const item = [...matches.values()][0];
+        if (!verifiedItem(row,item,scope.accountId,scope.livemode)) return { status: 'unresolved', reason: 'item_mismatch' };
+        return { status: 'matched', item };
+      }
+      const next = items.data.at(-1)?.id;
+      if (!next || next === cursor) throw new Error('Pagination did not advance');
+      cursor = next;
+    }
+    return { status: 'unresolved', reason: 'incomplete_pagination' };
+  } catch { return { status: 'error', reason: 'stripe_lookup_failed' }; }
 }
 
-const env = loadEnv();
-const isApply = process.argv.includes('--apply');
-const isDryRun = process.argv.includes('--dry-run') || !isApply;
-
-const dbUrl = env.DATABASE_URL || env.POSTGRES_URL || env.SUPABASE_DB_URL;
-if (!dbUrl) {
-  console.log('[reconcile] No database URL configured. Skipping backfill.');
-  process.exit(0);
-}
-
-const stripeKey = env.STRIPE_SECRET_KEY;
-const stripe = stripeKey ? new Stripe(stripeKey) : null;
-
-const client = new pg.Client({
-  connectionString: dbUrl,
-  ssl: dbUrl.includes('localhost') ? false : { rejectUnauthorized: false },
-});
-
-try {
-  await client.connect();
-  console.log(`[reconcile] Connected to database (mode: ${isDryRun ? 'DRY-RUN' : 'APPLY'})`);
-
-  const { rows } = await client.query(`
-    select id, account_id, stripe_customer_id, stripe_idempotency_key, chargeable_cents, claim_token, state, submitted_at
-    from public.workspace_overage_settlements
-    where state = 'submitted'
-    order by submitted_at asc
-  `);
-
-  console.log(`[reconcile] Found ${rows.length} settlement(s) in 'submitted' state.`);
-
-  if (rows.length === 0) {
-    console.log('[reconcile] No submitted settlements to reconcile. System is clean.');
-    await client.end();
-    process.exit(0);
-  }
-
-  let completed = 0;
-  let markedIndeterminate = 0;
-  let errors = 0;
-
+export async function reconcileRows({ rows, stripe, db, scope, apply = false }) {
+  const report = { scanned: rows.length, matched: 0, applied: 0, unresolved: 0, errors: 0, entries: [] };
   for (const row of rows) {
-    console.log(`[reconcile] Processing settlement ${row.id} (customer: ${row.stripe_customer_id})...`);
-
-    let existingItem = null;
-    if (stripe && row.stripe_customer_id) {
-      try {
-        const items = await stripe.invoiceItems.list({
-          customer: row.stripe_customer_id,
-          limit: 20,
-        });
-        existingItem = items.data.find((item) => item.metadata?.lgq_settlement_id === row.id);
-      } catch (err) {
-        console.error(`[reconcile] Stripe lookup error for ${row.id}:`, err.message);
+    let result = row.lease_expires_at && Date.parse(row.lease_expires_at) > Date.now()
+      ? { status: 'unresolved', reason: 'active_lease' } : await inspectSettlement(stripe,row,scope);
+    if (result.status === 'matched') {
+      report.matched += 1;
+      if (apply) {
+        try {
+          const applied = await db.query('select public.reconcile_overage_invoice_item($1,$2,$3::jsonb,$4) as applied',
+            [row.id,row.revision,JSON.stringify(result.item),scope.accountId]);
+          if (applied.rows[0]?.applied !== true) result = { status: 'unresolved', reason: 'concurrent_change' };
+          else report.applied += 1;
+        } catch { result = { status: 'error', reason: 'apply_failed' }; }
       }
     }
-
-    if (existingItem) {
-      console.log(`[reconcile] Found matching Stripe invoice item ${existingItem.id} for settlement ${row.id}`);
-      if (!isDryRun) {
-        await client.query(`
-          update public.workspace_overage_settlements
-          set state = 'charged',
-              stripe_invoice_item_id = $1,
-              resolved_at = now(),
-              claim_token = null,
-              lease_expires_at = null,
-              last_error = null,
-              updated_at = now()
-          where id = $2
-        `, [existingItem.id, row.id]);
-      }
-      completed++;
-    } else {
-      console.log(`[reconcile] No invoice item found in Stripe for settlement ${row.id}; moving to indeterminate`);
-      if (!isDryRun) {
-        await client.query(`
-          update public.workspace_overage_settlements
-          set state = 'indeterminate',
-              last_error = 'reconciled_unsubmitted',
-              updated_at = now()
-          where id = $1
-        `, [row.id]);
-      }
-      markedIndeterminate++;
-    }
+    if (result.status === 'unresolved') report.unresolved += 1;
+    if (result.status === 'error') report.errors += 1;
+    report.entries.push({ settlementId: row.id, revision: row.revision, status: result.status,
+      reason: result.reason, invoiceItemId: result.item?.id, duplicateItemIds: result.itemIds });
   }
+  return report;
+}
 
-  console.log(`\n[reconcile] Summary: scanned=${rows.length}, completed=${completed}, indeterminate=${markedIndeterminate}, errors=${errors}`);
-  await client.end();
-} catch (err) {
-  console.error('[reconcile] Failed:', err);
-  try { await client.end(); } catch {}
-  process.exit(1);
+async function main() {
+  const args = process.argv.slice(2);
+  const option = (name) => args.find((arg) => arg.startsWith(`${name}=`))?.slice(name.length+1);
+  const mode = option('--mode');
+  const accountId = option('--stripe-account');
+  const manifest = option('--manifest');
+  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.SUPABASE_DB_URL;
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!databaseUrl || !stripeKey || !['test','live'].includes(mode) || !accountId || !manifest) {
+    throw new Error('Required: database URL, STRIPE_SECRET_KEY, --mode=test|live --stripe-account=acct_... --manifest=path [--apply]');
+  }
+  if (args.includes('--apply') && args.includes('--dry-run')) throw new Error('Choose either --apply or --dry-run');
+  const stripe = new Stripe(stripeKey, requestOptions);
+  const [account,balance] = await Promise.all([stripe.accounts.retrieve(null,{},requestOptions),stripe.balance.retrieve({},requestOptions)]);
+  if (account.id !== accountId || balance.livemode !== (mode==='live')) throw new Error('Stripe scope mismatch');
+  const url = new URL(databaseUrl);
+  const local = ['localhost','127.0.0.1','[::1]'].includes(url.hostname);
+  // Do not permit URL sslmode settings to override certificate verification.
+  for (const name of ['sslmode','sslcert','sslkey','sslrootcert']) url.searchParams.delete(name);
+  const db = new pg.Client({ connectionString: url.toString(), ssl: local ? false : {
+    rejectUnauthorized: true, ...(process.env.PGSSLROOTCERT ? { ca: readFileSync(process.env.PGSSLROOTCERT,'utf8') } : {}),
+  } });
+  await db.connect();
+  try {
+    const { rows } = await db.query(`select * from public.workspace_overage_settlements
+      where state in ('submitted','indeterminate') or (state='failed' and attempt_count>0)
+      order by first_submitted_at nulls first,id`);
+    const report = await reconcileRows({ rows,stripe,db,scope:{ accountId,livemode:mode==='live' },apply:args.includes('--apply') });
+    writeFileSync(resolve(manifest),JSON.stringify({ generatedAt:new Date().toISOString(), mode,accountId,apply:args.includes('--apply'),...report },null,2));
+    console.log(JSON.stringify({ scanned:report.scanned,matched:report.matched,applied:report.applied,unresolved:report.unresolved,errors:report.errors }));
+    if (report.errors || report.unresolved) process.exitCode=1;
+  } finally { await db.end(); }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch(() => { console.error('Overage reconciliation failed; verify configuration, scope, and connectivity.'); process.exitCode=1; });
 }

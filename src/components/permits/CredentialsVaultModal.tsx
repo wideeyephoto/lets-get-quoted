@@ -251,7 +251,7 @@ export function CredentialsVaultModal({
                       <input
                         id="lic-num-input"
                         type="text"
-                        placeholder="e.g. 2101234567"
+                        placeholder="e.g. LIC-00000000"
                         value={licenseNumber}
                         onChange={(e) => setLicenseNumber(e.target.value)}
                         className={styles.textInput}
@@ -309,6 +309,14 @@ export function CredentialsVaultModal({
                   + Add License, PIN or Insurance
                 </button>
               )}
+
+              <div style={{ marginTop: '1.25rem', padding: '0.75rem 1rem', background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '6px', fontSize: '0.8rem', color: '#94a3b8', lineHeight: '1.4' }}>
+                <span style={{ color: '#38bdf8', fontWeight: 600 }}>Statutory Tax &amp; Employer Identifiers:</span>{' '}
+                Federal Employer ID (FEIN), State Employer # (MESC), and default trade license type are managed in{' '}
+                <a href="/dashboard/settings" style={{ color: '#38bdf8', textDecoration: 'underline' }}>
+                  Dashboard &gt; Settings &gt; Contractor Compliance
+                </a>.
+              </div>
             </>
           )}
         </div>

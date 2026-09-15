@@ -304,7 +304,7 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
         badge: 'New',
         title: 'Clean Energy & IRA Rebate Calculator',
         description:
-          'Automatically calculate federal 25C tax credits and state-level utility rebates directly inside customer quotes for heat pumps, roofing, and solar.',
+          'Automatically calculate federal clean energy tax credits and state-level utility rebates directly inside customer quotes for heat pumps, roofing, and solar.',
       },
       {
         badge: 'New',

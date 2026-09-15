@@ -19,6 +19,8 @@ import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyRecovery } from './lib/verify-overage-recovery.mjs';
+import { verifyStripeRehearsal } from './lib/verify-overage-stripe-rehearsal.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 for (const dir of [
@@ -41,8 +43,8 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
-const SETTLEMENT = m('20260819260000_overage_settlement.sql');
-const REAPER_MIGRATION = m('20260909210000_overage_settlement_reaper_and_starvation.sql');
+const SETTLEMENT = m('20260820074457_overage_settlement.sql');
+const REAPER_MIGRATION = m('20260909224107_overage_settlement_reaper_and_starvation.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });
@@ -423,6 +425,8 @@ try {
   ck('closing the new period leaves no unclosed candidates for that account',
     !unclosedAfter.some((p) => p.account_id === STARVE_ACCT));
 
+  await verifyRecovery({ q, pg, ck, repo: REPO });
+  if (process.env.LGQ_OVERAGE_STRIPE_REHEARSAL === '1') await verifyStripeRehearsal({ q, ck });
   await c.end();
 } catch (error) {
   ck('harness ran to completion', false, error.message ?? String(error));

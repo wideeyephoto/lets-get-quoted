@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
     }
     return fetch('https://api.openai.com/v1/responses', {
       ...init,
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(8000),
     });
   };
 
@@ -377,10 +377,16 @@ export async function POST(request: NextRequest) {
       : {};
     if (guardrail.valid && guardrail.minCents !== undefined && guardrail.maxCents !== undefined) {
       const basis = typeof parsed.basis === 'string' ? parsed.basis.trim().slice(0, 60) : '';
+      const finalToken = createContinuationToken({
+        siteId,
+        turn: turn + 1,
+        history: fullStatelessInput,
+      });
       return substantiveResponse({
         type: 'estimate',
         min: Math.round(guardrail.minCents / 100),
         max: Math.round(guardrail.maxCents / 100),
+        continuationToken: finalToken,
         ...(basis ? { basis } : {}),
         ...(visualObservation ? { visualObservation } : {}),
         ...fit,

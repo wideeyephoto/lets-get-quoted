@@ -556,19 +556,19 @@ export function resolveRecipientTimeZone(params: RecipientLocationParams): strin
     return params.explicitTimeZone;
   }
 
-  // 2. Recipient phone area code
+  // 2. Recipient address / city / state
+  const locationCandidate = params.state || params.address || params.city || params.postalCode;
+  const tzFromLocation = getTimeZoneFromLocation(locationCandidate);
+  if (tzFromLocation && isValidTimeZone(tzFromLocation)) {
+    return tzFromLocation;
+  }
+
+  // 3. Recipient phone area code
   if (params.phone) {
     const tzFromPhone = getTimeZoneFromPhone(params.phone);
     if (tzFromPhone && isValidTimeZone(tzFromPhone)) {
       return tzFromPhone;
     }
-  }
-
-  // 3. Recipient address / city / state
-  const locationCandidate = params.state || params.address || params.city || params.postalCode;
-  const tzFromLocation = getTimeZoneFromLocation(locationCandidate);
-  if (tzFromLocation && isValidTimeZone(tzFromLocation)) {
-    return tzFromLocation;
   }
 
   // 4. Account operating timezone

@@ -1,7 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { APP_ORIGIN } from '@/lib/app-origin';
 import {
   filterSafeSendingDnsRecords,
   failureReasonFor,
@@ -11,7 +10,7 @@ import {
   listSendingDomains,
   toStoredStatus,
 } from '@/lib/resend-domains';
-import { getAccountOwnerEmail, sendSendingDomainFailedEmail } from '@/lib/email';
+import { runEmailDomainFailureNotices } from '@/lib/email-domain-failure-notices';
 
 /**
  * The daily re-check of every custom sending domain.
@@ -57,6 +56,9 @@ export type SendingDomainReconcileSummary = {
   remaining?: number;
   skipped?: true;
   reason?: string;
+  notificationReviews?: number;
+  notificationBacklog?: number;
+  failures?: Array<{ noticeId: string; accountId: string; code: string }>;
 };
 
 function emptySummary(): SendingDomainReconcileSummary {
@@ -82,38 +84,6 @@ function emptySummary(): SendingDomainReconcileSummary {
 function isPlatformOwnedDomain(name: string): boolean {
   const root = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com').trim().toLowerCase();
   return name === root || name.endsWith(`.${root}`);
-}
-
-async function notifyOwner(
-  admin: SupabaseClient,
-  row: ReconcileRow,
-  reason: string | null,
-): Promise<boolean> {
-  const recipientEmail = await getAccountOwnerEmail(admin, row.account_id);
-  if (!recipientEmail) {
-    // Counted as an error by the caller. A verified sending domain that broke
-    // with nobody reachable to tell is a real gap, not a quiet no-op.
-    console.error(
-      `[email-domain-reconcile] no owner email for account ${row.account_id}; ${row.domain} downgraded unannounced`,
-    );
-    return false;
-  }
-
-  const { data: site } = await admin
-    .from('sites')
-    .select('company_name')
-    .eq('account_id', row.account_id)
-    .maybeSingle();
-
-  await sendSendingDomainFailedEmail({
-    recipientEmail,
-    businessName: (site?.company_name as string | null)?.trim() || 'your business',
-    domain: row.domain,
-    accountId: row.account_id,
-    reason,
-    settingsUrl: `${APP_ORIGIN}/dashboard/settings`,
-  });
-  return true;
 }
 
 export async function runEmailSendingDomainReconcile(
@@ -179,6 +149,7 @@ export async function runEmailSendingDomainReconcile(
         verified_at: isVerified ? row.verified_at || new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       };
+      if (wasVerified && !isVerified) patch.failure_notice_requested_at = new Date().toISOString();
       if (provider) {
         // The apex-MX guard applies here too: the provider can change its
         // recommended records at any time, and this is the other place those
@@ -196,6 +167,7 @@ export async function runEmailSendingDomainReconcile(
         .eq('id', row.id)
         .eq('account_id', row.account_id)
         .eq('domain', row.domain)
+        .eq('status', row.status)
         .neq('status', 'disabled')
         .select('id')
         .maybeSingle();
@@ -211,19 +183,7 @@ export async function runEmailSendingDomainReconcile(
       if (storedStatus !== row.status) summary.updated += 1;
       if (wasVerified && !isVerified) {
         summary.downgraded += 1;
-        // Only on the verified -> broken TRANSITION. The row is now `failed`,
-        // so tomorrow's run sees a different previous status and stays quiet:
-        // one email per breakage, not one per day until it is fixed.
-        try {
-          if (await notifyOwner(admin, row, reason)) summary.ownersNotified += 1;
-          else summary.errors += 1;
-        } catch (notifyError) {
-          summary.errors += 1;
-          console.error(
-            `[email-domain-reconcile] failed to notify owner for ${row.domain}:`,
-            notifyError instanceof Error ? notifyError.message : notifyError,
-          );
-        }
+        // The database trigger records the notice in this same transaction.
       }
       if (!wasVerified && isVerified) summary.recovered += 1;
     } catch (rowError) {
@@ -316,5 +276,16 @@ export async function runEmailSendingDomainReconcile(
     );
   }
 
+  try {
+    const notices = await runEmailDomainFailureNotices(admin);
+    summary.ownersNotified += notices.ownersNotified;
+    summary.errors += notices.errors;
+    summary.notificationReviews = notices.notificationReviews;
+    summary.notificationBacklog = notices.notificationBacklog;
+    if (notices.failures.length) summary.failures = notices.failures;
+  } catch (error) {
+    summary.errors += 1;
+    console.error('[email-domain-reconcile] owner notice processing failed:', error instanceof Error ? error.message : error);
+  }
   return summary;
 }
