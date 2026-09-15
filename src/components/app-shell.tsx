@@ -3,7 +3,7 @@
 import BrandLogo from '@/components/brand-logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Fragment, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, useCallback, useTransition, type FormEvent as ReactFormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
@@ -18,6 +18,9 @@ import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_ST
 import { attentionBadgeLabel } from '@/lib/lead-queue';
 import { useNavCustomization, useNavCollapsed, useNavPinned } from '@/lib/nav-customization';
 import { useNavVisibility } from '@/lib/nav-visibility-client';
+import { selectWorkspaceAction } from '@/app/workspaces/actions';
+import { NavigationSidebar } from './navigation-sidebar';
+import { NavigationSettingsButton } from './navigation-settings/NavigationSettingsButton';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
 // see the status route), so it is the only one whose digits can run away from
@@ -44,6 +47,7 @@ export const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
   { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
   { href: '/dashboard/text-to-job', icon: '/dashboard/text-to-job', label: 'Voice / SMS memo' },
+  { href: '/dashboard/voice-calls', icon: '/dashboard/voice-calls', label: 'AI Voice Receptionist' },
   // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
@@ -153,11 +157,20 @@ export const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = 
   },
 ];
 
+export type ShellWorkspace = {
+  accountId: string;
+  businessName: string;
+  role: 'owner' | 'office';
+  isCurrent: boolean;
+};
+
 type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
   siteUrl: string | null;
   businessName: string | null;
+  workspaces?: ShellWorkspace[];
+  hasMultipleWorkspaces?: boolean;
   logoUrl?: string | null;
   navLogoTop?: boolean;
   newQuoteRequestCount: number;
@@ -187,6 +200,8 @@ type AccountStatus = {
   /** Whether any communication or AI credit balance is low. */
   lowCreditAlert?: boolean;
   nav?: { visible: string[]; demoted: string[]; hiddenCount: number } | null;
+  navPreferences?: any;
+  eligibleNavIds?: string[];
 };
 
 // Whether an automation is actually accepting work right now. 'paused' is the
@@ -317,9 +332,34 @@ function getPrimaryAction(isLoggedIn = false, pathname: string | null = null) {
   return { href: APP_SIGNUP_URL, label: 'Create Free Account' };
 }
 
+function WorkspaceSwitchOverlay({ workspaceName }: { workspaceName: string }) {
+  return (
+    <div
+      className="workspace-switch-overlay"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={workspaceName ? `Switching to ${workspaceName}…` : 'Switching workspace…'}
+    >
+      <div className="workspace-switch-modal">
+        <div className="workspace-switch-spinner-wrap" aria-hidden="true">
+          <div className="workspace-switch-spinner" />
+        </div>
+        <h3 className="workspace-switch-title">
+          {workspaceName ? `Switching to ${workspaceName}…` : 'Switching workspace…'}
+        </h3>
+        <p className="workspace-switch-subtitle">
+          Loading workspace data and live pipeline…
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
   const pathname = usePathname();
-  const { isNavOpen, closeNav, toggleNav } = useAppShell();
+  const { isNavOpen, closeNav, toggleNav, switchingWorkspace, setSwitchingWorkspace } = useAppShell();
+  const [, startTransition] = useTransition();
   const { contractorLogoTop } = useNavCustomization();
   const { isCollapsed, toggleCollapsed } = useNavCollapsed();
   const { nav, setNav } = useNavVisibility();
@@ -356,6 +396,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [contractorLogoUrl, setContractorLogoUrl] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<ShellWorkspace[]>([]);
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+  const workspaceMenuRef = useRef<HTMLDivElement>(null);
   // WHICH trigger is open, not merely whether one is. Both the rail and the
   // mobile bar render a "+ New", and both are in the DOM at once (the rail is a
   // drawer on a phone, not an unmounted branch). A shared boolean would open
@@ -398,6 +441,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [lowCreditAlert, setLowCreditAlert] = useState(false);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [navPreferences, setNavPreferences] = useState<any>(null);
+  const [eligibleNavIds, setEligibleNavIds] = useState<string[]>([]);
   const isDashboard = pathname.startsWith('/dashboard');
   const isTransactional =
     pathname.startsWith('/pay') ||
@@ -674,6 +719,192 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     items[nextIdx].focus();
   }
 
+  // The workspace switcher menu closes on outside click or Escape.
+  useEffect(() => {
+    if (!isWorkspaceMenuOpen) return;
+    const wrap = workspaceMenuRef.current;
+    wrap?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus();
+    const onPointerDown = (event: MouseEvent) => {
+      if (wrap && !wrap.contains(event.target as Node)) setIsWorkspaceMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsWorkspaceMenuOpen(false);
+        wrap?.querySelector<HTMLElement>('button[aria-haspopup="menu"]')?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isWorkspaceMenuOpen]);
+
+  // Close workspace menu on route navigation
+  useEffect(() => {
+    setIsWorkspaceMenuOpen(false);
+  }, [pathname]);
+
+  // Clear switching workspace on route navigation
+  useEffect(() => {
+    setSwitchingWorkspace(null);
+  }, [pathname, setSwitchingWorkspace]);
+
+  // Safety timeout in case a workspace switch hangs or network stalls
+  useEffect(() => {
+    if (!switchingWorkspace) return;
+    const timer = setTimeout(() => {
+      setSwitchingWorkspace(null);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [switchingWorkspace, setSwitchingWorkspace]);
+
+  const loadStatus = useCallback(() => {
+    return fetch('/api/account/status', { cache: 'no-store' })
+      .then((res) => (res.ok ? (res.json() as Promise<AccountStatus>) : null))
+      .then((data) => {
+        if (data) {
+          setStripeOnboarded(Boolean(data.onboarded));
+          setSitePublished(Boolean(data.sitePublished));
+          setSiteUrl(data.siteUrl ?? null);
+          setBusinessName(data.businessName ?? null);
+          setWorkspaces(Array.isArray(data.workspaces) ? data.workspaces : []);
+          setContractorLogoUrl(data.logoUrl ?? null);
+          setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
+          setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
+          setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
+          setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
+          setOpenQuickStopCount(Number(data.openQuickStopRequestCount ?? 0));
+          setOpenLeadCount(Number(data.openLeadCount ?? 0));
+          setLeadTitle(typeof data.leadRailTitle === 'string' ? data.leadRailTitle : null);
+          setActiveJobCount(Number(data.activeJobCount ?? 0));
+          setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
+          setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
+          setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
+          setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
+          setTextToJobCount(Number(data.textToJobCount ?? 0));
+          setNewestTextToJobCreatedAt(data.newestTextToJobCreatedAt ?? null);
+          setQuickStopState(navState(data.quickStopState));
+          setBookingState(navState(data.bookingState));
+          setLowCreditAlert(Boolean(data.lowCreditAlert));
+          if (data.nav) {
+            setNav(data.nav);
+          }
+          if (data.navPreferences) setNavPreferences(data.navPreferences);
+          if (data.eligibleNavIds) setEligibleNavIds(data.eligibleNavIds);
+        }
+        return data;
+      })
+      .catch(() => null);
+  }, [setNav]);
+
+  const handleSwitchWorkspace = (e: ReactFormEvent<HTMLFormElement>, ws: ShellWorkspace) => {
+    e.preventDefault();
+    if (ws.isCurrent || switchingWorkspace) return;
+
+    setSwitchingWorkspace(ws.businessName);
+    setIsWorkspaceMenuOpen(false);
+
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.append('accountId', ws.accountId);
+        await selectWorkspaceAction(formData);
+      } catch (err: unknown) {
+        const isNextRedirect =
+          (err && typeof err === 'object' && 'digest' in err && typeof (err as { digest: unknown }).digest === 'string' && ((err as { digest: string }).digest.includes('NEXT_REDIRECT') || (err as { digest: string }).digest.includes('redirect:'))) ||
+          (err instanceof Error && (err.message.includes('NEXT_REDIRECT') || err.message.includes('redirect:')));
+
+        if (!isNextRedirect) {
+          console.error('Failed to switch workspace:', err);
+          setSwitchingWorkspace(null);
+        }
+      } finally {
+        try {
+          await loadStatus();
+        } catch {
+          // ignore
+        }
+        setSwitchingWorkspace(null);
+      }
+    });
+  };
+
+  // Arrow keys move focus between workspace menu items.
+  function onWorkspaceMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const items = Array.from(workspaceMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+    if (!items.length) return;
+    event.preventDefault();
+    const idx = items.indexOf(document.activeElement as HTMLElement);
+    const nextIdx = event.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+    items[nextIdx].focus();
+  }
+
+  function renderWorkspaceMenu(_id = 'sidenav-workspace-menu') {
+    return (
+      <div
+        className="sidenav-workspace-menu"
+        id="sidenav-workspace-menu"
+        role="menu"
+        aria-label="Workspaces"
+        onKeyDown={onWorkspaceMenuKeyDown}
+      >
+        <div className="sidenav-workspace-menu-header">
+          <span className="sidenav-workspace-menu-title">Workspaces</span>
+          <span className="sidenav-workspace-badge">{workspaces.length}</span>
+        </div>
+        <div className="sidenav-workspace-list">
+          {workspaces.map((ws) => (
+            <form key={ws.accountId} action={selectWorkspaceAction} onSubmit={(e) => handleSwitchWorkspace(e, ws)} className="sidenav-workspace-form">
+              <input type="hidden" name="accountId" value={ws.accountId} />
+              <button
+                type="submit"
+                role="menuitem"
+                className={`sidenav-workspace-item${ws.isCurrent ? ' active' : ''}`}
+                disabled={ws.isCurrent}
+                title={ws.isCurrent ? `${ws.businessName} (Current workspace)` : `Switch to ${ws.businessName}`}
+              >
+                <div className="sidenav-workspace-item-text">
+                  <span className="sidenav-workspace-item-name">{ws.businessName}</span>
+                  <span className="sidenav-workspace-item-role">{ws.role === 'owner' ? 'Owner' : 'Office'}</span>
+                </div>
+                {ws.isCurrent ? (
+                  <svg
+                    className="sidenav-workspace-check"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    width="14"
+                    height="14"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : null}
+              </button>
+            </form>
+          ))}
+        </div>
+        <div className="sidenav-workspace-footer">
+          <Link
+            href="/workspaces"
+            role="menuitem"
+            className="sidenav-workspace-manage"
+            onClick={() => setIsWorkspaceMenuOpen(false)}
+          >
+            <span>All workspaces</span>
+            <span className="sidenav-workspace-arrow" aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Track sign-in state client-side so the logo can route logged-in
   // contractors straight to their dashboard from anywhere in the app
   // (marketing pages, etc.), not just while already inside /dashboard.
@@ -709,43 +940,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setSiteUrl(null);
       setBusinessName(null);
       setContractorLogoUrl(null);
+      setWorkspaces([]);
+      setIsWorkspaceMenuOpen(false);
       return;
     }
-    let cancelled = false;
-    const loadStatus = () => {
-      fetch('/api/account/status', { cache: 'no-store' })
-        .then((res) => (res.ok ? res.json() as Promise<AccountStatus> : null))
-        .then((data) => {
-          if (!cancelled && data) {
-            setStripeOnboarded(Boolean(data.onboarded));
-            setSitePublished(Boolean(data.sitePublished));
-            setSiteUrl(data.siteUrl ?? null);
-            setBusinessName(data.businessName ?? null);
-            setContractorLogoUrl(data.logoUrl ?? null);
-            setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
-            setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
-            setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
-            setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
-            setOpenQuickStopCount(Number(data.openQuickStopRequestCount ?? 0));
-            setOpenLeadCount(Number(data.openLeadCount ?? 0));
-            setLeadTitle(typeof data.leadRailTitle === 'string' ? data.leadRailTitle : null);
-            setActiveJobCount(Number(data.activeJobCount ?? 0));
-            setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
-            setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
-            setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
-            setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
-            setTextToJobCount(Number(data.textToJobCount ?? 0));
-            setNewestTextToJobCreatedAt(data.newestTextToJobCreatedAt ?? null);
-            setQuickStopState(navState(data.quickStopState));
-            setBookingState(navState(data.bookingState));
-            setLowCreditAlert(Boolean(data.lowCreditAlert));
-            if (data.nav) {
-              setNav(data.nav);
-            }
-          }
-        })
-        .catch(() => {});
-    };
     loadStatus();
     // Surface a new lead/job even while the owner sits on one page: re-check on
     // an interval, and immediately whenever they switch back to the tab.
@@ -753,11 +951,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const onFocus = () => loadStatus();
     window.addEventListener('focus', onFocus);
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [showAppRail, pathname, setNav]);
+  }, [showAppRail, pathname, loadStatus]);
 
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) return;
@@ -799,7 +996,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   }, [isLoggedIn, pathname, newestQuoteRequestCreatedAt, newestJobCreatedAt, newestTextToJobCreatedAt]);
 
   if (isStandaloneSite) {
-    return <>{children}</>;
+    return (
+      <div className="standalone-site-root">
+        <a className="skip-link shell-skip-link" href="#main-content">Skip to content</a>
+        {children}
+      </div>
+    );
   }
 
   // The /demo experience renders its own sidebar chrome (see demo/layout.tsx),
@@ -1047,7 +1249,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const contractorInitials = (businessName || 'HQ').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
     return (
-      <div className={`chrome-shell chrome-shell-sidenav${isCollapsed ? ' sidenav-is-collapsed' : ''}`}>
+      <div className={`chrome-shell chrome-shell-sidenav${isCollapsed ? ' sidenav-is-collapsed' : ''}${switchingWorkspace ? ' is-switching-workspace' : ''}`}>
         <header className="sidenav-mobilebar" ref={mobileBarRef}>
           {contractorLogoTop ? (
             <Link
@@ -1154,6 +1356,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               </Link>
             )}
 
+            <NavigationSettingsButton />
             <button
               type="button"
               className="sidenav-collapse-toggle"
@@ -1181,7 +1384,27 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
 
           <div className="sidenav-lead">
-            {businessName && !contractorLogoTop ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
+            {workspaces.length > 1 ? (
+              <div className="sidenav-workspace-wrap" ref={workspaceMenuRef}>
+                <button
+                  type="button"
+                  className="sidenav-workspace-trigger"
+                  aria-haspopup="menu"
+                  aria-expanded={isWorkspaceMenuOpen}
+                  aria-controls="sidenav-workspace-menu"
+                  onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
+                  title={businessName ? `Switch workspace (${businessName})` : 'Switch workspace'}
+                >
+                  <span className="sidenav-workspace-name" title={businessName ?? undefined}>
+                    {businessName || 'Workspace'}
+                  </span>
+                  <span className={`sidenav-workspace-caret${isWorkspaceMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
+                </button>
+                {isWorkspaceMenuOpen ? renderWorkspaceMenu('sidenav-workspace-menu') : null}
+              </div>
+            ) : businessName && !contractorLogoTop ? (
+              <p className="sidenav-bizname" title={businessName}>{businessName}</p>
+            ) : null}
             <SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />
             {/* The two things a contractor starts the day with, on one row.
                 Plan Day is the wider of the two because it carries three
@@ -1216,54 +1439,36 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
 
           <nav className="sidenav-nav" aria-label="Dashboard">
-            {NAV_GROUPS.map((group) => {
-              let visibleHrefs = nav
-                ? group.hrefs.filter((href) => (nav.visible.includes(href) || isPinned(href)) && (!nav.demoted?.includes(href) || isPinned(href)))
-                : group.hrefs;
-
-              // Trade promotion: order promoted items at priority positions,
-              // but ensure Leads remains in slot one of Work where the day starts.
-              if (nav?.promoted && nav.promoted.length > 0) {
-                const promotedInGroup = nav.promoted.filter((href) => visibleHrefs.includes(href));
-                const othersInGroup = visibleHrefs.filter((href) => !nav.promoted?.includes(href));
-                if (othersInGroup.includes('/dashboard/leads')) {
-                  const leadsIdx = othersInGroup.indexOf('/dashboard/leads');
-                  visibleHrefs = [
-                    ...othersInGroup.slice(0, leadsIdx + 1),
-                    ...promotedInGroup,
-                    ...othersInGroup.slice(leadsIdx + 1),
-                  ];
-                } else {
-                  visibleHrefs = [...promotedInGroup, ...othersInGroup];
-                }
-              }
-
-              if (visibleHrefs.length === 0) return null;
-              const isSingle = visibleHrefs.length === 1;
-
-              return (
-                <div className={`sidenav-group sidenav-group--${group.accent}${isSingle ? ' is-single' : ''}`} key={group.label}>
-                  {!isSingle ? <p className="sidenav-glabel">{group.label}</p> : null}
-                  {visibleHrefs.map((href) => renderSideLink(href, '', isPinned(href)))}
-                </div>
-              );
-            })}
-            {(() => {
-              const demotedHrefs = nav && nav.demoted
-                ? nav.demoted.filter((href) => !isPinned(href))
-                : [];
-              if (demotedHrefs.length === 0) return null;
-              return (
-                <div className="sidenav-group sidenav-group--less-used" key="Less used">
-                  <p className="sidenav-glabel">Less used</p>
-                  {demotedHrefs.map((href) => renderSideLink(href, 'sidenav-link--demoted', true))}
-                </div>
-              );
-            })()}
-            {/* Dashboard closes the rail rather than opening it. It is the
-                summary of everything above, not a step before any of it, and at
-                the top it took the first slot from Leads — which is where the
-                day actually starts. */}
+            <NavigationSidebar
+              preferences={navPreferences}
+              eligibleNavIds={eligibleNavIds}
+              isPinned={isPinned}
+              isActive={isActiveNav}
+              pathname={pathname}
+              isCollapsed={isCollapsed}
+              togglePin={togglePin}
+              renderPillAndCount={(href) => {
+                const count = countByHref[href] ?? 0;
+                const total = totalByHref[href];
+                const active = isActiveNav(pathname, href);
+                const isNew = !active && isSectionNew(newestByHref[href], navSeen[href]);
+                const scheduleRollupState = quickStopState === 'paused' || bookingState === 'paused' ? 'paused' : quickStopState === 'on' || bookingState === 'on' ? 'on' : quickStopState === 'off' && bookingState === 'off' ? 'off' : 'unknown';
+                const state = href === '/dashboard/schedule' ? scheduleRollupState : href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : href === '/dashboard/sites' ? (sitePublished ? 'on' : 'off') : 'unknown';
+                const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href]);
+                const showCount = !showState && count > 0;
+                const showNew = !showState && !showCount && isNew;
+                const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0);
+                
+                return (
+                  <>
+                    {showState && <span className="sidenav-state-pill">{state.toUpperCase()}</span>}
+                    {showCount && <span className={`sidenav-count${href === '/dashboard/leads' ? ' attention' : ''}`} aria-label={`${count} items needing attention`}>{attentionDigits(href, count)}</span>}
+                    {showNew && <span className={`sidenav-new-badge${href === '/dashboard/leads' && newestLeadHighValue ? ' high-value' : ''}`}>New</span>}
+                    {showTotal && <span className="sidenav-total-hollow" aria-label={total.title}>{total.count}</span>}
+                  </>
+                );
+              }}
+            />
             {renderSideLink('/dashboard', 'sidenav-bottom')}
           </nav>
 
@@ -1651,12 +1856,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           {children}
           {!pathname.startsWith('/login') && !pathname.startsWith('/dashboard') && <SparkyCopilot />}
         </div>
+        {switchingWorkspace ? <WorkspaceSwitchOverlay workspaceName={switchingWorkspace} /> : null}
       </div>
     );
   }
 
   return (
-    <div className="chrome-shell">
+    <div className={`chrome-shell${switchingWorkspace ? ' is-switching-workspace' : ''}`}>
       <header className="topbar">
         <div className="topbar-inner">
           <Link
@@ -1794,6 +2000,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       ) : null}
 
       <div className={`app-main${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
+      {switchingWorkspace ? <WorkspaceSwitchOverlay workspaceName={switchingWorkspace} /> : null}
     </div>
   );
 }

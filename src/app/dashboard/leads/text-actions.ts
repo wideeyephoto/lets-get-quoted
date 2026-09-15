@@ -21,6 +21,7 @@ import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-pr
 import { createHash } from 'node:crypto';
 import { findOrCreateClientId } from '@/lib/clients';
 import { issuePortalLink } from '@/lib/client-portal-data';
+import { portalViewUrlFull } from '@/lib/portal-urls';
 
 export async function getAccountMessagingCapabilityAction(): Promise<MessagingCapability> {
   const { accountId } = await requireOfficeContext('messages.read');
@@ -77,7 +78,7 @@ export async function sendLeadClientDashboardSmsAction(
       });
       const issued = await issuePortalLink(admin, accountId, { kind: 'sms', value: phone });
       if (issued) {
-        clientDashboardUrl = `${origin}/portal/view/${issued.token}`;
+        clientDashboardUrl = portalViewUrlFull(issued.token);
       }
     } catch (e) {
       console.warn('Lead portal link generation fallback to /portal:', e);

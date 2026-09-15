@@ -1,5 +1,14 @@
 # End answered transfers without voicemail
 
+**September 9 evidence reconciliation:** The later September 8 handset retest
+on PR #42 closed recipient-first hangup and pickup-announcement acceptance. The
+owner heard the full announcement and two-way audio; the remaining caller ended
+121 ms after the recipient, with no voicemail and one AI minute settled once.
+All legs ended and temporary scripts were removed. This supersedes the earlier
+open recipient-hangup/pickup observations below. Unanswered voicemail recovery
+and its active-recording boundary remain open; see the
+[current acceptance record](voice-acceptance-2026-09-09.md).
+
 The September 8 owned-number test successfully transferred through Dispatch to
 the owner's mobile. The owner heard the automated caller and their own words
 echoed through the bridge, confirming audio in both directions with one handset.

@@ -326,7 +326,7 @@ export async function runStripeBillingSubscriptionProjectionBatch(
     let claim: StripeSubscriptionProjectorClaim | null;
     try {
       claim = await dependencies.queue.claimNext();
-    } catch {
+    } catch (err) {
       return Object.freeze({
         status: 'claim_failed',
         requestedBatchSize,

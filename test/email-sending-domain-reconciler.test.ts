@@ -14,27 +14,27 @@ import { cronSummaryHasFailures } from '@/lib/cron-jobs';
  */
 
 const getSendingDomain = vi.fn();
+const deleteSendingDomain = vi.fn();
 const listSendingDomains = vi.fn();
 const isConfigured = vi.fn(() => true);
 // Rest-typed on purpose: these stand in for functions with real signatures, and
 // the mock has to accept whatever the worker passes without asserting a shape
 // the test does not care about.
-const sendSendingDomainFailedEmail = vi.fn(async (..._args: unknown[]): Promise<void> => {});
-const getAccountOwnerEmail = vi.fn(async (..._args: unknown[]): Promise<string | null> => 'owner@example.com');
+const runNotices = vi.fn();
 
 vi.mock('@/lib/resend-domains', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/resend-domains')>();
   return {
     ...actual,
     getSendingDomain: (...a: unknown[]) => getSendingDomain(...a),
+    deleteSendingDomain: (...a: unknown[]) => deleteSendingDomain(...a),
     listSendingDomains: (...a: unknown[]) => listSendingDomains(...a),
     isSendingDomainProvisioningConfigured: () => isConfigured(),
   };
 });
 
-vi.mock('@/lib/email', () => ({
-  sendSendingDomainFailedEmail: (...a: unknown[]) => sendSendingDomainFailedEmail(...a),
-  getAccountOwnerEmail: (...a: unknown[]) => getAccountOwnerEmail(...a),
+vi.mock('@/lib/email-domain-failure-notices', () => ({
+  runEmailDomainFailureNotices: (...a: unknown[]) => runNotices(...a),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -55,7 +55,7 @@ type Row = {
 };
 
 /** Records every update the worker attempts, and can make one vanish mid-run. */
-function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
+function makeDb(rows: Row[], opts: { vanishing?: Set<string>; cleanup?: Row[]; cleanupReadError?: boolean; cleanupDeleteError?: boolean; cleanupVanished?: boolean } = {}) {
   const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
 
   function builder(table: string) {
@@ -70,7 +70,7 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
     const resolve = () => {
       if (ctx.table === 'sites') return { data: { company_name: 'Elite Electricians' }, error: null };
       if (ctx.op === 'delete') {
-        return { data: null, error: null };
+        return { data: opts.cleanupVanished ? [] : [{ id: ctx.filters.id }], error: opts.cleanupDeleteError ? { message: 'database unavailable' } : null };
       }
       if (ctx.op === 'update') {
         const id = String(ctx.filters.id);
@@ -80,6 +80,9 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
       }
       if (ctx.cols.trim() === 'provider_domain_id') {
         return { data: rows.map((r) => ({ provider_domain_id: r.provider_domain_id })), error: null };
+      }
+      if (ctx.filters.status === 'disabled') {
+        return { data: opts.cleanup ?? [], error: opts.cleanupReadError ? { message: 'cleanup query failed' } : null };
       }
       return { data: rows, error: null };
     };
@@ -92,8 +95,8 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
       order() { return b; },
       limit() { return b; },
       eq(col: string, val: unknown) { ctx.filters[col] = val; return b; },
-      neq(col: string, val: unknown) { return b; },
-      ilike(col: string, val: unknown) { return b; },
+      neq(_col: string, _val: unknown) { return b; },
+      ilike(_col: string, _val: unknown) { return b; },
       maybeSingle() { return Promise.resolve(resolve()); },
       then(onOk: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) {
         return Promise.resolve(resolve()).then(onOk, onErr);
@@ -121,13 +124,14 @@ const verifiedRow = (over: Partial<Row> = {}): Row => ({
 beforeEach(() => {
   vi.clearAllMocks();
   isConfigured.mockReturnValue(true);
+  deleteSendingDomain.mockResolvedValue(true);
   listSendingDomains.mockResolvedValue([]);
-  getAccountOwnerEmail.mockResolvedValue('owner@example.com');
-  sendSendingDomainFailedEmail.mockResolvedValue(undefined);
+  runNotices.mockResolvedValue({ ownersNotified: 0, notificationReviews: 0, notificationBacklog: 0, errors: 0, failures: [] });
 });
 
 describe('Custom sending domain reconciler', () => {
-  it('downgrades a verified domain whose DKIM record was removed, and tells the owner once', async () => {
+  it('atomically requests a notice with a technical downgrade and processes accepted notices', async () => {
+    runNotices.mockResolvedValue({ ownersNotified: 1, notificationReviews: 0, notificationBacklog: 0, errors: 0, failures: [] });
     getSendingDomain.mockResolvedValue({ id: 'rsd_1', name: 'eliteelectricians.com', status: 'failed', records: [] });
     const db = makeDb([verifiedRow()]);
 
@@ -139,10 +143,11 @@ describe('Custom sending domain reconciler', () => {
     expect(db.updates[0].patch.status).toBe('failed');
     expect(db.updates[0].patch.verified_at).toBeNull();
     expect(db.updates[0].patch.failure_reason).toMatch(/DKIM/);
-    expect(sendSendingDomainFailedEmail).toHaveBeenCalledTimes(1);
+    expect(db.updates[0].patch.failure_notice_requested_at).toEqual(expect.any(String));
+    expect(runNotices).toHaveBeenCalledWith(db.client);
   });
 
-  it('does not re-notify on later runs, because the row is no longer verified', async () => {
+  it('does not request a second notice when a domain remains failed', async () => {
     getSendingDomain.mockResolvedValue({ id: 'rsd_1', name: 'eliteelectricians.com', status: 'failed', records: [] });
     // The state the previous test left behind: already downgraded.
     const db = makeDb([verifiedRow({ status: 'failed', verified_at: null })]);
@@ -151,7 +156,17 @@ describe('Custom sending domain reconciler', () => {
 
     expect(summary.downgraded).toBe(0);
     expect(summary.ownersNotified).toBe(0);
-    expect(sendSendingDomainFailedEmail).not.toHaveBeenCalled();
+    expect(db.updates[0].patch.failure_notice_requested_at).toBeUndefined();
+  });
+
+  it('keeps a notification incident unhealthy after the domain already became failed', async () => {
+    getSendingDomain.mockResolvedValue({ id: 'rsd_1', status: 'failed', records: [] });
+    runNotices.mockResolvedValue({ ownersNotified: 0, notificationReviews: 1, notificationBacklog: 0, errors: 1, failures: [{ noticeId: 'notice-1', accountId: 'acct-1', code: 'send_failed_or_outcome_unknown' }] });
+    const db = makeDb([verifiedRow({ status: 'failed', verified_at: null })]);
+    const result = await runEmailSendingDomainReconcile(db.client);
+    expect(result.downgraded).toBe(0);
+    expect(result.notificationReviews).toBe(1);
+    expect(cronSummaryHasFailures(result)).toBe(true);
   });
 
   it('treats a domain deleted at the provider as a downgrade, not as nothing to do', async () => {
@@ -242,6 +257,42 @@ describe('Custom sending domain reconciler', () => {
   });
 
   describe('the summary drives the cron health machinery', () => {
+    it.each(['provider', 'database', 'read'] as const)('reports %s cleanup failure to cron health', async (failure) => {
+      deleteSendingDomain.mockResolvedValue(failure !== 'provider');
+      const db = makeDb([], {
+        cleanup: [verifiedRow({ status: 'disabled' })],
+        cleanupDeleteError: failure === 'database',
+        cleanupReadError: failure === 'read',
+      });
+      const summary = await runEmailSendingDomainReconcile(db.client);
+      expect(summary.updated).toBe(0);
+      expect(summary.errors).toBe(1);
+      expect(cronSummaryHasFailures(summary)).toBe(true);
+    });
+
+    it('counts only confirmed cleanup deletions', async () => {
+      const db = makeDb([], { cleanup: [verifiedRow({ status: 'disabled' })] });
+      const summary = await runEmailSendingDomainReconcile(db.client);
+      expect(summary.updated).toBe(1);
+      expect(summary.errors).toBe(0);
+      expect(deleteSendingDomain).toHaveBeenCalledWith('rsd_1');
+    });
+
+    it('does not call a vanished cleanup row a successful deletion', async () => {
+      const db = makeDb([], { cleanup: [verifiedRow({ status: 'disabled' })], cleanupVanished: true });
+      const summary = await runEmailSendingDomainReconcile(db.client);
+      expect(summary.updated).toBe(0);
+      expect(summary.vanishedMidRun).toBe(1);
+    });
+
+    it('reports missing management access and unavailable inventory as unhealthy', async () => {
+      isConfigured.mockReturnValue(false);
+      expect(cronSummaryHasFailures(await runEmailSendingDomainReconcile(makeDb([]).client))).toBe(true);
+      isConfigured.mockReturnValue(true);
+      listSendingDomains.mockResolvedValue(null);
+      expect(cronSummaryHasFailures(await runEmailSendingDomainReconcile(makeDb([]).client))).toBe(true);
+    });
+
     it('reads as healthy on a clean run', async () => {
       getSendingDomain.mockResolvedValue({ id: 'rsd_1', name: 'x.com', status: 'verified', records: [] });
       const db = makeDb([verifiedRow()]);
@@ -266,7 +317,7 @@ describe('Custom sending domain reconciler', () => {
 
     it('reads as failing when a downgraded owner could not be told', async () => {
       getSendingDomain.mockResolvedValue({ id: 'rsd_1', name: 'x.com', status: 'failed', records: [] });
-      getAccountOwnerEmail.mockResolvedValue(null);
+      runNotices.mockResolvedValue({ ownersNotified: 0, notificationReviews: 1, notificationBacklog: 0, errors: 1, failures: [{ noticeId: 'notice-1', accountId: 'acct-1', code: 'owner_email_missing' }] });
       const db = makeDb([verifiedRow()]);
 
       const summary = await runEmailSendingDomainReconcile(db.client);

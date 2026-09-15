@@ -83,6 +83,66 @@ export default function DashboardHomeScreen({
       {/* Critical system alerts */}
       <SystemStatusStrip alerts={alerts} />
 
+      {/* Quick Launch Tools Bar */}
+      <section
+        className="panel workspace-section-card"
+        style={{
+          padding: '0.85rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          background: 'var(--bg-card, rgba(255, 255, 255, 0.03))',
+          borderColor: 'var(--rule-t12, rgba(255, 255, 255, 0.08))',
+        }}
+        aria-label="Quick launch tools"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted, #a1a1aa)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Quick Tools:
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Link
+            href={`${basePath}/voice-calls`}
+            className="btn secondary sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}
+            title="24/7 AI Voice Receptionist & Call Queue"
+          >
+            <span>📞</span>
+            <span>AI Receptionist</span>
+          </Link>
+          <Link
+            href={`${basePath}/quick-stops`}
+            className="btn secondary sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}
+            title="Fill route gaps with expedited same-day customer stops"
+          >
+            <span>⚡</span>
+            <span>Quick Stops</span>
+          </Link>
+          <Link
+            href={`${basePath}/services`}
+            className="btn secondary sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}
+            title="Manage services, standard hourly rates & flat-rate price book"
+          >
+            <span>📖</span>
+            <span>Price Book</span>
+          </Link>
+          <Link
+            href={`${basePath}/text-to-job`}
+            className="btn secondary sm"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}
+            title="Convert voice memos and SMS messages directly into dispatched jobs"
+          >
+            <span>🎙️</span>
+            <span>Voice / SMS Memo</span>
+          </Link>
+        </div>
+      </section>
+
       {connectDisabledAt ? (
         <section
           className="panel workspace-section-card"

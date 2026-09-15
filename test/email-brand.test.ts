@@ -12,6 +12,7 @@ import {
   renderBrandedEmail,
   renderRichCampaignBodyHtml,
   safeAccent,
+  sanitizeAddress,
   themePaint,
   type EmailBrand,
 } from '../src/emails/brand';
@@ -64,6 +65,58 @@ describe('contractorFrom', () => {
   it('falls back to our own name rather than sending from an empty display name', () => {
     expect(contractorFrom('')).toBe("Let's Get Quoted <hello@letsgetquoted.com>");
     expect(contractorFrom('   ')).toBe("Let's Get Quoted <hello@letsgetquoted.com>");
+  });
+});
+
+describe('sanitizeAddress', () => {
+  it('accepts clean valid email addresses', () => {
+    expect(sanitizeAddress('owner@example.com')).toBe('owner@example.com');
+    expect(sanitizeAddress('  user.name+tag@sub.domain.co  ')).toBe('user.name+tag@sub.domain.co');
+  });
+
+  it('rejects addresses with quotes, angle brackets, or backslashes', () => {
+    expect(sanitizeAddress('"owner"@example.com')).toBeNull();
+    expect(sanitizeAddress('<owner@example.com>')).toBeNull();
+    expect(sanitizeAddress('owner\\@example.com')).toBeNull();
+  });
+
+  it('rejects header injection with CRLF or whitespace', () => {
+    expect(sanitizeAddress("owner@example.com\r\nBcc: evil@example.com")).toBeNull();
+    expect(sanitizeAddress("owner\n@example.com")).toBeNull();
+    expect(sanitizeAddress("owner @example.com")).toBeNull();
+    expect(sanitizeAddress("owner@ example.com")).toBeNull();
+  });
+
+  it('rejects malformed email addresses without @ or with multiple @', () => {
+    expect(sanitizeAddress('notanemail')).toBeNull();
+    expect(sanitizeAddress('@nodomain.com')).toBeNull();
+    expect(sanitizeAddress('nolocal@')).toBeNull();
+    expect(sanitizeAddress('double@@example.com')).toBeNull();
+  });
+
+  it('rejects null, undefined, empty, or excessively long strings', () => {
+    expect(sanitizeAddress(null)).toBeNull();
+    expect(sanitizeAddress(undefined)).toBeNull();
+    expect(sanitizeAddress('')).toBeNull();
+    expect(sanitizeAddress('   ')).toBeNull();
+    expect(sanitizeAddress('a'.repeat(321) + '@example.com')).toBeNull();
+  });
+
+  it('enforces RFC local-part (<=64) and domain (<=255) length limits', () => {
+    const validLocal = 'a'.repeat(64) + '@example.com';
+    const oversizedLocal = 'a'.repeat(65) + '@example.com';
+    expect(sanitizeAddress(validLocal)).toBe(validLocal);
+    expect(sanitizeAddress(oversizedLocal)).toBeNull();
+
+    const validDomain = 'user@' + 'd'.repeat(251) + '.com'; // 255 chars
+    const oversizedDomain = 'user@' + 'd'.repeat(252) + '.com'; // 256 chars
+    expect(sanitizeAddress(validDomain)).toBe(validDomain);
+    expect(sanitizeAddress(oversizedDomain)).toBeNull();
+  });
+
+  it('rejects tabs and non-printable control characters', () => {
+    expect(sanitizeAddress("user\t@example.com")).toBeNull();
+    expect(sanitizeAddress("user@example\t.com")).toBeNull();
   });
 });
 

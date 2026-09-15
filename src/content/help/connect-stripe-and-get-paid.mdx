@@ -1,0 +1,36 @@
+---
+title: "Connect Stripe and understand payment costs"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Getting paid"
+---
+
+# Purpose
+Onboard Stripe Connect, understand the platform fee schedule by plan, and reconcile payout balances.
+
+# Steps
+## Connect your business bank account with Stripe
+1. Go to Settings → Payments and click "Connect with Stripe".
+2. Complete the Stripe onboarding form with your legal business name, EIN, and banking routing/account numbers.
+3. Upon returning to the dashboard, your Stripe status will display "Connected & Active".
+
+## What a payment costs you: Complete fee schedule
+- Platform Fee Rates by Plan: Flex plan is 125 bps (1.25%), Solo plan is 50 bps (0.50%), Growth plan is 25 bps (0.25%), and Scale plan is 10 bps (0.10%).
+- Stripe Processing Fee: Stripe charges a separate standard processing fee (typically 2.9% + $0.30 per card transaction) directly to your connected account.
+- Platform Fee Basis: The platform fee is calculated on the discount-adjusted eligible service subtotal. Sales tax and customer tips are strictly excluded from the platform fee basis.
+- Fee Rate Locking: The platform fee rate locks at checkout session creation, ensuring rate stability for each specific transaction.
+
+## Reconciling your three balances
+To reconcile payouts, compare: (1) Invoice Gross Amount paid by customer, minus (2) Platform Application Fee and Stripe processing fee, equals (3) Net Payout transferred to your checking account on a standard 2-business-day rolling schedule.
+
+
+
+# Done State
+You will accept credit card and bank payments securely with 100% transparency into fee structures and payout timing.
+
+# Common Failure
+**First customer payment has not reached bank account.**
+Stripe applies an initial 7-14 business day verification period for newly connected accounts. Subsequent transfers occur on a 2-day rolling window.
+
+**Stripe onboarding shows restricted.**
+Open Settings → Payments to review requested ID verification documents in the Stripe Express portal.

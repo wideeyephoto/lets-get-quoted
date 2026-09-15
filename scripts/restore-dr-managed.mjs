@@ -32,7 +32,7 @@ async function main() {
   const archiveBytes=await decryptArtifact(directory,capture.archive,key);
   const toc=(await decryptArtifact(directory,capture.toc,key)).toString().split(/\r?\n/).filter(l=>/^\d+;/.test(l));
   if(capture.rowCounts.find(t=>t.table_name==='vault.secrets')?.row_count!=='0') throw Error('Nonempty source Vault requires a separate key-aware recovery procedure');
-  const supportedSchemas=['public','supabase_migrations','tax_vault','auth','storage','extensions','realtime','vault','graphql','graphql_public','pgbouncer'];
+  const supportedSchemas=['public','supabase_migrations','tax_vault','admin_security','auth','storage','extensions','realtime','vault','graphql','graphql_public','pgbouncer'];
   const archiveSchemas=toc.map(l=>l.match(/ SCHEMA - (\S+) /)?.[1]).filter(Boolean);
   if(archiveSchemas.some(s=>!supportedSchemas.includes(s))) throw Error('Archive contains an unreviewed schema; extend the restore plan explicitly');
   const db=new Client({connectionString:config.DATABASE_URL,ssl:{rejectUnauthorized:false},connectionTimeoutMillis:30000,statement_timeout:30000});
@@ -59,12 +59,12 @@ async function main() {
   } finally {await db.end();}
   const remaining=managed.map(t=>t.schema+'.'+t.name).filter(t=>!retained.includes(t)),ordered=[];
   while(remaining.length){const i=remaining.findIndex(t=>!edges.some(e=>e.child===t && remaining.includes(e.parent)));if(i<0)throw Error('Managed foreign-key cycle requires explicit handling');ordered.push(...remaining.splice(i,1));}
-  const appSchemas=['public','supabase_migrations','tax_vault'];
+  const appSchemas=['public','supabase_migrations','tax_vault','admin_security'];
   // Preserve platform-owned default privileges by retaining the public schema.
   // All application relations, functions and custom types are removed below.
   const selected=toc.filter(l=>{
     const entry=l.match(/^\d+; \d+ \d+ ([A-Z ]+) ([^ ]+) /);
-    const appEntry=entry && (appSchemas.includes(entry[2]) || / (?:SCHEMA|ACL - SCHEMA|COMMENT - SCHEMA) -? ?(?:public|supabase_migrations|tax_vault) /.test(l));
+    const appEntry=entry && (appSchemas.includes(entry[2]) || / (?:SCHEMA|ACL - SCHEMA|COMMENT - SCHEMA) -? ?(?:public|supabase_migrations|tax_vault|admin_security) /.test(l));
     return appEntry && !(/DEFAULT ACL/.test(l)&&/supabase_admin$/.test(l));
   });
   const managedToc=ordered.map(t=>toc.find(l=>l.includes(' TABLE DATA '+t.replace('.',' ')+' '))).filter(Boolean);
@@ -90,6 +90,7 @@ async function main() {
     const prep=resolve(work,'prep.sql');files.push(prep);
     await writeFile(prep,`SET lock_timeout='10s'; SET statement_timeout='5min';
 DROP EVENT TRIGGER IF EXISTS ensure_rls;
+DROP SCHEMA IF EXISTS admin_security CASCADE;
 DROP SCHEMA IF EXISTS tax_vault CASCADE;
 DROP SCHEMA IF EXISTS supabase_migrations CASCADE;
 -- pg_dump ACL entries assume newly created objects have PostgreSQL's base

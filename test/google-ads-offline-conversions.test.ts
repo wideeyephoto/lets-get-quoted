@@ -1,8 +1,12 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 // @ts-ignore - raw ESM script
 import { parseArgs, maskId, runOfflineConversionVerification } from '../scripts/verify-google-ads-offline-conversions.mjs';
+import { runOfflineConversionVerification as runServerVerification } from '@/lib/google-ads-verifier';
 
-describe('Google Ads v25 Offline Conversion Upload & Allowlist Verification Suite', () => {
+describe.each([
+  ['CLI', runOfflineConversionVerification],
+  ['server', runServerVerification],
+] as const)('Google Ads v25 Offline Conversion Upload & Allowlist Verification Suite (%s)', (_name, runOfflineConversionVerification) => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
@@ -79,23 +83,23 @@ describe('Google Ads v25 Offline Conversion Upload & Allowlist Verification Suit
       const report = await runOfflineConversionVerification({
         clientId: 'mock-cid',
         clientSecret: 'mock-secret',
-        developerToken: 'mock-devtok',
         refreshToken: 'mock-reftok',
         customerId: '2285671544',
+        conversionActionId: '987654321',
       });
 
       expect(report.success).toBe(false);
       expect(report.allowlisted).toBe(false);
       expect(report.requiresDataManagerApi).toBe(true);
-      expect(report.error).toContain('DEVELOPER TOKEN RESTRICTION CONFIRMED');
+      expect(report.error).toContain('CONVERSION UPLOAD RESTRICTION CONFIRMED');
       expect(report.error).toContain('Must migrate to Google Data Manager API');
 
       fetchSpy.mockRestore();
     });
   });
 
-  describe('4. Developer Token Unapproved Detection (Test Account Access only)', () => {
-    it('detects DEVELOPER_TOKEN_NOT_APPROVED error', async () => {
+  describe('4. Cloud project production access detection', () => {
+    it.each(['DEVELOPER_TOKEN_NOT_APPROVED', 'CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION'])('detects %s', async (code) => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ access_token: 'mock-token' }), { status: 200 })
@@ -109,7 +113,7 @@ describe('Google Ads v25 Offline Conversion Upload & Allowlist Verification Suit
                 status: 'PERMISSION_DENIED',
                 details: [
                   {
-                    errors: [{ errorCode: { authorizationError: 'DEVELOPER_TOKEN_NOT_APPROVED' } }],
+                    errors: [{ errorCode: { authorizationError: code } }],
                   },
                 ],
               },
@@ -121,22 +125,22 @@ describe('Google Ads v25 Offline Conversion Upload & Allowlist Verification Suit
       const report = await runOfflineConversionVerification({
         clientId: 'mock-cid',
         clientSecret: 'mock-secret',
-        developerToken: 'mock-devtok',
         refreshToken: 'mock-reftok',
         customerId: '2285671544',
+        conversionActionId: '987654321',
       });
 
       expect(report.success).toBe(false);
       expect(report.allowlisted).toBe(false);
-      expect(report.error).toContain('DEVELOPER TOKEN UNAPPROVED');
-      expect(report.error).toContain('Explorer or Basic Access approval in API Center');
+      expect(report.error).toContain('CLOUD PROJECT UNAPPROVED');
+      expect(report.error).toContain('Google Ads API Overview page in Google Cloud Console');
 
       fetchSpy.mockRestore();
     });
   });
 
   describe('5. Allowlisted HTTP 200 Response Handling', () => {
-    it('marks allowlisted as true even when partialFailureError is present for synthetic data', async () => {
+    it('distinguishes legacy CLI reachability from strict server validation on partial failure', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ access_token: 'mock-token' }), { status: 200 })
@@ -157,14 +161,16 @@ describe('Google Ads v25 Offline Conversion Upload & Allowlist Verification Suit
       const report = await runOfflineConversionVerification({
         clientId: 'mock-cid',
         clientSecret: 'mock-secret',
-        developerToken: 'mock-devtok',
         refreshToken: 'mock-reftok',
         customerId: '2285671544',
+        conversionActionId: '987654321',
       });
 
-      expect(report.success).toBe(true);
-      expect(report.allowlisted).toBe(true);
-      expect(report.steps[2].note).toContain('HTTP 200 received');
+      expect(report.success).toBe(_name === 'CLI');
+      expect(report.allowlisted).toBe(_name === 'CLI');
+      expect(fetchSpy.mock.calls[1][1]?.headers).not.toHaveProperty('developer-token');
+      if (_name === 'CLI') expect(report.steps[2].note).toContain('HTTP 200 received');
+      else expect(report.error).toContain('Conversion validation failed');
       expect(report.steps[2].note).toContain('This click ID is not recognized');
 
       fetchSpy.mockRestore();

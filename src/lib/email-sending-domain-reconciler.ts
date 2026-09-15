@@ -1,7 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { APP_ORIGIN } from '@/lib/app-origin';
 import {
   filterSafeSendingDnsRecords,
   failureReasonFor,
@@ -11,7 +10,7 @@ import {
   listSendingDomains,
   toStoredStatus,
 } from '@/lib/resend-domains';
-import { getAccountOwnerEmail, sendSendingDomainFailedEmail } from '@/lib/email';
+import { runEmailDomainFailureNotices } from '@/lib/email-domain-failure-notices';
 
 /**
  * The daily re-check of every custom sending domain.
@@ -57,6 +56,9 @@ export type SendingDomainReconcileSummary = {
   remaining?: number;
   skipped?: true;
   reason?: string;
+  notificationReviews?: number;
+  notificationBacklog?: number;
+  failures?: Array<{ noticeId: string; accountId: string; code: string }>;
 };
 
 function emptySummary(): SendingDomainReconcileSummary {
@@ -84,38 +86,6 @@ function isPlatformOwnedDomain(name: string): boolean {
   return name === root || name.endsWith(`.${root}`);
 }
 
-async function notifyOwner(
-  admin: SupabaseClient,
-  row: ReconcileRow,
-  reason: string | null,
-): Promise<boolean> {
-  const recipientEmail = await getAccountOwnerEmail(admin, row.account_id);
-  if (!recipientEmail) {
-    // Counted as an error by the caller. A verified sending domain that broke
-    // with nobody reachable to tell is a real gap, not a quiet no-op.
-    console.error(
-      `[email-domain-reconcile] no owner email for account ${row.account_id}; ${row.domain} downgraded unannounced`,
-    );
-    return false;
-  }
-
-  const { data: site } = await admin
-    .from('sites')
-    .select('company_name')
-    .eq('account_id', row.account_id)
-    .maybeSingle();
-
-  await sendSendingDomainFailedEmail({
-    recipientEmail,
-    businessName: (site?.company_name as string | null)?.trim() || 'your business',
-    domain: row.domain,
-    accountId: row.account_id,
-    reason,
-    settingsUrl: `${APP_ORIGIN}/dashboard/settings`,
-  });
-  return true;
-}
-
 export async function runEmailSendingDomainReconcile(
   client?: SupabaseClient,
 ): Promise<SendingDomainReconcileSummary> {
@@ -126,7 +96,7 @@ export async function runEmailSendingDomainReconcile(
   // exist. A domain verified while the flag was on stays live in every send
   // path after it is switched off, so it still has to be reconciled.
   if (!(await isSendingDomainProvisioningConfigured())) {
-    return { ...summary, skipped: true, reason: 'RESEND_API_KEY is not configured' };
+    return { ...summary, errors: 1, skipped: true, reason: 'RESEND_DOMAINS_API_KEY / RESEND_API_KEY domain-management access is unavailable' };
   }
 
   const admin = client ?? createAdminClient();
@@ -179,6 +149,7 @@ export async function runEmailSendingDomainReconcile(
         verified_at: isVerified ? row.verified_at || new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       };
+      if (wasVerified && !isVerified) patch.failure_notice_requested_at = new Date().toISOString();
       if (provider) {
         // The apex-MX guard applies here too: the provider can change its
         // recommended records at any time, and this is the other place those
@@ -196,6 +167,7 @@ export async function runEmailSendingDomainReconcile(
         .eq('id', row.id)
         .eq('account_id', row.account_id)
         .eq('domain', row.domain)
+        .eq('status', row.status)
         .neq('status', 'disabled')
         .select('id')
         .maybeSingle();
@@ -211,19 +183,7 @@ export async function runEmailSendingDomainReconcile(
       if (storedStatus !== row.status) summary.updated += 1;
       if (wasVerified && !isVerified) {
         summary.downgraded += 1;
-        // Only on the verified -> broken TRANSITION. The row is now `failed`,
-        // so tomorrow's run sees a different previous status and stays quiet:
-        // one email per breakage, not one per day until it is fixed.
-        try {
-          if (await notifyOwner(admin, row, reason)) summary.ownersNotified += 1;
-          else summary.errors += 1;
-        } catch (notifyError) {
-          summary.errors += 1;
-          console.error(
-            `[email-domain-reconcile] failed to notify owner for ${row.domain}:`,
-            notifyError instanceof Error ? notifyError.message : notifyError,
-          );
-        }
+        // The database trigger records the notice in this same transaction.
       }
       if (!wasVerified && isVerified) summary.recovered += 1;
     } catch (rowError) {
@@ -241,11 +201,11 @@ export async function runEmailSendingDomainReconcile(
       .from('email_sending_domains')
       .select('id, account_id, domain, provider_domain_id')
       .eq('status', 'disabled')
-      .ilike('failure_reason', '%CLEANUP_PENDING%')
+      .ilike('failure_reason', 'CLEANUP_PENDING:%')
       .limit(10);
 
     if (cleanupFetchError) {
-      console.warn('[email-domain-reconcile] failed to fetch cleanup rows:', cleanupFetchError.message);
+      throw new Error(`Could not fetch cleanup rows: ${cleanupFetchError.message}`);
     } else {
       for (const cRow of cleanupRows ?? []) {
         let deleted = true;
@@ -253,16 +213,29 @@ export async function runEmailSendingDomainReconcile(
           deleted = await deleteSendingDomain(cRow.provider_domain_id);
         }
         if (deleted) {
-          await admin
+          const { data: removed, error: removeError } = await admin
             .from('email_sending_domains')
             .delete()
             .eq('id', cRow.id)
-            .eq('account_id', cRow.account_id);
-          summary.updated += 1;
+            .eq('account_id', cRow.account_id)
+            .eq('status', 'disabled')
+            .ilike('failure_reason', 'CLEANUP_PENDING:%')
+            .select('id');
+          if (removeError) {
+            summary.errors += 1;
+            console.error('[email-domain-reconcile] Could not remove cleaned domain row:', removeError.message);
+          } else if (removed?.length) {
+            summary.updated += removed.length;
+          } else {
+            summary.vanishedMidRun += 1;
+          }
+        } else {
+          summary.errors += 1;
         }
       }
     }
   } catch (cleanupError) {
+    summary.errors += 1;
     console.warn('[email-domain-reconcile] cleanup sweep error:', cleanupError);
   }
 
@@ -272,6 +245,7 @@ export async function runEmailSendingDomainReconcile(
   // verifying.
   try {
     const providerDomains = await listSendingDomains();
+    if (!providerDomains) throw new Error('Provider domain inventory is unavailable');
     if (providerDomains) {
       const { data: known, error: knownError } = await admin
         .from('email_sending_domains')
@@ -302,5 +276,16 @@ export async function runEmailSendingDomainReconcile(
     );
   }
 
+  try {
+    const notices = await runEmailDomainFailureNotices(admin);
+    summary.ownersNotified += notices.ownersNotified;
+    summary.errors += notices.errors;
+    summary.notificationReviews = notices.notificationReviews;
+    summary.notificationBacklog = notices.notificationBacklog;
+    if (notices.failures.length) summary.failures = notices.failures;
+  } catch (error) {
+    summary.errors += 1;
+    console.error('[email-domain-reconcile] owner notice processing failed:', error instanceof Error ? error.message : error);
+  }
   return summary;
 }

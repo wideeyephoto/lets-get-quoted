@@ -702,7 +702,9 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
 
     const resolveRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, ctx);
     expect(resolveRes.data).toBeDefined();
-    expect((resolveRes.data as any).success).toBe(true);
+    expect((resolveRes.data as any).success).toBe(false);
+    expect(resolveRes.data).toMatchObject({ replayedCount: 0, resolvedCount: 0 });
+    expect((resolveRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('enforces RBAC on replay_failed_webhooks: denies unauthorized staff without ops.manage', async () => {
@@ -722,13 +724,33 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     };
 
     const allowedRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, opsCtx);
-    expect((allowedRes.data as any).success).toBe(true);
+    expect((allowedRes.data as any).success).toBe(false);
+    expect((allowedRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('executes triage_email_deliverability and categorizes bounce events', async () => {
     const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, ctx);
     expect(res.data).toBeDefined();
     expect((res.data as any).totalBounced).toBeDefined();
+    expect((res.data as any).healthStatus).toBe('no_failure_events_returned');
+  });
+
+  it('distinguishes suppressed and failed sends from actual bounces in operator triage', async () => {
+    const events = ['bounced', 'complained', 'failed', 'suppressed'].map(status => ({
+      id: status, account_id: 'workspace-a', recipient: 'client@example.test', status,
+      error_reason: null, occurred_at: '2026-09-14T12:00:00Z',
+    }));
+    const builder = { select: () => builder, is: () => builder, in: () => builder, order: () => builder,
+      limit: async () => ({ data: events, error: null }) };
+    const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, {
+      ...ctx, supabase: { from: () => builder } as any,
+    });
+    const result = res.data as any;
+    expect(result.totalBounced).toBe(1);
+    expect(result.totalFailureEvents).toBe(4);
+    expect(result.details.find((r: any) => r.status === 'failed').bounceType).toBe('Provider Failure');
+    expect(result.details.find((r: any) => r.status === 'suppressed').bounceType).toBe('Provider Suppression');
+    expect(result.details.find((r: any) => r.status === 'suppressed').recommendation).toContain('do not bypass');
   });
 
   it('executes check_sms_carrier_health and evaluates deliverability rate', async () => {
@@ -861,6 +883,29 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     // the dispatch reports that it cannot happen yet.
     expect((approvedResult.executionResult as { success: boolean }).success).toBe(false);
     expect((approvedResult.executionResult as { error: string }).error).toMatch(/no sender/i);
+  });
+
+  it('refuses obsolete inspection approvals because inspection is not recovery', async () => {
+    const action = createHitlAction({
+      category: 'sre_platform',
+      title: 'Inspect Webhook Failure: ai_voice (provider_status)',
+      description: 'Webhook wh-1 failed',
+      actionType: 'sre.inspect_webhook_failure',
+      payload: { failureId: 'wh-1', source: 'ai_voice', error: 'Missing header' },
+    });
+
+    const approvedResult = await executeHitlDecision(
+      action.id,
+      'approved',
+      'staff@letsgetquoted.com',
+      'Confirmed invalid ping',
+      ctx,
+    );
+
+    expect(approvedResult.success).toBe(false);
+    expect(approvedResult.error).toContain('inspection alone cannot resolve it');
+    expect(approvedResult.action?.status).toBe('pending');
+    expect(approvedResult.executionResult).toBeUndefined();
   });
 });
 
@@ -1116,7 +1161,7 @@ describe('Operator Activation Nudge: Audience Correction, Permissions, and Execu
     });
 
     const mockCtx: OperatorExecutionContext = {
-      supabase: createMockSupabase(),
+      supabase: createMockSupabase({ accountRow: { created_at: new Date(Date.now() - 30 * 86400000).toISOString() } }),
       adminUserId: 'founder@letsgetquoted.com',
       source: 'admin_dashboard',
     };
@@ -1133,7 +1178,8 @@ describe('Operator Activation Nudge: Audience Correction, Permissions, and Execu
     expect(res.action?.status).toBe('approved');
     const exec = res.executionResult as any;
     expect(exec.dryRun).toBe(true);
-    expect(exec.sent).toBe(1);
-    expect(exec.details[0].note).toContain('[DRY-RUN]');
+    expect(exec.sent).toBe(0);
+    expect(exec.skipped).toBe(1);
+    expect(exec.details[0].note).toContain('no longer eligible');
   });
 });

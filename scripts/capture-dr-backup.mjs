@@ -72,12 +72,14 @@ async function main() {
     await client.query('begin isolation level repeatable read read only');
     const { rows: [snapshot] } = await client.query("select pg_export_snapshot() as id, now() as captured_at, current_setting('server_version') as server_version, current_setting('transaction_read_only') as read_only");
     report.snapshot = snapshot;
-    const { rows: tables } = await client.query("select schemaname as schema, tablename as name from pg_tables where schemaname in ('public','auth','storage','supabase_migrations','vault','tax_vault') order by 1,2");
+    const { rows: tables } = await client.query("select schemaname as schema, tablename as name from pg_tables where schemaname in ('public','auth','storage','supabase_migrations','vault','tax_vault','admin_security') order by 1,2");
     report.rowCounts = (await client.query(tables.map((t) => `select '${t.schema}.${t.name}' as table_name, count(*)::bigint::text as row_count from ${quote(t.schema)}.${quote(t.name)}`).join(' union all '))).rows;
     report.extensions = (await client.query('select extname, extversion from pg_extension order by extname')).rows;
     report.tables = (await client.query("select n.nspname as schema, c.relname as name, c.relrowsecurity as rls, c.relforcerowsecurity as force_rls, c.relacl::text as grants from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname in ('public','auth','storage') and c.relkind='r' order by 1,2")).rows;
     report.policies = (await client.query("select schemaname,tablename,policyname,permissive,roles,cmd,md5(coalesce(qual,'') || '|' || coalesce(with_check,'')) as definition_hash from pg_policies where schemaname in ('public','auth','storage') order by 1,2,3")).rows;
-    report.functions = (await client.query("select n.nspname as schema,p.proname as name,pg_get_function_identity_arguments(p.oid) as arguments,md5(pg_get_functiondef(p.oid)) as definition_hash,p.proacl::text as grants from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','auth','storage') and p.prokind in ('f','p') order by 1,2,3")).rows;
+    // The private passkey session reader is required after a disaster too.
+    report.functionSchemas = ['public','auth','storage','admin_security'];
+    report.functions = (await client.query("select n.nspname as schema,p.proname as name,pg_get_function_identity_arguments(p.oid) as arguments,md5(pg_get_functiondef(p.oid)) as definition_hash,p.proacl::text as grants from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','auth','storage','admin_security') and p.prokind in ('f','p') order by 1,2,3")).rows;
     report.buckets = (await client.query('select id,name,public,file_size_limit,allowed_mime_types from storage.buckets order by id')).rows;
     const objects = (await client.query('select id,bucket_id,name,metadata,updated_at from storage.objects order by bucket_id,name')).rows;
     report.storageMetadata = await seal('storage-metadata.json', Buffer.from(JSON.stringify(objects)));

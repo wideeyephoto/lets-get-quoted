@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { existsSync } from 'node:fs';
+import { emailCampaignAdmin } from './helpers/email-campaign-admin';
 import {
   CONTRACTOR_LIFECYCLE_STEPS,
   renderContractorLifecycleEmailHtml,
@@ -133,19 +135,18 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
 
     const res = await runContractorLifecycleSweep(mockAdmin as any, { dryRun: true });
     expect(res.checked).toBe(1);
-    expect(res.sent).toBe(1);
-    expect(res.details[0].status).toBe('sent');
+    expect(res.sent).toBe(0);
+    expect(res.planned).toBe(1);
+    expect(res.details[0].status).toBe('planned');
     // Because account has never received welcome_day0, it must receive welcome_day0 first
     expect(res.details[0].stepId).toBe('welcome_day0');
     expect(res.details[0].note).toContain('[DRY-RUN]');
   });
 
   it('validates all 10 CTA paths map to existing App Router dashboard paths', () => {
-    const VALID_BASE_PATHS = ['/dashboard', '/dashboard/jobs', '/dashboard/crew', '/dashboard/reviews', '/dashboard/settings'];
-
     for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
-      const basePath = step.ctaPath.split('?')[0];
-      expect(VALID_BASE_PATHS).toContain(basePath);
+      const basePath = step.ctaPath.split(/[?#]/)[0];
+      expect(existsSync(`src/app${basePath}/page.tsx`)).toBe(true);
     }
   });
 });
@@ -169,29 +170,24 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
       },
     ];
 
-    const mockAdmin: any = {
-      from: () => ({
-        select: () => ({
-          in: () => ({
-            eq: () => Promise.resolve({ data: [], error: null }),
-            then: (resolve: any) => resolve({ data: [], error: null }),
-          }),
-        }),
-      }),
-    };
+    const mockAdmin = emailCampaignAdmin({
+      accounts: mockRecipients.map(r => ({ id: r.accountId, business_name: r.businessName, created_at: new Date(Date.now() - r.ageDays * 86400000).toISOString() })),
+      owners: mockRecipients.map(r => ({ account_id: r.accountId, email: r.email })),
+    });
 
-    const res = await sendActivationNudgeBatch(mockAdmin, {
+    const res = await sendActivationNudgeBatch(mockAdmin as unknown as Parameters<typeof sendActivationNudgeBatch>[0], {
       stepId: 'nudge_zero_quotes',
       recipients: mockRecipients,
       dryRun: true,
     });
 
     expect(res.dryRun).toBe(true);
-    expect(res.sent).toBe(2);
+    expect(res.sent).toBe(0);
+    expect(res.planned).toBe(2);
     expect(res.skipped).toBe(0);
     expect(res.errors).toBe(0);
     expect(res.details.length).toBe(2);
-    expect(res.details[0].status).toBe('sent');
+    expect(res.details[0].status).toBe('planned');
     expect(res.details[0].note).toContain('[DRY-RUN]');
     expect(res.details[0].note).toContain('apex@apexframing.com');
   });
@@ -256,7 +252,7 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
     ];
 
     const mockAdmin: any = {
-      from: (table: string) => ({
+      from: (_table: string) => ({
         select: () => ({
           in: () => ({
             eq: () =>

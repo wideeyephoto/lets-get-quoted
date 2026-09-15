@@ -113,7 +113,7 @@ export default async function AdminPrivacyRequestsPage({
 
         <div className={`${styles.panel} ${styles.statCard} ${overdueCount > 0 ? styles.accentRose : styles.accentNeutral}`}>
           <div className={styles.statLabel}>Overdue Statutory Clock</div>
-          <div className={styles.statValue} style={{ color: overdueCount > 0 ? '#f87171' : 'inherit' }}>
+          <div className={`${styles.statValue} ${overdueCount > 0 ? styles.statValueBad : ''}`}>
             {overdueCount}
           </div>
           <div className={styles.statDrill}>

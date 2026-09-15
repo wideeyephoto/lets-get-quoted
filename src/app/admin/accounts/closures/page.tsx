@@ -73,7 +73,7 @@ export default async function AdminClosuresPage() {
 
         <div className={`${styles.panel} ${styles.statCard} ${metrics.failedClosuresCount > 0 ? styles.accentRose : styles.accentNeutral}`}>
           <div className={styles.statLabel}>Failed Disposals</div>
-          <div className={styles.statValue} style={{ color: metrics.failedClosuresCount > 0 ? '#f87171' : 'inherit' }}>
+          <div className={`${styles.statValue} ${metrics.failedClosuresCount > 0 ? styles.statValueBad : ''}`}>
             {metrics.failedClosuresCount}
           </div>
           <div className={styles.statDrill}>
@@ -89,7 +89,7 @@ export default async function AdminClosuresPage() {
 
         <div className={`${styles.panel} ${styles.statCard} ${metrics.expiringSoonTrashCount > 0 ? styles.accentRose : styles.accentNeutral}`}>
           <div className={styles.statLabel}>Purging Soon</div>
-          <div className={styles.statValue} style={{ color: metrics.expiringSoonTrashCount > 0 ? '#fbbf24' : 'inherit' }}>
+          <div className={`${styles.statValue} ${metrics.expiringSoonTrashCount > 0 ? styles.statValueWarn : ''}`}>
             {metrics.expiringSoonTrashCount}
           </div>
           <div className={styles.statDrill}>Within 7 days of irreversible purge</div>
@@ -124,6 +124,7 @@ export default async function AdminClosuresPage() {
                   <th>QuickBooks</th>
                   <th>Storage</th>
                   <th>Auth Cleanup</th>
+                  <th>Domains</th>
                   <th>Attempts</th>
                   <th>Status / Error</th>
                 </tr>
@@ -159,6 +160,7 @@ export default async function AdminClosuresPage() {
                     <td>{stateBadge(job.quickbooksState)}</td>
                     <td>{stateBadge(job.storageState)}</td>
                     <td>{stateBadge(job.authCleanupState)}</td>
+                    <td>{stateBadge(job.domainCleanupState)}</td>
                     <td className={styles.muted}>
                       {job.attempts} / {job.maxAttempts}
                       {job.nextRetryAt && (

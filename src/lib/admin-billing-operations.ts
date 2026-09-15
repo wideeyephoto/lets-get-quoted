@@ -94,7 +94,9 @@ export type BillingOperationsMetric = {
     | 'manual_review'
     | 'indeterminate'
     | 'dead_letter'
-    | 'evidence';
+    | 'evidence'
+    | 'classified_non_live'
+    | 'historical_dead_letter';
   label: string;
   count: number;
 };
@@ -351,6 +353,76 @@ async function readEventLedger(admin: SupabaseClient, spec: EventLedgerSpec): Pr
       .select('recorded_at', { count: 'exact', head: true }) as CountResult;
     const evidenceFailure = readFailure(spec, [evidenceTotal.error], !validCount(evidenceTotal.count));
     if (evidenceFailure) return evidenceFailure;
+  }
+
+  if (spec.eventScope === 'platform_subscription') {
+    const [actionableUnresolved, applied, actionableDeadLetter, classifiedNonLive, totalHistoricalDeadLetter] = await Promise.all([
+      admin
+        .from('billing_event_operational_classifications')
+        .select('received_at', { count: 'exact' })
+        .eq('event_scope', spec.eventScope)
+        .eq('requires_billing_action', true)
+        .eq('operationally_unresolved', true)
+        .order('received_at', { ascending: true })
+        .limit(1) as unknown as PromiseLike<CountedRowsResult>,
+      eventQuery(admin, 'projection_applied', { count: 'exact', head: true }, spec)
+        .eq('projection_applied', true) as unknown as PromiseLike<CountResult>,
+      admin
+        .from('billing_event_operational_classifications')
+        .select('processing_status', { count: 'exact', head: true })
+        .eq('event_scope', spec.eventScope)
+        .eq('requires_billing_action', true)
+        .eq('operationally_terminal', true) as unknown as PromiseLike<CountResult>,
+      admin
+        .from('billing_event_operational_classifications')
+        .select('operational_class', { count: 'exact', head: true })
+        .eq('event_scope', spec.eventScope)
+        .eq('requires_configuration_review', true) as unknown as PromiseLike<CountResult>,
+      eventQuery(admin, 'processing_status, next_attempt_at', { count: 'exact', head: true }, spec)
+        .eq('processing_status', 'failed')
+        .is('next_attempt_at', null) as unknown as PromiseLike<CountResult>,
+    ]);
+
+    const errors = [
+      actionableUnresolved.error,
+      applied.error,
+      actionableDeadLetter.error,
+      classifiedNonLive.error,
+      totalHistoricalDeadLetter.error,
+    ];
+    const oldestOpenAt = timestampFromFirstRow(actionableUnresolved, 'received_at');
+    const invalid = !validCount(actionableUnresolved.count)
+      || !validCount(applied.count)
+      || !validCount(actionableDeadLetter.count)
+      || !validCount(classifiedNonLive.count)
+      || !validCount(totalHistoricalDeadLetter.count)
+      || (validCount(actionableUnresolved.count) && !validOldest(actionableUnresolved.count, oldestOpenAt))
+      || (validCount(actionableUnresolved.count) && actionableUnresolved.count > (total.count as number))
+      || (validCount(applied.count) && applied.count > (total.count as number))
+      || (validCount(actionableDeadLetter.count) && validCount(actionableUnresolved.count) && actionableDeadLetter.count > actionableUnresolved.count);
+    const failure = readFailure(spec, errors, invalid);
+    if (failure) return failure;
+
+    const metrics: BillingOperationsMetric[] = [
+      { code: 'total', label: 'Receipts', count: total.count as number },
+      { code: 'unresolved', label: 'Actionable unresolved', count: actionableUnresolved.count as number },
+      { code: 'applied', label: 'Applied', count: applied.count as number },
+      { code: 'dead_letter', label: 'Actionable failures', count: actionableDeadLetter.count as number },
+      { code: 'classified_non_live', label: 'Non-live reviews', count: classifiedNonLive.count as number },
+      { code: 'historical_dead_letter', label: 'Recorded terminal failures', count: totalHistoricalDeadLetter.count as number },
+    ];
+
+    return {
+      id: spec.id,
+      label: spec.label,
+      description: spec.description,
+      availability: 'installed',
+      metrics,
+      oldestOpenAt: oldestOpenAt ?? null,
+      fixedErrorCodesSupported: false,
+      fixedErrorCodes: [],
+      fixedErrorCodesTruncated: false,
+    };
   }
 
   const [unresolved, applied, deadLetter] = await Promise.all([

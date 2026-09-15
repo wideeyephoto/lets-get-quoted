@@ -147,27 +147,31 @@ conditions nobody has confirmed:
 **PASS =** one curl reads the flag from outside and returns on; and there is a
 named date by which reconciliation completes and the gate flips.
 
-### 1.3 The app's own refund path has never executed against a live charge — `INHERITED` — **P0**
+### 1.3 Live LGQ refund engine — verified September 9, 2026
 
-[payments.ts:865](../src/lib/payments.ts#L865) sets `reverse_transfer: true` and
-`refund_application_fee: true`. There are four distinct `stripe.refunds.create`
-call sites and **zero** have run against a live key. The one live refund on
-record (2026-08-17) was issued from the Stripe dashboard, which exercises only
-the `charge.refunded` projection and never `refundPayment()`.
+The earlier statement that no LGQ refund call site had run live is superseded
+by [verified provider/application evidence](prelaunch-payments-verification-2026-09-09.md).
+The September 7 programmatic LGQ refund returned $1.00, reversed $1.00 of the
+contractor transfer and refunded $0.01 of the platform fee. Stripe's API request
+log contains both reversal flags and LGQ's exact idempotency key. The production
+ledger and admin audit agree.
 
-The comment block at [payments.ts:791](../src/lib/payments.ts#L791) states the
-consequence plainly: without `reverse_transfer`, a $1,000 refund sends $1,000 to
-the customer, leaves $987.50 with the contractor, and costs **the platform**
-$987.50 of its own money. The first contractor who clicks Refund is the first
-execution.
+**Scope:** this verifies the live partial-refund engine. It does not claim a new
+dashboard-button execution, a full refund, every other refund call site or the
+paid add-on lifecycle. The remaining live add-on gate is tracked in the current
+[launch checklist](../LAUNCH_CHECKLIST.md).
 
-The webhook route handlers were rewritten for Next 15 *after* both live proofs
-on file, so even the stale evidence no longer describes the shipped code.
-
-**Do:** never through the Stripe dashboard UI. Create a $0.50 live invoice, pay
-it, then issue the refund **from the LGQ dashboard**. **PASS =** Stripe shows
-`transfer_reversal` set and `refund_application_fee` applied, and the payments
-row advances by compare-and-set. Operator required.
+September 9 completion: PR #56 is merged and included in production. Refund,
+paid Voice and duplicate-delivery migrations are applied, refund webhook events
+are saved, and the scheduled worker processed all six live add-on refunds.
+Exactly $248 was charged and fully refunded. All 500 purchased minutes were
+revoked, storage returned from 100 to 50 to 0 GB, and office-seat rounding was
+verified at 1 to 1 to 0. All five recurring add-ons are canceled; the unrelated
+Solo allowance remains unrevoked. Fixed a real duplicate-delivery 500 and proved
+HTTP 200 for both full-refund and stale half-refund replays with unchanged
+balances. Natural paid renewals and effective period-end transitions remain open;
+see the [dated execution record](prelaunch-payments-verification-2026-09-09.md)
+and [sanitized evidence](evidence/live-addon-lifecycle-2026-09-09.json).
 
 ### 1.4 Production feature-flag reconciliation — 67 flags, 12 documented — `VERIFIED TODAY` — **P0**
 

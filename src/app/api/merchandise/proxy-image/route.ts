@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
+import { isPrivateIp } from '@/lib/public-api/ssrf-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,42 +25,7 @@ function getProjectSupabaseHost(): string | null {
   return null;
 }
 
-/**
- * Checks if a hostname or IP is private, local, or loopback (IPv4 & IPv6).
- */
-function isPrivateIpOrHost(hostname: string): boolean {
-  const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
 
-  if (
-    host === 'localhost' ||
-    host === '127.0.0.1' ||
-    host === '0.0.0.0' ||
-    host === '::1' ||
-    host === '0:0:0:0:0:0:0:1' ||
-    host === '::'
-  ) {
-    return true;
-  }
-
-  // IPv6 Unique Local (fc00::/7) and Link-Local (fe80::/10)
-  if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) {
-    return true;
-  }
-
-  // IPv4 CIDR checks
-  const ipv4Match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4Match) {
-    const [_, o1, o2] = ipv4Match.map(Number);
-    if (o1 === 10) return true; // 10.0.0.0/8
-    if (o1 === 172 && o2 >= 16 && o2 <= 31) return true; // 172.16.0.0/12 (172.16 - 172.31)
-    if (o1 === 192 && o2 === 168) return true; // 192.168.0.0/16
-    if (o1 === 169 && o2 === 254) return true; // 169.254.0.0/16 link-local
-    if (o1 === 127) return true; // 127.0.0.0/8 loopback
-    if (o1 === 0) return true;
-  }
-
-  return false;
-}
 
 function isHostPermitted(hostname: string): boolean {
   const host = hostname.toLowerCase();
@@ -112,7 +78,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid protocol' }, { status: 400 });
   }
 
-  if (isPrivateIpOrHost(parsedUrl.hostname)) {
+  const rawHost = parsedUrl.hostname.toLowerCase().trim().replace(/^\[|\]$/g, '');
+  if (rawHost === 'localhost' || isPrivateIp(rawHost)) {
     return NextResponse.json({ error: 'Private network addresses not permitted' }, { status: 403 });
   }
 

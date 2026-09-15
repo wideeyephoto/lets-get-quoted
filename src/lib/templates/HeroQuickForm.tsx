@@ -12,14 +12,17 @@ import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatin
 import type { Site } from '@/lib/sites';
 import { getOrCreateAiIntakeThread } from '@/lib/ai-intake-thread';
 import { trackQuoteFunnelStep } from '@/lib/analytics';
+import { ALLOWED_TYPES } from '@/lib/lead-photo-types';
 import { getOrCaptureAttribution } from '@/lib/attribution';
+
 import { resolveMessageMatchHero, type MessageMatchResult } from '@/lib/ad-message-match';
 import ContactPreferenceControl, { type ContactPreferenceValue } from '@/components/ContactPreferenceControl';
 import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
+import CallLink from './CallLink';
 
 type HeroQuickFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'> & {
+  site: Pick<Site, 'template' | 'id' | 'template' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'> & {
     subdomain?: string | null;
   };
   /**
@@ -462,6 +465,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       setStep('qa');
       return;
     }
+    if ((result as any)?.continuationToken || result?.responseId) {
+      setChatResponseId(((result as any)?.continuationToken as string) || (result?.responseId as string) || '');
+    }
     const min = Number(result?.min);
     const max = Number(result?.max);
     const basis = typeof result?.basis === 'string' ? result.basis.trim().slice(0, 60) : '';
@@ -831,6 +837,8 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
         }
         if (fit.excluded) data.set('excluded', 'true');
         data.set('wizard', '1');
+        if (chatResponseId) data.set('continuationToken', chatResponseId);
+        if (visualObservation) data.set('visualObservation', visualObservation);
         if (verify && verifyCode.trim()) {
           data.set('verifyToken', verify.token);
           data.set('verifyExpires', String(verify.expiresAt));
@@ -844,7 +852,19 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       data.delete('photos');
       for (const photo of selectedPhotos.slice(0, MAX_PHOTOS)) {
-        data.append('photos', await compressImage(photo, 1600, 0.8));
+        if (photo.type.startsWith('video/')) {
+          data.append('photos', photo);
+          continue;
+        }
+        try {
+          data.append('photos', await compressImage(photo, 1600, 0.8));
+        } catch (err) {
+          if (ALLOWED_TYPES.has(photo.type)) {
+            data.append('photos', photo);
+          } else {
+            console.warn(`Could not attach ${photo.name}`, err);
+          }
+        }
       }
 
       const attribution = getOrCaptureAttribution();
@@ -1040,9 +1060,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                 <strong>Emergency Safety Guidance</strong>
                 <p>If water or gas is actively leaking, locate and turn off your main shutoff valve immediately.</p>
                 {site.phone && (
-                  <a className={styles.heroFormEmergencyCallBtn} href={`tel:${site.phone}`}>
+                  <CallLink site={site} className={styles.heroFormEmergencyCallBtn}>
                     📞 Call Emergency Dispatch ({site.phone})
-                  </a>
+                  </CallLink>
                 )}
               </div>
             </div>
@@ -1054,7 +1074,6 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                 ? 'Tell us what you need. We’ll ask up to 3 quick questions and show a price range—usually in about a minute.'
                 : 'Tell us about the job and we’ll get back to you as soon as possible with a personalized quote.'}
           </p>
-          {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
             aria-label="Describe your project"
             placeholder={describePlaceholder}
@@ -1467,6 +1486,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               disabled — a dead button explains nothing and the real validation
               is on submit, with a message — but it should look like the next
               thing to do the moment it actually is. */}
+          {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <button type="submit" data-ready={contactReady || undefined} disabled={isSubmitting}>
             {isSubmitting
               ? 'Sending...'
@@ -1476,7 +1496,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                   ? 'See My Free Estimate'
                   : 'Get My Free Estimate'}
           </button>
-          {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
+          {site.phone && <CallLink site={site} className={styles.heroFormOrCall}>or call <strong>{site.phone}</strong> — free quote</CallLink>}
           {smartIntakeActive && <button type="button" className={styles.heroFormRestart} onClick={restartWizard} disabled={isSubmitting || isClassifying}>← Edit project details</button>}
         </div>
       )}
@@ -1527,7 +1547,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
               <small className={styles.heroFormBookingNote}>Select an available arrival window · No card required</small>
             </div>
           )}
-          {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
+          {site.phone && <CallLink site={site} className={styles.heroFormCall}>Call now to lock it in</CallLink>}
         </div>
       )}
 

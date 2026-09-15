@@ -1,4 +1,4 @@
-// Verify 20260903172223_owner_shared_field_command_routing.sql against a
+// Verify 20260903202613_owner_shared_field_command_routing.sql against a
 // disposable PostgreSQL 17 cluster. This harness creates only the tables and
 // pre-existing trigger behavior that the migration depends on. It never reads
 // a hosted database URL or calls an external service.
@@ -11,7 +11,7 @@ import os, { tmpdir } from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
 import { promisify } from 'node:util';
 
-const MIGRATION = 'migrations/20260903172223_owner_shared_field_command_routing.sql';
+const MIGRATION = 'migrations/20260903202613_owner_shared_field_command_routing.sql';
 const NOTICE_MIGRATION = 'migrations/20260903190000_sms_shared_notice_stop_suppression.sql';
 const PORT = Number(process.env.LGQ_OWNER_FIELD_ROUTING_CHECK_PORT || 54374);
 const execFileAsync = promisify(execFile);

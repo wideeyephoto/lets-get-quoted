@@ -112,6 +112,7 @@ export default async function WelcomePage({
           feature={intent.feature}
           city={cityParam}
           next={intent.next}
+          returning={returning}
         />
       </div>
     </main>

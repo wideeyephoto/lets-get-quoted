@@ -42,22 +42,22 @@ vi.mock('@/lib/sms-field-intake-usage', () => ({
 describe('Crew GSM-7 Confirmation Templates', () => {
   it('formats deterministic ASCII confirmation strings for crew actions under 160 chars', () => {
     const crewNote = formatCrewNoteConfirmation('J-101', 'John Smith', 'Mike Davis');
-    expect(crewNote).toBe('[LGQ] J-101 (John Smith): Logged field note from Mike Davis.');
+    expect(crewNote).toBe('Let\'s Get Quoted: J-101 (John Smith): Logged field note from Mike Davis.');
     expect(crewNote.length).toBeLessThanOrEqual(160);
     expect(/^[\x20-\x7E]+$/.test(crewNote)).toBe(true);
 
     const crewCost = formatCrewCostConfirmation('J-101', 'John Smith', 45.5, 'material', 'Mike Davis');
-    expect(crewCost).toBe('[LGQ] J-101 (John Smith): Logged $45.50 material cost from Mike Davis.');
+    expect(crewCost).toBe('Let\'s Get Quoted: J-101 (John Smith): Logged $45.50 material cost from Mike Davis.');
     expect(crewCost.length).toBeLessThanOrEqual(160);
     expect(/^[\x20-\x7E]+$/.test(crewCost)).toBe(true);
 
     const crewTask = formatCrewTaskConfirmation('J-101', 'John Smith', 'Pick up drywall screws', 'Mike Davis');
-    expect(crewTask).toBe('[LGQ] J-101 (John Smith): Added task "Pick up drywall screws" from Mike Davis.');
+    expect(crewTask).toBe('Let\'s Get Quoted: J-101 (John Smith): Added task "Pick up drywall screws" from Mike Davis.');
     expect(crewTask.length).toBeLessThanOrEqual(160);
     expect(/^[\x20-\x7E]+$/.test(crewTask)).toBe(true);
 
     const crewComplete = formatFieldTaskCompletedConfirmation('J-101', 'John Smith', 'Rough plumbing', 'Mike Davis');
-    expect(crewComplete).toBe('[LGQ] J-101 (John Smith): Marked task "Rough plumbing" completed by Mike Davis.');
+    expect(crewComplete).toBe('Let\'s Get Quoted: J-101 (John Smith): Marked task "Rough plumbing" completed by Mike Davis.');
     expect(crewComplete.length).toBeLessThanOrEqual(160);
     expect(/^[\x20-\x7E]+$/.test(crewComplete)).toBe(true);
   });

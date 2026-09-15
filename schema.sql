@@ -145,6 +145,10 @@ alter table accounts add column if not exists daily_digest_enabled boolean not n
 -- The UTC date the digest was last sent, so a cron re-run in the same day is a
 -- no-op (account-level idempotency; the daily cron is the only writer).
 alter table accounts add column if not exists last_digest_date date;
+-- Contractor compliance & tax identification (permits and business filing).
+alter table accounts add column if not exists fein text;
+alter table accounts add column if not exists state_employer_number text;
+alter table accounts add column if not exists license_type text;
 
 -- Intake AI tuning + lead priority (see src/lib/estimate-posture.ts).
 -- estimate_posture: biases the AI instant-estimate lower/higher — one of
@@ -374,6 +378,11 @@ alter table accounts add column if not exists extra_stop_categories text not nul
 alter table accounts add column if not exists extra_stop_required_photos integer not null default 1;
 -- Require the AI eligibility check to pass before Extra Stop is offered.
 alter table accounts add column if not exists extra_stop_require_ai_approval boolean not null default true;
+
+-- Contractor compliance & tax identification fields for municipal permit applications.
+alter table accounts add column if not exists fein text;
+alter table accounts add column if not exists state_employer_number text;
+alter table accounts add column if not exists license_type text;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
@@ -634,6 +643,101 @@ create index if not exists jobs_client_id_idx on jobs (client_id);
 
 -- Set when a client texts "C" back to an appointment reminder to confirm.
 alter table jobs add column if not exists appointment_confirmed_at timestamptz;
+
+-- Permanent parcel number / tax ID for municipal permit applications and property identification.
+alter table jobs add column if not exists parcel_number text;
+
+-- ----------------------------------------------------------------------------
+-- CONTRACTOR_CREDENTIALS — vault for trade licenses, municipal PINs & insurance
+-- ----------------------------------------------------------------------------
+create table if not exists public.contractor_credentials (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  credential_type text not null,
+  trade_discipline text not null default 'building',
+  license_number text,
+  issuing_authority text not null,
+  authority_id text,
+  contractor_pin text,
+  holder_name text not null,
+  policy_number text,
+  insurance_carrier text,
+  coverage_amount numeric(12, 2),
+  expires_at date,
+  status text not null default 'active',
+  document_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_contractor_credentials_account on public.contractor_credentials(account_id);
+create index if not exists idx_contractor_credentials_discipline on public.contractor_credentials(account_id, trade_discipline);
+create index if not exists idx_contractor_credentials_authority on public.contractor_credentials(account_id, authority_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_CASES — municipal permit case tracking per job
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_cases (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  authority_id text,
+  requirement_verdict text not null default 'verify',
+  application_status text not null default 'not_started',
+  external_permit_number text,
+  estimated_fee numeric(10,2),
+  actual_fee numeric(10,2),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint job_permit_cases_account_job_unique unique (account_id, job_id)
+);
+create index if not exists idx_job_permit_cases_account_job on public.job_permit_cases (account_id, job_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_DOCUMENTS — permit application drafts, COIs, affidavits, and issued permits
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_documents (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete cascade,
+  document_type text not null,
+  file_name text not null,
+  file_size_bytes bigint not null default 0,
+  mime_type text not null default 'application/pdf',
+  storage_path text not null,
+  sha256_hash text,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_job_permit_documents_account_job on public.job_permit_documents (account_id, job_id);
+create index if not exists idx_job_permit_documents_case on public.job_permit_documents (permit_case_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_INSPECTIONS — municipal inspection milestones per permit
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_inspections (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete set null,
+  inspection_type text not null,
+  title text not null,
+  status text not null default 'required',
+  requested_date date,
+  scheduled_date date,
+  completed_date date,
+  inspector_name text,
+  inspector_phone text,
+  notes text,
+  failure_reasons text[],
+  reinspection_fee numeric(10, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_job_permit_inspections_job on public.job_permit_inspections(account_id, job_id);
+create index if not exists idx_job_permit_inspections_status on public.job_permit_inspections(status);
 
 -- ----------------------------------------------------------------------------
 -- JOB_TASKS  — per-job checklist / punch list. Owner sets the list; crew tick
@@ -1244,6 +1348,9 @@ create table if not exists leads (
 
 alter table leads add column if not exists status lead_status not null default 'new';
 alter table leads add column if not exists email text;
+alter table leads add column if not exists normalized_phone text;
+create index if not exists leads_normalized_phone_idx on leads (normalized_phone) where normalized_phone is not null;
+create index if not exists leads_email_idx on leads (email) where email is not null;
 alter table leads add column if not exists project_type text;
 alter table leads add column if not exists estimated_hours numeric(8,2);
 alter table leads add column if not exists quote_visit jsonb;
@@ -2126,7 +2233,20 @@ create policy site_owner on sites for all using ( is_owner(account_id) );
 -- assigned job and a trigger had to claw it back. crew_set_job_status() (above)
 -- is the replacement: one function, the two transitions the field app offers,
 -- assignment checked in the database.
-create policy job_owner       on jobs for all    using ( is_owner(account_id) );
+-- Match the capability-aware policies installed by the office core-work migrations.
+drop policy if exists job_owner_read on public.jobs;
+drop policy if exists job_owner_insert on public.jobs;
+drop policy if exists job_owner_update on public.jobs;
+drop policy if exists job_owner_delete on public.jobs;
+create policy job_owner_read on public.jobs
+  for select using (public.office_can(account_id, 'jobs.read'));
+create policy job_owner_insert on public.jobs
+  for insert with check (public.office_can(account_id, 'jobs.write'));
+create policy job_owner_update on public.jobs
+  for update using (public.office_can(account_id, 'jobs.write'))
+  with check (public.office_can(account_id, 'jobs.write'));
+create policy job_owner_delete on public.jobs
+  for delete using (public.office_can(account_id, 'jobs.write'));
 create policy job_crew_read   on jobs for select using ( crew_on_job(id) );
 
 -- CREW_ASSIGNMENTS: owners manage; crew read only their OWN assignment rows
@@ -4005,6 +4125,197 @@ alter table leads add column if not exists referral_settled_at timestamptz;
 -- for the same reason: the insert already names the column, so capture needs no
 -- migration. This is the money-shaped half, which cannot be derived.
 alter table extra_stop_requests add column if not exists referral_settled_at timestamptz;
+
+-- ============================================================================
+-- PERMIT INTELLIGENCE, JURISDICTIONS & CREDENTIALS VAULT
+-- Mirrors migrations 20260826150000, 20260826160000, 20260826170000, 20260826180000
+-- ============================================================================
+
+create table if not exists public.permit_authorities (
+  id text primary key,
+  name text not null,
+  agency_name text not null,
+  state text not null,
+  county text not null,
+  city_or_township text,
+  portal_url text,
+  phone text,
+  office_hours text,
+  provider_type text not null default 'generic' check (provider_type in ('bsa_accessmygov', 'accela', 'opengov', 'municipality_native', 'generic')),
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_authority_coverage (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text not null references public.permit_authorities(id) on delete cascade,
+  discipline text not null check (discipline in ('building', 'electrical', 'mechanical', 'plumbing')),
+  enforcing_agency text not null,
+  level text not null check (level in ('municipality', 'township', 'county', 'state')),
+  effective_from date not null default '2020-01-01',
+  effective_to date,
+  source_url text,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create index if not exists idx_permit_authority_coverage_auth_disc
+  on public.permit_authority_coverage (authority_id, discipline);
+
+create table if not exists public.permit_sources (
+  id text primary key,
+  publisher text not null,
+  url text not null,
+  retrieval_date date not null default current_date,
+  content_hash text,
+  licensing_class text not null default 'advisory_summary',
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_code_adoptions (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text not null references public.permit_authorities(id) on delete cascade,
+  code_family text not null,
+  edition_year text not null,
+  effective_from date not null default '2016-02-08',
+  effective_to date,
+  governing_body text not null,
+  is_current boolean not null default true,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_code_amendments (
+  id uuid primary key default gen_random_uuid(),
+  adoption_id uuid references public.permit_code_adoptions(id) on delete cascade,
+  authority_id text references public.permit_authorities(id) on delete cascade,
+  section_ref text not null,
+  title text not null,
+  summary text not null,
+  amendment_type text not null default 'standard_model' check (amendment_type in ('standard_model', 'state_amendment', 'local_ordinance')),
+  citation_url text,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_requirement_rules (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text references public.permit_authorities(id) on delete cascade,
+  trade text not null,
+  scope text not null,
+  decision text not null check (decision in ('required', 'not_required', 'verify')),
+  base_fee numeric(10,2),
+  effective_from date not null default '2020-01-01',
+  effective_to date,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.job_permit_cases (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  authority_id text references public.permit_authorities(id) on delete set null,
+  requirement_verdict text not null default 'verify' check (requirement_verdict in ('required', 'not_required', 'verify')),
+  application_status text not null default 'not_started' check (
+    application_status in (
+      'not_started', 'draft', 'ready_for_review', 'authorized', 'submitting',
+      'submitted', 'in_review', 'corrections_required', 'approved', 'issued',
+      'rejected', 'withdrawn', 'inspection_scheduled', 'inspection_passed',
+      'inspection_failed', 'closed'
+    )
+  ),
+  external_permit_number text,
+  estimated_fee numeric(10,2),
+  actual_fee numeric(10,2),
+  notes text,
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
+  constraint job_permit_cases_account_job_unique unique (account_id, job_id)
+);
+
+create index if not exists idx_job_permit_cases_account_job
+  on public.job_permit_cases (account_id, job_id);
+
+create table if not exists public.job_permit_documents (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete cascade,
+  document_type text not null check (
+    document_type in (
+      'application_draft', 'site_plan', 'contractor_license', 'insurance_coi',
+      'homeowner_affidavit', 'permit_issued_pdf', 'inspection_report', 'receipt', 'other'
+    )
+  ),
+  file_name text not null,
+  file_size_bytes bigint not null default 0,
+  mime_type text not null default 'application/pdf',
+  storage_path text not null,
+  sha256_hash text,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create index if not exists idx_job_permit_documents_account_job
+  on public.job_permit_documents (account_id, job_id);
+create index if not exists idx_job_permit_documents_case
+  on public.job_permit_documents (permit_case_id);
+
+create table if not exists public.job_permit_inspections (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete set null,
+  inspection_type text not null,
+  title text not null,
+  status text not null default 'required',
+  requested_date date,
+  scheduled_date date,
+  completed_date date,
+  inspector_name text,
+  inspector_phone text,
+  notes text,
+  failure_reasons text[],
+  reinspection_fee numeric(10, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_job_permit_inspections_job on public.job_permit_inspections(account_id, job_id);
+create index if not exists idx_job_permit_inspections_status on public.job_permit_inspections(status);
+
+create table if not exists public.contractor_credentials (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  credential_type text not null,
+  trade_discipline text not null default 'building',
+  license_number text,
+  issuing_authority text not null,
+  authority_id text,
+  contractor_pin text,
+  holder_name text not null,
+  policy_number text,
+  insurance_carrier text,
+  coverage_amount numeric(12, 2),
+  expires_at date,
+  status text not null default 'active',
+  document_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_contractor_credentials_account on public.contractor_credentials(account_id);
+create index if not exists idx_contractor_credentials_discipline on public.contractor_credentials(account_id, trade_discipline);
+create index if not exists idx_contractor_credentials_authority on public.contractor_credentials(account_id, authority_id);
+
+alter table public.permit_authorities enable row level security;
+alter table public.permit_authority_coverage enable row level security;
+alter table public.permit_sources enable row level security;
+alter table public.permit_code_adoptions enable row level security;
+alter table public.permit_code_amendments enable row level security;
+alter table public.permit_requirement_rules enable row level security;
+alter table public.job_permit_cases enable row level security;
+alter table public.job_permit_documents enable row level security;
+alter table public.job_permit_inspections enable row level security;
+alter table public.contractor_credentials enable row level security;
 
 -- BEGIN GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 -- Generated by scripts/sync-messaging-schema.mjs. Do not edit this block by hand.
@@ -8741,7 +9052,7 @@ grant execute on function public.workspace_purchased_capacity_units(uuid, text)
 
 commit;
 
--- Source: migrations/20260819080000_usage_overage_authorization.sql
+-- Source: migrations/20260820114124_usage_overage_authorization.sql
 -- Overage a contractor asked for, capped at a number they chose.
 --
 -- WHY THE SHAPE IS WHAT IT IS. The price book's rule is absolute: LGQ never
@@ -9966,7 +10277,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819170000_revoke_truncate_from_browser_roles.sql
+-- Source: migrations/20260820004313_revoke_truncate_from_browser_roles.sql
 -- Take TRUNCATE away from anon and authenticated, on every table in public.
 --
 -- WHY. A survey of production found 84 tables with TRUNCATE granted to both
@@ -10072,7 +10383,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819180000_top_up_ledger_voice_skus.sql
+-- Source: migrations/20260820004414_top_up_ledger_voice_skus.sql
 -- Let the top-up purchase ledger record the four voice SKUs.
 --
 -- WHY. `billing_top_up_purchase_operations` binds every top-up id to its
@@ -10184,7 +10495,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819190000_voice_minute_allowance.sql
+-- Source: migrations/20260820004438_voice_minute_allowance.sql
 -- Grant voice minutes, so the meter has something to measure.
 --
 -- THE BLOCKER THIS REMOVES. Nothing fills a `voice_minutes` ledger. The monthly
@@ -10376,7 +10687,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819200000_assert_canonical_reset_untouched.sql
+-- Source: migrations/20260820005035_assert_canonical_reset_untouched.sql
 -- Actually assert what 20260819190000 claimed to assert.
 --
 -- WHAT WENT WRONG. That migration ended with a post-condition labelled "THE ONE
@@ -10455,7 +10766,7 @@ end $$;
 
 commit;
 
--- Source: migrations/20260819260000_overage_settlement.sql
+-- Source: migrations/20260820074457_overage_settlement.sql
 -- Turn accrued overage into something that can be charged.
 --
 -- THE GAP. `workspace_overage_accruals` has been written since 20260819080000
@@ -10837,7 +11148,7 @@ end $post$;
 
 commit;
 
--- Source: migrations/20260819290000_overage_accrual_idempotency.sql
+-- Source: migrations/20260820120240_overage_accrual_idempotency.sql
 -- Give the overage accrual an idempotency anchor.
 --
 -- THE HOLE. authorize_usage_overage took the cap lock, compared the accrued
@@ -11217,7 +11528,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260819300000_release_respects_settled_period.sql
+-- Source: migrations/20260820120250_release_respects_settled_period.sql
 -- A settled period's accruals are frozen.
 --
 -- THE INTERACTION. close_overage_period takes a snapshot of the accrual rows
@@ -11348,7 +11659,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260819310000_cap_counts_overlapping_periods.sql
+-- Source: migrations/20260820120304_cap_counts_overlapping_periods.sql
 -- Stop a spending cap re-arming itself when the period boundary moves.
 --
 -- THE DOUBLE SPEND. The cap is one number per workspace with no period attached
@@ -11555,7 +11866,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260820110000_voice_allowance_survives_a_moved_period.sql
+-- Source: migrations/20260820125506_voice_allowance_survives_a_moved_period.sql
 -- A moved billing boundary must not hand out a second month of voice minutes.
 --
 -- THE LEAK. grant_voice_minute_allowance built its idempotency key out of
@@ -11756,7 +12067,7 @@ $post$;
 
 commit;
 
--- Source: migrations/20260820120000_settle_a_voice_overage_for_what_was_used.sql
+-- Source: migrations/20260820125518_settle_a_voice_overage_for_what_was_used.sql
 -- A twenty-second wrong number costs $21, and nothing ever gives it back.
 --
 -- THE SHAPE OF IT. A phone call cannot be measured before it happens, so the
@@ -27071,7 +27382,7 @@ $$;
 
 commit;
 
--- Source: migrations/20260903172223_owner_shared_field_command_routing.sql
+-- Source: migrations/20260903202613_owner_shared_field_command_routing.sql
 -- Keep LGQ platform-lane traffic out of the contractor's customer inbox.
 --
 -- The transcript row remains durable and keeps every receipt/task foreign key
@@ -27680,7 +27991,7 @@ $$;
 
 commit;
 
--- Source: migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql
+-- Source: migrations/20260903203149_sms_enqueue_delivery_overload_cleanup.sql
 -- Remove the obsolete enqueue_sms_delivery overload left behind when
 -- p_available_at was added as an optional thirteenth argument. Keeping both
 -- signatures makes named twelve-argument calls ambiguous inside PostgreSQL,
@@ -27805,7 +28116,7 @@ notify pgrst, 'reload schema';
 
 commit;
 
--- Source: migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql
+-- Source: migrations/20260903203757_sms_enqueue_delivery_replay_hardening.sql
 -- Preserve the legacy enqueue contract after consolidating onto the delayed
 -- delivery signature. Idempotent replays must return the real delivery-task
 -- state and must fail closed if an event ever exists without its task.
@@ -36612,6 +36923,364 @@ end;
 $verify_registry_callback_fail_closed$;
 
 commit;
+
+-- Source: migrations/20260908173701_sms_dispatch_help_account_binding.sql
+-- A dispatch HELP receipt previously had no account binding, even for one
+-- consented active crew workspace. The production canary gate consequently
+-- suppressed its compliance acknowledgment. Use the existing STOP/START
+-- authority lookup for HELP too, without changing consent or ambiguity rules.
+begin;
+set local lock_timeout = '5s';
+
+do $migration$
+declare
+  v_definition text;
+  v_old text := $old$if p_keyword in ('stop', 'start')
+     and v_sender.purpose = 'lgq_dispatch'
+     and v_routed_account_id is null then$old$;
+  v_new text := $new$if p_keyword in ('stop', 'start', 'help')
+     and v_sender.purpose = 'lgq_dispatch'
+     and v_routed_account_id is null then$new$;
+begin
+  v_definition := pg_catalog.pg_get_functiondef(
+    'public.ingest_sms_inbound_webhook(text,text,text,text,text,text,text,text,text,text[],text)'::regprocedure
+  );
+  -- Historical Windows-loaded definitions retain CRLF. Preserve their exact
+  -- whitespace rather than replacing the whole function with an older copy.
+  if pg_catalog.strpos(v_definition, v_old) = 0
+     and pg_catalog.strpos(v_definition, v_new) = 0 then
+    v_old := pg_catalog.replace(v_old, E'\n', E'\r\n');
+    v_new := pg_catalog.replace(v_new, E'\n', E'\r\n');
+  end if;
+  if pg_catalog.strpos(v_definition, v_old) = 0
+     and pg_catalog.strpos(v_definition, v_new) > 0 then
+    return;
+  end if;
+  if (pg_catalog.length(v_definition)
+      - pg_catalog.length(pg_catalog.replace(v_definition, v_old, '')))
+       <> pg_catalog.length(v_old)
+     or pg_catalog.strpos(v_definition, v_new) > 0 then
+    raise exception 'Dispatch keyword authority block changed; review HELP migration before applying';
+  end if;
+  -- Patch the installed definition so later field-intake, suppression and
+  -- callback changes survive. CREATE OR REPLACE preserves its owner/grants.
+  execute pg_catalog.replace(v_definition, v_old, v_new);
+end;
+$migration$;
+
+commit;
+
+-- Source: migrations/20260908201549_subcontractor_sms_projection_service_grant.sql
+-- The offer-link trigger runs as the server's service_role. Its nested
+-- projector call needs EXECUTE; browser roles must remain excluded.
+begin;
+grant execute on function public.apply_subcontractor_sms_event_projection(uuid)
+  to service_role;
+commit;
+
+-- Source: migrations/20260914145820_sms_carrier_opt_out_projection.sql
+-- Carrier 21610 means an explicit recipient opt-out for Twilio and SignalWire.
+-- Project it with the canonical receipt transaction, including reconciliation.
+-- No carrier call or historical-consent rewrite is performed by this migration.
+begin;
+
+alter table public.sms_events
+  add column if not exists sender_campaign_id_at_send text,
+  add column if not exists sender_e164_at_send text,
+  add column if not exists sender_account_id_at_send uuid,
+  add column if not exists sender_scope_recorded_at timestamptz;
+alter table public.sms_webhook_receipts
+  add column if not exists carrier_opt_out_disposition text;
+
+alter table public.sms_sender_keyword_preferences
+  drop constraint if exists sms_sender_keyword_preferences_source_check;
+alter table public.sms_sender_keyword_preferences
+  add constraint sms_sender_keyword_preferences_source_check
+  check (source in ('inbound_stop', 'inbound_start', 'carrier_21610'));
+alter table public.sms_campaign_keyword_preferences
+  drop constraint if exists sms_campaign_keyword_preferences_source_check;
+alter table public.sms_campaign_keyword_preferences
+  add constraint sms_campaign_keyword_preferences_source_check
+  check (source in ('inbound_stop', 'inbound_start', 'carrier_21610'));
+
+-- Capture scope at the existing atomic request-start boundary. Do not infer
+-- historical Campaigns from today's inventory, which can have been reassigned.
+create or replace function public.capture_sms_sender_scope_at_request()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_sender public.sms_sender_numbers%rowtype;
+begin
+  if current_user in ('anon', 'authenticated') then
+    raise exception 'Browser sessions cannot assign SMS request scope' using errcode = '42501';
+  end if;
+  if new.send_started_at is not null
+     and (tg_op = 'INSERT' or new.send_started_at is distinct from old.send_started_at) then
+    select s.* into v_sender from public.sms_sender_numbers s
+     where s.id = new.sender_number_id and s.provider = new.provider
+     for share;
+    if not found then
+      raise exception 'SMS request sender scope unavailable' using errcode = 'P5102';
+    end if;
+    new.sender_campaign_id_at_send := nullif(pg_catalog.lower(pg_catalog.btrim(v_sender.campaign_id)), '');
+    new.sender_e164_at_send := v_sender.e164_number;
+    new.sender_account_id_at_send := v_sender.account_id;
+    new.sender_scope_recorded_at := new.send_started_at;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.capture_sms_sender_scope_at_request() from public, anon, authenticated, service_role;
+drop trigger if exists sms_events_capture_sender_scope on public.sms_events;
+create trigger sms_events_capture_sender_scope
+before insert or update of send_started_at, sender_campaign_id_at_send,
+  sender_e164_at_send, sender_account_id_at_send, sender_scope_recorded_at
+on public.sms_events for each row
+execute function public.capture_sms_sender_scope_at_request();
+
+create or replace function public.apply_sms_carrier_opt_out_receipt(p_receipt_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_receipt public.sms_webhook_receipts%rowtype;
+  v_event public.sms_events%rowtype;
+  v_sender public.sms_sender_numbers%rowtype;
+  v_campaign text;
+  v_preference_at timestamptz;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+begin
+  select r.* into v_receipt from public.sms_webhook_receipts r where r.id = p_receipt_id for update;
+  if not found then
+    raise exception 'SMS carrier receipt is unavailable' using errcode = 'P0002';
+  end if;
+  if v_receipt.carrier_opt_out_disposition is not null then
+    return v_receipt.carrier_opt_out_disposition;
+  end if;
+  if v_receipt.webhook_kind <> 'status' or v_receipt.provider_error_code is distinct from '21610'
+     or coalesce(v_receipt.provider_status, '') not in ('failed', 'undelivered')
+     or v_receipt.sms_event_id is null then
+    return (select r.carrier_opt_out_disposition from public.sms_webhook_receipts r where r.id = p_receipt_id);
+  end if;
+  select e.* into v_event from public.sms_events e where e.id = v_receipt.sms_event_id;
+  select s.* into v_sender from public.sms_sender_numbers s
+   where s.id = v_event.sender_number_id for share;
+  v_campaign := nullif(pg_catalog.lower(pg_catalog.btrim(v_sender.campaign_id)), '');
+
+  if v_event.id is null or v_sender.id is null
+     or v_event.provider is distinct from v_receipt.provider
+     or v_event.provider_id is distinct from v_receipt.provider_event_id
+     or v_event.account_id is distinct from v_receipt.account_id
+     or v_sender.provider is distinct from v_receipt.provider
+     or v_event.sender_number_id is distinct from v_receipt.sender_number_id
+     or v_event.sender_scope_recorded_at is null
+     or v_event.sender_campaign_id_at_send is distinct from v_campaign
+     or v_event.sender_e164_at_send is distinct from v_sender.e164_number
+     or v_event.sender_account_id_at_send is distinct from v_sender.account_id then
+    insert into public.sms_operator_review_items (
+      webhook_receipt_id, reason, severity, provider, account_id,
+      sender_number_id, sms_event_id, provider_event_id,
+      provider_status, provider_error_code, resolution_note
+    ) values (
+      v_receipt.id, 'ambiguous_destination', 'critical', v_receipt.provider, v_event.account_id,
+      v_event.sender_number_id, v_event.id, v_receipt.provider_event_id,
+      v_receipt.provider_status, '21610', 'Carrier opt-out sender scope is missing or changed; review before resending.'
+    ) on conflict (webhook_receipt_id) do update
+      set reason = 'ambiguous_destination', severity = 'critical', review_state = 'open',
+          resolved_at = null,
+          resolution_note = pg_catalog.concat_ws(' | ', public.sms_operator_review_items.resolution_note,
+            'Carrier opt-out sender scope is missing or changed; review before resending.');
+    update public.sms_webhook_receipts set carrier_opt_out_disposition = 'review_unbound_sender' where id = v_receipt.id;
+    return (select r.carrier_opt_out_disposition from public.sms_webhook_receipts r where r.id = p_receipt_id);
+  end if;
+
+  -- Match the sender-then-Campaign order used by STOP/START and final egress.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+    'sms-sender-consent:' || v_sender.id::text || ':' || v_event.phone_number, 20260821));
+  if v_campaign is not null then
+    perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
+      'sms-campaign-consent:' || v_sender.provider || ':' || v_campaign || ':' || v_event.phone_number, 20260906));
+    select p.updated_at into v_preference_at
+      from public.sms_campaign_keyword_preferences p
+     where p.provider = v_sender.provider and p.campaign_id = v_campaign
+       and p.phone_number = v_event.phone_number;
+  else
+    select p.updated_at into v_preference_at
+      from public.sms_sender_keyword_preferences p
+     where p.sender_number_id = v_sender.id and p.phone_number = v_event.phone_number;
+  end if;
+
+  -- The request preceded a later keyword decision. Preserve the newer choice,
+  -- even if this is the first arrival of the old carrier callback.
+  if v_preference_at > v_event.sender_scope_recorded_at then
+    update public.sms_webhook_receipts set carrier_opt_out_disposition = 'ignored_newer_preference' where id = v_receipt.id;
+    return (select r.carrier_opt_out_disposition from public.sms_webhook_receipts r where r.id = p_receipt_id);
+  end if;
+
+  insert into public.sms_sender_keyword_preferences (
+    sender_number_id, phone_number, status, source, opted_out_at, updated_at
+  ) values (v_sender.id, v_event.phone_number, 'opted_out', 'carrier_21610', v_now, v_now)
+  on conflict (sender_number_id, phone_number) do update
+    set status = excluded.status, source = excluded.source,
+        opted_out_at = excluded.opted_out_at, updated_at = excluded.updated_at;
+  -- The existing trigger projects this into the exact provider/Campaign row.
+  -- Both final egress and producer checks already read that canonical veto.
+  update public.sms_webhook_receipts set carrier_opt_out_disposition = 'applied' where id = v_receipt.id;
+  return (select r.carrier_opt_out_disposition from public.sms_webhook_receipts r where r.id = p_receipt_id);
+end;
+$$;
+revoke all on function public.apply_sms_carrier_opt_out_receipt(uuid) from public, anon, authenticated, service_role;
+grant execute on function public.apply_sms_carrier_opt_out_receipt(uuid) to service_role;
+
+create or replace function public.project_sms_carrier_opt_out()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+begin
+  if new.webhook_kind = 'status' and new.provider_error_code = '21610'
+     and new.sms_event_id is not null then
+    perform public.apply_sms_carrier_opt_out_receipt(new.id);
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.project_sms_carrier_opt_out() from public, anon, authenticated, service_role;
+drop trigger if exists sms_status_project_carrier_opt_out on public.sms_webhook_receipts;
+create trigger sms_status_project_carrier_opt_out
+after insert or update of sms_event_id on public.sms_webhook_receipts
+for each row execute function public.project_sms_carrier_opt_out();
+
+commit;
+
+-- Source: migrations/20260915000000_sms_marketing_consent_scope.sql
+-- Migration: 20260915000000_sms_marketing_consent_scope.sql
+-- Description: Expand consent scope CHECK constraints to admit 'marketing' in sms_consent_scopes and sms_consent_evidence; add index and map marketing sources in trigger.
+
+begin;
+
+-- 1. Expand CHECK constraint on sms_consent_scopes
+alter table public.sms_consent_scopes
+  drop constraint if exists sms_consent_scopes_consent_scope_check;
+
+alter table public.sms_consent_scopes
+  add constraint sms_consent_scopes_consent_scope_check
+  check (consent_scope in ('customer', 'crew', 'owner', 'marketing'));
+
+-- 2. Expand CHECK constraint on sms_consent_evidence
+alter table public.sms_consent_evidence
+  drop constraint if exists sms_consent_evidence_consent_scope_check;
+
+alter table public.sms_consent_evidence
+  add constraint sms_consent_evidence_consent_scope_check
+  check (consent_scope in ('customer', 'crew', 'owner', 'marketing'));
+
+-- 3. Partial index for marketing consent lookups
+create index if not exists sms_consent_scopes_marketing_lookup_idx
+  on public.sms_consent_scopes (account_id, phone_number)
+  where consent_scope = 'marketing';
+
+-- 4. Update trigger function to classify marketing sources
+create or replace function public.establish_sms_consent_scope_from_source()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_scope text;
+begin
+  if new.status <> 'opted_in' or new.consented_at is null then
+    return new;
+  end if;
+  v_scope := case
+    when new.source in (
+      'payment_request', 'lead_quote_visit', 'lead_quote_visit_options',
+      'client_job_dashboard', 'lead_decline', 'job_update',
+      'review_request', 'arrival_time_changed', 'reschedule_offer',
+      'estimate_offer', 'schedule_request', 'lead_verification_request',
+      'portal_link_request', 'missed_call_text_back', 'authenticated_inbound'
+    ) then 'customer'
+    when new.source in (
+      'marketing_opt_in', 'campaign_opt_in', 'promo_opt_in',
+      'web_form_marketing_opt_in', 'broadcast_marketing_consent'
+    ) then 'marketing'
+    when new.source in ('crew_added', 'subcontractor_added') then 'crew'
+    when new.source = 'owner_alerts' then 'owner'
+    else null
+  end;
+  if v_scope is not null then
+    insert into public.sms_consent_scopes (
+      account_id, phone_number, consent_scope, evidence_source, established_at
+    ) values (
+      new.account_id, new.phone_number, v_scope, new.source,
+      coalesce(new.consented_at, pg_catalog.clock_timestamp())
+    ) on conflict (account_id, phone_number, consent_scope) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+commit;
+
+-- Source: migrations/20260915010000_sms_campaign_lifecycle_and_canary.sql
+-- Migration: 20260915010000_sms_campaign_lifecycle_and_canary.sql
+-- Description: Add 10DLC campaign lifecycle and carrier rate limit columns to messaging_registration_applications, and create sms_canary_probes for reachability health tracking.
+
+begin;
+
+-- 1. Campaign lifecycle and carrier limits on messaging_registration_applications
+alter table public.messaging_registration_applications
+  add column if not exists campaign_renewal_at timestamptz,
+  add column if not exists brand_revet_at timestamptz,
+  add column if not exists max_assigned_numbers integer not null default 49,
+  add column if not exists att_sms_per_minute_cap integer not null default 75,
+  add column if not exists att_mms_per_minute_cap integer not null default 50,
+  add column if not exists tmobile_daily_brand_cap integer not null default 2000;
+
+-- 2. Create sms_canary_probes table
+create table if not exists public.sms_canary_probes (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid,
+  phone_number text not null
+    check (phone_number ~ '^\+[1-9][0-9]{7,14}$'),
+  provider text not null
+    check (provider in ('signalwire', 'twilio', 'simulated')),
+  provider_message_id text,
+  status text not null
+    check (status in ('dispatched', 'confirmed', 'failed', 'timeout')),
+  dispatched_at timestamptz not null default clock_timestamp(),
+  confirmed_at timestamptz,
+  latency_ms integer,
+  error_message text,
+  created_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists idx_sms_canary_probes_dispatched
+  on public.sms_canary_probes (dispatched_at desc);
+
+create index if not exists idx_sms_canary_probes_provider_msg
+  on public.sms_canary_probes (provider_message_id)
+  where provider_message_id is not null;
+
+-- 3. RLS and Grants
+alter table public.sms_canary_probes enable row level security;
+alter table public.sms_canary_probes force row level security;
+
+revoke all on table public.sms_canary_probes from anon, public;
+grant select, insert, update on table public.sms_canary_probes to service_role;
+grant select on table public.sms_canary_probes to authenticated;
+
+commit;
 -- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 
 
@@ -37888,6 +38557,472 @@ grant execute on function public.reserve_usage_credits(uuid, text, bigint, text,
 commit;
 
 
+-- Multi-location inventory: 20260901040000
+begin;
+
+CREATE TABLE IF NOT EXISTS public.inventory_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'warehouse',
+  code TEXT,
+  address TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_locations_account ON public.inventory_locations(account_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_locations_account_name ON public.inventory_locations(account_id, lower(trim(name)));
+
+ALTER TABLE public.inventory_locations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_locations"
+  ON public.inventory_locations FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_locations"
+  ON public.inventory_locations FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_locations TO authenticated;
+REVOKE ALL ON public.inventory_locations FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_tools (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES public.inventory_locations(id) ON DELETE SET NULL,
+  location_name TEXT,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  brand TEXT NOT NULL,
+  model_number TEXT,
+  serial_number TEXT,
+  asset_tag TEXT NOT NULL,
+  purchase_price NUMERIC(10, 2),
+  purchase_date DATE,
+  depreciation_schedule TEXT,
+  status TEXT NOT NULL DEFAULT 'available',
+  assigned_crew_id UUID REFERENCES public.crew(id) ON DELETE SET NULL,
+  assigned_crew_name TEXT,
+  assigned_job_id UUID REFERENCES public.jobs(id) ON DELETE SET NULL,
+  assigned_job_label TEXT,
+  checked_out_at TIMESTAMPTZ,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_account ON public.inventory_tools(account_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_status ON public.inventory_tools(account_id, status);
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_location ON public.inventory_tools(account_id, location_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_tools_account_asset_tag ON public.inventory_tools(account_id, lower(trim(asset_tag)));
+
+ALTER TABLE public.inventory_tools ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_tools"
+  ON public.inventory_tools FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_tools"
+  ON public.inventory_tools FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_tools TO authenticated;
+REVOKE ALL ON public.inventory_tools FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_vehicles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  make TEXT NOT NULL,
+  model TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  license_plate TEXT NOT NULL,
+  vin TEXT,
+  current_mileage INTEGER NOT NULL DEFAULT 0,
+  purchase_price NUMERIC(10, 2),
+  purchase_date DATE,
+  depreciation_schedule TEXT,
+  primary_driver_id UUID REFERENCES public.crew(id) ON DELETE SET NULL,
+  primary_driver_name TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  last_service_date DATE,
+  last_service_mileage INTEGER,
+  next_service_due_mileage INTEGER,
+  inspection_expires_at DATE,
+  insurance_expires_at DATE,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_account ON public.inventory_vehicles(account_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_status ON public.inventory_vehicles(account_id, status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_vehicles_account_plate ON public.inventory_vehicles(account_id, lower(trim(license_plate)));
+
+ALTER TABLE public.inventory_vehicles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_vehicles"
+  ON public.inventory_vehicles FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_vehicles"
+  ON public.inventory_vehicles FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_vehicles TO authenticated;
+REVOKE ALL ON public.inventory_vehicles FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_stock_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES public.inventory_locations(id) ON DELETE SET NULL,
+  location_name TEXT NOT NULL DEFAULT 'Main Shop',
+  name TEXT NOT NULL,
+  sku TEXT NOT NULL,
+  category TEXT NOT NULL,
+  quantity_on_hand NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  min_threshold NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  unit TEXT NOT NULL DEFAULT 'ea',
+  unit_cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  preferred_supplier TEXT,
+  reorder_qty NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_account ON public.inventory_stock_items(account_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_location ON public.inventory_stock_items(account_id, location_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_stock_account_sku_loc ON public.inventory_stock_items(account_id, lower(trim(sku)), lower(trim(coalesce(location_name, ''))));
+
+ALTER TABLE public.inventory_stock_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_stock_items"
+  ON public.inventory_stock_items FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_stock_items"
+  ON public.inventory_stock_items FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_stock_items TO authenticated;
+REVOKE ALL ON public.inventory_stock_items FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_stock_transfers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  item_id UUID REFERENCES public.inventory_stock_items(id) ON DELETE CASCADE,
+  item_name TEXT NOT NULL,
+  from_location TEXT NOT NULL,
+  to_location TEXT NOT NULL,
+  quantity NUMERIC(10, 2) NOT NULL,
+  performed_by TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_transfers_account ON public.inventory_stock_transfers(account_id);
+
+ALTER TABLE public.inventory_stock_transfers ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_stock_transfers"
+  ON public.inventory_stock_transfers FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_stock_transfers"
+  ON public.inventory_stock_transfers FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_stock_transfers TO authenticated;
+REVOKE ALL ON public.inventory_stock_transfers FROM anon, public;
+
+CREATE TABLE IF NOT EXISTS public.inventory_maintenance_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  asset_type TEXT NOT NULL,
+  asset_id TEXT NOT NULL,
+  asset_name TEXT NOT NULL,
+  service_type TEXT NOT NULL,
+  cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  performed_by TEXT NOT NULL,
+  performed_at DATE NOT NULL,
+  next_due_at DATE,
+  mileage_at_service INTEGER,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_maint_account ON public.inventory_maintenance_records(account_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_maint_record_dedup ON public.inventory_maintenance_records(account_id, asset_type, lower(trim(asset_name)), lower(trim(service_type)), performed_at);
+
+ALTER TABLE public.inventory_maintenance_records ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "office_users_read_inventory_maintenance_records"
+  ON public.inventory_maintenance_records FOR SELECT TO authenticated
+  USING (public.office_can(account_id, 'jobs.read'));
+
+CREATE POLICY "office_users_write_inventory_maintenance_records"
+  ON public.inventory_maintenance_records FOR ALL TO authenticated
+  USING (public.office_can(account_id, 'jobs.write'))
+  WITH CHECK (public.office_can(account_id, 'jobs.write'));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_maintenance_records TO authenticated;
+REVOKE ALL ON public.inventory_maintenance_records FROM anon, public;
+
+commit;
+
+
+-- Inventory comprehensive hardening: 20260905090000
+begin;
+
+create table if not exists public.inventory_tool_custody_log (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  tool_id uuid not null references public.inventory_tools(id) on delete cascade,
+  action text not null,
+  crew_id uuid references public.crew(id) on delete set null,
+  crew_name text,
+  job_id uuid references public.jobs(id) on delete set null,
+  job_label text,
+  performed_by text,
+  notes text,
+  occurred_at timestamptz not null default now()
+);
+
+create index if not exists idx_inv_tool_custody_account_tool
+  on public.inventory_tool_custody_log(account_id, tool_id);
+
+create index if not exists idx_inv_tool_custody_occurred
+  on public.inventory_tool_custody_log(account_id, occurred_at desc);
+
+alter table public.inventory_tool_custody_log enable row level security;
+
+create policy "office_users_read_inventory_tool_custody"
+  on public.inventory_tool_custody_log
+  for select
+  to authenticated
+  using (
+    public.office_can(account_id, 'inventory.read')
+    or public.office_can(account_id, 'jobs.read')
+  );
+
+create policy "office_users_insert_inventory_tool_custody"
+  on public.inventory_tool_custody_log
+  for insert
+  to authenticated
+  with check (
+    public.office_can(account_id, 'inventory.custody')
+    or public.office_can(account_id, 'inventory.write')
+    or public.office_can(account_id, 'jobs.write')
+  );
+
+grant select, insert on public.inventory_tool_custody_log to authenticated;
+revoke all on public.inventory_tool_custody_log from anon, public;
+
+create table if not exists public.inventory_van_kit_templates (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  name text not null,
+  description text,
+  items jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_inv_van_kit_templates_acc
+  on public.inventory_van_kit_templates(account_id);
+
+alter table public.inventory_van_kit_templates enable row level security;
+
+create policy "office_users_read_van_kit_templates"
+  on public.inventory_van_kit_templates
+  for select
+  to authenticated
+  using (
+    public.office_can(account_id, 'inventory.read')
+    or public.office_can(account_id, 'jobs.read')
+  );
+
+create policy "office_users_manage_van_kit_templates"
+  on public.inventory_van_kit_templates
+  for all
+  to authenticated
+  using (
+    public.office_can(account_id, 'inventory.write')
+    or public.office_can(account_id, 'jobs.write')
+  )
+  with check (
+    public.office_can(account_id, 'inventory.write')
+    or public.office_can(account_id, 'jobs.write')
+  );
+
+grant select, insert, update, delete on public.inventory_van_kit_templates to authenticated;
+revoke all on public.inventory_van_kit_templates from anon, public;
+
+create or replace function public.enforce_inventory_maintenance_immutable()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+begin
+  raise exception 'inventory_maintenance_records is an immutable audit ledger and cannot be modified or deleted';
+end;
+$$;
+
+drop trigger if exists trg_enforce_inventory_maintenance_immutable on public.inventory_maintenance_records;
+create trigger trg_enforce_inventory_maintenance_immutable
+  before update or delete
+  on public.inventory_maintenance_records
+  for each row
+  execute function public.enforce_inventory_maintenance_immutable();
+
+revoke update, delete on public.inventory_maintenance_records from authenticated;
+
+commit;
+
+
+-- Insurance claims: 20260905142000
+begin;
+
+create table if not exists public.insurance_claims (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  client_id uuid references public.clients(id) on delete set null,
+  job_id uuid references public.jobs(id) on delete set null,
+  claim_number text,
+  policyholder_name text,
+  property_address text,
+  carrier_name text,
+  adjuster_name text,
+  adjuster_email text,
+  adjuster_phone text,
+  date_of_loss text,
+  scope_text text,
+  parsed_figures jsonb not null default '{}'::jsonb,
+  discrepancies jsonb not null default '[]'::jsonb,
+  total_supplement_amount numeric(10, 2) not null default 0.00
+    check (total_supplement_amount >= 0 and total_supplement_amount <= 99999999.99),
+  revised_rcv_amount numeric(10, 2)
+    check (revised_rcv_amount is null or (revised_rcv_amount >= 0 and revised_rcv_amount <= 99999999.99)),
+  justification_letter text,
+  letter_revisions jsonb not null default '[]'::jsonb,
+  status text not null default 'draft'
+    check (status in ('draft', 'scope_received', 'supplement_pending', 'approved', 'invoiced', 'closed')),
+  trade_slug text not null default 'roofers',
+  ai_analyzed_at timestamptz,
+  analysis_method text not null default 'heuristic'
+    check (analysis_method in ('heuristic', 'ai')),
+  deleted_at timestamptz,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists idx_insurance_claims_account_id
+  on public.insurance_claims(account_id);
+
+create index if not exists idx_insurance_claims_status
+  on public.insurance_claims(account_id, status)
+  where deleted_at is null;
+
+alter table public.insurance_claims enable row level security;
+
+create policy "office_users_read_insurance_claims"
+  on public.insurance_claims
+  for select
+  to authenticated
+  using (public.office_can(account_id, 'jobs.read'));
+
+create policy "office_users_write_insurance_claims"
+  on public.insurance_claims
+  for all
+  to authenticated
+  using (public.office_can(account_id, 'jobs.write'))
+  with check (public.office_can(account_id, 'jobs.write'));
+
+grant select, insert, update, delete on public.insurance_claims to authenticated;
+grant all on public.insurance_claims to service_role;
+revoke all on public.insurance_claims from anon, public;
+
+commit;
+
+
+-- Marketing tracking links: 20260905150000
+begin;
+
+create table if not exists public.marketing_tracking_links (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  short_code text not null,
+  name text not null,
+  channel_id text not null default 'print_qr',
+  source text not null default 'yard_sign',
+  medium text not null default 'print_qr',
+  campaign text not null,
+  content text,
+  term text,
+  promo text,
+  destination_url text not null,
+  full_url text not null,
+  ad_spend numeric(10, 2) not null default 0.00,
+  scan_count integer not null default 0,
+  last_scanned_at timestamptz,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp(),
+  deleted_at timestamptz
+);
+
+create unique index if not exists idx_marketing_tracking_links_short_code
+  on public.marketing_tracking_links(lower(short_code))
+  where deleted_at is null;
+
+create index if not exists idx_marketing_tracking_links_account
+  on public.marketing_tracking_links(account_id, created_at desc)
+  where deleted_at is null;
+
+alter table public.marketing_tracking_links enable row level security;
+
+create policy "office_users_read_marketing_tracking_links"
+  on public.marketing_tracking_links
+  for select
+  to authenticated
+  using (public.office_can(account_id, 'marketing.read'));
+
+create policy "office_users_write_marketing_tracking_links"
+  on public.marketing_tracking_links
+  for all
+  to authenticated
+  using (public.office_can(account_id, 'marketing.write'))
+  with check (public.office_can(account_id, 'marketing.write'));
+
+grant select, insert, update, delete on public.marketing_tracking_links to authenticated;
+revoke all on public.marketing_tracking_links from anon, public;
+
+-- FK-covering indexes for inventory, custody log, and insurance claims tables
+-- (required by Supabase security advisor: every FK column must lead an index)
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_assigned_crew ON public.inventory_tools(assigned_crew_id) WHERE assigned_crew_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_assigned_job ON public.inventory_tools(assigned_job_id) WHERE assigned_job_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_tools_location_fk ON public.inventory_tools(location_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_vehicles_primary_driver ON public.inventory_vehicles(primary_driver_id) WHERE primary_driver_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_items_location_fk ON public.inventory_stock_items(location_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_transfers_item ON public.inventory_stock_transfers(item_id);
+create index if not exists idx_inv_tool_custody_tool on public.inventory_tool_custody_log(tool_id);
+create index if not exists idx_inv_tool_custody_crew on public.inventory_tool_custody_log(crew_id);
+create index if not exists idx_inv_tool_custody_job on public.inventory_tool_custody_log(job_id) where job_id is not null;
+create index if not exists idx_insurance_claims_client_id on public.insurance_claims(client_id);
+create index if not exists idx_insurance_claims_job_id on public.insurance_claims(job_id);
+
+commit;
+
+
 -- Release schema permissions: 20260905161546
 begin;
 
@@ -37925,3 +39060,3047 @@ alter table public.jobs add column if not exists room_spatial_scan jsonb
 alter table public.leads add column if not exists room_spatial_scan jsonb
   check (room_spatial_scan is null or (jsonb_typeof(room_spatial_scan) = 'object'
     and octet_length(room_spatial_scan::text) <= 1048576));
+
+-- Canonical mirror: 20260909195002_admin_native_passkey_mfa.sql
+-- App-managed admin WebAuthn step-up. These grants never change Supabase AAL.
+-- Only the server service role can read/write credentials, challenges, or grants.
+begin;
+
+create schema if not exists admin_security;
+revoke all on schema admin_security from public, anon, authenticated;
+grant usage on schema admin_security to service_role;
+
+create table public.admin_passkey_credentials (
+  id text primary key check (length(id) between 1 and 1400),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null check (length(label) between 1 and 80),
+  public_key text not null check (length(public_key) between 1 and 16384),
+  counter bigint not null default 0 check (counter between 0 and 4294967295),
+  revision bigint not null default 0 check (revision >= 0),
+  transports text[] not null default '{}',
+  device_type text not null check (device_type in ('singleDevice', 'multiDevice')),
+  backed_up boolean not null default false,
+  rp_id text not null,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz,
+  unique (id, user_id)
+);
+create index admin_passkey_credentials_user_idx on public.admin_passkey_credentials(user_id);
+
+create table public.admin_passkey_challenges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  session_id uuid not null references auth.sessions(id) on delete cascade,
+  purpose text not null check (purpose in ('register', 'authenticate')),
+  challenge text not null check (length(challenge) between 32 and 256),
+  rp_id text not null,
+  origin text not null,
+  label text check (length(label) between 1 and 80),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '5 minutes'),
+  consumed_at timestamptz,
+  check (expires_at > created_at and expires_at <= created_at + interval '5 minutes')
+);
+create index admin_passkey_challenges_user_idx on public.admin_passkey_challenges(user_id, session_id);
+create index admin_passkey_challenges_expiry_idx on public.admin_passkey_challenges(expires_at);
+
+create table public.admin_passkey_grants (
+  session_id uuid primary key references auth.sessions(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  credential_id text not null,
+  verified_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '15 minutes'),
+  foreign key (credential_id, user_id) references public.admin_passkey_credentials(id, user_id) on delete cascade,
+  check (expires_at > verified_at and expires_at <= verified_at + interval '15 minutes')
+);
+create index admin_passkey_grants_user_idx on public.admin_passkey_grants(user_id);
+create index admin_passkey_grants_credential_idx on public.admin_passkey_grants(credential_id, user_id);
+
+alter table public.admin_passkey_credentials enable row level security;
+alter table public.admin_passkey_challenges enable row level security;
+alter table public.admin_passkey_grants enable row level security;
+revoke all on public.admin_passkey_credentials, public.admin_passkey_challenges, public.admin_passkey_grants from public, anon, authenticated;
+grant select, insert, update, delete on public.admin_passkey_credentials, public.admin_passkey_challenges, public.admin_passkey_grants to service_role;
+
+-- auth.sessions is intentionally unavailable through the Data API. This narrow
+-- private-schema definer is the only privileged reader; all public RPCs below
+-- are invokers and executable exclusively by service_role. The server supplies
+-- user/session IDs only after cryptographic verification of the Supabase JWT.
+create function admin_security.passkey_session_active(p_user_id uuid, p_session_id uuid, p_require_totp boolean default false)
+returns boolean language sql stable security definer set search_path = ''
+as $$
+  select exists (
+    select 1 from auth.sessions s
+    where s.id = p_session_id and s.user_id = p_user_id
+      and (s.not_after is null or s.not_after > now())
+      and (not p_require_totp or (
+        s.aal = 'aal2' and exists (
+          select 1 from auth.mfa_factors f
+          where f.id = s.factor_id and f.user_id = p_user_id
+            and f.factor_type = 'totp' and f.status = 'verified'
+        )
+      ))
+  );
+$$;
+revoke all on function admin_security.passkey_session_active(uuid, uuid, boolean) from public, anon, authenticated;
+grant execute on function admin_security.passkey_session_active(uuid, uuid, boolean) to service_role;
+
+create function public.admin_passkey_session_active(p_user_id uuid, p_session_id uuid, p_require_totp boolean default false)
+returns boolean language sql stable security invoker set search_path = '' as $$
+  select admin_security.passkey_session_active(p_user_id, p_session_id, p_require_totp);
+$$;
+
+create function public.admin_passkey_grant_status(p_user_id uuid, p_session_id uuid)
+returns timestamptz language sql stable security invoker set search_path = '' as $$
+  select g.expires_at from public.admin_passkey_grants g
+  join public.admin_passkey_credentials c on c.id = g.credential_id and c.user_id = g.user_id
+  where g.session_id = p_session_id and g.user_id = p_user_id and g.expires_at > now()
+    and admin_security.passkey_session_active(p_user_id, p_session_id, false);
+$$;
+
+create function public.admin_passkey_begin_challenge(
+  p_user_id uuid, p_session_id uuid, p_purpose text, p_challenge text,
+  p_rp_id text, p_origin text, p_label text default null
+) returns uuid language plpgsql security invoker set search_path = '' as $$
+declare v_id uuid;
+begin
+  if not admin_security.passkey_session_active(p_user_id, p_session_id, p_purpose = 'register') then
+    raise exception 'Passkey session is not authorized' using errcode = '42501';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_user_id::text, 89214));
+  delete from public.admin_passkey_challenges where expires_at <= now();
+  delete from public.admin_passkey_challenges where user_id = p_user_id and session_id = p_session_id and purpose = p_purpose;
+  if (select count(*) from public.admin_passkey_challenges where user_id = p_user_id) >= 10 then
+    raise exception 'Too many passkey attempts' using errcode = '54000';
+  end if;
+  if p_purpose = 'register' and (select count(*) from public.admin_passkey_credentials where user_id = p_user_id) >= 10 then
+    raise exception 'Passkey limit reached' using errcode = '54000';
+  end if;
+  insert into public.admin_passkey_challenges(user_id, session_id, purpose, challenge, rp_id, origin, label)
+  values (p_user_id, p_session_id, p_purpose, p_challenge, p_rp_id, p_origin, p_label)
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+-- Claim before performing WebAuthn verification. Even a failed verification
+-- burns the challenge, so concurrent requests and replays cannot both verify.
+create function public.admin_passkey_consume_challenge(p_id uuid, p_user_id uuid, p_session_id uuid, p_purpose text)
+returns setof public.admin_passkey_challenges language sql volatile security invoker set search_path = '' as $$
+  update public.admin_passkey_challenges
+  set consumed_at = now()
+  where id = p_id and user_id = p_user_id and session_id = p_session_id
+    and purpose = p_purpose and consumed_at is null and expires_at > now()
+    and admin_security.passkey_session_active(p_user_id, p_session_id, p_purpose = 'register')
+  returning *;
+$$;
+
+create function public.admin_passkey_finish_registration(
+  p_challenge_id uuid, p_user_id uuid, p_session_id uuid, p_credential_id text,
+  p_public_key text, p_counter bigint, p_transports text[], p_device_type text, p_backed_up boolean
+) returns text language plpgsql security invoker set search_path = '' as $$
+declare v_challenge public.admin_passkey_challenges;
+begin
+  if not admin_security.passkey_session_active(p_user_id, p_session_id, true) then
+    raise exception 'TOTP verification is required' using errcode = '42501';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_user_id::text, 89214));
+  delete from public.admin_passkey_challenges
+  where id = p_challenge_id and user_id = p_user_id and session_id = p_session_id
+    and purpose = 'register' and consumed_at is not null and expires_at > now()
+  returning * into v_challenge;
+  if not found then raise exception 'Passkey challenge expired or already used' using errcode = '42501'; end if;
+  if (select count(*) from public.admin_passkey_credentials where user_id = p_user_id) >= 10 then
+    raise exception 'Passkey limit reached' using errcode = '54000';
+  end if;
+  insert into public.admin_passkey_credentials(id, user_id, label, public_key, counter, transports, device_type, backed_up, rp_id)
+  values (p_credential_id, p_user_id, v_challenge.label, p_public_key, p_counter, p_transports, p_device_type, p_backed_up, v_challenge.rp_id);
+  return p_credential_id;
+end;
+$$;
+
+-- The WebAuthn verifier supplies the verified new counter. Recheck credential
+-- ownership/revision and the live session inside the same grant transaction.
+create function public.admin_passkey_finish_authentication(
+  p_challenge_id uuid, p_user_id uuid, p_session_id uuid, p_credential_id text,
+  p_expected_counter bigint, p_expected_revision bigint, p_new_counter bigint, p_backed_up boolean
+) returns timestamptz language plpgsql security invoker set search_path = '' as $$
+declare v_challenge public.admin_passkey_challenges; v_until timestamptz := now() + interval '15 minutes';
+begin
+  if not admin_security.passkey_session_active(p_user_id, p_session_id, false) then
+    raise exception 'Passkey session is no longer active' using errcode = '42501';
+  end if;
+  delete from public.admin_passkey_challenges
+  where id = p_challenge_id and user_id = p_user_id and session_id = p_session_id
+    and purpose = 'authenticate' and consumed_at is not null and expires_at > now()
+  returning * into v_challenge;
+  if not found then raise exception 'Passkey challenge expired or already used' using errcode = '42501'; end if;
+  update public.admin_passkey_credentials
+  set counter = p_new_counter, revision = revision + 1, backed_up = p_backed_up, last_used_at = now()
+  where id = p_credential_id and user_id = p_user_id and rp_id = v_challenge.rp_id
+    and counter = p_expected_counter and revision = p_expected_revision
+    and ((counter = 0 and p_new_counter = 0) or p_new_counter > counter);
+  if not found then raise exception 'Passkey changed during verification; try again' using errcode = '40001'; end if;
+  insert into public.admin_passkey_grants(session_id, user_id, credential_id, verified_at, expires_at)
+  values (p_session_id, p_user_id, p_credential_id, now(), v_until)
+  on conflict (session_id) do update set credential_id = excluded.credential_id,
+    user_id = excluded.user_id, verified_at = excluded.verified_at, expires_at = excluded.expires_at;
+  return v_until;
+end;
+$$;
+
+create function public.admin_passkey_remove(p_user_id uuid, p_session_id uuid, p_credential_id text)
+returns boolean language plpgsql security invoker set search_path = '' as $$
+declare v_removed boolean;
+begin
+  if not admin_security.passkey_session_active(p_user_id, p_session_id, false)
+    or (not admin_security.passkey_session_active(p_user_id, p_session_id, true)
+      and public.admin_passkey_grant_status(p_user_id, p_session_id) is null) then
+    raise exception 'Verify an authenticator before removing a passkey' using errcode = '42501';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_user_id::text, 89214));
+  delete from public.admin_passkey_credentials where id = p_credential_id and user_id = p_user_id;
+  v_removed := found;
+  -- Invalidates unfinished attempts too; removed credentials cannot be revived.
+  delete from public.admin_passkey_challenges where user_id = p_user_id;
+  if not exists (select 1 from public.admin_passkey_credentials where user_id = p_user_id) then
+    delete from public.admin_passkey_grants where user_id = p_user_id;
+  end if;
+  return v_removed;
+end;
+$$;
+
+revoke all on function public.admin_passkey_session_active(uuid, uuid, boolean),
+  public.admin_passkey_grant_status(uuid, uuid),
+  public.admin_passkey_begin_challenge(uuid, uuid, text, text, text, text, text),
+  public.admin_passkey_consume_challenge(uuid, uuid, uuid, text),
+  public.admin_passkey_finish_registration(uuid, uuid, uuid, text, text, bigint, text[], text, boolean),
+  public.admin_passkey_finish_authentication(uuid, uuid, uuid, text, bigint, bigint, bigint, boolean),
+  public.admin_passkey_remove(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.admin_passkey_session_active(uuid, uuid, boolean),
+  public.admin_passkey_grant_status(uuid, uuid),
+  public.admin_passkey_begin_challenge(uuid, uuid, text, text, text, text, text),
+  public.admin_passkey_consume_challenge(uuid, uuid, uuid, text),
+  public.admin_passkey_finish_registration(uuid, uuid, uuid, text, text, bigint, text[], text, boolean),
+  public.admin_passkey_finish_authentication(uuid, uuid, uuid, text, bigint, bigint, bigint, boolean),
+  public.admin_passkey_remove(uuid, uuid, text) to service_role;
+
+comment on table public.admin_passkey_grants is 'App-managed admin step-up only. Does not set Supabase aal2 and does not authorize direct Data API access.';
+notify pgrst, 'reload schema';
+commit;
+
+-- Canonical mirror: 20260909204200_admin_passkey_session_index.sql
+-- Keep provider-session deletion and its cascading challenge cleanup indexed.
+create index if not exists admin_passkey_challenges_session_idx
+  on public.admin_passkey_challenges(session_id);
+
+-- OFFICE DATA API BOUNDARY (2026-09-11)
+-- Phase 1: restore service-role writes, guard all financial mutations and add
+-- the session-compatible masking view. Deploy the adapter before phase 2.
+-- Replaces the incomplete 20260911000000 migration without editing its history.
+
+create schema if not exists private;
+revoke create on schema private from public, anon, authenticated;
+grant usage on schema private to authenticated, service_role;
+
+create or replace function private.job_quote_values(p_job_id uuid)
+returns jsonb language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object(
+    'quoted_amount',j.quoted_amount,'quote_items',j.quote_items,'deposit_gate',j.deposit_gate,
+    'reschedule_discount_percent',j.reschedule_discount_percent,
+    'reschedule_discount_note',j.reschedule_discount_note,
+    'reschedule_discount_agreed_at',j.reschedule_discount_agreed_at,
+    'quote_signer_name',j.quote_signer_name,'quote_signed_at',j.quote_signed_at,
+    'quote_signature_path',j.quote_signature_path,'quote_signature_method',j.quote_signature_method
+  ) from public.jobs j where j.id=p_job_id and (
+    current_setting('role',true)='service_role' or (
+      auth.uid() is not null and public.office_can(j.account_id,'jobs.read')
+      and (public.office_can(j.account_id,'quotes.read') or public.office_can(j.account_id,'reports.read'))
+    )
+  );
+$$;
+revoke all on function private.job_quote_values(uuid) from public,anon;
+grant execute on function private.job_quote_values(uuid) to authenticated,service_role;
+
+-- Keep every existing column in its original order/type. The view uses the
+-- caller's column grants and RLS for operational data. Only the narrowly scoped
+-- private function reads quote values; it validates current actor + capability.
+do $view$
+declare cols text;
+  protected text[] := array['quoted_amount','quote_items','deposit_gate',
+    'reschedule_discount_percent','reschedule_discount_note','reschedule_discount_agreed_at',
+    'quote_signer_name','quote_signed_at','quote_signature_path','quote_signature_method'];
+  d record;
+begin
+  select string_agg(case
+    when a.attname='quoted_amount' then 'coalesce(q.quoted_amount,0)::numeric(12,2) as quoted_amount'
+    when a.attname=any(protected) then format('q.%I',a.attname)
+    else format('j.%I',a.attname) end,', ' order by a.attnum)
+    into cols from pg_attribute a where a.attrelid='public.jobs'::regclass and a.attnum>0 and not a.attisdropped;
+  execute 'create or replace view public.job_access with (security_invoker=true,security_barrier=true) as select '
+    ||cols||' from public.jobs j left join lateral jsonb_populate_record(null::public.jobs,private.job_quote_values(j.id)) q on true';
+  for d in select a.attname,pg_get_expr(ad.adbin,ad.adrelid) expr from pg_attribute a
+    join pg_attrdef ad on ad.adrelid=a.attrelid and ad.adnum=a.attnum
+    where a.attrelid='public.jobs'::regclass and not a.attisdropped loop
+    execute format('alter view public.job_access alter column %I set default %s',d.attname,d.expr);
+  end loop;
+end;
+$view$;
+revoke all on public.job_access from public,anon;
+grant select,insert,update,delete on public.job_access to authenticated,service_role;
+
+-- Enforced on the base table, including direct REST writes and upserts. Looking
+-- only at UI controls or the view would leave the original PATCH exploit open.
+create or replace function private.guard_job_protected_fields()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+declare old_money jsonb; new_money jsonb; actor_account uuid;
+  protected text[] := array['quoted_amount','quote_items','deposit_gate',
+    'reschedule_discount_percent','reschedule_discount_note','reschedule_discount_agreed_at',
+    'quote_signer_name','quote_signed_at','quote_signature_path','quote_signature_method'];
+begin
+  -- Trust the database role, never user-editable claims or a missing auth.uid().
+  -- SECURITY DEFINER RPCs retain request role=authenticated and still pass this guard.
+  if current_setting('role',true) = 'service_role'
+    or (current_setting('role',true) = 'none' and current_user in ('postgres','supabase_admin')) then
+    if tg_op='DELETE' then return old; end if;
+    return new;
+  end if;
+  if auth.uid() is null then raise exception 'job_actor_required' using errcode='42501'; end if;
+  if tg_op='UPDATE' and (new.account_id is distinct from old.account_id or new.id is distinct from old.id) then
+    raise exception 'job_identity_cannot_change' using errcode='42501';
+  end if;
+  actor_account := case when tg_op='DELETE' then old.account_id else new.account_id end;
+  if public.office_can(actor_account,'quotes.write') then
+    if tg_op='DELETE' then return old; end if;
+    return new;
+  end if;
+  if tg_op <> 'INSERT' then
+    select jsonb_object_agg(key,value) into old_money from jsonb_each(to_jsonb(old)) where key=any(protected);
+  end if;
+  if tg_op <> 'DELETE' then
+    select jsonb_object_agg(key,value) into new_money from jsonb_each(to_jsonb(new)) where key=any(protected);
+  end if;
+  if tg_op='UPDATE' and new_money is not distinct from old_money then return new; end if;
+  if tg_op='DELETE' then
+    if old.quoted_amount=0 and not exists (
+      select 1 from jsonb_each(old_money) where key<>'quoted_amount' and value<>'null'::jsonb
+    ) then return old; end if;
+  elsif tg_op='INSERT' then
+    if new.quoted_amount=0 and not exists (
+      select 1 from jsonb_each(new_money) where key<>'quoted_amount' and value<>'null'::jsonb
+    ) then return new; end if;
+  end if;
+  raise exception 'job_quote_write_required' using errcode='42501';
+end;
+$$;
+revoke all on function private.guard_job_protected_fields() from public,anon,authenticated;
+drop trigger if exists job_protected_fields_guard on public.jobs;
+create trigger job_protected_fields_guard before insert or update or delete on public.jobs
+for each row execute function private.guard_job_protected_fields();
+
+-- Supersede the deployed UPDATE-only guard that rejects service-role writes.
+drop trigger if exists jobs_finance_guard_trigger on public.jobs;
+drop function if exists public.jobs_finance_guard();
+drop trigger if exists jobs_client_tenancy_guard_trigger on public.jobs;
+drop function if exists public.jobs_client_tenancy_guard();
+revoke truncate on public.jobs from public,anon,authenticated;
+grant select,insert,update,delete on public.jobs to service_role;
+
+-- DML on the permission-aware view stays SECURITY INVOKER. Base RLS and the
+-- quote guard remain the authority. UPDATE changes only fields distinct from
+-- OLD so a masked zero/null is never written over the stored confidential value.
+create or replace function private.write_job_access()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+declare names text; expressions text; changed text; written uuid;
+begin
+  if tg_op='DELETE' then
+    delete from public.jobs where id=old.id returning id into written;
+    if written is null then return null; end if;
+    return old;
+  elsif tg_op='INSERT' then
+    select string_agg(format('%I',a.attname),', ' order by a.attnum),
+      string_agg(format('r.%I',a.attname),', ' order by a.attnum) into names,expressions
+    from pg_attribute a where a.attrelid='public.jobs'::regclass and a.attnum>0 and not a.attisdropped and a.attgenerated='';
+    execute 'insert into public.jobs ('||names||') select '||expressions
+      ||' from jsonb_populate_record(null::public.jobs,$1) r returning id'
+      into written using to_jsonb(new);
+  else
+    if new.id is distinct from old.id then raise exception 'job_id_cannot_change' using errcode='42501'; end if;
+    select string_agg(format('%I = (jsonb_populate_record(null::public.jobs,$1)).%I',a.attname,a.attname),', ' order by a.attnum)
+      into changed from pg_attribute a where a.attrelid='public.jobs'::regclass and a.attnum>0 and not a.attisdropped and a.attgenerated=''
+      and (to_jsonb(new)->a.attname) is distinct from (to_jsonb(old)->a.attname);
+    -- Even an unchanged submitted row must pass UPDATE RLS. Never claim a write
+    -- succeeded just because the view's SELECT policy let the actor find it.
+    execute 'update public.jobs set '||coalesce(changed,'id=id')||' where id=$2 returning id'
+      into written using to_jsonb(new),old.id;
+  end if;
+  if written is null then return null; end if;
+  select v.* into new from public.job_access v where v.id=written;
+  return new;
+end;
+$$;
+revoke all on function private.write_job_access() from public,anon,authenticated;
+drop trigger if exists job_access_write on public.job_access;
+create trigger job_access_write instead of insert or update or delete on public.job_access
+for each row execute function private.write_job_access();
+
+-- The referenced client must belong to the same workspace, including when an
+-- authorized caller changes a parent, creates a row, or uses ON CONFLICT UPDATE.
+create unique index if not exists clients_account_id_id_key on public.clients(account_id,id);
+create index if not exists jobs_account_id_client_id_idx on public.jobs(account_id,client_id);
+do $fk$
+begin
+  if not exists (
+    select 1 from pg_constraint where conrelid='public.jobs'::regclass
+      and conname='jobs_client_id_fkey' and contype='f'
+      and confrelid='public.clients'::regclass
+      and pg_get_constraintdef(oid) = 'FOREIGN KEY (account_id, client_id) REFERENCES clients(account_id, id) ON DELETE SET NULL (client_id)'
+  ) then
+    alter table public.jobs add constraint jobs_client_same_workspace_fkey
+      foreign key(account_id,client_id) references public.clients(account_id,id)
+      on delete set null (client_id) not valid;
+    alter table public.jobs validate constraint jobs_client_same_workspace_fkey;
+    alter table public.jobs drop constraint if exists jobs_client_id_fkey;
+    alter table public.jobs rename constraint jobs_client_same_workspace_fkey to jobs_client_id_fkey;
+  end if;
+end;
+$fk$;
+-- Final enforcement step, after application clients use public.job_access.
+-- Operational columns retain ordinary RLS; financial values are available only
+-- through the view's actor-checked private helper. New columns fail closed.
+revoke select on public.jobs from public,anon,authenticated;
+do $grants$
+declare allowed text; restricted text;
+  protected text[] := array['quoted_amount','quote_items','deposit_gate',
+    'reschedule_discount_percent','reschedule_discount_note','reschedule_discount_agreed_at',
+    'quote_signer_name','quote_signed_at','quote_signature_path','quote_signature_method'];
+begin
+  select string_agg(format('%I',attname),', ' order by attnum) filter(where not attname=any(protected)),
+    string_agg(format('%I',attname),', ' order by attnum) filter(where attname=any(protected))
+    into allowed,restricted from pg_attribute
+    where attrelid='public.jobs'::regclass and attnum>0 and not attisdropped;
+  execute 'revoke select ('||restricted||') on public.jobs from public,anon,authenticated';
+  execute 'grant select ('||allowed||') on public.jobs to authenticated';
+  if has_column_privilege('authenticated','public.jobs','quoted_amount','SELECT')
+    or has_column_privilege('authenticated','public.jobs','quote_items','SELECT') then
+    raise exception 'Raw job quote columns remain readable';
+  end if;
+end;
+$grants$;
+
+-- ============================================================================
+-- SOFT DELETION, RECOVERY & IMMUTABLE TENANT AUDIT LEDGER (Hardened against F1)
+-- ============================================================================
+
+create table if not exists public.tenant_audit_events (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null,
+  entity_type text not null,
+  entity_id text not null,
+  action text not null,
+  actor jsonb not null default '{}'::jsonb,
+  source text not null default 'web'
+    check (source in ('web', 'staff', 'integration', 'cron', 'migration', 'api')),
+  request_id text,
+  delete_operation_id uuid,
+  reason text,
+  changed_fields text[] default '{}'::text[],
+  before_state jsonb,
+  after_state jsonb,
+  occurred_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists tenant_audit_events_account_occurred_idx
+  on public.tenant_audit_events (account_id, occurred_at desc);
+
+create index if not exists tenant_audit_events_account_entity_idx
+  on public.tenant_audit_events (account_id, entity_type, entity_id);
+
+create index if not exists tenant_audit_events_account_action_idx
+  on public.tenant_audit_events (account_id, action);
+
+create index if not exists tenant_audit_events_delete_op_idx
+  on public.tenant_audit_events (delete_operation_id)
+  where delete_operation_id is not null;
+
+create or replace function public.enforce_tenant_audit_immutable()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+begin
+  raise exception 'tenant_audit_events is immutable and cannot be updated, deleted, or truncated';
+end;
+$$;
+
+drop trigger if exists trg_tenant_audit_events_immutable on public.tenant_audit_events;
+create trigger trg_tenant_audit_events_immutable
+  before update or delete on public.tenant_audit_events
+  for each row execute function public.enforce_tenant_audit_immutable();
+
+alter table public.tenant_audit_events enable row level security;
+
+drop policy if exists "tenant_audit_events_select_member" on public.tenant_audit_events;
+create policy "tenant_audit_events_select_member"
+  on public.tenant_audit_events
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.memberships m
+      where m.account_id = public.tenant_audit_events.account_id
+        and m.user_id = auth.uid()
+        and m.deactivated_at is null
+    )
+  );
+
+revoke insert, update, delete, truncate on table public.tenant_audit_events from public, anon, authenticated;
+grant select on table public.tenant_audit_events to authenticated;
+grant all on table public.tenant_audit_events to service_role;
+
+create table if not exists public.recoverable_deletions (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null,
+  entity_type text not null,
+  entity_id text not null,
+  display_snapshot jsonb not null default '{}'::jsonb,
+  cascade_manifest jsonb not null default '[]'::jsonb,
+  storage_manifest jsonb not null default '[]'::jsonb,
+  deleted_at timestamptz not null default clock_timestamp(),
+  purge_eligible_at timestamptz not null default (clock_timestamp() + interval '30 days'),
+  deleted_by_user_id uuid,
+  deleted_by_role text,
+  deletion_reason text,
+  status text not null default 'trashed'
+    check (status in ('trashed', 'restoring', 'restored', 'purged')),
+  restored_at timestamptz,
+  restored_by_user_id uuid,
+  purge_locked boolean not null default false,
+  legal_hold boolean not null default false,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists recoverable_deletions_account_status_idx
+  on public.recoverable_deletions (account_id, status, deleted_at desc);
+
+create index if not exists recoverable_deletions_account_entity_idx
+  on public.recoverable_deletions (account_id, entity_type, entity_id);
+
+create index if not exists recoverable_deletions_purge_queue_idx
+  on public.recoverable_deletions (status, purge_eligible_at)
+  where status = 'trashed' and legal_hold = false and purge_locked = false;
+
+alter table public.recoverable_deletions enable row level security;
+
+drop policy if exists "recoverable_deletions_select_member" on public.recoverable_deletions;
+create policy "recoverable_deletions_select_member"
+  on public.recoverable_deletions
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.memberships m
+      where m.account_id = public.recoverable_deletions.account_id
+        and m.user_id = auth.uid()
+        and m.deactivated_at is null
+    )
+  );
+
+revoke insert, update, delete, truncate on table public.recoverable_deletions from public, anon, authenticated;
+grant select on table public.recoverable_deletions to authenticated;
+grant all on table public.recoverable_deletions to service_role;
+
+-- Aggregate root lifecycle fields
+alter table public.leads
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists leads_account_active_idx
+  on public.leads (account_id, created_at desc)
+  where deleted_at is null;
+
+alter table public.crew
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists crew_account_active_idx
+  on public.crew (account_id, name)
+  where deleted_at is null;
+
+alter table public.services
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists services_account_active_idx
+  on public.services (account_id, name)
+  where deleted_at is null;
+
+alter table public.jobs
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists jobs_account_active_idx
+  on public.jobs (account_id, created_at desc)
+  where deleted_at is null;
+
+alter table public.account_attachments
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists account_attachments_account_active_idx
+  on public.account_attachments (account_id, created_at desc)
+  where deleted_at is null;
+
+-- 1. soft_delete_entity_atomic — service_role only (F1 hardened)
+create or replace function public.soft_delete_entity_atomic(
+  p_account_id uuid,
+  p_entity_type text,
+  p_entity_id text,
+  p_actor jsonb default '{}'::jsonb,
+  p_reason text default null,
+  p_source text default 'web',
+  p_request_id text default null,
+  p_grace_days integer default 30
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_now timestamptz := clock_timestamp();
+  v_purge_at timestamptz := v_now + (p_grace_days || ' days')::interval;
+  v_op_id uuid := gen_random_uuid();
+  v_user_id uuid;
+  v_user_role text;
+  v_display jsonb := '{}'::jsonb;
+  v_cascade jsonb := '[]'::jsonb;
+  v_storage jsonb := '[]'::jsonb;
+  v_before jsonb;
+  v_found boolean := false;
+begin
+  if p_actor ? 'user_id' and p_actor->>'user_id' ~ '^[0-9a-fA-F-]{36}$' then
+    v_user_id := (p_actor->>'user_id')::uuid;
+  end if;
+  v_user_role := coalesce(p_actor->>'role', 'authenticated');
+
+  if p_entity_type = 'lead' then
+    select to_jsonb(l.*) into v_before
+      from public.leads l
+     where l.account_id = p_account_id and l.id = p_entity_id::uuid and l.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'lead_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'name', 'Untitled Lead'),
+      'subtitle', coalesce(v_before->>'phone', v_before->>'email', 'No contact'),
+      'badge', v_before->>'status',
+      'details', jsonb_build_object('source', v_before->>'source', 'created_at', v_before->>'created_at')
+    );
+
+    update public.leads
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'crew' then
+    select to_jsonb(c.*) into v_before
+      from public.crew c
+     where c.account_id = p_account_id and c.id = p_entity_id::uuid and c.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'crew_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'name', 'Crew Member'),
+      'subtitle', coalesce(v_before->>'phone', v_before->>'role', 'Technician'),
+      'badge', case when (v_before->>'active')::boolean then 'Active' else 'Inactive' end,
+      'details', jsonb_build_object('role', v_before->>'role', 'created_at', v_before->>'created_at')
+    );
+
+    if v_before->>'photo_path' is not null and length(v_before->>'photo_path') > 0 then
+      v_storage := jsonb_build_array(jsonb_build_object(
+        'bucket', 'crew-photos',
+        'path', v_before->>'photo_path',
+        'quarantined', true
+      ));
+    end if;
+
+    update public.crew
+       set deleted_at = v_now,
+           active = false,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'service' then
+    select to_jsonb(s.*) into v_before
+      from public.services s
+     where s.account_id = p_account_id and s.id = p_entity_id::uuid and s.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'service_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'name', 'Untitled Service'),
+      'subtitle', case when (v_before->>'price')::numeric > 0 then ('$' || (v_before->>'price')) else 'Custom Price' end,
+      'badge', case when coalesce((v_before->>'is_active')::boolean, true) then 'Active' else 'Disabled' end,
+      'details', jsonb_build_object('category', v_before->>'category')
+    );
+
+    update public.services
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'job' then
+    select to_jsonb(j.*) into v_before
+      from public.jobs j
+     where j.account_id = p_account_id and j.id = p_entity_id::uuid and j.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'job_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'title', 'Job #' || left(p_entity_id, 8)),
+      'subtitle', coalesce(v_before->>'client_name', v_before->>'address', 'No client info'),
+      'badge', v_before->>'status',
+      'details', jsonb_build_object('total', v_before->>'total', 'created_at', v_before->>'created_at')
+    );
+
+    update public.jobs
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'attachment' then
+    select to_jsonb(a.*) into v_before
+      from public.account_attachments a
+     where a.account_id = p_account_id and a.id = p_entity_id::uuid and a.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'attachment_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'filename', 'Attachment'),
+      'subtitle', coalesce(v_before->>'bucket', 'Storage file'),
+      'badge', v_before->>'content_type',
+      'details', jsonb_build_object('file_size', v_before->>'file_size')
+    );
+
+    if v_before->>'storage_path' is not null then
+      v_storage := jsonb_build_array(jsonb_build_object(
+        'bucket', coalesce(v_before->>'bucket', 'account-attachments'),
+        'path', v_before->>'storage_path',
+        'quarantined', true
+      ));
+    end if;
+
+    update public.account_attachments
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  else
+    return jsonb_build_object('success', false, 'error', 'unsupported_entity_type');
+  end if;
+
+  insert into public.recoverable_deletions (
+    id,
+    account_id,
+    entity_type,
+    entity_id,
+    display_snapshot,
+    cascade_manifest,
+    storage_manifest,
+    deleted_at,
+    purge_eligible_at,
+    deleted_by_user_id,
+    deleted_by_role,
+    deletion_reason,
+    status
+  ) values (
+    v_op_id,
+    p_account_id,
+    p_entity_type,
+    p_entity_id,
+    v_display,
+    v_cascade,
+    v_storage,
+    v_now,
+    v_purge_at,
+    v_user_id,
+    v_user_role,
+    p_reason,
+    'trashed'
+  );
+
+  perform public.record_tenant_audit_event_atomic(
+    p_account_id => p_account_id,
+    p_entity_type => p_entity_type,
+    p_entity_id => p_entity_id,
+    p_action => p_entity_type || '.soft_deleted',
+    p_actor => p_actor,
+    p_source => p_source,
+    p_request_id => p_request_id,
+    p_delete_operation_id => v_op_id,
+    p_reason => p_reason,
+    p_changed_fields => array['deleted_at', 'purge_after', 'deleted_by_user_id', 'deletion_reason', 'delete_operation_id'],
+    p_before_state => v_before,
+    p_after_state => jsonb_build_object('deleted_at', v_now, 'purge_after', v_purge_at, 'status', 'trashed')
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'operation_id', v_op_id,
+    'entity_type', p_entity_type,
+    'entity_id', p_entity_id,
+    'deleted_at', v_now,
+    'purge_eligible_at', v_purge_at
+  );
+end;
+$$;
+
+revoke execute on function public.soft_delete_entity_atomic(
+  uuid, text, text, jsonb, text, text, text, integer
+) from public, anon, authenticated;
+grant execute on function public.soft_delete_entity_atomic(
+  uuid, text, text, jsonb, text, text, text, integer
+) to service_role;
+
+-- 2. restore_entity_atomic — service_role only (F1 hardened)
+create or replace function public.restore_entity_atomic(
+  p_account_id uuid,
+  p_entity_type text,
+  p_entity_id text,
+  p_actor jsonb default '{}'::jsonb,
+  p_source text default 'web',
+  p_request_id text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_now timestamptz := clock_timestamp();
+  v_user_id uuid;
+  v_deletion_record public.recoverable_deletions%rowtype;
+  v_before jsonb;
+begin
+  if p_actor ? 'user_id' and p_actor->>'user_id' ~ '^[0-9a-fA-F-]{36}$' then
+    v_user_id := (p_actor->>'user_id')::uuid;
+  end if;
+
+  select * into v_deletion_record
+    from public.recoverable_deletions
+   where account_id = p_account_id
+     and entity_type = p_entity_type
+     and entity_id = p_entity_id
+     and status = 'trashed'
+   order by deleted_at desc
+   limit 1;
+
+  if v_deletion_record.id is null then
+    return jsonb_build_object('success', false, 'error', 'no_active_trash_record_found');
+  end if;
+
+  if p_entity_type = 'lead' then
+    select to_jsonb(l.*) into v_before
+      from public.leads l
+     where l.account_id = p_account_id and l.id = p_entity_id::uuid;
+
+    update public.leads
+       set deleted_at = null,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null,
+           status = 'archived'
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'crew' then
+    select to_jsonb(c.*) into v_before
+      from public.crew c
+     where c.account_id = p_account_id and c.id = p_entity_id::uuid;
+
+    update public.crew
+       set deleted_at = null,
+           active = false,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'service' then
+    select to_jsonb(s.*) into v_before
+      from public.services s
+     where s.account_id = p_account_id and s.id = p_entity_id::uuid;
+
+    update public.services
+       set deleted_at = null,
+           is_active = false,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'job' then
+    select to_jsonb(j.*) into v_before
+      from public.jobs j
+     where j.account_id = p_account_id and j.id = p_entity_id::uuid;
+
+    update public.jobs
+       set deleted_at = null,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'attachment' then
+    select to_jsonb(a.*) into v_before
+      from public.account_attachments a
+     where a.account_id = p_account_id and a.id = p_entity_id::uuid;
+
+    update public.account_attachments
+       set deleted_at = null,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  else
+    return jsonb_build_object('success', false, 'error', 'unsupported_entity_type');
+  end if;
+
+  update public.recoverable_deletions
+     set status = 'restored',
+         restored_at = v_now,
+         restored_by_user_id = v_user_id,
+         updated_at = v_now
+   where id = v_deletion_record.id;
+
+  perform public.record_tenant_audit_event_atomic(
+    p_account_id => p_account_id,
+    p_entity_type => p_entity_type,
+    p_entity_id => p_entity_id,
+    p_action => p_entity_type || '.restored',
+    p_actor => p_actor,
+    p_source => p_source,
+    p_request_id => p_request_id,
+    p_delete_operation_id => v_deletion_record.id,
+    p_reason => 'Manual restoration from trash bin',
+    p_changed_fields => array['deleted_at', 'purge_after', 'status'],
+    p_before_state => v_before,
+    p_after_state => jsonb_build_object('deleted_at', null, 'status', 'restored')
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'entity_type', p_entity_type,
+    'entity_id', p_entity_id,
+    'restored_at', v_now,
+    'status', 'restored'
+  );
+end;
+$$;
+
+revoke execute on function public.restore_entity_atomic(
+  uuid, text, text, jsonb, text, text
+) from public, anon, authenticated;
+grant execute on function public.restore_entity_atomic(
+  uuid, text, text, jsonb, text, text
+) to service_role;
+
+-- 3. record_tenant_audit_event_atomic — keep authenticated, add is_member guard (F1 hardened)
+create or replace function public.record_tenant_audit_event_atomic(
+  p_account_id uuid,
+  p_entity_type text,
+  p_entity_id text,
+  p_action text,
+  p_actor jsonb default '{}'::jsonb,
+  p_source text default 'web'::text,
+  p_request_id text default null::text,
+  p_delete_operation_id uuid default null::uuid,
+  p_reason text default null::text,
+  p_changed_fields text[] default '{}'::text[],
+  p_before_state jsonb default null::jsonb,
+  p_after_state jsonb default null::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_event_id uuid;
+begin
+  -- F1 guard: a session (authenticated) caller can only write audit events for
+  -- an account they belong to. anon has no EXECUTE; service_role skips the check.
+  if auth.role() = 'authenticated' and not public.is_member(p_account_id) then
+    raise exception 'record_tenant_audit_event_forbidden'
+      using errcode = '42501';
+  end if;
+
+  insert into public.tenant_audit_events (
+    account_id,
+    entity_type,
+    entity_id,
+    action,
+    actor,
+    source,
+    request_id,
+    delete_operation_id,
+    reason,
+    changed_fields,
+    before_state,
+    after_state,
+    occurred_at
+  ) values (
+    p_account_id,
+    p_entity_type,
+    p_entity_id,
+    p_action,
+    coalesce(p_actor, '{}'::jsonb),
+    coalesce(p_source, 'web'),
+    p_request_id,
+    p_delete_operation_id,
+    p_reason,
+    coalesce(p_changed_fields, '{}'::text[]),
+    p_before_state,
+    p_after_state,
+    clock_timestamp()
+  )
+  returning id into v_event_id;
+
+  return v_event_id;
+end;
+$$;
+
+revoke execute on function public.record_tenant_audit_event_atomic(
+  uuid, text, text, text, jsonb, text, text, uuid, text, text[], jsonb, jsonb
+) from public, anon;
+grant execute on function public.record_tenant_audit_event_atomic(
+  uuid, text, text, text, jsonb, text, text, uuid, text, text[], jsonb, jsonb
+) to authenticated, service_role;
+
+
+-- END SOFT DELETION, RECOVERY & IMMUTABLE TENANT AUDIT LEDGER
+
+-- Permit FK Indexes
+CREATE INDEX IF NOT EXISTS idx_job_permit_cases_job ON public.job_permit_cases(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_cases_authority ON public.job_permit_cases(authority_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_documents_job ON public.job_permit_documents(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_documents_uploader ON public.job_permit_documents(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_job ON public.job_permit_inspections(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_case ON public.job_permit_inspections(permit_case_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_adoptions_authority ON public.permit_code_adoptions(authority_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_amendments_adoption ON public.permit_code_amendments(adoption_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_amendments_authority ON public.permit_code_amendments(authority_id);
+CREATE INDEX IF NOT EXISTS idx_permit_requirement_rules_authority ON public.permit_requirement_rules(authority_id);
+
+-- Quick Stop hardening: 2026-09-14
+
+-- Source: migrations/20260914132411_quick_stop_refund_recovery.sql
+begin;
+-- Also establish the small reconciliation prerequisites for installations that
+-- never enabled the optional legacy payment worker. Ambiguous bindings fail the
+-- unique index rather than letting either payment path pick an arbitrary visit.
+create unique index if not exists extra_stop_requests_payment_unique
+  on public.extra_stop_requests(payment_id) where payment_id is not null;
+alter table public.extra_stop_events add column if not exists dedupe_key text;
+create unique index if not exists extra_stop_events_request_dedupe_unique
+  on public.extra_stop_events(request_id,dedupe_key) where dedupe_key is not null;
+
+create or replace function public.protect_quick_stop_system_event_dedupe()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if current_user not in ('postgres','service_role') then
+    if tg_op = 'INSERT' and new.dedupe_key is not null then
+      raise exception 'system Quick Stop event keys are backend-managed' using errcode='42501';
+    elsif tg_op = 'UPDATE' and (old.dedupe_key is not null or new.dedupe_key is not null) then
+      raise exception 'system Quick Stop events are immutable' using errcode='42501';
+    elsif tg_op = 'DELETE' and old.dedupe_key is not null then
+      raise exception 'system Quick Stop events are immutable' using errcode='42501';
+    end if;
+  end if;
+  if tg_op = 'DELETE' then return old; end if;
+  return new;
+end $$;
+revoke all on function public.protect_quick_stop_system_event_dedupe() from public,anon,authenticated,service_role;
+drop trigger if exists protect_quick_stop_system_event_dedupe_trigger on public.extra_stop_events;
+create trigger protect_quick_stop_system_event_dedupe_trigger before insert or update or delete
+  on public.extra_stop_events for each row execute function public.protect_quick_stop_system_event_dedupe();
+
+-- Cancellation is final for scheduling immediately. Its financial obligation is
+-- a separate durable job, including when settlement arrives after cancellation.
+alter table public.extra_stop_requests
+  add column if not exists refund_due_cents integer check (refund_due_cents >= 0),
+  add column if not exists refund_state text not null default 'none'
+    check (refund_state in ('none', 'pending', 'processing', 'retry', 'completed', 'review'));
+
+create table public.quick_stop_refund_tasks (
+  id uuid primary key default gen_random_uuid(),
+  request_id uuid not null unique references public.extra_stop_requests(id),
+  account_id uuid not null references public.accounts(id),
+  payment_id uuid not null references public.payments(id),
+  target_cents integer not null check (target_cents > 0),
+  state text not null default 'pending' check (state in ('pending','processing','retry','completed','review')),
+  attempts integer not null default 0,
+  next_attempt_at timestamptz not null default now(),
+  lease_token uuid,
+  lease_until timestamptz,
+  stripe_payment_intent text,
+  attempt_cents integer check (attempt_cents > 0),
+  first_attempt_at timestamptz,
+  last_error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check ((attempt_cents is null) = (first_attempt_at is null)),
+  check ((attempt_cents is null) = (stripe_payment_intent is null))
+);
+alter table public.quick_stop_refund_tasks enable row level security;
+revoke all on public.quick_stop_refund_tasks from public, anon, authenticated;
+grant select, insert, update on public.quick_stop_refund_tasks to service_role;
+create index quick_stop_refund_due_idx on public.quick_stop_refund_tasks(next_attempt_at, id)
+  where state in ('pending','processing','retry');
+
+-- Provider calls cannot hold a SQL transaction open. A durable reservation
+-- serializes manual and automatic refunds across that boundary. Unknown manual
+-- results never expire automatically into a second provider request.
+create table public.quick_stop_manual_refund_reservations (
+  payment_id uuid primary key references public.payments(id),
+  account_id uuid not null references public.accounts(id),
+  token uuid not null default gen_random_uuid(),
+  target_cents integer not null check(target_cents>0),
+  state text not null default 'active' check(state in ('active','unknown')),
+  created_at timestamptz not null default now()
+);
+alter table public.quick_stop_manual_refund_reservations enable row level security;
+revoke all on public.quick_stop_manual_refund_reservations from public,anon,authenticated;
+grant select,insert,update,delete on public.quick_stop_manual_refund_reservations to service_role;
+
+-- The older optional worker uses a different persisted Stripe key. Retained
+-- tasks, including dead letters with unknown provider outcomes, must be drained
+-- or reconciled before either the new worker or manual refunds can send money.
+-- Dynamic SQL keeps this migration usable where that optional table is absent.
+create function public.quick_stop_has_unresolved_legacy_refund(p_payment_id uuid)
+returns boolean language plpgsql stable security invoker set search_path = '' as $$
+declare v_exists boolean;
+begin
+  if pg_catalog.to_regclass('public.quick_stop_payment_tasks') is null then return false; end if;
+  execute 'select exists(select 1 from public.quick_stop_payment_tasks where payment_id=$1 and task_state<>''completed'')'
+    into v_exists using p_payment_id;
+  return v_exists;
+end $$;
+revoke all on function public.quick_stop_has_unresolved_legacy_refund(uuid) from public,anon,authenticated;
+grant execute on function public.quick_stop_has_unresolved_legacy_refund(uuid) to service_role;
+
+create function public.begin_quick_stop_manual_refund(p_account_id uuid,p_payment_id uuid,p_target_cents integer,p_expected_refunded_cents integer default null)
+returns uuid language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_token uuid; v_gross numeric;
+  v_refunded integer; v_status text; v_charge_model text;
+begin
+  select amount*100,round(coalesce(refunded_amount,0)*100)::integer,status::text,charge_model
+    into v_gross,v_refunded,v_status,v_charge_model from public.payments
+    where id=p_payment_id and account_id=p_account_id for update;
+  if not found then raise exception 'Payment not found'; end if;
+  select * into r from public.extra_stop_requests where payment_id=p_payment_id and account_id=p_account_id for update;
+  if not found then return null; end if;
+  if v_status is distinct from 'paid' or v_charge_model is distinct from 'destination'
+    or (p_expected_refunded_cents is not null and p_expected_refunded_cents is distinct from v_refunded) then
+    raise exception 'The payment changed before the refund was reserved. Refresh and try again';
+  end if;
+  if p_target_cents is null or p_target_cents<=0 or p_target_cents>v_gross then raise exception 'Invalid manual refund target'; end if;
+  if p_target_cents<=v_refunded then raise exception 'The requested refund target has already been met'; end if;
+  if public.quick_stop_has_unresolved_legacy_refund(p_payment_id) then
+    raise exception 'An earlier Quick Stop refund needs reconciliation before another refund can be issued';
+  end if;
+  if exists(select 1 from public.quick_stop_refund_tasks where payment_id=p_payment_id and state<>'completed')
+    or exists(select 1 from public.quick_stop_manual_refund_reservations where payment_id=p_payment_id) then
+    raise exception 'This Quick Stop already has a refund in progress or awaiting review';
+  end if;
+  insert into public.quick_stop_manual_refund_reservations(payment_id,account_id,target_cents)
+    values(p_payment_id,p_account_id,p_target_cents) returning token into v_token;
+  update public.extra_stop_requests set refund_state='processing',
+    refund_due_cents=greatest(coalesce(refund_due_cents,0),p_target_cents),updated_at=now() where id=r.id;
+  return v_token;
+end $$;
+
+create function public.finish_quick_stop_manual_refund(p_account_id uuid,p_payment_id uuid,p_token uuid,p_succeeded boolean)
+returns boolean language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_target integer; v_refunded integer;
+begin
+  select round(coalesce(refunded_amount,0)*100)::integer into v_refunded from public.payments
+    where id=p_payment_id and account_id=p_account_id for update;
+  select * into r from public.extra_stop_requests where payment_id=p_payment_id and account_id=p_account_id for update;
+  select target_cents into v_target from public.quick_stop_manual_refund_reservations
+    where payment_id=p_payment_id and account_id=p_account_id and token=p_token for update;
+  if not found then return false; end if;
+  if p_succeeded and v_refunded>=v_target then
+    delete from public.quick_stop_manual_refund_reservations where payment_id=p_payment_id and token=p_token;
+    update public.quick_stop_refund_tasks set state='pending',next_attempt_at=now(),last_error=null,updated_at=now()
+      where request_id=r.id and state='review' and last_error='manual_refund_active';
+    update public.extra_stop_requests set refund_cents=greatest(coalesce(refund_cents,0),v_refunded),
+      refund_state=coalesce((select state from public.quick_stop_refund_tasks where request_id=r.id),'completed'),
+      updated_at=now() where id=r.id;
+  else
+    update public.quick_stop_manual_refund_reservations set state='unknown' where payment_id=p_payment_id;
+    insert into public.quick_stop_refund_tasks(request_id,account_id,payment_id,target_cents,state,last_error)
+      values(r.id,p_account_id,p_payment_id,greatest(v_target,coalesce(r.refund_due_cents,0)),'review','manual_provider_result_unknown')
+      on conflict(request_id) do update set state='review',
+        target_cents=greatest(public.quick_stop_refund_tasks.target_cents,excluded.target_cents),
+        last_error='manual_provider_result_unknown',updated_at=now();
+    update public.extra_stop_requests set refund_state='review',
+      refund_due_cents=greatest(coalesce(refund_due_cents,0),v_target),updated_at=now() where id=r.id;
+  end if;
+  -- An applied review record is not a successfully released reservation. The
+  -- caller requesting success must surface missing local refund evidence.
+  return p_succeeded is not true or v_refunded>=v_target;
+end $$;
+
+-- Service role only. One obligation per request; replay cannot raise a partial
+-- cancellation refund to 100% merely because its payment webhook was redelivered.
+create function public.queue_quick_stop_refund(p_request_id uuid)
+returns uuid language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_target integer; v_task uuid;
+begin
+  select * into r from public.extra_stop_requests where id=p_request_id;
+  -- Existing webhook code locks payment before request; preserve that order.
+  if r.payment_id is not null then perform 1 from public.payments where id=r.payment_id for update; end if;
+  select * into r from public.extra_stop_requests where id=p_request_id for update;
+  if not found then raise exception 'Quick Stop not found'; end if;
+  if r.status not in ('offer_expired','customer_canceled','customer_declined',
+      'contractor_canceled','contractor_declined','no_show_confirmed','refunded') then
+    raise exception 'Quick Stop still has a fulfillable appointment';
+  end if;
+  v_target := coalesce(r.refund_due_cents, r.fee_cents, 0);
+  if r.payment_id is null or v_target <= 0 then return null; end if;
+  if not exists (select 1 from public.payments p where p.id=r.payment_id and p.account_id=r.account_id) then
+    raise exception 'Quick Stop payment account mismatch';
+  end if;
+  insert into public.quick_stop_refund_tasks(request_id,account_id,payment_id,target_cents,state,last_error)
+    values(r.id,r.account_id,r.payment_id,v_target,
+      case when public.quick_stop_has_unresolved_legacy_refund(r.payment_id)
+        or exists(select 1 from public.quick_stop_manual_refund_reservations where payment_id=r.payment_id) then 'review' else 'pending' end,
+      case when public.quick_stop_has_unresolved_legacy_refund(r.payment_id) then 'legacy_refund_unresolved'
+        when exists(select 1 from public.quick_stop_manual_refund_reservations where payment_id=r.payment_id) then 'manual_refund_active' else null end)
+    on conflict(request_id) do update set
+      target_cents=greatest(public.quick_stop_refund_tasks.target_cents,excluded.target_cents),
+      state=case when excluded.last_error='legacy_refund_unresolved' or excluded.target_cents>public.quick_stop_refund_tasks.target_cents then 'review' else public.quick_stop_refund_tasks.state end,
+      last_error=case when excluded.last_error='legacy_refund_unresolved' then excluded.last_error
+        when excluded.target_cents>public.quick_stop_refund_tasks.target_cents then 'refund_obligation_increased' else public.quick_stop_refund_tasks.last_error end;
+  select id into v_task from public.quick_stop_refund_tasks where request_id=r.id;
+  update public.extra_stop_requests set refund_due_cents=v_target,
+    refund_state=(select state from public.quick_stop_refund_tasks where id=v_task)
+    where id=r.id;
+  return v_task;
+end $$;
+
+-- Confirmation and calendar activation share the same lock/commit. A customer
+-- cancellation cannot archive the job between these two effects and have it
+-- reactivated by a late continuation of the webhook handler.
+create function public.confirm_quick_stop_payment(p_payment_id uuid)
+returns setof public.extra_stop_requests language plpgsql security invoker set search_path = '' as $$
+declare p public.payments%rowtype; r public.extra_stop_requests%rowtype;
+begin
+  select * into p from public.payments where id=p_payment_id for update;
+  if not found then return; end if;
+  select * into r from public.extra_stop_requests where payment_id=p_payment_id for update;
+  if not found or r.status <> 'awaiting_customer_payment' then return; end if;
+  if p.status is distinct from 'paid' or p.paid_at is null or p.stripe_payment_intent is null or p.charge_model is distinct from 'destination'
+    or p.account_id is distinct from r.account_id or p.job_id is distinct from r.job_id
+    or r.job_id is null or r.fee_cents is null or r.fee_cents <> round(p.amount*100) then
+    raise exception 'Quick Stop confirmation requires matching captured payment evidence';
+  end if;
+  update public.jobs set status='in_progress' where id=r.job_id and account_id=r.account_id
+    and status in ('new_lead','in_progress');
+  if not found then raise exception 'Quick Stop calendar job cannot be confirmed'; end if;
+  return query update public.extra_stop_requests set status='confirmed',paid_at=p.paid_at,updated_at=now()
+    where id=r.id returning *;
+end $$;
+
+-- The request lock protects eligibility, timeline evidence, cancellation, job
+-- archival and the refund obligation in one transaction. Losing calls do nothing.
+create function public.cancel_quick_stop_request(
+  p_account_id uuid, p_request_id uuid, p_expected_status text, p_kind text,
+  p_refund_pct integer, p_reason text, p_require_reporting_window boolean default false
+) returns boolean language plpgsql security invoker set search_path = '' as $$
+declare r public.extra_stop_requests%rowtype; v_status text; v_end timestamptz;
+  v_zone text; v_due integer; v_now timestamptz := clock_timestamp();
+begin
+  if p_kind is null or p_kind not in ('customer_cancel','contractor_cancel','no_show')
+     or p_refund_pct is null or p_refund_pct < 0 or p_refund_pct > 100 then
+    raise exception 'Invalid cancellation';
+  end if;
+  -- Enforcement takes the account lock before a request lock. Take it first
+  -- here too so cancellation plus enforcement can commit together without an
+  -- account/request lock-order inversion with a concurrent replay.
+  if p_kind='no_show' then perform 1 from public.accounts where id=p_account_id for update; end if;
+  select * into r from public.extra_stop_requests where id=p_request_id and account_id=p_account_id;
+  if r.payment_id is not null then perform 1 from public.payments where id=r.payment_id for update; end if;
+  select * into r from public.extra_stop_requests
+    where id=p_request_id and account_id=p_account_id for update;
+  if not found then raise exception 'Quick Stop not found'; end if;
+  v_status := case p_kind when 'no_show' then 'no_show_confirmed'
+    when 'contractor_cancel' then 'contractor_canceled' else 'customer_canceled' end;
+  if r.status=v_status then return false; end if;
+  if r.status is distinct from p_expected_status then return false; end if;
+  if (p_kind='customer_cancel' and r.status not in ('awaiting_customer_payment','confirmed','en_route','arrived'))
+    or (p_kind='contractor_cancel' and r.status not in ('contractor_offer_sent','awaiting_customer_payment','confirmed','en_route','arrived'))
+    or (p_kind='no_show' and r.status not in ('confirmed','en_route','completed','disputed','no_show_reported')) then
+    raise exception 'This Quick Stop cannot be canceled from its current state';
+  end if;
+  if p_kind='no_show' then
+    if r.paid_at is null or r.payment_id is null or r.job_id is null or r.arrived_at is not null
+      or r.arrival_date is null or r.arrival_start is null or r.arrival_end is null
+      or r.arrival_start >= r.arrival_end
+      or not exists(select 1 from public.payments p where p.id=r.payment_id and p.account_id=r.account_id
+        and p.status in ('paid','refunded') and p.paid_at is not null) then
+      raise exception 'No-show requires a paid scheduled visit that never arrived';
+    end if;
+    select coalesce(nullif(btrim(timezone),''),'America/New_York') into v_zone
+      from public.accounts where id=p_account_id;
+    if v_zone is null or not exists(select 1 from pg_catalog.pg_timezone_names where name=v_zone) then
+      raise exception 'Invalid account time zone';
+    end if;
+    v_end := public.quick_stop_window_instant(r.arrival_date,r.arrival_end,v_zone);
+    if v_end is null or public.quick_stop_window_instant(r.arrival_date,r.arrival_start,v_zone) is null
+      or public.quick_stop_window_instant(r.arrival_date,r.arrival_start,v_zone)>=v_end then
+      raise exception 'Invalid arrival instant';
+    end if;
+    if v_now < v_end or (p_require_reporting_window and
+      (r.status not in ('confirmed','en_route') or v_now > v_end + interval '2 hours')) then
+      raise exception 'No-show cannot be reported outside the reporting window';
+    end if;
+  end if;
+  -- An unpaid offer cancellation still owes 100% of a charge that settles later.
+  v_due := case when r.payment_id is null then 0
+    when p_kind <> 'customer_cancel' or r.paid_at is null then coalesce(r.fee_cents,0)
+    else round(coalesce(r.fee_cents,0)::numeric*p_refund_pct/100)::integer end;
+  update public.extra_stop_requests set status=v_status, refund_due_cents=v_due,
+    refund_state=case when v_due>0 then 'pending' else 'none' end,
+    cancel_reason=p_reason, updated_at=v_now,
+    canceled_at=case when p_kind <> 'no_show' then v_now else canceled_at end,
+    no_show_confirmed_at=case when p_kind='no_show' then v_now else no_show_confirmed_at end,
+    no_show_reported_at=case when p_kind='no_show' then coalesce(no_show_reported_at,v_now) else no_show_reported_at end
+    where id=r.id;
+  if r.job_id is not null then
+    update public.jobs set status='archived' where id=r.job_id and account_id=r.account_id;
+  end if;
+  if v_due>0 then perform public.queue_quick_stop_refund(r.id); end if;
+  if p_kind='no_show' then perform public.apply_quick_stop_no_show_lock(p_account_id,r.id); end if;
+  return true;
+end $$;
+
+create function public.claim_quick_stop_refunds(p_limit integer default 25, p_account_id uuid default null, p_request_id uuid default null)
+returns setof public.quick_stop_refund_tasks language plpgsql security invoker set search_path = '' as $$
+declare stale record;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100 then raise exception 'Invalid refund batch size'; end if;
+  -- Recover a process crash after manual reservation but before its finally
+  -- block. The result is uncertain, so surface review instead of releasing it.
+  for stale in select m.* from public.quick_stop_manual_refund_reservations m
+    where m.state='active' and m.created_at<now()-interval '5 minutes'
+      and (p_account_id is null or m.account_id=p_account_id)
+    order by m.created_at,m.payment_id limit p_limit loop
+    perform public.finish_quick_stop_manual_refund(stale.account_id,stale.payment_id,stale.token,false);
+  end loop;
+  return query
+    with due as (
+      select t.id from public.quick_stop_refund_tasks t
+      join public.payments p on p.id=t.payment_id and p.account_id=t.account_id
+      where t.state in ('pending','processing','retry') and t.next_attempt_at<=now()
+        and not exists(select 1 from public.quick_stop_manual_refund_reservations m where m.payment_id=t.payment_id)
+        and not public.quick_stop_has_unresolved_legacy_refund(t.payment_id)
+        and (t.lease_until is null or t.lease_until<now())
+        and p.status in ('paid','refunded') and p.stripe_payment_intent is not null
+        and (p_account_id is null or t.account_id=p_account_id)
+        and (p_request_id is null or t.request_id=p_request_id)
+      order by t.next_attempt_at,t.id limit p_limit for update of t skip locked
+    ) update public.quick_stop_refund_tasks t set state='processing', attempts=t.attempts+1,
+      lease_token=gen_random_uuid(),lease_until=now()+interval '5 minutes',updated_at=now()
+      from due where t.id=due.id returning t.*;
+end $$;
+
+-- Save the exact provider request BEFORE egress. A lease replay never invents
+-- a new amount/key. Unknown results older than Stripe's retention need review.
+create function public.prepare_quick_stop_refund(p_task_id uuid,p_lease_token uuid,p_payment_intent text,p_amount_cents integer)
+returns setof public.quick_stop_refund_tasks language plpgsql security invoker set search_path = '' as $$
+begin
+  return query update public.quick_stop_refund_tasks t
+    set stripe_payment_intent=coalesce(t.stripe_payment_intent,p_payment_intent),
+      attempt_cents=coalesce(t.attempt_cents,p_amount_cents),
+      first_attempt_at=coalesce(t.first_attempt_at,clock_timestamp()),updated_at=now()
+    where t.id=p_task_id and t.lease_token=p_lease_token and t.state='processing' and t.lease_until>now()
+      and not public.quick_stop_has_unresolved_legacy_refund(t.payment_id)
+      and p_amount_cents>0 and p_amount_cents<=t.target_cents
+      and (t.stripe_payment_intent is null or t.stripe_payment_intent=p_payment_intent)
+      and (t.attempt_cents is null or t.attempt_cents=p_amount_cents)
+    returning t.*;
+end $$;
+
+-- Staff may re-read a reviewed task after resolving the provider side. This
+-- claim is used by a read-only provider executor; it never authorizes new money.
+create function public.claim_quick_stop_refund_review(p_account_id uuid,p_request_id uuid)
+returns setof public.quick_stop_refund_tasks language plpgsql security invoker set search_path = '' as $$
+begin
+  return query update public.quick_stop_refund_tasks set state='processing',
+    lease_token=gen_random_uuid(),lease_until=now()+interval '5 minutes',updated_at=now()
+    where account_id=p_account_id and request_id=p_request_id and state='review'
+      and (lease_until is null or lease_until<now()) returning *;
+end $$;
+
+create function public.finish_quick_stop_refund(p_task_id uuid,p_lease_token uuid,p_state text,p_refunded_cents integer default 0,p_error text default null)
+returns boolean language plpgsql security invoker set search_path = '' as $$
+declare t public.quick_stop_refund_tasks%rowtype; v_request_id uuid; v_payment_id uuid; v_amount numeric; v_fee numeric;
+begin
+  if p_state is null or p_state not in ('completed','retry','review')
+    or p_refunded_cents is null or p_refunded_cents<0 then raise exception 'Invalid refund outcome'; end if;
+  select request_id,payment_id into v_request_id,v_payment_id from public.quick_stop_refund_tasks where id=p_task_id;
+  perform 1 from public.payments where id=v_payment_id for update;
+  perform 1 from public.extra_stop_requests where id=v_request_id for update;
+  select * into t from public.quick_stop_refund_tasks where id=p_task_id for update;
+  if not found or t.lease_token is distinct from p_lease_token or t.state <> 'processing' then return false; end if;
+  if p_state='completed' then
+    select amount,platform_fee into v_amount,v_fee from public.payments
+      where id=t.payment_id and account_id=t.account_id and status in ('paid','refunded')
+      and charge_model='destination' for update;
+    if not found or p_refunded_cents<t.target_cents or p_refunded_cents>round(v_amount*100) then
+      raise exception 'Refund completion requires exact provider evidence';
+    end if;
+    update public.payments set refunded_amount=greatest(coalesce(refunded_amount,0),p_refunded_cents/100.0),
+      status=case when p_refunded_cents>=round(v_amount*100) then 'refunded' else status end,
+      refunded_at=case when p_refunded_cents>round(coalesce(refunded_amount,0)*100) then now() else refunded_at end,
+      platform_fee_refunded=greatest(coalesce(platform_fee_refunded,0),round(coalesce(v_fee,0)*p_refunded_cents/(v_amount*100),2))
+      where id=t.payment_id;
+    update public.extra_stop_requests set refund_cents=greatest(coalesce(refund_cents,0),p_refunded_cents),
+      refund_state='completed',updated_at=now() where id=t.request_id;
+    delete from public.quick_stop_manual_refund_reservations where payment_id=t.payment_id and target_cents<=p_refunded_cents;
+  else
+    update public.extra_stop_requests set refund_state=p_state,updated_at=now() where id=t.request_id;
+  end if;
+  update public.quick_stop_refund_tasks set state=p_state,last_error=p_error,
+    lease_token=null,lease_until=null,
+    next_attempt_at=now()+make_interval(secs=>least(3600,60*power(2,least(attempts,6)))::integer),
+    updated_at=now() where id=t.id;
+  return true;
+end $$;
+
+revoke all on function public.queue_quick_stop_refund(uuid) from public,anon,authenticated;
+revoke all on function public.cancel_quick_stop_request(uuid,uuid,text,text,integer,text,boolean) from public,anon,authenticated;
+revoke all on function public.claim_quick_stop_refunds(integer,uuid,uuid) from public,anon,authenticated;
+revoke all on function public.prepare_quick_stop_refund(uuid,uuid,text,integer) from public,anon,authenticated;
+revoke all on function public.finish_quick_stop_refund(uuid,uuid,text,integer,text) from public,anon,authenticated;
+grant execute on function public.queue_quick_stop_refund(uuid) to service_role;
+revoke all on function public.confirm_quick_stop_payment(uuid) from public,anon,authenticated;
+grant execute on function public.confirm_quick_stop_payment(uuid) to service_role;
+grant execute on function public.cancel_quick_stop_request(uuid,uuid,text,text,integer,text,boolean) to service_role;
+grant execute on function public.claim_quick_stop_refunds(integer,uuid,uuid) to service_role;
+grant execute on function public.prepare_quick_stop_refund(uuid,uuid,text,integer) to service_role;
+grant execute on function public.finish_quick_stop_refund(uuid,uuid,text,integer,text) to service_role;
+revoke all on function public.claim_quick_stop_refund_review(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.claim_quick_stop_refund_review(uuid,uuid) to service_role;
+revoke all on function public.begin_quick_stop_manual_refund(uuid,uuid,integer,integer) from public,anon,authenticated;
+revoke all on function public.finish_quick_stop_manual_refund(uuid,uuid,uuid,boolean) from public,anon,authenticated;
+grant execute on function public.begin_quick_stop_manual_refund(uuid,uuid,integer,integer) to service_role;
+grant execute on function public.finish_quick_stop_manual_refund(uuid,uuid,uuid,boolean) to service_role;
+
+-- Supersede the feature-gated legacy reconciliation entrypoint as well.
+create or replace function public.reconcile_legacy_quick_stop_payment(p_payment_id uuid)
+returns table (
+  reconcile_status text,
+  quick_stop_request_id uuid,
+  late_refund_task_id uuid,
+  late_refund_task_state text
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone = 'UTC'
+as $$
+declare
+  v_payment public.payments%rowtype;
+  v_request public.extra_stop_requests%rowtype;
+  v_job public.jobs%rowtype;
+  v_event public.extra_stop_events%rowtype;
+  v_now timestamptz := pg_catalog.now();
+  v_gross_cents bigint;
+  v_refunded_cents bigint;
+  v_refund_cents bigint;
+  v_task_key text;
+  v_event_key text;
+  v_idempotency_key text;
+  v_snapshot jsonb;
+  v_fingerprint text;
+begin
+  if p_payment_id is null then
+    raise exception 'payment ID is required' using errcode = '22023';
+  end if;
+
+  select p.* into v_payment
+    from public.payments p
+   where p.id = p_payment_id
+   for update;
+  if not found then
+    raise exception 'payment was not found' using errcode = 'P0002';
+  end if;
+  if v_payment.charge_model is distinct from 'destination' then
+    raise exception 'legacy Quick Stop reconciliation requires a destination payment'
+      using errcode = '22000';
+  end if;
+  if v_payment.status not in ('paid', 'refunded') then
+    raise exception 'legacy Quick Stop reconciliation requires settled payment truth'
+      using errcode = '55000';
+  end if;
+  if v_payment.status = 'paid' and v_payment.paid_at is null then
+    raise exception 'paid legacy Quick Stop payment is missing its settlement timestamp'
+      using errcode = '22000';
+  end if;
+
+  select r.* into v_request
+    from public.extra_stop_requests r
+   where r.payment_id = p_payment_id
+   for update;
+  if not found then
+    return query select 'not_quick_stop'::text, null::uuid, null::uuid, null::text;
+    return;
+  end if;
+
+  if v_request.account_id is distinct from v_payment.account_id then
+    raise exception 'Quick Stop and payment account scopes do not match'
+      using errcode = '23514';
+  end if;
+  if v_request.job_id is null
+     or v_request.job_id is distinct from v_payment.job_id
+     or v_payment.kind::text is distinct from 'deposit' then
+    raise exception 'Quick Stop and payment job scopes do not match'
+      using errcode = '23514';
+  end if;
+
+  v_gross_cents := (v_payment.amount * 100)::bigint;
+  v_refunded_cents := (coalesce(v_payment.refunded_amount, 0) * 100)::bigint;
+  if v_gross_cents <= 0
+     or v_payment.amount is distinct from v_gross_cents::numeric / 100
+     or v_refunded_cents < 0
+     or coalesce(v_payment.refunded_amount, 0)
+        is distinct from v_refunded_cents::numeric / 100
+     or v_refunded_cents > v_gross_cents then
+    raise exception 'Quick Stop payment amount cannot be represented exactly in cents'
+      using errcode = '22000';
+  end if;
+  if v_request.fee_cents is null
+     or v_request.fee_cents::bigint is distinct from v_gross_cents then
+    raise exception 'Quick Stop fee and payment amount do not match'
+      using errcode = '22000';
+  end if;
+
+  -- Every nonfulfillable state uses the durable obligation queue, including
+  -- cancellation before settlement. Preserve a previously decided partial tier.
+  if v_request.status in ('offer_expired','customer_canceled','customer_declined',
+      'contractor_canceled','contractor_declined','no_show_confirmed','refunded') then
+    perform public.queue_quick_stop_refund(v_request.id);
+    return query select
+      case when t.state='completed' then 'refund_reconciled' else 'refund_queued' end::text,
+      v_request.id, case when t.state='completed' then null::uuid else t.id end,
+      case t.state when 'pending' then 'ready' when 'processing' then 'leased'
+        when 'retry' then 'retry_wait' when 'review' then 'dead_letter' else t.state end::text
+      from public.quick_stop_refund_tasks t where t.request_id=v_request.id;
+    if not found then
+      return query select 'not_actionable'::text,v_request.id,null::uuid,null::text;
+    end if;
+    return;
+  end if;
+  if v_request.status in ('awaiting_customer_payment', 'confirmed') then
+    if v_payment.status <> 'paid' then
+      raise exception 'a refunded payment cannot confirm a Quick Stop'
+        using errcode = '55000';
+    end if;
+    if v_request.job_id is null then
+      raise exception 'paid Quick Stop has no calendar job'
+        using errcode = '55000';
+    end if;
+    select j.* into v_job
+      from public.jobs j
+     where j.id = v_request.job_id
+       and j.account_id = v_request.account_id
+     for update;
+    if not found then
+      raise exception 'paid Quick Stop calendar job is unavailable'
+        using errcode = '55000';
+    end if;
+
+    -- A fresh confirmation may activate only a tentative/live job. A replay of
+    -- an already-confirmed payment must remain idempotent after the appointment
+    -- has naturally moved to complete or archived.
+    if v_request.status = 'awaiting_customer_payment' then
+      if v_job.status not in ('new_lead', 'in_progress') then
+        raise exception 'paid Quick Stop calendar job is unavailable'
+          using errcode = '55000';
+      end if;
+
+      if v_job.status = 'new_lead' then
+        update public.jobs j
+           set status = 'in_progress'
+         where j.id = v_job.id
+           and j.account_id = v_request.account_id
+           and j.status = 'new_lead';
+        if not found then
+          raise exception 'Quick Stop calendar job changed during confirmation'
+            using errcode = '40001';
+        end if;
+      end if;
+    end if;
+
+    if v_request.status = 'awaiting_customer_payment' then
+      update public.extra_stop_requests r
+         set status = 'confirmed',
+             paid_at = coalesce(r.paid_at, v_payment.paid_at, v_now),
+             updated_at = v_now
+       where r.id = v_request.id
+         and r.status = 'awaiting_customer_payment';
+      if not found then
+        raise exception 'Quick Stop changed during confirmation'
+          using errcode = '40001';
+      end if;
+    end if;
+
+    v_event_key := 'quick_stop_payment.confirmed.v1:' || p_payment_id::text;
+    insert into public.extra_stop_events (
+      account_id, request_id, actor, from_status, to_status, meta, dedupe_key
+    ) values (
+      v_request.account_id,
+      v_request.id,
+      'stripe',
+      'awaiting_customer_payment',
+      'confirmed',
+      pg_catalog.jsonb_build_object(
+        'paymentId', p_payment_id,
+        'reason', 'legacy_destination_payment_settled'
+      ),
+      v_event_key
+    )
+    on conflict (request_id, dedupe_key) where dedupe_key is not null do nothing;
+
+    select e.* into v_event
+      from public.extra_stop_events e
+     where e.request_id = v_request.id
+       and e.dedupe_key = v_event_key;
+    if not found
+       or v_event.account_id is distinct from v_request.account_id
+       or v_event.actor is distinct from 'stripe'
+       or v_event.from_status is distinct from 'awaiting_customer_payment'
+       or v_event.to_status is distinct from 'confirmed'
+       or v_event.meta is distinct from pg_catalog.jsonb_build_object(
+         'paymentId', p_payment_id,
+         'reason', 'legacy_destination_payment_settled'
+       ) then
+      raise exception 'Quick Stop confirmation event dedupe conflict'
+        using errcode = '23505';
+    end if;
+
+    return query select
+      case when v_request.status = 'confirmed' then 'already_confirmed' else 'confirmed' end,
+      v_request.id,
+      null::uuid,
+      null::text;
+    return;
+  end if;
+
+  return query select 'not_actionable'::text, v_request.id, null::uuid, null::text;
+end
+$$;
+
+revoke all on function public.reconcile_legacy_quick_stop_payment(uuid) from public,anon,authenticated;
+grant execute on function public.reconcile_legacy_quick_stop_payment(uuid) to service_role;
+
+commit;
+
+-- Source: migrations/20260914132439_quick_stop_atomic_offer.sql
+-- Publish a complete offer in one transaction. No externally visible reservation
+-- exists without its date, tentative job, payment, and expiration deadline.
+begin;
+
+create or replace function public.create_quick_stop_offer(
+  p_account_id uuid,
+  p_request_id uuid,
+  p_offer jsonb
+) returns jsonb
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_account public.accounts%rowtype;
+  v_request public.extra_stop_requests%rowtype;
+  v_day date := (p_offer->>'arrival_date')::date;
+  v_start time := (p_offer->>'arrival_start')::time;
+  v_end time := (p_offer->>'arrival_end')::time;
+  v_fee integer := (p_offer->>'fee_cents')::integer;
+  v_visit integer := (p_offer->>'visit_minutes')::integer;
+  v_zone text;
+  v_cap integer;
+  v_count integer;
+  v_ref_number numeric;
+  v_job_id uuid;
+  v_payment_id uuid;
+  v_now timestamptz := clock_timestamp();
+  v_deadline timestamptz;
+begin
+  if v_day is null or v_start is null or v_end is null or v_start >= v_end
+     or v_fee is null or v_fee <= 0 then
+    raise exception 'Set a valid arrival window and Quick Stop fee.' using errcode = '22023';
+  end if;
+
+  -- Transaction-scoped, account/date-scoped serialization covers the count AND
+  -- publication. Different request IDs cannot consume the same last slot.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('quick-stop-day:' || p_account_id::text || ':' || v_day::text, 0)
+  );
+  select * into v_account from public.accounts where id = p_account_id;
+  if not found then raise exception 'Account not found.' using errcode = 'P0002'; end if;
+  if not coalesce(v_account.connect_onboarded, false) or nullif(v_account.stripe_connect_id, '') is null then
+    raise exception 'Finish your Stripe payout setup before sending Quick Stop offers.' using errcode = '22023';
+  end if;
+  v_zone := coalesce(nullif(v_account.timezone, ''), 'America/New_York');
+  if not exists (select 1 from pg_catalog.pg_timezone_names where name = v_zone) then
+    raise exception 'The account timezone is invalid.' using errcode = '22023';
+  end if;
+  -- Reject DST gaps as well as elapsed windows. A contractor may negotiate a
+  -- date beyond the customer request horizon; daysAhead is intentionally absent.
+  if public.quick_stop_window_instant(v_day, v_start, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_end, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_end, v_zone) <= clock_timestamp() then
+    raise exception 'Choose an arrival window that has not ended in your timezone.' using errcode = '22023';
+  end if;
+  if nullif(v_account.extra_stop_weekdays, '') is not null
+     and not (extract(dow from v_day)::integer = any(string_to_array(v_account.extra_stop_weekdays, ',')::integer[])) then
+    raise exception 'That day is not in your Quick Stop schedule.' using errcode = '22023';
+  end if;
+  if v_start < coalesce(nullif(v_account.extra_stop_earliest_time, '')::time, '08:00'::time)
+     or v_end > coalesce(nullif(v_account.extra_stop_latest_end, '')::time, '20:00'::time) then
+    raise exception 'The arrival window is outside your Quick Stop hours.' using errcode = '22023';
+  end if;
+
+  select * into v_request from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id for update;
+  if not found then raise exception 'Request not found.' using errcode = 'P0002'; end if;
+  if v_request.status not in ('awaiting_contractor', 'more_information_requested') then
+    raise exception 'This request can no longer be offered.' using errcode = '22023';
+  end if;
+  if v_request.job_id is not null or v_request.payment_id is not null then
+    raise exception 'This request already has a job or payment. Reload before continuing.' using errcode = '22023';
+  end if;
+  if v_request.client_id is not null and not exists (
+    select 1 from public.clients where id = v_request.client_id and account_id = p_account_id
+  ) then
+    raise exception 'The request client does not belong to this account.' using errcode = '22023';
+  end if;
+  v_cap := greatest(1, least(50, coalesce(v_account.extra_stop_max_per_day, 2)));
+  select count(*) into v_count from public.extra_stop_requests
+    where account_id = p_account_id and arrival_date = v_day
+      and status in ('contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived');
+  if v_count >= v_cap then
+    raise exception 'You are at your Quick Stop limit (%) for that day.', v_cap using errcode = '22023';
+  end if;
+
+  -- Preserve the normal numeric J- reference allocation. Normal job creation
+  -- does not take our day lock, so retry an account/ref collision transactionally.
+  for attempt in 1..5 loop
+    select greatest(1000, coalesce(max(substring(ref from 3)::numeric), 1000)) + 1
+      into v_ref_number from public.jobs where account_id = p_account_id and ref ~ '^J-[0-9]+$';
+    begin
+      insert into public.jobs (
+        account_id, ref, client_id, client_name, client_phone, client_email,
+        address, scope, status, scheduled_for, scheduled_time, quoted_amount,
+        estimated_hours, lat, lng, geocoded_at
+      ) values (
+        p_account_id, 'J-' || v_ref_number::text, v_request.client_id,
+        v_request.client_name, v_request.client_phone, v_request.client_email,
+        v_request.address, 'Quick Stop — ' || coalesce(nullif(v_request.ai_summary, ''), 'quick visit'),
+        'new_lead', v_day, v_start, 0,
+        case when v_visit > 0 then greatest(0.25, round(v_visit::numeric / 60, 2)) else null end,
+        v_request.lat, v_request.lng,
+        case when v_request.lat is not null and v_request.lng is not null then v_now else null end
+      ) returning id into v_job_id;
+      exit;
+    exception when unique_violation then
+      if attempt = 5 then raise; end if;
+    end;
+  end loop;
+
+  -- Same payment shape as createDepositRequest. Stripe Checkout is created only
+  -- when the customer follows the link, after this transaction has committed.
+  insert into public.payments (
+    account_id, job_id, kind, label, amount, status,
+    homeowner_phone, sms_consent, sms_consent_at
+  ) values (
+    p_account_id, v_job_id, 'deposit', 'Quick Stop priority visit fee', v_fee::numeric / 100,
+    'requested', v_request.client_phone, nullif(v_request.client_phone, '') is not null,
+    case when nullif(v_request.client_phone, '') is not null then v_now else null end
+  ) returning id into v_payment_id;
+
+  v_deadline := clock_timestamp() + make_interval(mins => least(720, greatest(1, coalesce(nullif(v_account.extra_stop_payment_deadline_mins, 0), 15))));
+  update public.extra_stop_requests set
+    status = 'awaiting_customer_payment', job_id = v_job_id, payment_id = v_payment_id,
+    arrival_date = v_day, arrival_start = v_start, arrival_end = v_end,
+    fee_cents = v_fee, diagnostic_fee_cents = (p_offer->>'diagnostic_fee_cents')::integer,
+    offer_visit_minutes = v_visit, contractor_note = p_offer->>'contractor_note',
+    detour_miles = (p_offer->>'detour_miles')::numeric,
+    detour_minutes = (p_offer->>'detour_minutes')::numeric,
+    route_extension_minutes = (p_offer->>'route_extension_minutes')::numeric,
+    offer_sent_at = v_now, payment_deadline_at = v_deadline, hold_expires_at = v_deadline,
+    updated_at = v_now
+    where id = p_request_id and account_id = p_account_id;
+  insert into public.extra_stop_events(account_id, request_id, actor, from_status, to_status, meta)
+    values(p_account_id, p_request_id, 'contractor', v_request.status, 'awaiting_customer_payment',
+      jsonb_build_object('paymentId', v_payment_id, 'jobId', v_job_id, 'arrivalDate', v_day, 'atomicOffer', true));
+  return jsonb_build_object('id', p_request_id, 'job_id', v_job_id, 'payment_id', v_payment_id,
+    'status', 'awaiting_customer_payment', 'payment_deadline_at', v_deadline);
+end;
+$$;
+
+revoke all on function public.create_quick_stop_offer(uuid, uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.create_quick_stop_offer(uuid, uuid, jsonb) to service_role;
+
+-- Recover pre-migration staged offers. New creation never commits this status.
+-- Stamp/compare updated_at because failure may precede offer_sent_at entirely.
+create or replace function public.recover_stale_quick_stop_offer(
+  p_account_id uuid, p_request_id uuid, p_stale_before timestamptz
+) returns boolean
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_request public.extra_stop_requests%rowtype;
+  v_snapshot public.extra_stop_requests%rowtype;
+  v_now timestamptz := clock_timestamp();
+begin
+  select * into v_snapshot from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id;
+  if not found or p_stale_before is null or v_snapshot.status <> 'contractor_offer_sent'
+     or v_snapshot.updated_at > least(p_stale_before, v_now - interval '15 minutes') then return false; end if;
+  -- Include a payment created against the placeholder before linkage failed.
+  -- Lock payments before requests, matching capture/refund reconciliation.
+  perform 1 from public.payments where account_id = p_account_id
+    and (id = v_snapshot.payment_id or job_id = v_snapshot.job_id) order by id for update;
+  select * into v_request from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id for update;
+  if not found or v_request.status <> 'contractor_offer_sent'
+     or v_request.updated_at > least(p_stale_before, v_now - interval '15 minutes')
+     or v_request.payment_id is distinct from v_snapshot.payment_id
+     or v_request.job_id is distinct from v_snapshot.job_id then return false; end if;
+  -- A concurrent captured payment wins. Preserve charge evidence for review and
+  -- keep processing the rest of the bounded batch instead of rolling it back.
+  if exists (select 1 from public.payments where account_id = p_account_id
+      and (id = v_request.payment_id or job_id = v_request.job_id)
+      and (status in ('paid', 'refunded', 'disputed') or paid_at is not null)) then
+    return false;
+  end if;
+  update public.payments set status = 'failed', failed_at = v_now
+    where account_id = p_account_id and (id = v_request.payment_id or job_id = v_request.job_id)
+      and status in ('requested', 'processing');
+  update public.jobs set status = 'archived' where id = v_request.job_id and account_id = p_account_id;
+  update public.extra_stop_requests set status = 'offer_expired', updated_at = v_now
+    where id = p_request_id and account_id = p_account_id;
+  insert into public.extra_stop_events(account_id, request_id, actor, from_status, to_status, meta)
+    values(p_account_id, p_request_id, 'system', 'contractor_offer_sent', 'offer_expired',
+      jsonb_build_object('reason', 'offer_creation_interrupted'));
+  return true;
+end;
+$$;
+
+revoke all on function public.recover_stale_quick_stop_offer(uuid, uuid, timestamptz) from public, anon, authenticated;
+grant execute on function public.recover_stale_quick_stop_offer(uuid, uuid, timestamptz) to service_role;
+
+-- Bound work after filtering out settled rows that require staff adjudication.
+-- Those rows cannot repeatedly occupy the first page and starve recoverable ones.
+create or replace function public.recover_stale_quick_stop_offers(
+  p_account_id uuid default null, p_limit integer default 50
+) returns integer
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_row record;
+  v_count integer := 0;
+  v_before timestamptz := clock_timestamp() - interval '15 minutes';
+begin
+  for v_row in
+    select r.id, r.account_id from public.extra_stop_requests r
+      where r.status = 'contractor_offer_sent' and r.updated_at <= v_before
+        and (p_account_id is null or r.account_id = p_account_id)
+        and not exists (select 1 from public.payments p where p.account_id = r.account_id
+          and (p.id = r.payment_id or p.job_id = r.job_id)
+          and (p.status in ('paid', 'refunded', 'disputed') or p.paid_at is not null))
+      order by r.updated_at, r.id limit greatest(1, least(coalesce(p_limit, 50), 100))
+  loop
+    if public.recover_stale_quick_stop_offer(v_row.account_id, v_row.id, v_before) then
+      v_count := v_count + 1;
+    end if;
+  end loop;
+  return v_count;
+end;
+$$;
+revoke all on function public.recover_stale_quick_stop_offers(uuid, integer) from public, anon, authenticated;
+grant execute on function public.recover_stale_quick_stop_offers(uuid, integer) to service_role;
+
+-- Accepting a negotiated date consumes that day's same capacity as a new offer.
+-- Compare the precise proposal version and perform both schedule writes together.
+create or replace function public.accept_quick_stop_window(
+  p_account_id uuid, p_request_id uuid, p_expected_proposed_at timestamptz
+) returns boolean
+language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_request public.extra_stop_requests%rowtype;
+  v_account public.accounts%rowtype;
+  v_day date;
+  v_zone text;
+  v_count integer;
+  v_cap integer;
+  v_now timestamptz := clock_timestamp();
+begin
+  select proposed_arrival_date into v_day from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id;
+  if not found or v_day is null or p_expected_proposed_at is null then return false; end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('quick-stop-day:' || p_account_id::text || ':' || v_day::text, 0)
+  );
+  select * into v_request from public.extra_stop_requests
+    where id = p_request_id and account_id = p_account_id for update;
+  if not found or v_request.status not in ('confirmed', 'en_route')
+     or v_request.no_show_reported_at is not null
+     or v_request.proposed_window_at is distinct from p_expected_proposed_at
+     or v_request.proposed_arrival_date is distinct from v_day then return false; end if;
+  select * into v_account from public.accounts where id = p_account_id;
+  if not found then return false; end if;
+  v_zone := coalesce(nullif(v_account.timezone, ''), 'America/New_York');
+  if v_request.proposed_arrival_start is null or v_request.proposed_arrival_end is null
+     or v_request.proposed_arrival_start >= v_request.proposed_arrival_end
+     or public.quick_stop_window_instant(v_day, v_request.proposed_arrival_start, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_request.proposed_arrival_end, v_zone) is null
+     or public.quick_stop_window_instant(v_day, v_request.proposed_arrival_end, v_zone) <= clock_timestamp() then
+    raise exception 'Choose an arrival window that has not ended in your timezone.' using errcode = '22023';
+  end if;
+  if (nullif(v_account.extra_stop_weekdays, '') is not null
+      and not (extract(dow from v_day)::integer = any(string_to_array(v_account.extra_stop_weekdays, ',')::integer[])))
+     or v_request.proposed_arrival_start < coalesce(nullif(v_account.extra_stop_earliest_time, '')::time, '08:00'::time)
+     or v_request.proposed_arrival_end > coalesce(nullif(v_account.extra_stop_latest_end, '')::time, '20:00'::time) then
+    raise exception 'The arrival window is outside your Quick Stop schedule.' using errcode = '22023';
+  end if;
+  v_cap := greatest(1, least(50, coalesce(v_account.extra_stop_max_per_day, 2)));
+  select count(*) into v_count from public.extra_stop_requests where account_id = p_account_id
+    and arrival_date = v_day and id <> p_request_id
+    and status in ('contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived');
+  if v_count >= v_cap then
+    raise exception 'This arrival day has reached its Quick Stop limit. Ask your contractor for another window.' using errcode = '22023';
+  end if;
+  update public.jobs set scheduled_for = v_day, scheduled_time = v_request.proposed_arrival_start
+    where id = v_request.job_id and account_id = p_account_id;
+  if not found then raise exception 'The Quick Stop job could not be updated.' using errcode = 'P0002'; end if;
+  update public.extra_stop_requests set
+    arrival_date = v_day, arrival_start = v_request.proposed_arrival_start, arrival_end = v_request.proposed_arrival_end,
+    proposed_arrival_date = null, proposed_arrival_start = null, proposed_arrival_end = null,
+    proposed_window_at = null, updated_at = v_now
+    where id = p_request_id and account_id = p_account_id;
+  insert into public.extra_stop_events(account_id, request_id, actor, from_status, to_status, meta)
+    values(p_account_id, p_request_id, 'customer', v_request.status, v_request.status,
+      jsonb_build_object('action', 'accepted_revised_window', 'arrivalDate', v_day));
+  return true;
+end;
+$$;
+revoke all on function public.accept_quick_stop_window(uuid, uuid, timestamptz) from public, anon, authenticated;
+grant execute on function public.accept_quick_stop_window(uuid, uuid, timestamptz) to service_role;
+
+commit;
+
+-- Source: migrations/20260914132825_quick_stop_atomic_sweep.sql
+begin;
+
+-- Same conversion as quick-stop-time.ts: reject skipped local times and use
+-- the later instant when a wall-clock time repeats. No session zone is used.
+create or replace function public.quick_stop_window_instant(p_day date, p_time time, p_timezone text)
+returns timestamptz language plpgsql stable strict security invoker set search_path = '' as $$
+declare
+  v_wall timestamp;
+  v_base timestamptz;
+  v_probe timestamptz;
+  v_candidate timestamptz;
+  v_result timestamptz;
+  v_step integer;
+begin
+  if not isfinite(p_day) or extract(year from p_day) not between 1 and 9999
+    or extract(hour from p_time) >= 24
+    or not exists(select 1 from pg_catalog.pg_timezone_names where name=p_timezone) then
+    return null;
+  end if;
+  v_wall := p_day + p_time;
+  v_base := v_wall at time zone 'UTC';
+  for v_step in -3..3 loop
+    v_probe := v_base + make_interval(hours => v_step * 12);
+    v_candidate := v_base - ((v_probe at time zone p_timezone) - (v_probe at time zone 'UTC'));
+    if v_candidate at time zone p_timezone = v_wall then
+      v_result := greatest(v_result,v_candidate);
+    end if;
+  end loop;
+  return v_result;
+exception when datetime_field_overflow or invalid_parameter_value then
+  return null;
+end $$;
+
+create or replace function public.sweep_quick_stop_requests(p_account_id uuid default null, p_limit integer default 50)
+returns table(kind text, request_id uuid, account_id uuid, client_name text)
+language plpgsql security invoker set search_path = '' as $$
+declare
+  c public.extra_stop_requests%rowtype;
+  r public.extra_stop_requests%rowtype;
+  p public.payments%rowtype;
+  v_now timestamptz := clock_timestamp();
+  v_end timestamptz;
+  v_start timestamptz;
+  v_zone text;
+begin
+  if p_limit is null or p_limit < 1 or p_limit > 100 then
+    raise exception 'Invalid Quick Stop sweep batch size' using errcode='22023';
+  end if;
+
+  -- Capture reconciliation already locks payment before request. Take the same
+  -- order and skip contended rows, then recheck the entire request under lock.
+  -- Eligibility is filtered before LIMIT, so future and malformed rows cannot
+  -- indefinitely occupy the first batch ahead of actual overdue work.
+  for c in
+    select e.* from public.extra_stop_requests e
+    where e.status='awaiting_customer_payment' and e.payment_deadline_at<v_now and e.paid_at is null
+      and (p_account_id is null or e.account_id=p_account_id)
+      and not exists(select 1 from public.payments p0 where p0.id=e.payment_id and p0.account_id=e.account_id
+        and (p0.paid_at is not null or p0.status in ('paid','refunded')))
+    order by e.payment_deadline_at,e.id limit p_limit
+  loop
+    if c.payment_id is not null then
+      select * into p from public.payments p0 where p0.id=c.payment_id and p0.account_id=c.account_id for update skip locked;
+      if not found or p.paid_at is not null or p.status in ('paid','refunded') then continue; end if;
+    end if;
+    select * into r from public.extra_stop_requests e where e.id=c.id and e.account_id=c.account_id for update skip locked;
+    if not found or r.payment_id is distinct from c.payment_id or r.status<>'awaiting_customer_payment'
+      or r.paid_at is not null or r.payment_deadline_at is null or r.payment_deadline_at>=v_now then continue; end if;
+    update public.extra_stop_requests e set status='offer_expired',hold_expires_at=null,updated_at=v_now where e.id=r.id;
+    if r.payment_id is not null then
+      update public.payments p0 set status='failed',failed_at=v_now
+        where p0.id=r.payment_id and p0.account_id=r.account_id and p0.status in ('requested','processing') and p0.paid_at is null;
+    end if;
+    if r.job_id is not null then
+      update public.jobs j set status='archived' where j.id=r.job_id and j.account_id=r.account_id;
+    end if;
+    insert into public.extra_stop_events(account_id,request_id,actor,from_status,to_status,meta)
+      values(r.account_id,r.id,'system',r.status,'offer_expired','{"reason":"payment_window_elapsed"}'::jsonb);
+    kind:='payment_expired'; request_id:=r.id; account_id:=r.account_id; client_name:=r.client_name;
+    return next;
+  end loop;
+
+  for c in
+    select e.* from public.extra_stop_requests e
+    where e.status in ('awaiting_contractor','more_information_requested') and e.response_deadline_at<v_now
+      and e.paid_at is null and (p_account_id is null or e.account_id=p_account_id)
+      and not exists(select 1 from public.payments p0 where p0.id=e.payment_id and p0.account_id=e.account_id
+        and (p0.paid_at is not null or p0.status in ('paid','refunded')))
+    order by e.response_deadline_at,e.id limit p_limit
+  loop
+    if c.payment_id is not null then
+      select * into p from public.payments p0 where p0.id=c.payment_id and p0.account_id=c.account_id for update skip locked;
+      if not found or p.paid_at is not null or p.status in ('paid','refunded') then continue; end if;
+    end if;
+    select * into r from public.extra_stop_requests e where e.id=c.id and e.account_id=c.account_id for update skip locked;
+    if not found or r.payment_id is distinct from c.payment_id or r.status not in ('awaiting_contractor','more_information_requested')
+      or r.paid_at is not null or r.response_deadline_at is null or r.response_deadline_at>=v_now then continue; end if;
+    update public.extra_stop_requests e set status='offer_expired',hold_expires_at=null,updated_at=v_now where e.id=r.id;
+    if r.payment_id is not null then
+      update public.payments p0 set status='failed',failed_at=v_now
+        where p0.id=r.payment_id and p0.account_id=r.account_id and p0.status in ('requested','processing') and p0.paid_at is null;
+    end if;
+    if r.job_id is not null then
+      update public.jobs j set status='archived' where j.id=r.job_id and j.account_id=r.account_id;
+    end if;
+    insert into public.extra_stop_events(account_id,request_id,actor,from_status,to_status,meta)
+      values(r.account_id,r.id,'system',r.status,'offer_expired','{"reason":"response_window_elapsed"}'::jsonb);
+    kind:='response_expired'; request_id:=r.id; account_id:=r.account_id; client_name:=r.client_name;
+    return next;
+  end loop;
+
+  for c in
+    select e.* from public.extra_stop_requests e
+    join public.accounts a on a.id=e.account_id
+    cross join lateral (select
+      public.quick_stop_window_instant(e.arrival_date,e.arrival_start,coalesce(nullif(a.timezone,''),'America/New_York')) as start_at,
+      public.quick_stop_window_instant(e.arrival_date,e.arrival_end,coalesce(nullif(a.timezone,''),'America/New_York')) as end_at
+    ) w
+    where e.status in ('confirmed','en_route','arrived') and e.no_show_reported_at is null
+      and e.paid_at is not null and e.paid_at<=v_now and e.job_id is not null and e.payment_id is not null
+      and e.arrival_date <= (v_now at time zone 'UTC')::date + 1
+      and (p_account_id is null or e.account_id=p_account_id)
+      and w.start_at<w.end_at and w.end_at + interval '2 hours'<v_now
+      and exists(select 1 from public.payments p0 where p0.id=e.payment_id and p0.account_id=e.account_id
+        and p0.status in ('paid','refunded') and p0.paid_at is not null)
+      and exists(select 1 from public.jobs j where j.id=e.job_id and j.account_id=e.account_id)
+    order by w.end_at,e.id limit p_limit
+  loop
+    select * into p from public.payments p0 where p0.id=c.payment_id and p0.account_id=c.account_id for update skip locked;
+    if not found or p.status not in ('paid','refunded') or p.paid_at is null then continue; end if;
+    select * into r from public.extra_stop_requests e where e.id=c.id and e.account_id=c.account_id for update skip locked;
+    if not found or r.payment_id is distinct from c.payment_id or r.status not in ('confirmed','en_route','arrived')
+      or r.no_show_reported_at is not null or r.paid_at is null or r.paid_at>v_now or r.job_id is null then continue; end if;
+    select coalesce(nullif(a.timezone,''),'America/New_York') into v_zone from public.accounts a where a.id=r.account_id;
+    v_start:=public.quick_stop_window_instant(r.arrival_date,r.arrival_start,v_zone);
+    v_end:=public.quick_stop_window_instant(r.arrival_date,r.arrival_end,v_zone);
+    if v_start is null or v_end is null or v_start>=v_end or v_end + interval '2 hours'>=v_now then continue; end if;
+    update public.jobs j set status='complete' where j.id=r.job_id and j.account_id=r.account_id;
+    if not found then continue; end if;
+    update public.extra_stop_requests e set status='completed',completed_at=v_now,updated_at=v_now where e.id=r.id;
+    insert into public.extra_stop_events(account_id,request_id,actor,from_status,to_status,meta)
+      values(r.account_id,r.id,'system',r.status,'completed','{"reason":"auto_complete_after_window"}'::jsonb);
+    kind:='auto_completed'; request_id:=r.id; account_id:=r.account_id; client_name:=r.client_name;
+    return next;
+  end loop;
+end $$;
+
+create index if not exists quick_stop_payment_sweep_idx on public.extra_stop_requests(payment_deadline_at,id)
+  where status='awaiting_customer_payment' and paid_at is null;
+create index if not exists quick_stop_response_sweep_idx on public.extra_stop_requests(response_deadline_at,id)
+  where status in ('awaiting_contractor','more_information_requested') and paid_at is null;
+create index if not exists quick_stop_completion_sweep_idx on public.extra_stop_requests(arrival_date,id)
+  where status in ('confirmed','en_route','arrived') and no_show_reported_at is null;
+
+revoke all on function public.quick_stop_window_instant(date,time,text) from public,anon,authenticated;
+revoke all on function public.sweep_quick_stop_requests(uuid,integer) from public,anon,authenticated;
+grant execute on function public.quick_stop_window_instant(date,time,text) to service_role;
+grant execute on function public.sweep_quick_stop_requests(uuid,integer) to service_role;
+
+commit;
+
+-- Source: migrations/20260914133059_quick_stop_lifecycle_guard.sql
+-- Scheduling can close while refunds/disputes remain open. This predicate mirrors
+-- QUICK_STOP_TRANSITIONS and protects every writer, including older webhooks.
+create or replace function public.quick_stop_can_transition(p_from text, p_to text)
+returns boolean language sql immutable security invoker set search_path = '' as $$
+  select p_to = any(case p_from
+    when 'requested' then array['awaiting_contractor','contractor_declined']
+    when 'awaiting_contractor' then array['contractor_offer_sent','awaiting_customer_payment','more_information_requested','contractor_declined','offer_expired']
+    when 'more_information_requested' then array['awaiting_contractor','contractor_offer_sent','awaiting_customer_payment','contractor_declined','offer_expired']
+    when 'contractor_declined' then array['refunded']
+    when 'contractor_offer_sent' then array['awaiting_customer_payment','offer_expired','customer_declined','contractor_canceled']
+    when 'awaiting_customer_payment' then array['confirmed','offer_expired','customer_declined','customer_canceled','contractor_canceled']
+    when 'offer_expired' then array['refunded']
+    when 'customer_declined' then array['refunded']
+    when 'confirmed' then array['en_route','arrived','completed','customer_canceled','contractor_canceled','no_show_confirmed','refunded','disputed']
+    when 'en_route' then array['arrived','completed','customer_canceled','contractor_canceled','no_show_confirmed','refunded','disputed']
+    when 'arrived' then array['completed','customer_canceled','contractor_canceled','refunded','disputed']
+    when 'completed' then array['no_show_confirmed','refunded','disputed']
+    when 'customer_canceled' then array['refunded','disputed']
+    when 'contractor_canceled' then array['refunded','disputed']
+    when 'no_show_reported' then array['no_show_confirmed','completed','refunded','disputed']
+    when 'no_show_confirmed' then array['refunded','disputed']
+    when 'refunded' then array['disputed']
+    when 'disputed' then array['refunded','completed','no_show_confirmed']
+    else array[]::text[] end);
+$$;
+revoke all on function public.quick_stop_can_transition(text,text) from public, anon;
+grant execute on function public.quick_stop_can_transition(text,text) to authenticated, service_role;
+
+create or replace function public.enforce_quick_stop_transition()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' then
+    if current_user = 'authenticated' and (
+      new.status not in ('requested','awaiting_contractor')
+      or new.job_id is not null or new.payment_id is not null or new.paid_at is not null
+      or coalesce(new.refund_cents,0) <> 0 or new.refund_due_cents is not null
+      or new.refund_state <> 'none'
+      or new.no_show_confirmed_at is not null or new.no_show_reported_at is not null
+    ) then
+      raise exception 'Quick Stop booking and payment state is server managed' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+  -- Office users can advance field-work states, but payment/refund evidence and
+  -- enforcement outcomes are written only by the authorized server operations.
+  if current_user = 'authenticated' and (
+    new.account_id is distinct from old.account_id
+    or new.job_id is distinct from old.job_id
+    or new.arrival_date is distinct from old.arrival_date
+    or new.arrival_start is distinct from old.arrival_start
+    or new.arrival_end is distinct from old.arrival_end
+    or new.fee_cents is distinct from old.fee_cents
+    or new.diagnostic_fee_cents is distinct from old.diagnostic_fee_cents
+    or new.payment_id is distinct from old.payment_id
+    or new.paid_at is distinct from old.paid_at
+    or new.refund_cents is distinct from old.refund_cents
+    or new.refund_due_cents is distinct from old.refund_due_cents
+    or new.refund_state is distinct from old.refund_state
+    or new.no_show_confirmed_at is distinct from old.no_show_confirmed_at
+    or new.no_show_reported_at is distinct from old.no_show_reported_at
+    or (new.status is distinct from old.status and new.status not in
+      ('contractor_declined','more_information_requested','en_route','arrived','completed'))
+    or (new.status is distinct from old.status and old.status in
+      ('disputed','refunded','no_show_reported','no_show_confirmed'))
+  ) then
+    raise exception 'Quick Stop payment and enforcement state is server managed' using errcode = '42501';
+  end if;
+  if new.status is distinct from old.status
+    and not public.quick_stop_can_transition(old.status, new.status) then
+    raise exception 'Quick Stop cannot move from % to %', old.status, new.status using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.enforce_quick_stop_transition() from public, anon, authenticated;
+drop trigger if exists extra_stop_lifecycle_guard on public.extra_stop_requests;
+create trigger extra_stop_lifecycle_guard before insert or update on public.extra_stop_requests
+for each row execute function public.enforce_quick_stop_transition();
+
+create index if not exists extra_stop_interrupted_offer_idx on public.extra_stop_requests(updated_at,id)
+  where status = 'contractor_offer_sent';
+
+-- Source: migrations/20260914134359_quick_stop_no_show_lock.sql
+begin;
+
+-- Keep the idempotency marker away from owner-writable request columns. One
+-- verified visit can affect enforcement once, even if staff later dispute or
+-- refund it, a process retries, or somebody clears the account's lock manually.
+create table public.quick_stop_no_show_enforcements (
+  request_id uuid primary key references public.extra_stop_requests(id) on delete cascade,
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  applied_at timestamptz not null default clock_timestamp(),
+  result jsonb not null
+);
+alter table public.quick_stop_no_show_enforcements enable row level security;
+revoke all on public.quick_stop_no_show_enforcements from public,anon,authenticated;
+grant select,insert on public.quick_stop_no_show_enforcements to service_role;
+
+create or replace function public.apply_quick_stop_no_show_lock(p_account_id uuid,p_request_id uuid)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare
+  a public.accounts%rowtype;
+  r public.extra_stop_requests%rowtype;
+  v_saved jsonb;
+  v_result jsonb;
+  v_anchor timestamptz;
+  v_candidate_until timestamptz;
+  v_now timestamptz := clock_timestamp();
+  v_count90 integer;
+  v_count180 integer;
+  v_prior integer;
+  v_tier integer;
+  v_days integer;
+  v_reason text;
+  v_changed boolean := false;
+begin
+  -- Serialize all enforcement decisions for the account. Cancellation/capture
+  -- transactions finish before calling this function, and never acquire this
+  -- account lock while holding the request lock.
+  select * into a from public.accounts where id=p_account_id for update;
+  if not found then raise exception 'Account not found'; end if;
+  select result into v_saved from public.quick_stop_no_show_enforcements
+    where request_id=p_request_id and account_id=p_account_id;
+  if found then return v_saved || jsonb_build_object('changed',false); end if;
+
+  select * into r from public.extra_stop_requests
+    where id=p_request_id and account_id=p_account_id for update;
+  if not found or r.no_show_confirmed_at is null or r.no_show_confirmed_at>v_now then
+    raise exception 'A confirmed no-show is required for enforcement';
+  end if;
+
+  -- Report timestamps, rather than retry/worker clocks, determine duration.
+  -- Use the latest committed report so an older report committed out of order
+  -- still escalates the latest incident correctly. The confirmation timestamp
+  -- remains evidence after a request moves to refunded or disputed.
+  select max(e.no_show_confirmed_at) into v_anchor from public.extra_stop_requests e
+    where e.account_id=p_account_id and e.no_show_confirmed_at<=v_now;
+  select
+    count(*) filter(where e.no_show_confirmed_at>=v_anchor-interval '2160 hours'),
+    count(*),
+    count(*) filter(where e.id<>p_request_id)
+    into v_count90,v_count180,v_prior
+    from public.extra_stop_requests e
+    where e.account_id=p_account_id and e.no_show_confirmed_at<=v_anchor
+      and e.no_show_confirmed_at>=v_anchor-interval '4320 hours';
+  if v_count180>=3 then
+    v_tier:=3; v_days:=3650;
+    v_reason:='Third no-show within 180 days — Quick Stop disabled pending staff review.';
+  elsif v_count90>=2 then
+    v_tier:=2; v_days:=30;
+    v_reason:='Second no-show within 90 days — Quick Stop locked for 30 days.';
+  else
+    v_tier:=1; v_days:=10;
+    v_reason:='No-show reported — Quick Stop locked for 10 days.';
+  end if;
+  v_candidate_until:=v_anchor+make_interval(secs=>v_days*86400);
+  if a.extra_stop_locked_until is null or a.extra_stop_locked_until<v_candidate_until then
+    update public.accounts set extra_stop_locked_until=v_candidate_until,extra_stop_lock_reason=v_reason
+      where id=p_account_id;
+    a.extra_stop_locked_until:=v_candidate_until;
+    a.extra_stop_lock_reason:=v_reason;
+    v_changed:=true;
+  end if;
+  -- A stronger preexisting manual or automatic suspension keeps both its expiry
+  -- and explanation. Save this request's outcome even when no change was needed.
+  v_result:=jsonb_build_object('tier',v_tier,'untilIso',a.extra_stop_locked_until,
+    'reason',a.extra_stop_lock_reason,'priorNoShows',v_prior,'changed',v_changed);
+  insert into public.quick_stop_no_show_enforcements(request_id,account_id,result)
+    values(p_request_id,p_account_id,v_result);
+  return v_result;
+end $$;
+
+revoke all on function public.apply_quick_stop_no_show_lock(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.apply_quick_stop_no_show_lock(uuid,uuid) to service_role;
+create index if not exists quick_stop_no_show_history_idx on public.extra_stop_requests(account_id,no_show_confirmed_at)
+  where no_show_confirmed_at is not null;
+
+commit;
+-- BEGIN contractor_lifecycle_send_ledger (20260914133327)
+-- Durable lifecycle intents. Apply before deploying the sender.
+create table public.contractor_lifecycle_sends (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  step_id text not null,
+  recipient text not null,
+  payload jsonb not null,
+  idempotency_key text not null unique,
+  provider_scope text not null,
+  state text not null check (state in ('sending','retry_wait','accepted','manual_review','cancelled')),
+  first_attempt_at timestamptz not null default now(),
+  attempts integer not null default 1 check (attempts between 1 and 3),
+  lease_token uuid,
+  lease_until timestamptz,
+  next_retry_at timestamptz,
+  provider_id text unique,
+  accepted_at timestamptz,
+  last_error text,
+  resolved_by text,
+  resolution text,
+  resolved_at timestamptz,
+  unique(account_id, step_id),
+  check (state <> 'sending' or (lease_token is not null and lease_until is not null)),
+  check (state <> 'accepted' or (provider_id is not null and accepted_at is not null))
+);
+alter table public.contractor_lifecycle_sends enable row level security;
+revoke all on public.contractor_lifecycle_sends from public, anon, authenticated;
+grant select, insert, update, delete on public.contractor_lifecycle_sends to service_role;
+create index contractor_lifecycle_sends_attention_idx on public.contractor_lifecycle_sends(state, first_attempt_at)
+  where state in ('sending','retry_wait','manual_review');
+
+create function public.claim_contractor_lifecycle_send(p_account_id uuid, p_step_id text, p_payload jsonb, p_provider_scope text)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare
+  v_row public.contractor_lifecycle_sends;
+  v_recipient text := lower(btrim(p_payload->>'to'));
+  v_id uuid := gen_random_uuid();
+  v_token uuid := gen_random_uuid();
+  v_now timestamptz := clock_timestamp();
+begin
+  if p_step_id is null or p_step_id !~ '^[a-z0-9_]{1,80}$'
+    or jsonb_typeof(p_payload->'to') is distinct from 'string'
+    or coalesce(v_recipient,'') = '' or jsonb_typeof(p_payload->'tags') is distinct from 'array'
+    or p_provider_scope is null or p_provider_scope !~ '^[a-f0-9]{64}$' then
+    raise exception 'Invalid lifecycle send intent';
+  end if;
+
+  -- Serialize different steps as well as repeat attempts for one workspace.
+  perform 1 from public.accounts where id=p_account_id
+    and test_marker is null and suspended_at is null for update;
+  if not found then return jsonb_build_object('action','blocked','reason','account_ineligible'); end if;
+
+  update public.contractor_lifecycle_sends set state='manual_review',last_error='retry_window_or_attempt_limit'
+    where account_id=p_account_id and state in ('sending','retry_wait')
+      and first_attempt_at+interval '23 hours'<=v_now;
+
+  select * into v_row from public.contractor_lifecycle_sends
+    where account_id=p_account_id and step_id=p_step_id for update;
+  if found and v_row.state='accepted' then
+    return jsonb_build_object('action','already_sent','provider_id',v_row.provider_id);
+  end if;
+  if v_row.id is not null and v_row.state='cancelled' then
+    return jsonb_build_object('action','blocked','reason','send_cancelled');
+  end if;
+  if v_row.id is not null and v_row.state='manual_review' then
+    return jsonb_build_object('action','review','reason',v_row.last_error,'id',v_row.id);
+  end if;
+
+  -- These safety reads are under the same transaction as the claim.
+  if not exists (select 1 from public.owner_emails_for_accounts(array[p_account_id]) o where lower(btrim(o.email))=v_recipient)
+    or exists (select 1 from public.email_suppression where account_id=p_account_id and lower(email)=v_recipient) then
+    return jsonb_build_object('action','blocked','reason','recipient_no_longer_eligible');
+  end if;
+  if p_step_id in ('nudge_incomplete_stripe','stripe_payout_day4')
+    and exists(select 1 from public.accounts where id=p_account_id and connect_onboarded=true) then
+    return jsonb_build_object('action','blocked','reason','payment_setup_complete');
+  end if;
+  if p_step_id='nudge_zero_quotes' and exists(select 1 from public.jobs where account_id=p_account_id and quoted_amount>0) then
+    return jsonb_build_object('action','blocked','reason','quote_already_created');
+  end if;
+
+  if v_row.id is not null then
+    if v_row.recipient <> v_recipient or v_row.provider_scope <> p_provider_scope then
+      update public.contractor_lifecycle_sends set state='manual_review',last_error='recipient_or_provider_changed'
+        where id=v_row.id;
+      return jsonb_build_object('action','review','reason','recipient_or_provider_changed','id',v_row.id);
+    end if;
+    if v_row.state='sending' and v_row.lease_until>v_now then
+      return jsonb_build_object('action','busy','reason','send_in_progress');
+    end if;
+    -- Never extend the first-attempt window. Leave an hour of margin before
+    -- the provider's 24-hour key expiry, and bound attempts independently.
+    if v_row.first_attempt_at+interval '23 hours' <= v_now or v_row.attempts>=3 then
+      update public.contractor_lifecycle_sends set state='manual_review',last_error='retry_window_or_attempt_limit'
+        where id=v_row.id;
+      return jsonb_build_object('action','review','reason','retry_window_or_attempt_limit','id',v_row.id);
+    end if;
+    if v_row.next_retry_at>v_now then return jsonb_build_object('action','busy','reason','retry_backoff'); end if;
+    update public.contractor_lifecycle_sends set state='sending',attempts=attempts+1,
+      lease_token=v_token,lease_until=v_now+interval '5 minutes',next_retry_at=null
+      where id=v_row.id returning * into v_row;
+  else
+    if exists(select 1 from public.account_events where account_id=p_account_id
+      and kind='contractor_lifecycle_email_sent' and meta->>'step_id'=p_step_id) then
+      return jsonb_build_object('action','already_sent');
+    end if;
+    if exists(select 1 from public.contractor_lifecycle_sends where account_id=p_account_id and state='manual_review') then
+      return jsonb_build_object('action','review','reason','unresolved_lifecycle_send');
+    end if;
+    if exists(select 1 from public.contractor_lifecycle_sends where account_id=p_account_id
+      and (state in ('sending','retry_wait','manual_review') or accepted_at>v_now-interval '48 hours'))
+      or exists(select 1 from public.account_events where account_id=p_account_id
+        and kind='contractor_lifecycle_email_sent' and created_at>v_now-interval '48 hours') then
+      return jsonb_build_object('action','blocked','reason','lifecycle_cadence_or_unresolved_send');
+    end if;
+    insert into public.contractor_lifecycle_sends(id,account_id,step_id,recipient,payload,idempotency_key,provider_scope,state,
+      first_attempt_at,lease_token,lease_until)
+    values(v_id,p_account_id,p_step_id,v_recipient,
+      jsonb_set(p_payload,'{tags}',coalesce((select jsonb_agg(tag) from jsonb_array_elements(p_payload->'tags') tag
+        where tag->>'name' not in ('lifecycle_send_id','account_id','step','kind')),'[]'::jsonb) || jsonb_build_array(
+          jsonb_build_object('name','kind','value','contractor_lifecycle'),
+          jsonb_build_object('name','account_id','value',p_account_id::text),
+          jsonb_build_object('name','step','value',p_step_id),
+          jsonb_build_object('name','lifecycle_send_id','value',v_id::text))),
+      'contractor-lifecycle/'||p_account_id::text||'/'||p_step_id,p_provider_scope,'sending',v_now,v_token,v_now+interval '5 minutes')
+    returning * into v_row;
+  end if;
+  return jsonb_build_object('action','send','id',v_row.id,'token',v_row.lease_token,
+    'payload',v_row.payload,'key',v_row.idempotency_key,'retry_before',v_row.first_attempt_at+interval '23 hours');
+end $$;
+revoke all on function public.claim_contractor_lifecycle_send(uuid,text,jsonb,text) from public, anon, authenticated;
+grant execute on function public.claim_contractor_lifecycle_send(uuid,text,jsonb,text) to service_role;
+
+create function public.finish_contractor_lifecycle_send(
+  p_id uuid,p_account_id uuid,p_token uuid,p_provider_id text default null,p_error text default null
+) returns boolean language plpgsql security invoker set search_path = '' as $$
+declare v_row public.contractor_lifecycle_sends;
+begin
+  select * into v_row from public.contractor_lifecycle_sends where id=p_id and account_id=p_account_id for update;
+  if not found then return false; end if;
+  if v_row.state='accepted' then return v_row.provider_id=p_provider_id; end if;
+  if v_row.state<>'sending' or v_row.lease_token is distinct from p_token then return false; end if;
+  if nullif(btrim(p_provider_id),'') is not null then
+    update public.contractor_lifecycle_sends set state='accepted',provider_id=p_provider_id,accepted_at=clock_timestamp(),
+      lease_token=null,lease_until=null,next_retry_at=null,last_error=null where id=p_id;
+  else
+    update public.contractor_lifecycle_sends set
+      state=case when attempts>=3 or first_attempt_at+interval '23 hours'<=clock_timestamp() then 'manual_review' else 'retry_wait' end,
+      lease_token=null,lease_until=null,next_retry_at=clock_timestamp()+interval '5 minutes',
+      last_error=left(coalesce(p_error,'provider_outcome_unknown'),2000) where id=p_id;
+  end if;
+  return true;
+end $$;
+revoke all on function public.finish_contractor_lifecycle_send(uuid,uuid,uuid,text,text) from public, anon, authenticated;
+grant execute on function public.finish_contractor_lifecycle_send(uuid,uuid,uuid,text,text) to service_role;
+
+-- A signed callback proves provider acceptance even if the send response or
+-- its local acknowledgement was lost. It never changes tenant/recipient binding.
+create function public.confirm_contractor_lifecycle_send(p_id uuid,p_account_id uuid,p_recipient text,p_provider_id text)
+returns boolean language plpgsql security invoker set search_path = '' as $$
+declare v_count integer;
+begin
+  if nullif(btrim(p_provider_id),'') is null then return false; end if;
+  update public.contractor_lifecycle_sends set state=case when state='cancelled' then 'cancelled' else 'accepted' end,provider_id=p_provider_id,
+    accepted_at=coalesce(accepted_at,clock_timestamp()),lease_token=null,lease_until=null,next_retry_at=null
+    where id=p_id and account_id=p_account_id and recipient=lower(btrim(p_recipient))
+      and (provider_id is null or provider_id=p_provider_id);
+  get diagnostics v_count=row_count;
+  return v_count=1;
+end $$;
+revoke all on function public.confirm_contractor_lifecycle_send(uuid,uuid,text,text) from public, anon, authenticated;
+grant execute on function public.confirm_contractor_lifecycle_send(uuid,uuid,text,text) to service_role;
+
+-- Evidence-based operator closeout never creates a fresh send attempt.
+create function public.resolve_contractor_lifecycle_send(
+  p_id uuid,p_account_id uuid,p_actor text,p_evidence text,p_provider_id text default null
+) returns boolean language plpgsql security invoker set search_path = '' as $$
+declare v_count integer;
+begin
+  if length(btrim(coalesce(p_actor,'')))<3 or length(btrim(coalesce(p_evidence,'')))<20 then
+    raise exception 'Operator and verified recovery evidence are required';
+  end if;
+  update public.contractor_lifecycle_sends set
+    state=case when nullif(btrim(p_provider_id),'') is null then 'cancelled' else 'accepted' end,
+    provider_id=nullif(btrim(p_provider_id),''),
+    accepted_at=case when nullif(btrim(p_provider_id),'') is not null then clock_timestamp() else null end,
+    lease_token=null,lease_until=null,next_retry_at=null,resolved_by=left(p_actor,200),
+    resolution=left(p_evidence,4000),resolved_at=clock_timestamp()
+    where id=p_id and account_id=p_account_id and (state in ('manual_review','retry_wait')
+      or (state='sending' and lease_until<=clock_timestamp()));
+  get diagnostics v_count=row_count;
+  return v_count=1;
+end $$;
+revoke all on function public.resolve_contractor_lifecycle_send(uuid,uuid,text,text,text) from public, anon, authenticated;
+grant execute on function public.resolve_contractor_lifecycle_send(uuid,uuid,text,text,text) to service_role;
+notify pgrst, 'reload schema';
+-- END contractor_lifecycle_send_ledger
+
+-- BEGIN document_email_send_ledger (20260914135714)
+-- Saved revisions exclude generated links/PDF metadata and harmless status writes.
+alter table public.jobs add column document_email_revision uuid not null default gen_random_uuid();
+alter table public.invoices add column document_email_revision uuid not null default gen_random_uuid();
+
+create function public.bump_job_email_revision() returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+  new.document_email_revision := case when
+    row(new.client_name,new.client_email,new.ref,new.scope,new.quoted_amount,new.quote_items)
+      is distinct from row(old.client_name,old.client_email,old.ref,old.scope,old.quoted_amount,old.quote_items)
+    then gen_random_uuid() else old.document_email_revision end;
+  return new;
+end $$;
+create trigger job_email_revision before update on public.jobs for each row execute function public.bump_job_email_revision();
+
+create function public.bump_invoice_email_revision() returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+  new.document_email_revision := case when
+    row(new.ref,new.total,new.discount_percent,new.tax_rate,new.job_id)
+      is distinct from row(old.ref,old.total,old.discount_percent,old.tax_rate,old.job_id)
+    or (pg_trigger_depth()>1 and new.document_email_revision is distinct from old.document_email_revision)
+    then gen_random_uuid() else old.document_email_revision end;
+  return new;
+end $$;
+create trigger invoice_email_revision before update on public.invoices for each row execute function public.bump_invoice_email_revision();
+
+create function public.touch_invoice_email_revision() returns trigger language plpgsql security invoker set search_path='' as $$
+begin
+  if tg_op='UPDATE' and row(new.invoice_id,new.description,new.amount,new.sort_order)
+    is not distinct from row(old.invoice_id,old.description,old.amount,old.sort_order) then return new; end if;
+  if tg_op in ('UPDATE','DELETE') then
+    update public.invoices set document_email_revision=gen_random_uuid() where id=old.invoice_id;
+  end if;
+  if tg_op='INSERT' or (tg_op='UPDATE' and new.invoice_id<>old.invoice_id) then
+    update public.invoices set document_email_revision=gen_random_uuid() where id=new.invoice_id;
+  end if;
+  return null;
+end $$;
+create trigger invoice_item_email_revision after insert or update or delete on public.invoice_items
+  for each row execute function public.touch_invoice_email_revision();
+revoke all on function public.bump_job_email_revision(), public.bump_invoice_email_revision(), public.touch_invoice_email_revision() from public,anon,authenticated;
+
+create table public.document_email_sends (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  invoice_id uuid references public.invoices(id) on delete cascade,
+  kind text not null check(kind in ('client_quote','invoice')),
+  document_id uuid not null,
+  revision text not null,
+  recipient text not null,
+  payload jsonb not null,
+  fallback_payload jsonb,
+  provider_scope text not null,
+  state text not null check(state in ('sending','retry_wait','accepted','manual_review','cancelled')),
+  phase text not null default 'primary' check(phase in ('primary','fallback')),
+  first_attempt_at timestamptz not null default now(),
+  attempts integer not null default 1 check(attempts between 1 and 3),
+  lease_token uuid,
+  lease_until timestamptz,
+  next_retry_at timestamptz,
+  provider_id text unique,
+  accepted_at timestamptz,
+  last_error text,
+  resolved_by text,
+  resolution text,
+  resolved_at timestamptz,
+  unique(account_id,kind,document_id,revision),
+  check((kind='invoice' and invoice_id is not null and invoice_id=document_id) or (kind='client_quote' and invoice_id is null and job_id=document_id)),
+  check(state<>'sending' or (lease_token is not null and lease_until is not null)),
+  check(state<>'accepted' or (provider_id is not null and accepted_at is not null)),
+  check(phase<>'fallback' or fallback_payload is not null)
+);
+alter table public.document_email_sends enable row level security;
+revoke all on public.document_email_sends from public,anon,authenticated;
+grant select,insert,update,delete on public.document_email_sends to service_role;
+create index document_email_sends_job_idx on public.document_email_sends(job_id);
+create index document_email_sends_invoice_idx on public.document_email_sends(invoice_id) where invoice_id is not null;
+create index document_email_sends_attention_idx on public.document_email_sends(state,first_attempt_at)
+  where state in ('sending','retry_wait','manual_review');
+
+create function public.claim_document_email_send(
+  p_account_id uuid,p_job_id uuid,p_invoice_id uuid,p_job_revision uuid,p_invoice_revision uuid,
+  p_payload jsonb,p_provider_scope text
+) returns jsonb language plpgsql security invoker set search_path='' as $$
+declare
+  v_job public.jobs;
+  v_invoice public.invoices;
+  v_row public.document_email_sends;
+  v_kind text := case when p_invoice_id is null then 'client_quote' else 'invoice' end;
+  v_document uuid := coalesce(p_invoice_id,p_job_id);
+  v_revision text;
+  v_to text := lower(btrim(p_payload->>'to'));
+  v_id uuid := gen_random_uuid();
+  v_token uuid := gen_random_uuid();
+  v_now timestamptz;
+begin
+  if p_job_revision is null or jsonb_typeof(p_payload->'to') is distinct from 'string'
+    or coalesce(v_to,'')='' or jsonb_typeof(p_payload->'tags') is distinct from 'array'
+    or p_provider_scope is null or p_provider_scope !~ '^[a-f0-9]{64}$' then raise exception 'Invalid document email intent'; end if;
+  -- Serialize document claims and reject cross-workspace or stale source data.
+  select * into v_job from public.jobs where id=p_job_id and account_id=p_account_id and deleted_at is null for update;
+  if not found then return jsonb_build_object('action','blocked','reason','document_unavailable'); end if;
+  if not exists(select 1 from public.accounts where id=p_account_id and suspended_at is null and test_marker is null) then
+    return jsonb_build_object('action','blocked','reason','account_ineligible'); end if;
+  if v_job.document_email_revision<>p_job_revision or lower(btrim(v_job.client_email)) is distinct from v_to then
+    return jsonb_build_object('action','blocked','reason','document_or_recipient_changed'); end if;
+  v_revision := p_job_revision::text;
+  if p_invoice_id is not null then
+    select * into v_invoice from public.invoices where id=p_invoice_id and account_id=p_account_id and job_id=p_job_id for update;
+    if not found or p_invoice_revision is null or v_invoice.document_email_revision<>p_invoice_revision then
+      return jsonb_build_object('action','blocked','reason','invoice_changed_or_unavailable'); end if;
+    if v_invoice.status in ('paid','void') then return jsonb_build_object('action','blocked','reason','invoice_closed'); end if;
+    v_revision := v_revision||'/'||p_invoice_revision::text;
+  end if;
+  -- Marketing opt-outs do not block these requested transactional documents.
+  if exists(select 1 from public.email_suppression where account_id=p_account_id and lower(email)=v_to
+    and reason in ('hard_bounce','complaint','provider_suppressed')) then
+    return jsonb_build_object('action','blocked','reason','recipient_delivery_block'); end if;
+  v_now := clock_timestamp();
+  update public.document_email_sends set state='manual_review',last_error='retry_window_expired'
+    where account_id=p_account_id and kind=v_kind and document_id=v_document
+      and state in ('sending','retry_wait') and first_attempt_at+interval '23 hours'<=v_now;
+  select * into v_row from public.document_email_sends where account_id=p_account_id
+    and kind=v_kind and document_id=v_document and revision=v_revision for update;
+  if found then
+    if v_row.state='accepted' then return jsonb_build_object('action','already_sent','provider_id',v_row.provider_id); end if;
+    if v_row.state in ('manual_review','cancelled') then return jsonb_build_object('action','review','id',v_row.id,'reason',v_row.state); end if;
+    if v_row.provider_scope<>p_provider_scope then
+      update public.document_email_sends set state='manual_review',last_error='provider_credential_changed' where id=v_row.id;
+      return jsonb_build_object('action','review','id',v_row.id,'reason','provider_credential_changed'); end if;
+    if v_row.state='sending' and v_row.lease_until>v_now or v_row.next_retry_at>v_now then
+      return jsonb_build_object('action','busy','reason','send_in_progress_or_backoff'); end if;
+    if v_row.attempts>=3 then
+      update public.document_email_sends set state='manual_review',last_error='attempt_limit' where id=v_row.id;
+      return jsonb_build_object('action','review','id',v_row.id,'reason','attempt_limit'); end if;
+    update public.document_email_sends set state='sending',attempts=attempts+1,lease_token=v_token,
+      lease_until=v_now+interval '5 minutes',next_retry_at=null where id=v_row.id returning * into v_row;
+  else
+    -- Editing a document cannot sidestep an unresolved provider outcome.
+    if exists(select 1 from public.document_email_sends where account_id=p_account_id and kind=v_kind
+      and document_id=v_document and state in ('sending','retry_wait','manual_review')) then
+      return jsonb_build_object('action','review','reason','previous_revision_unresolved'); end if;
+    insert into public.document_email_sends(id,account_id,job_id,invoice_id,kind,document_id,revision,recipient,payload,
+      provider_scope,state,first_attempt_at,lease_token,lease_until)
+    values(v_id,p_account_id,p_job_id,p_invoice_id,v_kind,v_document,v_revision,v_to,
+      jsonb_set(p_payload,'{tags}',coalesce((select jsonb_agg(tag) from jsonb_array_elements(p_payload->'tags') tag
+        where tag->>'name' not in ('document_send_id','send_phase','account_id','kind')),'[]'::jsonb)||jsonb_build_array(
+          jsonb_build_object('name','kind','value',v_kind),jsonb_build_object('name','account_id','value',p_account_id::text),
+          jsonb_build_object('name','document_send_id','value',v_id::text),jsonb_build_object('name','send_phase','value','primary'))),
+      p_provider_scope,'sending',v_now,v_token,v_now+interval '5 minutes') returning * into v_row;
+  end if;
+  return jsonb_build_object('action','send','id',v_row.id,'token',v_row.lease_token,'phase',v_row.phase,
+    'payload',case when v_row.phase='fallback' then v_row.fallback_payload else v_row.payload end,
+    'key','document-email/'||v_row.id::text||'/'||v_row.phase,'retry_before',v_row.first_attempt_at+interval '23 hours');
+end $$;
+revoke all on function public.claim_document_email_send(uuid,uuid,uuid,uuid,uuid,jsonb,text) from public,anon,authenticated;
+grant execute on function public.claim_document_email_send(uuid,uuid,uuid,uuid,uuid,jsonb,text) to service_role;
+
+-- Advance only after a definitive rejection of the exact original From domain.
+-- The durable phase survives crashes; retries never switch back to primary.
+create function public.fallback_document_email_send(p_id uuid,p_account_id uuid,p_token uuid,p_error_name text,p_error_message text)
+returns jsonb language plpgsql security invoker set search_path='' as $$
+declare v_row public.document_email_sends; v_address text; v_domain text; v_rejected text; v_from text; v_payload jsonb;
+begin
+  select * into v_row from public.document_email_sends where id=p_id and account_id=p_account_id for update;
+  if not found or v_row.state<>'sending' or v_row.phase<>'primary' or v_row.lease_token is distinct from p_token
+    or v_row.lease_until<=clock_timestamp() or v_row.first_attempt_at+interval '23 hours'<=clock_timestamp()
+    or p_error_name is distinct from 'validation_error' then return null; end if;
+  if not exists(select 1 from public.accounts a join public.jobs j on j.account_id=a.id
+      where a.id=p_account_id and a.suspended_at is null and a.test_marker is null and j.id=v_row.job_id and j.deleted_at is null
+        and j.document_email_revision::text=split_part(v_row.revision,'/',1)
+        and lower(btrim(j.client_email))=v_row.recipient)
+    or (v_row.invoice_id is not null and not exists(select 1 from public.invoices i where i.id=v_row.invoice_id
+      and i.account_id=p_account_id and i.job_id=v_row.job_id and i.status not in ('paid','void')
+      and i.document_email_revision::text=split_part(v_row.revision,'/',2)))
+    or exists(select 1 from public.email_suppression where account_id=p_account_id and lower(email)=v_row.recipient
+      and reason in ('hard_bounce','complaint','provider_suppressed')) then return null; end if;
+  v_from := v_row.payload->>'from';
+  v_address := coalesce(substring(v_from from '<([^<>]+)>\s*$'),btrim(v_from));
+  v_domain := lower(split_part(v_address,'@',2));
+  v_rejected := lower(substring(p_error_message from '(?i)^The\s+`?([^\s`]+)`?\s+domain is not verified\.'));
+  if coalesce(v_domain,'')='' or v_domain='letsgetquoted.com' or v_domain like '%.letsgetquoted.com'
+    or v_domain is distinct from v_rejected then return null; end if;
+  v_from := case when v_from like '%<%' then regexp_replace(v_from,'<[^<>]+>\s*$','<hello@letsgetquoted.com>') else 'hello@letsgetquoted.com' end;
+  v_payload := jsonb_set(v_row.payload,'{from}',to_jsonb(v_from));
+  v_payload := jsonb_set(v_payload,'{tags}',(select jsonb_agg(case when tag->>'name'='send_phase'
+    then jsonb_build_object('name','send_phase','value','fallback') else tag end) from jsonb_array_elements(v_payload->'tags') tag));
+  update public.document_email_sends set phase='fallback',fallback_payload=v_payload,last_error=left(p_error_message,2000) where id=p_id;
+  return jsonb_build_object('action','send','id',v_row.id,'token',v_row.lease_token,'phase','fallback','payload',v_payload,
+    'key','document-email/'||v_row.id::text||'/fallback','retry_before',v_row.first_attempt_at+interval '23 hours');
+end $$;
+revoke all on function public.fallback_document_email_send(uuid,uuid,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.fallback_document_email_send(uuid,uuid,uuid,text,text) to service_role;
+
+create function public.finish_document_email_send(p_id uuid,p_account_id uuid,p_token uuid,p_provider_id text default null,p_error text default null)
+returns boolean language plpgsql security invoker set search_path='' as $$
+declare v_row public.document_email_sends;
+begin
+  select * into v_row from public.document_email_sends where id=p_id and account_id=p_account_id for update;
+  if not found then return false; end if;
+  if v_row.state='accepted' then return v_row.provider_id=p_provider_id; end if;
+  if v_row.state<>'sending' or v_row.lease_token is distinct from p_token then return false; end if;
+  if nullif(btrim(p_provider_id),'') is not null then
+    update public.document_email_sends set state='accepted',provider_id=p_provider_id,accepted_at=clock_timestamp(),
+      lease_token=null,lease_until=null,next_retry_at=null,last_error=null where id=p_id;
+  else
+    update public.document_email_sends set state=case when attempts>=3 or first_attempt_at+interval '23 hours'<=clock_timestamp()
+      then 'manual_review' else 'retry_wait' end,lease_token=null,lease_until=null,next_retry_at=clock_timestamp()+interval '5 minutes',
+      last_error=left(coalesce(p_error,'provider_outcome_unknown'),2000) where id=p_id;
+  end if;
+  return true;
+end $$;
+revoke all on function public.finish_document_email_send(uuid,uuid,uuid,text,text) from public,anon,authenticated;
+grant execute on function public.finish_document_email_send(uuid,uuid,uuid,text,text) to service_role;
+
+create function public.confirm_document_email_send(p_id uuid,p_account_id uuid,p_recipient text,p_provider_id text,p_phase text)
+returns boolean language plpgsql security invoker set search_path='' as $$
+declare v_count integer;
+begin
+  if nullif(btrim(p_provider_id),'') is null then return false; end if;
+  update public.document_email_sends set state=case when state='cancelled' then 'cancelled' else 'accepted' end,
+    provider_id=p_provider_id,accepted_at=coalesce(accepted_at,clock_timestamp()),lease_token=null,lease_until=null,next_retry_at=null
+    where id=p_id and account_id=p_account_id and recipient=lower(btrim(p_recipient)) and phase=p_phase
+      and (provider_id is null or provider_id=p_provider_id);
+  get diagnostics v_count=row_count;
+  return v_count=1;
+end $$;
+revoke all on function public.confirm_document_email_send(uuid,uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.confirm_document_email_send(uuid,uuid,text,text,text) to service_role;
+
+create function public.resolve_document_email_send(p_id uuid,p_account_id uuid,p_actor text,p_evidence text,p_provider_id text default null)
+returns boolean language plpgsql security invoker set search_path='' as $$
+declare v_count integer;
+begin
+  if length(btrim(coalesce(p_actor,'')))<3 or length(btrim(coalesce(p_evidence,'')))<20 then
+    raise exception 'Operator and verified recovery evidence are required'; end if;
+  update public.document_email_sends set state=case when nullif(btrim(p_provider_id),'') is null then 'cancelled' else 'accepted' end,
+    provider_id=nullif(btrim(p_provider_id),''),accepted_at=case when nullif(btrim(p_provider_id),'') is not null then clock_timestamp() else null end,
+    lease_token=null,lease_until=null,next_retry_at=null,resolved_by=left(p_actor,200),resolution=left(p_evidence,4000),resolved_at=clock_timestamp()
+    where id=p_id and account_id=p_account_id and (state in ('manual_review','retry_wait') or (state='sending' and lease_until<=clock_timestamp()));
+  get diagnostics v_count=row_count;
+  return v_count=1;
+end $$;
+revoke all on function public.resolve_document_email_send(uuid,uuid,text,text,text) from public,anon,authenticated;
+grant execute on function public.resolve_document_email_send(uuid,uuid,text,text,text) to service_role;
+notify pgrst,'reload schema';
+
+-- END document_email_send_ledger
+
+-- BEGIN email_send_recovery_monitoring (20260914142641)
+-- Read-only recovery signals: never claim/retry mail or advance its state here.
+create function public.email_send_recovery_queue(p_now timestamptz default now())
+returns table(source text,send_id uuid,account_id uuid,kind text,state text,phase text,attempts integer,
+  first_attempt_at timestamptz,retry_before timestamptz,reason text)
+language sql stable security invoker set search_path='' as $$
+  with sends as (
+    select 'lifecycle'::text as source,id as send_id,account_id,step_id as kind,state,'primary'::text as phase,
+      attempts,first_attempt_at,lease_until,next_retry_at
+    from public.contractor_lifecycle_sends where state in ('sending','retry_wait','manual_review')
+    union all
+    select 'document',id,account_id,kind,state,phase,attempts,first_attempt_at,lease_until,next_retry_at
+    from public.document_email_sends where state in ('sending','retry_wait','manual_review')
+  ), classified as (
+    select source,send_id,account_id,kind,state,phase,attempts,first_attempt_at,
+      first_attempt_at+interval '23 hours' as retry_before,
+      case when state='manual_review' then 'manual_review'
+        when first_attempt_at+interval '23 hours'<=p_now then 'retry_window_expired'
+        when state='sending' and lease_until>p_now then null
+        when attempts>=3 then 'attempt_limit'
+        when state='sending' and lease_until<=p_now-interval '5 minutes' then 'worker_stalled'
+        when state='retry_wait' and coalesce(next_retry_at,first_attempt_at)<=p_now-interval '10 minutes' then 'retry_overdue'
+        else null end as reason
+    from sends
+  )
+  select * from classified where reason is not null order by first_attempt_at,source,send_id;
+$$;
+revoke all on function public.email_send_recovery_queue(timestamptz) from public,anon,authenticated;
+grant execute on function public.email_send_recovery_queue(timestamptz) to service_role;
+create or replace function public.scan_operational_failures(p_crons jsonb default '[]')
+returns integer language plpgsql security invoker set search_path = '' as $$
+declare v_now timestamptz; v_count integer;
+begin
+  if jsonb_typeof(p_crons) <> 'array' then raise exception 'invalid cron configuration'; end if;
+  perform pg_advisory_xact_lock(782321905);
+  v_now := clock_timestamp();
+  with signals as (
+    select 'webhook:'||w.id as source_key, 'webhook' as category, w.id::text as reference,
+      w.created_at as occurred_at, 'Unresolved webhook failure; inspect the stored source event.' as detail,
+      'Open the failure by reference. Reconcile the original provider event, then use its supported replay with the original event ID. Mark resolved only after the expected effect is verified.' as action_required,
+      '/admin/failures#webhooks' as admin_path
+    from public.webhook_failures w where w.resolved_at is null
+    union all
+    select 'billing:'||b.id as source_key, 'billing' as category, b.id::text as reference, b.received_at as occurred_at,
+      'Billing event '||b.processing_status||'; scope='||b.event_scope||'; attempts='||b.attempt_count as detail,
+      'Inspect the billing event and original Stripe event ID. Repair the cause and resume the existing projection worker. Never create another Checkout or grant credits manually to replay an event.' as action_required,
+      '/admin/billing-operations' as admin_path
+    from public.billing_event_operational_classifications b
+    where b.requires_billing_action = true
+      and (b.processing_status='failed'
+        or (b.processing_status='ignored' and b.projection_result='test_mode_rehearsal_ignored')
+        or (b.processing_status='received' and b.received_at < v_now-interval '15 minutes')
+        or (b.processing_status='processing' and b.projection_lease_expires_at < v_now-interval '5 minutes'))
+    union all
+    select c.case_key as source_key, 'billing_configuration' as category, c.case_key as reference,
+      min(c.received_at) as occurred_at,
+      count(*)::text || ' non-live platform subscription event(s) rejected by billing mode configuration; origin and routing review open.' as detail,
+      'Inspect Stripe webhook endpoint configuration and rehearsal provenance. Verify destination environment routing before closing this case.' as action_required,
+      '/admin/billing-operations' as admin_path
+    from public.billing_event_operational_classifications c
+    where c.requires_configuration_review = true
+    group by c.case_key
+    union all
+    select 'settlement:'||s.id as source_key, 'billing' as category, s.id::text as reference,
+      coalesce(s.resolved_at, s.updated_at) as occurred_at,
+      'Overage settlement '||s.state||'; account='||s.account_id||'; error='||coalesce(s.recovery_reason, s.last_error, 'unknown')||'; chargeable_cents='||s.chargeable_cents as detail,
+      'Inspect settlement evidence and the original Stripe account/mode. Reconcile the existing invoice item with the revision-checked tool. Old or unknown attempts must remain held; never replace their key or create an item to discover whether one exists.', '/admin/billing-operations' as admin_path
+    from public.workspace_overage_settlements s
+    where s.state = 'failed' or s.recovery_reason is not null
+      or (s.state = 'submitted' and s.lease_expires_at < v_now - interval '10 minutes')
+      or (s.state = 'indeterminate' and s.first_submitted_at < v_now - interval '3 hours')
+    union all
+    select 'overage-backlog:'||a.account_id, 'billing', a.account_id::text, min(a.period_end),
+      'Ended overage periods remain unclosed for over three hourly runs.',
+      'Inspect pending usage finalization, inconsistent period ends and close failures. Confirm worker flags and repair the existing period; do not discard late usage.',
+      '/admin/billing-operations'
+    from public.workspace_overage_accruals a
+    where a.period_end < v_now - interval '3 hours'
+      and not exists(select 1 from public.workspace_overage_settlements s where s.account_id=a.account_id and s.period_start=a.period_start)
+      and not exists(select 1 from public.workspace_overage_settlements s where s.account_id=a.account_id and s.closed_at > v_now - interval '3 hours')
+    group by a.account_id
+    union all
+    select 'sms:'||e.id, 'sms', e.id::text,
+      coalesce(e.failed_at,e.indeterminate_at,s.failed_at,s.indeterminate_at,s.available_at,e.created_at),
+      'SMS event='||e.status||'; task='||coalesce(s.task_state,'none')||'; attempts='||coalesce(s.attempt_count,0)||'; code='||coalesce(s.last_error_code,'inspect_event'),
+      'Inspect the SMS event and provider message ID. For an unknown submission outcome, reconcile provider status before any retry. Resume only the existing supported task; do not compose a replacement message.', '/admin/messaging'
+    from public.sms_events e left join public.sms_delivery_tasks s on s.sms_event_id=e.id
+    where e.status in ('failed','indeterminate') or s.task_state in ('failed','indeterminate')
+      or (s.task_state='queued' and s.available_at < v_now-interval '15 minutes')
+      or (s.task_state='leased' and s.lease_expires_at < v_now-interval '5 minutes')
+    union all
+    select 'email-send:'||q.source||':'||q.send_id::text, 'email_send', q.send_id::text, q.first_attempt_at,
+      'Email recovery required; source='||q.source||'; reason='||q.reason||'; phase='||q.phase||'; attempts='||q.attempts,
+      'Inspect the saved send and provider outcome in Email recovery. Reconcile uncertain acceptance before retrying; use the existing sender only within its original window. Never reset its key or create a replacement message.',
+      '/admin/health#email-recovery'
+    from public.email_send_recovery_queue(v_now) q
+    union all
+    select 'dispute:'||p.id||':'||coalesce(p.stripe_dispute_id,'unknown'), 'dispute', p.id::text,
+      coalesce(p.disputed_at,p.requested_at), 'Payment dispute requires review; deadline='||coalesce(p.dispute_due_by::text,'not recorded'),
+      'Open the payment and its existing Stripe dispute. Check the evidence deadline and submit through the original dispute. Do not refund or create a second charge as a recovery step.', '/admin/money#disputes'
+    from public.payments p where p.status='disputed' and coalesce(p.dispute_status,'needs_response') not in ('won','lost','warning_closed')
+    union all
+    select 'cron:'||(cfg->>'job')||':'||coalesce(s.last_success::text,'never'), 'cron', cfg->>'job',
+      coalesce(c.started_at,v_now), case when c.id is null then 'Scheduled worker has no recorded run'
+        when c.ok=false then 'Latest scheduled worker run failed; run='||c.id
+        else 'Scheduled worker is overdue; last run='||c.id end,
+      'Inspect cron_runs for this job and the deployed flags. Read the failure reason. Use the existing authenticated, idempotent worker after repairing the cause; verify its durable result.', '/admin/health'
+    from jsonb_array_elements(p_crons) cfg
+    left join lateral (select r.id,r.started_at,r.ok from public.cron_runs r where r.job=cfg->>'job' order by r.started_at desc limit 1) c on true
+    left join lateral (select max(r.started_at) last_success from public.cron_runs r where r.job=cfg->>'job' and r.ok=true) s on true
+    where c.ok=false or c.started_at < v_now-make_interval(mins => (cfg->>'max_gap_minutes')::integer)
+      or (c.id is null and coalesce((cfg->>'required')::boolean,true))
+  ), recorded as (
+    insert into public.operational_alert_findings(source_key,category,reference,occurred_at,detail,action_required,admin_path,last_seen_at)
+    select source_key,category,reference,occurred_at,detail,action_required,admin_path,v_now from signals
+    on conflict(source_key) do update set last_seen_at=v_now, resolved_at=null,
+      detail=excluded.detail, action_required=excluded.action_required,
+      delivery_id=case when operational_alert_findings.resolved_at is not null then null else operational_alert_findings.delivery_id end,
+      detected_at=case when operational_alert_findings.resolved_at is not null then v_now else operational_alert_findings.detected_at end
+    returning source_key
+  ) select count(*) into v_count from recorded;
+  update public.operational_alert_findings set resolved_at=v_now
+    where resolved_at is null and last_seen_at < v_now;
+  return v_count;
+end;
+$$;
+
+revoke all on function public.scan_operational_failures(jsonb) from public, anon, authenticated;
+grant execute on function public.scan_operational_failures(jsonb) to service_role;
+
+
+notify pgrst,'reload schema';
+
+-- END email_send_recovery_monitoring
+-- Cover account and payment lookups on the new Quick Stop recovery tables.
+create index if not exists quick_stop_refund_tasks_account_idx on public.quick_stop_refund_tasks(account_id);
+create index if not exists quick_stop_refund_tasks_payment_idx on public.quick_stop_refund_tasks(payment_id);
+create index if not exists quick_stop_manual_refund_account_idx on public.quick_stop_manual_refund_reservations(account_id);
+create index if not exists quick_stop_no_show_enforcements_account_idx on public.quick_stop_no_show_enforcements(account_id);
+
+-- Session document email revision projection
+-- Expose the document version through the session view after the send-ledger
+-- migration added it to jobs. Keep every existing financial mask and RLS guard.
+begin;
+set local lock_timeout = '5s';
+set local statement_timeout = '30s';
+
+do $view$
+declare
+  cols text;
+  extra_columns text[];
+  protected text[] := array['quoted_amount','quote_items','deposit_gate',
+    'reschedule_discount_percent','reschedule_discount_note','reschedule_discount_agreed_at',
+    'quote_signer_name','quote_signed_at','quote_signature_path','quote_signature_method'];
+begin
+  if not exists (select 1 from pg_attribute where attrelid='public.jobs'::regclass
+      and attname='document_email_revision' and atttypid='uuid'::regtype and attnotnull and not attisdropped) then
+    raise exception 'Document email revision migration must be applied first';
+  end if;
+  if not exists (select 1 from pg_class where oid='public.job_access'::regclass
+      and reloptions @> array['security_invoker=true','security_barrier=true']) then
+    raise exception 'Expected invoker and financial masking view';
+  end if;
+  -- Never expose unrelated columns introduced by another migration.
+  select array_agg(j.attname::text order by j.attnum) into extra_columns
+    from pg_attribute j where j.attrelid='public.jobs'::regclass and j.attnum>0 and not j.attisdropped
+      and not exists (select 1 from pg_attribute v where v.attrelid='public.job_access'::regclass
+        and v.attnum>0 and not v.attisdropped and v.attname=j.attname);
+  if extra_columns is not null and extra_columns <> array['document_email_revision'] then
+    raise exception 'Unexpected unprojected job columns: %', extra_columns;
+  end if;
+  select string_agg(case
+    when a.attname='quoted_amount' then 'coalesce(q.quoted_amount,0)::numeric(12,2) as quoted_amount'
+    when a.attname=any(protected) then format('q.%I',a.attname)
+    else format('j.%I',a.attname) end,', ' order by a.attnum)
+    into cols from pg_attribute a where a.attrelid='public.job_access'::regclass and a.attnum>0 and not a.attisdropped;
+  if extra_columns is not null then cols := cols || ', j.document_email_revision'; end if;
+  execute 'create or replace view public.job_access with (security_invoker=true,security_barrier=true) as select '
+    ||cols||' from public.jobs j left join lateral jsonb_populate_record(null::public.jobs,private.job_quote_values(j.id)) q on true';
+end;
+$view$;
+
+-- This UUID is an optimistic document version, not a client access token.
+-- Existing quote columns still require the permission-checked private helper.
+grant select(document_email_revision) on public.jobs to authenticated;
+alter view public.job_access alter column document_email_revision set default gen_random_uuid();
+notify pgrst,'reload schema';
+commit;
+-- Migration: Navigation Preferences
+
+create table if not exists public.navigation_preferences (
+  account_id uuid not null,
+  user_id uuid not null,
+  schema_version integer not null default 1,
+  catalog_version text not null default '1',
+  selected_view text not null default 'balanced',
+  favorite_ids jsonb not null default '[]'::jsonb,
+  custom_layout jsonb,
+  revision integer not null default 1,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (account_id, user_id),
+  foreign key (account_id, user_id) references public.memberships (account_id, user_id) on delete cascade
+);
+
+alter table public.navigation_preferences enable row level security;
+
+create policy "Users can view their own preferences for active memberships"
+  on public.navigation_preferences for select
+  to authenticated
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.memberships
+      where memberships.account_id = navigation_preferences.account_id
+      and memberships.user_id = auth.uid()
+      and memberships.deactivated_at is null
+    )
+  );
+
+create policy "Users can insert their own preferences for active memberships"
+  on public.navigation_preferences for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.memberships
+      where memberships.account_id = navigation_preferences.account_id
+      and memberships.user_id = auth.uid()
+      and memberships.deactivated_at is null
+    )
+  );
+
+create policy "Users can update their own preferences for active memberships"
+  on public.navigation_preferences for update
+  to authenticated
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.memberships
+      where memberships.account_id = navigation_preferences.account_id
+      and memberships.user_id = auth.uid()
+      and memberships.deactivated_at is null
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1 from public.memberships
+      where memberships.account_id = navigation_preferences.account_id
+      and memberships.user_id = auth.uid()
+      and memberships.deactivated_at is null
+    )
+  );
+
+create policy "Users can delete their own preferences for active memberships"
+  on public.navigation_preferences for delete
+  to authenticated
+  using (
+    auth.uid() = user_id
+  );

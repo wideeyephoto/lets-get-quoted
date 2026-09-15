@@ -479,7 +479,7 @@ export function draftOfferMessage(input: {
   const when = normalizeSmsSystemText(input.whenLabel.trim());
   const place = [where ? `in ${where}` : '', when].filter(Boolean).join(', ');
   return [
-    `New subcontract job from ${input.businessName.trim()}:`,
+    `Let's Get Quoted: New subcontract job. Workspace: ${input.businessName.trim()}.`,
     `${input.workDescription.trim()}${place ? ` ${place}` : ''}.`,
     `Pay ${formatPay(input.payAmount, input.payKind ?? 'fixed')}.`,
     `Review and accept by ${normalizeSmsSystemText(input.expiresLabel.trim())}: ${LINK_PLACEHOLDER}`,

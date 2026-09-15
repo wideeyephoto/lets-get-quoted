@@ -1,5 +1,5 @@
 /**
- * Run 20260819080000_usage_overage_authorization.sql against a real PostgreSQL 17.
+ * Run 20260820114124_usage_overage_authorization.sql against a real PostgreSQL 17.
  *
  * This one decides whether a contractor gets charged money they did not plan to
  * spend, so the assertions are about the promise rather than the plumbing: LGQ
@@ -42,7 +42,7 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
-const MIGRATION = '20260819080000_usage_overage_authorization.sql';
+const MIGRATION = '20260820114124_usage_overage_authorization.sql';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';

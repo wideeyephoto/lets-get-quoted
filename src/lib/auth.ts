@@ -9,6 +9,7 @@ import { deniedMessage, parseStaffRole, staffCan, type Permission, type StaffRol
 import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
 import { OFFICE_NO_ACCESS_PATH, officeLandingPath } from '@/lib/office-access';
 import { preferredWorkspace, selectWorkspaceMembership } from '@/lib/workspace-selection';
+import { hasAdminPasskeyGrant } from '@/lib/admin-passkeys';
 
 /**
  * React's per-request memoization, where it exists.
@@ -826,10 +827,16 @@ export async function requirePermissions(...permissions: Permission[]): Promise<
 async function requireMfa(context: AdminContext): Promise<AdminContext> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (error || data.currentLevel !== 'aal2') {
-    redirect(`/admin/security?step_up=1&permission=${encodeURIComponent(context.permission ?? '')}`);
+  if (!error && data?.currentLevel === 'aal2') return context;
+  // App passkeys are a separate, server-verified second factor. Their proof is
+  // short-lived and bound to this user, a live provider session, and a credential.
+  // This does not change the provider's AAL or the staff permission checks above.
+  try {
+    if (await hasAdminPasskeyGrant(context, supabase)) return context;
+  } catch {
+    // Missing, expired, or unavailable verification must leave actions locked.
   }
-  return context;
+  redirect(`/admin/security?step_up=1&permission=${encodeURIComponent(context.permission ?? '')}`);
 }
 
 /** High-impact staff mutations require an authenticator-verified session. */

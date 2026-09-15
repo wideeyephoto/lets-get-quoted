@@ -115,16 +115,33 @@ describe('Service Health Telemetry Truthfulness Gate (P1-1, P1-2, P1-3)', () => 
   });
 
   describe('P1-4: AI Operator trend history honesty', () => {
-    it('returns available: false and empty history (no fabricated 7-day trend series)', async () => {
+    it('returns error when no database connection is available (no fabricated 7-day trend series)', async () => {
       const { executeOperatorTool } = await import('@/lib/ai-operator/tools');
       const mockSupabase = {} as any;
       const ctx = { supabase: mockSupabase, adminUserId: 'usr_1', source: 'admin_dashboard' } as any;
 
       const res = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
       expect(res.data).toBeDefined();
+      expect((res.data as any).error).toBeDefined();
+    });
+
+    it('returns available: false with empty history when query returns no rows', async () => {
+      const { executeOperatorTool } = await import('@/lib/ai-operator/tools');
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            order: () => ({
+              limit: () => Promise.resolve({ data: [], error: null }),
+            }),
+          }),
+        }),
+      } as any;
+      const ctx = { supabase: mockSupabase, adminUserId: 'usr_1', source: 'admin_dashboard' } as any;
+
+      const res = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
+      expect(res.data).toBeDefined();
       expect((res.data as any).available).toBe(false);
       expect((res.data as any).history).toEqual([]);
-      expect((res.data as any).error).toContain('No historical metrics are recorded');
     });
   });
 });

@@ -76,6 +76,7 @@ const mockDbUpdates: any[] = [];
 const mockLedgerInserts: any[] = [];
 
 const mockAdmin = {
+  rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
   from: vi.fn((table: string) => {
     if (table === 'sites') {
       return {
@@ -1063,7 +1064,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(res.data?.website).toBe('mycontractorhub.com');
     });
 
-    it('generates a company slug URL when no domain or website is set', async () => {
+    it('leaves an unknown website empty instead of inventing a company domain', async () => {
       const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
       mockSiteData = {
         company_name: 'Apex Plumbing Experts',
@@ -1074,16 +1075,16 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
 
       const res = await getMerchandiseStudioDataAction();
       expect(res.ok).toBe(true);
-      expect(res.data?.website).toBe('www.apexplumbingexperts.com');
+      expect(res.data?.website).toBe('');
     });
 
-    it('uses fallback www.contractorpro.com when site row does not exist', async () => {
+    it('leaves the website empty when the site row does not exist', async () => {
       const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
       mockSiteData = null;
 
       const res = await getMerchandiseStudioDataAction();
       expect(res.ok).toBe(true);
-      expect(res.data?.website).toBe('www.contractorpro.com');
+      expect(res.data?.website).toBe('');
     });
   });
 
@@ -1265,6 +1266,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
 
     it('contains all 8 required trade styles with unique IDs and rich metadata', () => {
       const expectedIds = [
+        'traditional',
         'executive',
         'modern_split',
         'industrial',
@@ -1272,7 +1274,6 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         'qr_first',
         'verified_pro',
         'double_sided',
-        'traditional',
       ];
 
       const templateIds = BUSINESS_CARD_TEMPLATES.map((t) => t.id);
@@ -1294,7 +1295,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       }
     });
 
-    it('retrieves templates by ID accurately with fallback to executive default', () => {
+    it('retrieves templates by ID accurately with fallback to traditional default', () => {
       const blueprint = getCardTemplateById('blueprint');
       expect(blueprint.id).toBe('blueprint');
       expect(blueprint.name).toBe('The Blueprint Technical');
@@ -1306,10 +1307,10 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
 
       // Fallback on unknown or undefined
       const unknownFallback = getCardTemplateById('non_existent' as any);
-      expect(unknownFallback.id).toBe('executive');
+      expect(unknownFallback.id).toBe('traditional');
 
       const nullFallback = getCardTemplateById(null);
-      expect(nullFallback.id).toBe('executive');
+      expect(nullFallback.id).toBe('traditional');
     });
 
     it('formats checkout detailParts with template information for print line items', () => {
@@ -1626,7 +1627,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
   });
 
   describe('Merchandise & Stationery Studio Truth & Fidelity Audit (2026-09-05)', () => {
-    it('guarantees stationery items (biz_cards, notepads) route to commercial print broker and NEVER invoke Printful apparel variants', async () => {
+    it('refuses unsupported card finishes before contacting a provider', async () => {
       const fetchSpy = vi.spyOn(global, 'fetch');
 
       const cardsResult = await createPrintfulOrder({
@@ -1663,10 +1664,9 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         companyName: 'Apex Roofing',
       });
 
-      expect(cardsResult.ok).toBe(true);
-      expect(cardsResult.provider).toBe('commercial_print_broker');
+      expect(cardsResult.ok).toBe(false);
       // In honest fulfillment before actual carrier dispatch, trackingNumber is null
-      expect(cardsResult.trackingNumber).toBeNull();
+      expect(cardsResult.trackingNumber).toBeUndefined();
       // Ensure Printful API was NEVER called with variant 4014
       expect(fetchSpy).not.toHaveBeenCalledWith(
         expect.stringContaining('api.printful.com'),
@@ -1676,7 +1676,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       fetchSpy.mockRestore();
     });
 
-    it('properly partitions mixed cart orders (stationery + apparel) and sets provider to split_fulfillment', async () => {
+    it('refuses mixed carts containing unsupported card finishes', async () => {
       const mixedResult = await createPrintfulOrder({
         orderNumber: 'LGQ-TEST-MIXED',
         items: [
@@ -1726,10 +1726,8 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         companyName: 'Apex Roofing',
       });
 
-      expect(mixedResult.ok).toBe(true);
-      expect(mixedResult.provider).toBe('split_fulfillment');
-      expect(mixedResult.status).toBe('in_production');
-      expect(mixedResult.trackingNumber).toBeDefined();
+      expect(mixedResult.ok).toBe(false);
+      expect(mixedResult.trackingNumber).toBeUndefined();
     });
 
     it('generates mathematically accurate and optically verifiable QR code vectors with DENSO quiet zone', async () => {

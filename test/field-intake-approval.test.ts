@@ -24,30 +24,30 @@ describe('Field Intake Review & Approval Link Integration', () => {
 
   it('formats field note confirmation with review URL', () => {
     const text = formatFieldNoteConfirmation('J-104', 'Miller', sampleReviewUrl);
-    expect(text).toContain('[LGQ] J-104 (Miller): Logged field note.');
+    expect(text).toContain('Let\'s Get Quoted: J-104 (Miller): Logged field note.');
     expect(text).toContain(sampleReviewUrl);
   });
 
   it('formats field cost confirmation with review URL', () => {
     const text = formatFieldCostConfirmation('J-104', 'Miller', 125.5, 'material', sampleReviewUrl);
-    expect(text).toContain('[LGQ] J-104 (Miller): Logged $125.50 material cost.');
+    expect(text).toContain('Let\'s Get Quoted: J-104 (Miller): Logged $125.50 material cost.');
     expect(text).toContain(sampleReviewUrl);
   });
 
   it('formats field task confirmation with review URL', () => {
     const text = formatFieldTaskConfirmation('J-104', 'Miller', 'Install disconnect switch', sampleReviewUrl);
-    expect(text).toContain('[LGQ] J-104 (Miller): Added task "Install disconnect switch".');
+    expect(text).toContain('Let\'s Get Quoted: J-104 (Miller): Added task "Install disconnect switch".');
     expect(text).toContain(sampleReviewUrl);
   });
 
   it('formats field lead confirmation with review URL', () => {
     const text = formatFieldLeadConfirmation('Robert Johnson', sampleReviewUrl);
-    expect(text).toContain('[LGQ] Created new lead for Robert Johnson.');
+    expect(text).toContain('Let\'s Get Quoted: Created new lead for Robert Johnson.');
     expect(text).toContain(sampleReviewUrl);
   });
 
   it('preserves clean fallback when no review URL is supplied', () => {
     const clean = formatFieldNoteConfirmation('J-101', 'Alice');
-    expect(clean).toBe('[LGQ] J-101 (Alice): Logged field note.');
+    expect(clean).toBe('Let\'s Get Quoted: J-101 (Alice): Logged field note.');
   });
 });

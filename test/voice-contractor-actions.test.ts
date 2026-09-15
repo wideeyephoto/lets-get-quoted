@@ -183,10 +183,23 @@ describe('AI Voice spoken job choices', () => {
   it('only returns schedule and quote detail when one selected job is explicitly requested', async () => {
     const { admin } = mockAdmin({ jobs: [{ ...baseJob, status: 'in_progress', scheduled_for: '2026-09-08', quoted_amount: 2300 }] });
     const brief = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.ref }));
-    expect(brief.response).not.toContain('$2300.00');
+    expect(brief.response).not.toContain('recorded quote:');
     const full = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.ref, include_details: true }));
-    expect(full.response).toContain('$2300.00');
+    expect(full.response).toContain('recorded quote: two thousand three hundred dollars');
+    expect(full.response).not.toContain('$');
     expect(full.response).toContain('2026-09-08');
+  });
+  it.each([
+    ['2300.01', 'two thousand three hundred dollars and one cent'],
+    [0, 'zero dollars'],
+    [null, null],
+    ['not available', null],
+  ])('reads the stored quote %s without inventing or dropping cents', async (quoted_amount, expected) => {
+    const { admin, rpc } = mockAdmin({ jobs: [{ ...baseJob, quoted_amount }] });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.ref, include_details: true }));
+    if (expected === null) expect(result.response).not.toContain('recorded quote:');
+    else expect(result.response).toContain(`recorded quote: ${expected}`);
+    expect(rpc).not.toHaveBeenCalled();
   });
   const olderJobs = Array.from({ length: 251 }, (_, index) => ({
     ...baseJob,

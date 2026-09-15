@@ -18,13 +18,21 @@ export async function requeueBillingDeadLettersAction(
   ledgerId: string,
   reason: string,
 ): Promise<RequeueDeadLetterResult> {
+  // Authenticate before revealing supported recovery paths; let step-up redirects propagate.
+  const ctx = await requireMfaPermission('ops.manage');
   const trimmedReason = reason?.trim() || '';
   if (trimmedReason.length < 4) {
     return { success: false, message: 'A specific operational reason (minimum 4 characters) is required.' };
   }
 
+  if (ledgerId === 'subscription_events') {
+    return {
+      success: false,
+      message: 'subscription_events: broad requeue is prohibited. Terminal subscription events require targeted recovery after verifying cause and idempotency.',
+    };
+  }
+
   // Guard must run before try so step-up redirects are not swallowed
-  const ctx = await requireMfaPermission('ops.manage');
   const { admin, staff } = ctx;
   const nowIso = new Date().toISOString();
   let count = 0;
@@ -59,22 +67,6 @@ export async function requeueBillingDeadLettersAction(
             lease_expires_at: null,
           })
           .eq('task_state', 'dead_letter')
-          .select('id');
-        if (error) throw error;
-        count = data?.length ?? 0;
-        break;
-      }
-
-      case 'subscription_events': {
-        const { data, error } = await admin
-          .from('billing_events')
-          .update({
-            processing_status: 'received',
-            next_attempt_at: nowIso,
-          })
-          .eq('event_scope', 'platform_subscription')
-          .eq('processing_status', 'failed')
-          .is('next_attempt_at', null)
           .select('id');
         if (error) throw error;
         count = data?.length ?? 0;
@@ -136,8 +128,8 @@ export async function requeueBillingDeadLettersAction(
 
     let message = `Successfully requeued ${count} dead-lettered item(s) in '${ledgerId}'.`;
     if (count === 0) {
-      if (['subscription_events', 'connected_success_events', 'connected_expiration_events'].includes(ledgerId)) {
-        const scope = ledgerId === 'subscription_events' ? 'platform_subscription' : 'connected_payment';
+      if (['connected_success_events', 'connected_expiration_events'].includes(ledgerId)) {
+        const scope = 'connected_payment';
         let checkQuery = admin
           .from('billing_events')
           .select('id', { count: 'exact', head: true })

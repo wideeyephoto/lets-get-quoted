@@ -15,9 +15,10 @@ export default defineConfig({
       'server-only': fileURLToPath(new URL('./test/stubs/server-only.ts', import.meta.url)),
     },
   },
-  test: {
+  esbuild: { jsx: 'automatic' }, test: {
     environment: 'node',
-    include: ['test/**/*.test.ts'],
+    pool: 'forks',
+    include: ['test/**/*.test.{ts,tsx}'],
     // Blocks the socket to every SMS provider host. See the file for why the
     // existing in-code gate is not enough on its own.
     setupFiles: ['./test/setup/no-provider-egress.ts'],
@@ -38,6 +39,51 @@ export default defineConfig({
       // quietly arming ~30 send functions.
       TWILIO_ACCOUNT_SID: 'AC00000000000000000000000000000000',
       TWILIO_AUTH_TOKEN: 'test-token',
+    },
+    // --- Code coverage ---
+    // Generates reports even when tests fail so you can still inspect gaps.
+    // Run `npm run test:coverage` for a full report, or pass `--coverage` to
+    // any `vitest run` invocation. Reports land in coverage/.
+    coverage: {
+      provider: 'v8',
+      enabled: false,          // off by default; `--coverage` or the npm script turns it on
+      reportOnFailure: true,   // emit reports even when tests fail
+      reportsDirectory: './coverage',
+      reporter: [
+        'text-summary',        // quick console overview after the run
+        ['lcov', {}],          // lcov.info + HTML viewer for CI and local browsing
+        ['json-summary', {}],  // machine-readable summary for dashboards / scripts
+      ],
+      // Measure server-side logic and API route handlers. React components
+      // and hooks are excluded from this config because the main suite uses
+      // a node environment; component tests that use react-test-renderer or
+      // a jsdom/happy-dom environment (see https://v2.vitest.dev/guide/environment)
+      // can be added to a separate config with its own coverage scope.
+      include: [
+        'src/lib/**/*.ts',
+        'src/app/api/**/*.ts',
+        'src/app/**/actions.ts',
+        'src/app/**/*actions*.ts',
+        'src/middleware.ts',
+      ],
+      exclude: [
+        'src/lib/**/index.ts',         // barrel re-exports
+        'src/lib/**/types.ts',         // pure type declarations
+        'src/app/**/types.ts',         // pure type declarations
+        'src/lib/site-content.ts',     // 146KB generated content catalog
+        'src/lib/trades.ts',           // 222KB generated trade definitions
+        '**/*.d.ts',                   // type declarations
+        '**/*.test.*',                 // tests themselves
+      ],
+      // Coverage floors — prevent regressions. Set conservatively at the
+      // post-phase-1-5 baseline; raise incrementally as coverage continues
+      // to grow toward the 85% target.
+      thresholds: {
+        lines: 60,
+        functions: 65,
+        branches: 55,
+        statements: 60,
+      },
     },
   },
 });

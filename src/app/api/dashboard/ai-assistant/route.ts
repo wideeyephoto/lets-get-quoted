@@ -4,6 +4,7 @@ import { loadBusinessName } from '@/lib/business-name';
 import { runAssistantConversation } from '@/lib/ai-assistant/engine';
 import type { AssistantContext, AssistantRequestBody } from '@/lib/ai-assistant/types';
 import type { ToolExecutionContext } from '@/lib/ai-assistant/tools';
+import { unstable_rethrow } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,9 @@ export async function POST(req: Request) {
       actionCards: result.actionCards,
     });
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     console.error('AI Assistant API route failed:', error);
     return NextResponse.json(
       {

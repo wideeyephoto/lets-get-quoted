@@ -15,6 +15,7 @@ vi.mock('@/lib/stripe', () => ({
 import { PRICING_CATALOG_VERSION } from '@/lib/billing/catalog';
 import {
   BASE_PLAN_SUBSCRIPTION_PURPOSE,
+  StripeBillingModeMismatchError,
   type BasePlanSubscriptionMetadata,
 } from '@/lib/billing/stripe-billing-subscription-checkout';
 import {
@@ -231,6 +232,24 @@ function resolver(overrides: {
 }
 
 describe('dark Stripe Billing subscription event projector', () => {
+  it('only rejects a non-live claim after a valid runtime mismatch, before any provider read', async () => {
+    const retrieve = vi.fn().mockRejectedValue(new Error('unexpected provider read'));
+    const dependencies = {
+      retrieveSubscription: retrieve, retrieveInvoice: retrieve,
+      retrieveCheckoutSession: retrieve, listCheckoutSessions: retrieve, loadVerifiedPrices: retrieve,
+    };
+    const mismatch = createStripeBillingSubscriptionProjectionResolver({
+      dependencies, assertMode: () => { throw new StripeBillingModeMismatchError(); },
+    });
+    await expect(mismatch.loadProviderContext(claim())).rejects.toBeInstanceOf(TestModeSubscriptionRehearsalError);
+    await expect(mismatch.loadProviderContext(claim({ livemode: true }))).rejects.toMatchObject({ code: 'billing_mode_configuration_invalid' });
+    const invalid = createStripeBillingSubscriptionProjectionResolver({
+      dependencies, assertMode: () => { throw new Error('Missing or conflicting runtime configuration'); },
+    });
+    await expect(invalid.loadProviderContext(claim())).rejects.toMatchObject({ code: 'billing_mode_configuration_invalid' });
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+
   it('gives an annual subscriber only the first monthly allowance window', async () => {
     const provider = resolver();
     const context = await provider.value.loadProviderContext(claim());

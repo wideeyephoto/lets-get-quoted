@@ -1,235 +1,56 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import {
-  evaluateHaloAutoKillCriteria,
-  calculateHaloGeofence,
-  type NeighborhoodHaloCampaign,
-} from '@/lib/neighborhood-halo';
 import { killHaloCampaign } from '@/lib/neighborhood-halo-service';
-import { fetchMetaCampaignDailySpend, pauseMetaCampaign } from '@/lib/meta-ads-api';
+import { fetchMetaCampaignDailySpend } from '@/lib/meta-ads-api';
 
 export type HaloPacingWorkerResult = {
-  processed: number;
-  advanced: number;
-  completed: number;
-  killed: number;
-  pauseFailures: number;
-  totalDailySpendDollars: number;
-  summary: string;
+  processed: number; advanced: number; completed: number; killed: number;
+  pauseFailures: number; totalDailySpendDollars: number; summary: string;
 };
 
-export async function runHaloPacingWorker(
-  admin: SupabaseClient = createAdminClient()
-): Promise<HaloPacingWorkerResult> {
-  const { data: activeRows, error } = await admin
-    .from('neighborhood_halo_campaigns')
-    .select('*')
-    .in('status', ['active', 'simulated_sandbox'])
-    .is('deleted_at', null);
-
-  if (error) {
-    console.error('Failed to query active neighborhood halo campaigns:', error);
-    return {
-      processed: 0,
-      advanced: 0,
-      completed: 0,
-      killed: 0,
-      pauseFailures: 0,
-      totalDailySpendDollars: 0,
-      summary: `Failed to query active campaigns: ${error.message}`,
-    };
+export async function runHaloPacingWorker(admin: SupabaseClient = createAdminClient()): Promise<HaloPacingWorkerResult> {
+  const { data: rows, error } = await admin.from('neighborhood_halo_campaigns').select('*')
+    .in('status', ['active', 'paused', 'pending_provisioning']).is('deleted_at', null);
+  if (error) throw new Error(`Could not load Halo campaigns: ${error.message}`);
+  let advanced = 0, completed = 0, killed = 0, pauseFailures = 0, totalDailySpendDollars = 0;
+  for (const row of rows || []) {
+    try {
+      const elapsedMs = Date.now() - new Date(row.created_at).getTime();
+      if (row.settlement_requested_at) {
+        const settled = await killHaloCampaign(admin, row.account_id, row.id, row.auto_kill_reason || 'reconcile_final_spend');
+        if (settled.status === 'completed') completed++; else if (settled.status === 'killed' || settled.status === 'failed') killed++;
+        continue;
+      }
+      if (row.status === 'pending_provisioning') {
+        if (Date.now() - new Date(row.updated_at).getTime() > 15 * 60 * 1000) {
+          await killHaloCampaign(admin, row.account_id, row.id, 'incomplete_provisioning');
+          killed++;
+        }
+        continue;
+      }
+      if (!row.meta_campaign_id || !/^\d+$/.test(row.meta_campaign_id)) throw new Error('Campaign has no verified provider ID.');
+      // Lifetime totals are snapshots. Repeated cron runs must not add the same spend twice.
+      const insights = await fetchMetaCampaignDailySpend(row.meta_campaign_id, undefined, 'maximum');
+      if (!insights.success || !Number.isSafeInteger(insights.spendCents) || insights.spendCents < 0) throw new Error('Provider spend is unavailable.');
+      const spend = Math.max(Number(row.spend_dollars || 0), insights.spendCents / 100);
+      const updated = await admin.rpc('sync_halo_metrics', { p_campaign_id: row.id, p_spend_cents: insights.spendCents,
+        p_impressions: insights.impressions, p_clicks: insights.clicks, p_days: Math.max(0, Math.floor(elapsedMs / 86400000)) });
+      if (updated.error) throw new Error(updated.error.message);
+      if (updated.data !== true) continue;
+      totalDailySpendDollars += Math.max(0, spend - Number(row.spend_dollars || 0));
+      const expired = row.expires_at && Date.now() >= new Date(row.expires_at).getTime();
+      if (expired || insights.spendCents >= Number(row.budget_dollars) * 100) {
+        const stopped = await killHaloCampaign(admin, row.account_id, row.id, 'duration_complete');
+        if (stopped.status === 'completed') completed++; else advanced++;
+      } else if (elapsedMs >= 72 * 3600000 && insights.clicks === 0 && row.status === 'active') {
+        const stopped = await killHaloCampaign(admin, row.account_id, row.id, 'zero_clicks_after_72_hours');
+        if (stopped.status === 'killed') killed++; else advanced++;
+      } else advanced++;
+    } catch (failure) {
+      pauseFailures++;
+      console.error(`[HaloPacingWorker] Campaign ${row.id} needs recovery:`, failure);
+    }
   }
-
-  let advanced = 0;
-  let completed = 0;
-  let killed = 0;
-  let pauseFailures = 0;
-  let totalDailySpendDollars = 0;
-
-  for (const row of activeRows || []) {
-    const campaignId = String(row.id);
-    const accountId = String(row.account_id);
-    const durationDays = Number(row.duration_days || 5);
-    const daysActive = Number(row.days_active || 0);
-    const budgetDollars = Number(row.budget_dollars || 25.0);
-    const currentSpend = Number(row.spend_dollars || 0.0);
-    const dailyBudget = Number(row.daily_budget_dollars || budgetDollars / durationDays);
-
-    const haloObj: NeighborhoodHaloCampaign = {
-      id: campaignId,
-      accountId,
-      jobId: row.job_id || '',
-      rawAddress: '',
-      sanitizedAddress: row.street_name,
-      streetName: row.street_name,
-      neighborhoodName: row.neighborhood_name || '',
-      city: row.city,
-      state: row.state || '',
-      zip: row.zip || '',
-      geofence: calculateHaloGeofence(Number(row.center_lat || 0), Number(row.center_lng || 0), Number(row.radius_miles || 1.0)),
-      budgetDollars,
-      durationDays,
-      status: row.status as never,
-      adCopy: row.ad_copy,
-      targetLandingUrl: row.landing_page_url,
-      metrics: {
-        impressions: Number(row.impressions || 0),
-        clicks: Number(row.clicks || 0),
-        leads: Number(row.leads_generated || 0),
-        spendDollars: currentSpend,
-      },
-      createdAt: row.created_at,
-      expiresAt: row.expires_at || '',
-    };
-
-    // 1. Evaluate 72-hour zero-click auto-kill criteria
-    const autoKill = evaluateHaloAutoKillCriteria(haloObj);
-    if (autoKill.shouldKill) {
-      await killHaloCampaign(admin, accountId, campaignId, autoKill.reason);
-      killed += 1;
-      continue;
-    }
-
-    // 2. Check if campaign reached full duration or expiry
-    const createdAtMs = new Date(row.created_at).getTime();
-    const nowMs = Date.now();
-    const elapsedDays = Math.max(1, Math.floor((nowMs - createdAtMs) / (24 * 60 * 60 * 1000)));
-    const isExpired = row.expires_at ? nowMs >= new Date(row.expires_at).getTime() : false;
-    const newDaysActive = Math.max(daysActive, elapsedDays);
-
-    if (newDaysActive >= durationDays || isExpired) {
-      if (row.meta_campaign_id) {
-        try {
-          const pauseRes = await pauseMetaCampaign(row.meta_campaign_id);
-          if (!pauseRes.success) {
-            console.warn(`[HaloPacingWorker] Failed to pause completed Meta campaign ${row.meta_campaign_id}: ${pauseRes.message}`);
-            pauseFailures += 1;
-            // Leave row untouched in 'active' so the next cron run re-evaluates and retries
-            continue;
-          }
-        } catch (pauseErr) {
-          console.warn(`[HaloPacingWorker] Failed to pause completed Meta campaign ${row.meta_campaign_id}:`, pauseErr);
-          pauseFailures += 1;
-          continue;
-        }
-      }
-
-      // Fetch final day's spend if live Meta campaign is linked
-      let finalImpressions = Number(row.impressions || 0);
-      let finalClicks = Number(row.clicks || 0);
-      let finalSpendDollars = currentSpend;
-
-      const isLiveMeta =
-        row.meta_campaign_id &&
-        !row.meta_campaign_id.startsWith('meta_sim_') &&
-        !row.meta_campaign_id.startsWith('sim_');
-
-      if (isLiveMeta) {
-        try {
-          const metaSpend = await fetchMetaCampaignDailySpend(row.meta_campaign_id);
-          if (metaSpend.success) {
-            if (metaSpend.impressions > 0) finalImpressions = metaSpend.impressions;
-            if (metaSpend.clicks > 0) finalClicks = metaSpend.clicks;
-            if (metaSpend.spendCents > 0) {
-              const additional = Math.min(budgetDollars - currentSpend, metaSpend.spendCents / 100);
-              finalSpendDollars = currentSpend + additional;
-            }
-          }
-        } catch (metaErr) {
-          console.warn(`[HaloPacingWorker] Meta final insights fetch failed for ${row.meta_campaign_id}:`, metaErr);
-        }
-      }
-
-      await admin
-        .from('neighborhood_halo_campaigns')
-        .update({
-          status: 'completed',
-          days_active: Math.max(newDaysActive, durationDays),
-          spend_dollars: finalSpendDollars,
-          impressions: finalImpressions,
-          clicks: finalClicks,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', campaignId);
-
-      // Refund unspent portion of upfront wallet debit (replay-safe via p_payment_intent_id deduplication)
-      const provenDebitedCents = Number(row.wallet_deducted_cents || 0);
-      const actualSpendCents = Math.round(finalSpendDollars * 100);
-      const refundableCents = Math.max(0, provenDebitedCents - actualSpendCents);
-
-      if (refundableCents > 0) {
-        try {
-          await admin.rpc('atomic_ad_wallet_credit', {
-            p_account_id: accountId,
-            p_payment_intent_id: `refund_halo_complete_${campaignId}`,
-            p_credit_cents: refundableCents,
-            p_fee_cents: 0,
-          });
-        } catch (refundErr) {
-          console.error(`[HaloPacingWorker] Failed to refund remaining budget for completed campaign ${campaignId}:`, refundErr);
-        }
-      }
-
-      completed += 1;
-      continue;
-    }
-
-    // 3. Advance daily pacing
-    let newImpressions = Number(row.impressions || 0);
-    let newClicks = Number(row.clicks || 0);
-    let additionalSpend = 0;
-
-    const isSimulated =
-      row.status === 'simulated_sandbox' ||
-      !row.meta_campaign_id ||
-      row.meta_campaign_id.startsWith('meta_sim_') ||
-      row.meta_campaign_id.startsWith('sim_');
-
-    if (isSimulated) {
-      // In simulated sandbox mode, simulate daily pacing up to remaining budget
-      additionalSpend = Math.min(budgetDollars - currentSpend, dailyBudget);
-    } else if (row.meta_campaign_id) {
-      // If live Meta campaign is linked, sync real performance insights
-      try {
-        const metaSpend = await fetchMetaCampaignDailySpend(row.meta_campaign_id);
-        if (metaSpend.success) {
-          if (metaSpend.impressions > 0) newImpressions = metaSpend.impressions;
-          if (metaSpend.clicks > 0) newClicks = metaSpend.clicks;
-          if (metaSpend.spendCents > 0) {
-            additionalSpend = Math.min(budgetDollars - currentSpend, metaSpend.spendCents / 100);
-          }
-        } else {
-          console.warn(`[HaloPacingWorker] Meta insights fetch failed for ${row.meta_campaign_id}: ${metaSpend.message}`);
-        }
-      } catch (metaErr) {
-        console.warn(`[HaloPacingWorker] Meta insights fetch failed for ${row.meta_campaign_id}:`, metaErr);
-      }
-    }
-
-    const nextSpend = currentSpend + additionalSpend;
-
-    await admin
-      .from('neighborhood_halo_campaigns')
-      .update({
-        days_active: newDaysActive,
-        spend_dollars: nextSpend,
-        impressions: newImpressions,
-        clicks: newClicks,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', campaignId);
-
-    totalDailySpendDollars += additionalSpend;
-    advanced += 1;
-  }
-
-  return {
-    processed: (activeRows || []).length,
-    advanced,
-    completed,
-    killed,
-    pauseFailures,
-    totalDailySpendDollars,
-    summary: `Processed ${(activeRows || []).length} active halo campaigns: ${advanced} advanced, ${completed} completed, ${killed} auto-killed, ${pauseFailures} pause failures. Total daily spend paced: $${totalDailySpendDollars.toFixed(2)}.`,
-  };
+  return { processed: rows?.length || 0, advanced, completed, killed, pauseFailures, totalDailySpendDollars,
+    summary: `${advanced} refreshed, ${completed} completed, ${killed} stopped, ${pauseFailures} require recovery.` };
 }

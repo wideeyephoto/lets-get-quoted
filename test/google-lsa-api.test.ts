@@ -45,14 +45,14 @@ function injectedFetch(implementation: (input: RequestInfo | URL, init?: Request
 }
 
 describe('Google LSA OAuth configuration', () => {
-  it('requires OAuth credentials and the Google Ads developer token', () => {
+  it('requires OAuth credentials without a developer token', () => {
     delete process.env.GOOGLE_ADS_CLIENT_ID;
     delete process.env.GOOGLE_ADS_CLIENT_SECRET;
     delete process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
     expect(googleLsaConfigured()).toBe(false);
     process.env.GOOGLE_ADS_CLIENT_ID = 'client-id';
     process.env.GOOGLE_ADS_CLIENT_SECRET = 'client-secret';
-    expect(googleLsaConfigured()).toBe(false);
+    expect(googleLsaConfigured()).toBe(true);
     process.env.GOOGLE_ADS_DEVELOPER_TOKEN = 'developer-token';
     expect(googleLsaConfigured()).toBe(true);
   });
@@ -192,6 +192,7 @@ describe('Google Ads parsing and pagination', () => {
     expect(bodies[1]).toMatchObject({ pageToken: 'page-2' });
     const headers = (fetchImpl as ReturnType<typeof vi.fn>).mock.calls[0][1]?.headers as Record<string, string>;
     expect(headers['login-customer-id']).toBe('4567890000');
+    expect(headers).not.toHaveProperty('developer-token');
   });
 
   it('retries a transient read without changing the GAQL request', async () => {
@@ -207,7 +208,7 @@ describe('Google Ads parsing and pagination', () => {
       return jsonResponse({ results: [{ localServicesLead: lead }] });
     });
     await expect(listGoogleLsaLeads({
-      accessToken: 'access', developerToken: 'developer', customerId: '123',
+      accessToken: 'access', customerId: '123',
     }, fetchImpl)).resolves.toHaveLength(1);
     expect(bodies).toHaveLength(2);
     expect(bodies[0]).toBe(bodies[1]);
@@ -303,7 +304,7 @@ describe('Google Ads parsing and pagination', () => {
     });
 
     await expect(discoverGoogleLsaCustomers({
-      accessToken: 'access', developerToken: 'developer',
+      accessToken: 'access',
     }, fetchImpl)).resolves.toEqual([expect.objectContaining({
       customerId: '222',
       loginCustomerId: '111',

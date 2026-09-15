@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LGQ_MAILING_ADDRESS } from '@/lib/company';
 import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
 
 // Shared marketing footer — the nav + the copyright year (computed at render so
@@ -15,6 +16,7 @@ export default function SiteFooter() {
       <div className="marketing-footer-brand">
         <p className="footer-slogan">Built thoughtfully, for thoughtful contractors</p>
         <span>© {year} Let&apos;s Get Quoted</span>
+        <address style={{ fontStyle: 'normal', lineHeight: 1.6 }}>{LGQ_MAILING_ADDRESS}</address>
       </div>
       {/* flexWrap is inline because the shared `.marketing-footer nav` rule is a
           single non-wrapping row, and this list is now long enough to run off a

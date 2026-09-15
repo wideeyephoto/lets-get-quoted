@@ -1,5 +1,16 @@
 # Staff voice response delay
 
+**September 9 later retest:** The full Dispatch call again failed audible delay
+acceptance. The owner clarified there was a long silence after speaking, plus a
+glitch on “dollars” in three of four readouts. Seven provider audio-anchor samples
+ranged from 2.343 to 6.367 seconds while tool requests took under one second.
+A short interactive diagnostic with the same speech parameters and a written-out
+amount passed pronunciation and perceived response speed. PR #57's spoken-quote
+format is now live. The actual post-release handset attempt hit voicemail with
+`admission_unavailable` before Dispatch started; it cannot validate speech or
+turn delay. Admission retry/startup fixes and the full retest remain open.
+See the [dated acceptance record](voice-acceptance-2026-09-09.md).
+
 The staff-call profile now sets `utility_model: gpt-4.1-nano`,
 `auto_correct: true`, and `enable_text_normalization: "off"`.
 [SignalWire documents](https://signalwire.com/docs/platform/ai/content-redaction#keep-it-fast)
@@ -9,8 +20,9 @@ the independent application receipt sanitizer remain enabled. The main
 conversation model, customer profile, endpointing, interruption behavior,
 call cap and financial gates are unchanged.
 
-The owner reported the silence resolved on the September 9 unrecorded handset
-retest. This is a successful user acceptance sample, not production percentile
+The owner reported the silence resolved on an earlier September 9 unrecorded
+handset retest. The later failure above supersedes that result for current
+acceptance. The earlier report is a successful sample, not production percentile
 acceptance: the new provider timing anchors still included several multi-second
 intervals, which need correlation with audible turns. The
 reported gaps also occurred on readback turns without a tool call, while

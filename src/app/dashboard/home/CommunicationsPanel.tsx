@@ -20,12 +20,12 @@ export default function CommunicationsPanel({
 
   return (
     <section className="panel workspace-section-card comms-panel">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">Inbox</p>
           <h2>Customer messages waiting</h2>
         </div>
-        <Link href={`${basePath}/messages`} style={{ fontSize: '0.84rem', color: 'var(--accent)', textDecoration: 'none' }}>
+        <Link href={`${basePath}/messages`} style={{ fontSize: '0.84rem', color: 'var(--accent)', textDecoration: 'none', marginLeft: 'auto', alignSelf: 'flex-start' }}>
           Open inbox ({unreadTotal} unread) &rarr;
         </Link>
       </div>

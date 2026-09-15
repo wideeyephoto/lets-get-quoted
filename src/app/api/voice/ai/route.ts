@@ -76,6 +76,7 @@ function failureResponse(isJson: boolean, message?: string, status = 200) {
 }
 
 export async function POST(request: Request) {
+  const requestStarted = performance.now();
   const rawBody = await request.clone().text();
   const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
   const isJson = contentType === 'application/json' || (rawBody.trim().startsWith('{') && rawBody.trim().endsWith('}'));
@@ -151,6 +152,7 @@ export async function POST(request: Request) {
     }
 
     const admin = createAdminClient();
+    const planStarted = performance.now();
     const { plan, accountId, declineReason } = await planInboundCall(admin, call, {
       // One stable endpoint. Workspace attribution comes from the admitted call
       // id, never from a caller-controlled query parameter.
@@ -175,6 +177,7 @@ export async function POST(request: Request) {
       },
     });
 
+    const planMs = Math.round(performance.now() - planStarted);
     // A valid signed call to this route is the only durable proof LGQ can get
     // that the provider actually points this customer-facing number here. Stamp
     // it even when the product is still off: that is how an owner completes the
@@ -205,6 +208,10 @@ export async function POST(request: Request) {
     const renderedPlan = plan.kind === 'voicemail' || plan.kind === 'forward'
       ? { ...plan, recordingStatusUrl: `${callbackOrigin}/api/voice/recording-status` } : plan;
     const answer = provider.renderAnswer(renderedPlan, { format: isJson ? 'swml' : 'laml' });
+    console.info('voice_admission_timing', {
+      total_ms: Math.round(performance.now() - requestStarted), plan_ms: planMs,
+      plan_kind: plan.kind, decline_reason: declineReason,
+    });
     return new NextResponse(answer.body, {
       status: 200,
       headers: { 'Content-Type': answer.contentType },

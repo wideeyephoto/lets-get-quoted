@@ -167,6 +167,55 @@ describe('first-run signup conversion eligibility', () => {
     if (!result.ok) throw new Error('Expected paid-plan intent to succeed.');
     expect(result.signupConversionTransactionId).toMatch(/^signup_[a-f0-9]{32}$/);
     expect(result.planCheckoutPath).toBeNull();
-    expect(mocks.recordAccountEvent).toHaveBeenCalledTimes(1);
+    expect(mocks.recordAccountEvent).toHaveBeenCalledTimes(2);
+    expect(mocks.recordAccountEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'first_run_completed',
+      }),
+    );
+    expect(mocks.recordAccountEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'plan_intent_recorded',
+      }),
+    );
+  });
+
+  describe('first_run_completed telemetry event', () => {
+    it('records first_run_completed with trade_source and zip_resolved on success', async () => {
+      mocks.recordAccountEvent.mockClear();
+
+      const result = await completeFirstRunAction({
+        ...validInput,
+        trade: 'plumbers',
+        tradeSource: 'guessed',
+        zipResolved: true,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(mocks.recordAccountEvent).toHaveBeenCalledWith({
+        accountId: ACCOUNT_ID,
+        kind: 'first_run_completed',
+        summary: 'Completed initial business setup (plumbers)',
+        meta: {
+          trade_source: 'guessed',
+          zip_resolved: true,
+        },
+      });
+    });
+
+    it('does not fail first run if recordAccountEvent throws', async () => {
+      mocks.recordAccountEvent.mockRejectedValue(new Error('Telemetry database error'));
+
+      const result = await completeFirstRunAction({
+        ...validInput,
+        trade: 'electricians',
+        tradeSource: 'typed',
+        zipResolved: false,
+      });
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('First run should succeed even if telemetry fails.');
+      expect(result.signupConversionTransactionId).toBeTruthy();
+    });
   });
 });

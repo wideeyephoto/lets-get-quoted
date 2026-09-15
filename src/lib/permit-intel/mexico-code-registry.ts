@@ -56,7 +56,7 @@ export const MEXICO_CODE_REGISTRY: Record<string, MexicoStateProfile> = {
     stateName: 'Nuevo León',
     country: 'MX',
     licensingBoard: 'Secretaría de Desarrollo Urbano y Obras Públicas de Monterrey / San Pedro Garza García',
-    licensingUrl: 'https://www.monterrey.gob.mx/sedue',
+    licensingUrl: 'https://www.monterrey.gob.mx/',
     codes: {
       building: { name: 'Ley de Asentamientos Humanos y Reglamento de Zonificación y Construcción de Nuevo León', edition: '2022', model: 'LAHN' },
       electrical: { name: 'NOM-001-SEDE-2012 (Instalaciones Eléctricas / CFE División Golfo Norte)', edition: '2018', model: 'NOM-SEDE' },
@@ -77,7 +77,7 @@ export const MEXICO_CODE_REGISTRY: Record<string, MexicoStateProfile> = {
     stateName: 'Jalisco',
     country: 'MX',
     licensingBoard: 'Dirección de Obras Públicas de Guadalajara / Zapopan / Colegio de Arquitectos de Jalisco',
-    licensingUrl: 'https://guadalajara.gob.mx/tramites/obras-publicas',
+    licensingUrl: 'https://guadalajara.gob.mx/',
     codes: {
       building: { name: 'Código Urbano para el Estado de Jalisco y Reglamento de Edificación Municipal', edition: '2022', model: 'CUJ' },
       electrical: { name: 'NOM-001-SEDE-2012 (Instalaciones Eléctricas / CFE División Jalisco)', edition: '2018', model: 'NOM-SEDE' },

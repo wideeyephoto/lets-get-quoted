@@ -241,8 +241,8 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
 
 describe('native recording callback hardening', () => {
   const origin = 'https://app.letsgetquoted.com';
-  function callback(payload: unknown) {
-    const url = origin + '/api/voice/recording-status';
+  function callback(payload: unknown, path = '/api/voice/recording-status') {
+    const url = origin + path;
     const body = JSON.stringify(payload);
     return new Request(url, { method: 'POST', body, headers: {
       'Content-Type': 'application/json',
@@ -265,6 +265,41 @@ describe('native recording callback hardening', () => {
   it('does not acknowledge a lost database write', async () => {
     mockCreateAdminClient.mockReturnValue({ rpc: async () => ({ error: { code: 'offline' } }) });
     expect((await recordingStatusHandler(callback({ params: { call_id:'c',state:'recording' } }))).status).toBe(500);
+  });
+  it('recovers inventory attribution from the provider-signed path', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null }); mockCreateAdminClient.mockReturnValue({ rpc });
+    const { POST } = await import('@/app/api/voice/recording-status/[to]/[from]/route');
+    const response = await POST(callback({ params: { call_id: 'recovered-call', state: 'recording' } },
+      '/api/voice/recording-status/18105550101/18105550102'));
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('apply_voice_recording_observation', expect.objectContaining({
+      p_to_number: '+18105550101', p_caller: '+18105550102', p_call_id: 'recovered-call',
+    }));
+  });
+  it('rejects attribution-path tampering before a database write', async () => {
+    const rpc = vi.fn(); mockCreateAdminClient.mockReturnValue({ rpc });
+    const signed = callback({ params: { call_id: 'recovered-call', state: 'recording' } },
+      '/api/voice/recording-status/18105550101/18105550102');
+    const tampered = new Request(signed.url.replace('18105550101', '18105550199'), {
+      method: 'POST', headers: signed.headers, body: await signed.text(),
+    });
+    expect((await recordingStatusHandler(tampered)).status).toBe(401);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it('keeps unknown callers anonymous and rejects malformed recovery routes', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null }); mockCreateAdminClient.mockReturnValue({ rpc });
+    const payload = { params: { call_id: 'anonymous-call', state: 'recording' } };
+    expect((await recordingStatusHandler(callback(payload,
+      '/api/voice/recording-status/18105550101/unknown'))).status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('apply_voice_recording_observation', expect.objectContaining({
+      p_to_number: '+18105550101', p_caller: null,
+    }));
+    rpc.mockClear();
+    for (const path of ['/api/voice/recording-status/18105550101/extra/path',
+      '/api/voice/recording-status/not-a-number/unknown']) {
+      expect((await recordingStatusHandler(callback(payload, path))).status).toBe(401);
+    }
+    expect(rpc).not.toHaveBeenCalled();
   });
   it('rejects completed callbacks without media and unknown states', async () => {
     expect((await recordingStatusHandler(callback({ params: { call_id:'c',state:'finished' } }))).status).toBe(400);

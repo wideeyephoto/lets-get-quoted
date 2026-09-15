@@ -1,4 +1,4 @@
-import { greetingWithAiDisclosure } from '@/lib/voice/provider';
+import { AI_VOICE_DISCLOSURE, greetingWithAiDisclosure } from '@/lib/voice/provider';
 import { VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import type {
   InboundCall,
@@ -18,6 +18,31 @@ const MAX_CONNECTED_SECONDS = VOICE_CALL_CAP_MINUTES * 60 - HANGUP_MARGIN_SECOND
 
 function forwardTimeout(seconds: number): number {
   return Number.isFinite(seconds) ? Math.max(5, Math.min(60, Math.floor(seconds))) : 20;
+}
+
+/**
+ * SignalWire AI microphone sensitivity threshold (energy_level).
+ * SignalWire's default is 52 (dB, 0-100 scale). Ambient vehicle/jobsite/office noise
+ * trips speech detection prematurely at 52; raising to 62 provides solid noise immunity
+ * while keeping normal conversational speech clear and responsive.
+ */
+export const DEFAULT_VOICE_ENERGY_LEVEL = 62;
+
+export function voiceEnergyLevel(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_ENERGY_LEVEL);
+  return Number.isFinite(custom) && custom >= 0 && custom <= 100 ? custom : DEFAULT_VOICE_ENERGY_LEVEL;
+}
+
+/**
+ * Minimum words required to interrupt/barge the AI agent while speaking.
+ * Default SignalWire is 1; setting to 2 prevents brief background sounds, coughs,
+ * or breathing from cutting the agent off mid-sentence.
+ */
+export const DEFAULT_VOICE_BARGE_MIN_WORDS = 2;
+
+export function voiceBargeMinWords(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_BARGE_MIN_WORDS);
+  return Number.isSafeInteger(custom) && custom >= 1 && custom <= 99 ? custom : DEFAULT_VOICE_BARGE_MIN_WORDS;
 }
 
 /** A completed bridge must not fall through into an unanswered-call recording. */
@@ -68,6 +93,7 @@ function text(value: unknown): string | null {
 
 export const CUSTOMER_SWAIG_TOOLS = [
   'transfer_to_business',
+  'transfer_to_emergency',
   'send_booking_link',
   'check_available_slots',
   'book_appointment_slot',
@@ -259,6 +285,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
         recordingEnabled: recordCall,
       });
+      const remainingGreeting = spokenGreeting.replace(AI_VOICE_DISCLOSURE, '').trim();
       const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
         ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
       const maxDurationSeconds = capMinutes * 60 - HANGUP_MARGIN_SECONDS;
@@ -274,12 +301,15 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         play: {
           urls: [
-            new URL('/audio/dispatch-connected-v1.wav', plan.receiptUrl).toString(),
-            `say: ${spokenGreeting}`,
+            `say: ${AI_VOICE_DISCLOSURE}`,
+            new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
+            ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
           ],
           // Pin the opening voice separately from the accepted conversational
           // profile. An engine-qualified voice avoids a provider-default switch.
-          say_voice: 'rime.luna:coda',
+          say_voice: 'rime.eyre:coda',
+          // Reduce the opening's playback level for speakerphone comfort.
+          volume: -2,
         },
       });
       if (recordCall) {
@@ -293,11 +323,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
       }
       const swaigFunctions: Record<string, unknown>[] = [];
 
-      if (plan.transferTo) {
+      for (const transfer of [
+        { destination: plan.transferTo, name: 'transfer_to_business', emergency: false },
+        { destination: plan.emergencyTransferTo, name: 'transfer_to_emergency', emergency: true },
+      ]) {
+        if (!transfer.destination) continue;
         swaigFunctions.push({
-          function: 'transfer_to_business',
-          purpose: 'Send the caller to a person when they ask for one or the '
-            + 'request is beyond what can be handled.',
+          function: transfer.name,
+          purpose: transfer.emergency
+            ? 'Connect an urgent safety or emergency service caller to the configured on-call team. This is not emergency services and does not guarantee a response.'
+            : 'Send the caller to a person when they ask for one or the request is beyond what can be handled.',
           argument: {
             type: 'object',
             properties: {
@@ -310,7 +345,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           data_map: { expressions: [{
             string: 'true', pattern: '.*',
             output: {
-              response: 'Connecting you with our office staff now. Please hold for just a moment.',
+              response: transfer.emergency
+                ? 'I will try to connect you with our on-call team now.'
+                : 'Connecting you with our office staff now. Please hold for just a moment.',
               action: [{
                 transfer: true,
                 SWML: {
@@ -319,7 +356,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                     main: [
                       {
                         connect: {
-                          to: plan.transferTo,
+                          to: transfer.destination,
                           timeout: 25,
                           max_duration: maxDurationSeconds,
                           ...(plan.transferStatusUrl ? { status_url: plan.transferStatusUrl } : {}),
@@ -366,7 +403,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'check_available_slots',
-          purpose: 'Query live appointment slots and dispatch windows by date or timeframe.',
+          purpose: 'Query available appointment request windows by date or timeframe. Availability is not a confirmed booking.',
           argument: {
             type: 'object',
             properties: {
@@ -392,7 +429,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
         if (!plan.contractorMode) {
           swaigFunctions.push({
             function: 'book_appointment_slot',
-            purpose: 'Directly schedule and confirm an appointment slot into the system, place a hold, and send an SMS confirmation to the caller.',
+            purpose: 'Save an appointment request and temporary slot hold for office review. The team must confirm the appointment. Report the saved request and whether a text was queued; never claim a final booking or delivered text.',
             argument: {
               type: 'object',
               properties: {
@@ -560,7 +597,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'cancel_or_reschedule_appointment',
-          purpose: 'Reschedule or cancel an existing appointment for a customer by their phone number or address.',
+          purpose: 'Save a cancellation or rescheduling request for the office to verify and review. The existing appointment is unchanged until the office confirms. Caller-provided phone/address is not proof of ownership.',
           argument: {
             type: 'object',
             properties: {
@@ -828,6 +865,12 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
       mainSection.push({
         ai: {
+          languages: [
+            { name: 'English', code: 'en-US', voice: 'rime.eyre:coda' },
+            { name: 'Spanish', code: 'es-US', voice: 'rime.eyre:coda' },
+          ],
+          voice: 'rime.eyre:coda',
+          ...(plan.hints && plan.hints.length > 0 ? { hints: plan.hints } : {}),
           post_prompt_url: plan.receiptUrl,
           // SignalWire supports these as dedicated fields. Using them
           // produces Authorization: Basic on the receipt request while
@@ -836,18 +879,20 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
+            energy_level: voiceEnergyLevel(),
+            // Staff commands such as "Stop" and "Pause" are one word. The
+            // general noise threshold must not prevent their interruption.
+            barge_min_words: plan.contractorMode ? 1 : voiceBargeMinWords(),
             end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
             enable_turn_detection: true,
             turn_detection_timeout: 250,
             function_wait_for_talking: false,
             ...(plan.contractorMode ? {
-              // Redaction runs inline. SignalWire recommends combining cleanup
-              // and redaction in one utility pass, instead of serial text passes.
-              // Keep provider masking and the independent receipt sanitizer.
               utility_model: 'gpt-4.1-nano',
               auto_correct: true,
               enable_text_normalization: 'off',
               transparent_barge: true,
+              enable_barge: 'all',
               barge_functions: false,
               interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
             } : {}),
@@ -864,6 +909,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'When speaking, repeating, confirming, or reading back any phone number to the caller, always speak it as a standard 10-digit number starting directly with the area code (e.g. 810-304-2061); never include "+1", "plus one", or a leading "1". '
               + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '

@@ -6,6 +6,7 @@
  */
 
 import type { MerchandiseProduct, MerchandiseCategoryId } from './types';
+export * from './card-catalog-types';
 
 export const MERCHANDISE_CATEGORIES: { id: MerchandiseCategoryId; label: string; icon: string }[] = [
   { id: 'print', label: 'Cards & Field Forms', icon: '📇' },

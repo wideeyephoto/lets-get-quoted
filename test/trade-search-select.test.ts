@@ -145,6 +145,18 @@ describe('Trade Search & Auto-Suggest', () => {
       expect(decision).toEqual({ action: 'none' });
     });
 
+    it('does not fill when autoFillFromBusinessName is explicitly false (e.g. returning contractor)', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Brookhaven Plumbing',
+        currentValue: '',
+        isAutoFilled: false,
+        userTouched: false,
+        hasInitialTrade: false,
+        autoFillFromBusinessName: false,
+      });
+      expect(decision).toEqual({ action: 'none' });
+    });
+
     it('never overwrites an already chosen manual trade', () => {
       const decision = resolveTradeAutoSuggest({
         businessName: 'Apex Roofing LLC',

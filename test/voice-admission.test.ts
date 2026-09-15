@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as terminalReconciliation from '@/lib/voice/terminal-reconciliation';
 
 import {
   AI_VOICE_FLAG,
@@ -146,6 +147,52 @@ describe('the product flag is not a metering flag', () => {
 });
 
 describe('what a caller gets', () => {
+  it.each(['owner', 'office', 'crew'])('keeps registered %s Dispatch available during homeowner office hours', async (role) => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'after_hours', business_hours: { '2': ['08:00', '17:00'] },
+    });
+    resolveVoiceCallerIdentity.mockResolvedValue({ status: 'staff', caller: {
+      role, name: 'Registered Staff', normalizedPhone: call.fromNumber, crewId: null,
+      hourlyRate: null, burdenPct: 0,
+    } });
+    expect((await planInboundCall(admin, call, {
+      ...options, now: () => new Date('2026-08-18T16:00:00Z'),
+    })).plan.kind).toBe('ai_agent');
+  });
+
+  it.each(['customer', 'ambiguous', 'unavailable'])('keeps the homeowner schedule for %s identity', async (status) => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'after_hours', business_hours: { '2': ['08:00', '17:00'] },
+    });
+    resolveVoiceCallerIdentity.mockResolvedValue({ status });
+    expect((await planInboundCall(admin, call, {
+      ...options, now: () => new Date('2026-08-18T16:00:00Z'),
+    })).declineReason).toBe('within_business_hours');
+    expect(admitVoiceCall).not.toHaveBeenCalled();
+  });
+  it('selects an explicit on-call destination independently from the regular office', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, emergency_transfer_number: '+12485550104',
+    });
+    expect((await planInboundCall(admin, call, options)).plan).toMatchObject({
+      kind: 'ai_agent', transferTo: '+15557654321', emergencyTransferTo: '+12485550104',
+    });
+  });
+
+  it.each([call.fromNumber, call.toNumber])('never transfers a caller back to %s', async (loopNumber) => {
+    workspace({ voice_concurrent_calls: 1 }, loopNumber, {
+      ...ACTIVE, transfer_number: loopNumber, emergency_transfer_number: loopNumber,
+    });
+    expect((await planInboundCall(admin, call, options)).plan).toMatchObject({
+      kind: 'ai_agent', transferTo: null, emergencyTransferTo: null,
+    });
+  });
+
+  it('uses the office for emergencies when there is no separate on-call number', async () => {
+    expect((await planInboundCall(admin, call, options)).plan).toMatchObject({
+      transferTo: '+15557654321', emergencyTransferTo: '+15557654321',
+    });
+  });
   it.each([
     { outcome: 'admitted', capMinutes: 2, lease: { reservedMinutes: 2 } },
     { outcome: 'admitted_existing', capMinutes: 2 },
@@ -173,7 +220,7 @@ describe('what a caller gets', () => {
     expect(result.plan.receiptUrl).not.toContain('@');
     expect(result.plan.transferStatusUrl).toBe(options.forwardActionUrl(ACCOUNT));
     // The disclosure is not optional and not a setting.
-    expect(result.plan.greeting).toContain('AI assistant');
+    expect(result.plan.greeting).toMatch(/AI assistant/i);
     expect(admitVoiceCall).toHaveBeenCalledWith(
       admin,
       {
@@ -419,6 +466,28 @@ describe('concurrency, without a call-started event to count from', () => {
     expect(await countOpenAiCalls(admin, ACCOUNT, 3)).toBe(1);
   });
 
+  it('rechecks a full slot and admits the next caller after provider-confirmed termination', async () => {
+    workspace({ voice_concurrent_calls: 1 });
+    replies.voice_call_admissions = { data: [{ provider_call_id: 'ended-before-ai', dialed_number: TO }], error: null };
+    replies.voice_events = { data: [], error: null };
+    const reconcile = vi.spyOn(terminalReconciliation, 'reconcileVoiceTerminalAdmission').mockResolvedValue(true);
+    try {
+      expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
+      expect(reconcile).toHaveBeenCalledOnce();
+      expect(admitVoiceCall).toHaveBeenCalledOnce();
+    } finally { reconcile.mockRestore(); }
+  });
+
+  it('bounds full-slot provider recovery to three candidates', async () => {
+    replies.voice_call_admissions = { data: Array.from({ length: 5 }, (_, i) => ({ provider_call_id: `pending-${i}` })), error: null };
+    replies.voice_events = { data: [], error: null };
+    const reconcile = vi.spyOn(terminalReconciliation, 'reconcileVoiceTerminalAdmission').mockResolvedValue(true);
+    try {
+      expect(await countOpenAiCalls(admin, ACCOUNT, 1)).toBe(2);
+      expect(reconcile).toHaveBeenCalledTimes(3);
+    } finally { reconcile.mockRestore(); }
+  });
+
   it('stops counting a provider-terminal admission before its delayed receipt arrives', async () => {
     replies.voice_call_admissions = {
       data: [
@@ -522,9 +591,21 @@ describe('when the receptionist is meant to pick up', () => {
     });
     const result = await planInboundCall(admin, call, options);
     if (result.plan.kind !== 'ai_agent') throw new Error('expected the agent');
-    expect(result.plan.greeting).toContain("Hi, I'm your AI assistant.");
+    expect(result.plan.greeting).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
     expect(result.plan.greeting).toContain('Rivera Plumbing, how can I help?');
     // The configured hand-off wins over the general forwarding number.
     expect(result.plan.transferTo).toBe('+15550001111');
+  });
+
+  it('sanitizes anonymous or non-NANP caller numbers (+10000000000) to null', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', ACTIVE);
+    const anonCall = { providerCallId: CALL, toNumber: TO, fromNumber: '+10000000000' };
+    const result = await planInboundCall(admin, anonCall, options);
+    expect(result.plan.kind).toBe('ai_agent');
+    expect(admitVoiceCall).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ callerNumber: null, callerKind: 'customer' }),
+      expect.anything(),
+    );
   });
 });

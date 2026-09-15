@@ -5,7 +5,6 @@ import {
   extractStreetAndNeighborhood,
   calculateHaloGeofence,
   findOverlappingHaloCampaigns,
-  DEFAULT_HALO_CONFIG,
   type HaloJobInput,
   type HaloQualificationResult,
   type NeighborhoodHaloCampaign,
@@ -13,7 +12,7 @@ import {
 } from './neighborhood-halo';
 import { buildHaloCreativeBundle, type HaloAdCreativeBundle } from './neighborhood-halo-ai';
 import { createJobPhotoLinks } from './job-photo-storage';
-import { isMetaAdsConfigured, provisionManagedMetaCampaign, pauseMetaCampaign, resumeMetaCampaign } from './meta-ads-api';
+import { isMetaAdsConfigured, provisionManagedMetaCampaign, pauseMetaCampaign, activateMetaCampaign, fetchMetaCampaignDailySpend } from './meta-ads-api';
 import { stateFromAddress } from './marketing-calendar';
 import { getSiteContent } from './site-content';
 
@@ -32,6 +31,8 @@ export type HaloCampaignRecord = {
   accountId: string;
   jobId?: string | null;
   status: HaloCampaignStatus;
+  settlementRequestedAt?: string | null;
+  settlementStatus?: 'failed' | 'completed' | 'killed' | null;
   streetName: string;
   neighborhoodName?: string | null;
   city: string;
@@ -55,6 +56,8 @@ export type HaloCampaignRecord = {
   googleCampaignId?: string | null;
   googleCampaignResource?: string | null;
   metaCampaignId?: string | null;
+  metaAdSetId?: string | null;
+  metaAdId?: string | null;
   landingPageUrl: string;
   autoKilledAt?: string | null;
   autoKillReason?: string | null;
@@ -84,6 +87,8 @@ export const DEFAULT_HALO_SETTINGS: Omit<HaloSettingsRecord, 'accountId'> = {
 
 function mapRowToCampaign(row: Record<string, unknown>): HaloCampaignRecord {
   return {
+    settlementRequestedAt: row.settlement_requested_at ? String(row.settlement_requested_at) : null,
+    settlementStatus: row.settlement_status as HaloCampaignRecord['settlementStatus'],
     id: String(row.id),
     accountId: String(row.account_id),
     jobId: row.job_id ? String(row.job_id) : null,
@@ -111,6 +116,8 @@ function mapRowToCampaign(row: Record<string, unknown>): HaloCampaignRecord {
     googleCampaignId: row.google_campaign_id ? String(row.google_campaign_id) : null,
     googleCampaignResource: row.google_campaign_resource ? String(row.google_campaign_resource) : null,
     metaCampaignId: row.meta_campaign_id ? String(row.meta_campaign_id) : null,
+    metaAdSetId: row.meta_ad_set_id ? String(row.meta_ad_set_id) : null,
+    metaAdId: row.meta_ad_id ? String(row.meta_ad_id) : null,
     landingPageUrl: String(row.landing_page_url || ''),
     autoKilledAt: row.auto_killed_at ? String(row.auto_killed_at) : null,
     autoKillReason: row.auto_kill_reason ? String(row.auto_kill_reason) : null,
@@ -225,13 +232,13 @@ export async function getMonthHaloSpendDollars(
 
   const { data, error } = await supabase
     .from('neighborhood_halo_campaigns')
-    .select('budget_dollars')
+    .select('budget_dollars,wallet_deducted_cents,wallet_refunded_cents')
     .eq('account_id', accountId)
     .is('deleted_at', null)
     .gte('created_at', firstOfMonth);
 
-  if (error || !data) return 0;
-  return data.reduce((sum, row) => sum + Number(row.budget_dollars || 0), 0);
+  if (error || !data) throw new Error('Could not verify monthly Halo reservations.');
+  return data.reduce((sum, row) => sum + (Number(row.wallet_deducted_cents ?? Number(row.budget_dollars || 0)*100)-Number(row.wallet_refunded_cents || 0))/100, 0);
 }
 
 export async function qualifyAndPreviewJob(
@@ -335,6 +342,7 @@ export async function launchHaloCampaign(
   const budget = overrides?.budgetDollars ?? settings.perJobBudgetDollars;
   const radius = overrides?.radiusMiles ?? settings.defaultRadiusMiles;
   const duration = overrides?.durationDays ?? 5;
+  if (!Number.isFinite(budget) || budget < 1 || budget > 1000 || !Number.isFinite(radius) || radius < 1 || radius > 25 || !Number.isInteger(duration) || duration < 1 || duration > 30) throw new Error('Invalid Halo budget, radius, or duration.');
 
   if (currentMonthSpend + budget > settings.monthlySpendCapDollars) {
     throw new Error(
@@ -369,8 +377,9 @@ export async function launchHaloCampaign(
   const city = addressRaw ? addressRaw.split(',')[0]?.trim() : 'Local Area';
   const extracted = extractStreetAndNeighborhood(addressRaw);
 
-  const lat = job.lat ? Number(job.lat) : 37.7749;
-  const lng = job.lng ? Number(job.lng) : -122.4194;
+  const lat = job.lat == null ? NaN : Number(job.lat);
+  const lng = job.lng == null ? NaN : Number(job.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error('Verified job coordinates are required for local advertising.');
 
   // Check spatial deduplication against existing active campaigns
   const existingCampaigns = await listHaloCampaigns(supabase, accountId, 50);
@@ -414,41 +423,7 @@ export async function launchHaloCampaign(
     throw new Error('Meta Ads API is not configured. Neighborhood Halo requires active Meta Ads credentials.');
   }
 
-  // Deduct micro-budget from sitewide Ad Wallet via atomic spend RPC
   const spendCents = Math.round(budget * 100);
-  const todayIso = new Date().toISOString().slice(0, 10);
-  let walletDeducted = false;
-
-  const { data: spendData, error: spendError } = await admin.rpc('atomic_ad_wallet_spend', {
-    p_account_id: accountId,
-    p_spend_cents: spendCents,
-    p_date: todayIso,
-    p_clicks: 0,
-    p_impressions: 0,
-    p_conversions: 0,
-    p_source: 'neighborhood_halo_launch',
-  });
-
-  if (spendError) {
-    throw new Error(
-      `INSUFFICIENT_WALLET_BALANCE: Neighborhood Halo requires $${budget.toFixed(2)} in your Managed Ads Wallet. ${spendError.message || 'Please deposit or auto-refill wallet funds.'}`
-    );
-  }
-
-  if (spendData && typeof spendData === 'object') {
-    const res = spendData as { success: boolean; error?: string };
-    if (!res.success) {
-      throw new Error(
-        `INSUFFICIENT_WALLET_BALANCE: Neighborhood Halo requires $${budget.toFixed(2)} in your Managed Ads Wallet. ${res.error || 'Please deposit or auto-refill wallet funds.'}`
-      );
-    }
-    walletDeducted = true;
-  } else {
-    throw new Error(
-      `INSUFFICIENT_WALLET_BALANCE: Unable to verify wallet balance for Neighborhood Halo launch.`
-    );
-  }
-
   // Generate creative bundle
   const [{ data: account }, { data: site }] = await Promise.all([
     supabase.from('accounts').select('business_name, phone').eq('id', accountId).maybeSingle(),
@@ -479,66 +454,7 @@ export async function launchHaloCampaign(
     customIncentive: '$250 Off Neighbor Group Rate',
   });
 
-  let metaCampaignId: string | null = null;
-  let metaRes: Awaited<ReturnType<typeof provisionManagedMetaCampaign>> | null = null;
-  try {
-    metaRes = await provisionManagedMetaCampaign({
-      accountId,
-      businessName: (site?.company_name as string | undefined) || account?.business_name || 'Our Team',
-      trade: job.trade || getSiteContent(site?.content).trade || 'Contracting',
-      city,
-      radiusMiles: radius,
-      latitude: job.lat ? Number(job.lat) : undefined,
-      longitude: job.lng ? Number(job.lng) : undefined,
-      monthlyBudgetDollars: Math.round(budget * (30.4 / duration)),
-      landingPageUrl: landingUrl,
-      durationDays: duration,
-    });
-  } catch (metaErr: unknown) {
-    if (walletDeducted) {
-      try {
-        await admin.rpc('atomic_ad_wallet_credit', {
-          p_account_id: accountId,
-          p_payment_intent_id: `refund_halo_fail_${haloCampaignId}`,
-          p_credit_cents: spendCents,
-          p_fee_cents: 0,
-        });
-      } catch {}
-    }
-    const errMessage = metaErr instanceof Error ? metaErr.message : 'Meta campaign provisioning failed';
-    throw new Error(`Failed to launch Neighborhood Halo campaign: ${errMessage}`);
-  }
-
-  if (metaRes.success && metaRes.campaignId) {
-    metaCampaignId = metaRes.campaignId;
-  } else {
-    const failureMsg = metaRes?.message || 'Meta campaign provisioning failed';
-    // If a campaign was partially created on Meta, pause it to prevent orphaned ad spend
-    if (metaRes?.campaignId) {
-      try {
-        await pauseMetaCampaign(metaRes.campaignId);
-      } catch (cleanErr) {
-        console.warn('[NeighborhoodHalo] Failed to pause orphan Meta campaign:', cleanErr);
-      }
-    }
-    // Roll back upfront wallet debit
-    if (walletDeducted) {
-      try {
-        await admin.rpc('atomic_ad_wallet_credit', {
-          p_account_id: accountId,
-          p_payment_intent_id: `refund_halo_fail_${haloCampaignId}`,
-          p_credit_cents: spendCents,
-          p_fee_cents: 0,
-        });
-      } catch (refundErr) {
-        console.error('[NeighborhoodHalo] Failed to refund wallet debit on provisioning failure:', refundErr);
-      }
-    }
-    throw new Error(`Failed to launch Neighborhood Halo campaign: ${failureMsg}`);
-  }
-
-  const status: HaloCampaignStatus = 'active';
-
+  const status: HaloCampaignStatus = 'pending_provisioning';
   const expiresAt = new Date(Date.now() + duration * 86400000).toISOString();
   const nowIso = new Date().toISOString();
 
@@ -557,7 +473,7 @@ export async function launchHaloCampaign(
     radius_miles: radius,
     budget_dollars: budget,
     spend_dollars: 0.0,
-    wallet_deducted_cents: walletDeducted ? spendCents : 0,
+    wallet_deducted_cents: spendCents,
     daily_budget_dollars: budget / duration,
     duration_days: duration,
     days_active: 0,
@@ -569,39 +485,65 @@ export async function launchHaloCampaign(
     after_photo_url: photoUrls[0] || null,
     google_campaign_id: null,
     google_campaign_resource: null,
-    meta_campaign_id: metaCampaignId,
+    meta_campaign_id: null,
     landing_page_url: landingUrl,
     expires_at: expiresAt,
     created_at: nowIso,
     updated_at: nowIso,
   };
 
-  const { data: createdRow, error: insertError } = await admin
-    .from('neighborhood_halo_campaigns')
-    .insert(insertPayload)
-    .select()
-    .single();
-
-  if (insertError) {
-    if (walletDeducted) {
-      try {
-        await admin.rpc('atomic_ad_wallet_credit', {
-          p_account_id: accountId,
-          p_payment_intent_id: `refund_halo_fail_${haloCampaignId}`,
-          p_credit_cents: spendCents,
-          p_fee_cents: 0,
-        });
-      } catch {
-        // Best-effort rollback
-      }
+  const reserved = await admin.rpc('reserve_halo_campaign', { p_account_id: accountId, p_job_id: jobId, p_campaign_id: haloCampaignId, p_details: insertPayload });
+  if (reserved.error || !reserved.data?.id) throw new Error(reserved.error?.message || 'Could not reserve Halo budget.');
+  const deliveryLease = crypto.randomUUID();
+  const claimed = await admin.rpc('claim_halo_delivery', { p_account_id: accountId, p_campaign_id: haloCampaignId, p_lease: deliveryLease });
+  if (claimed.error || claimed.data !== true) throw new Error('Halo launch is already being processed.');
+  let activationAttempted = false;
+  let provisioned: Awaited<ReturnType<typeof provisionManagedMetaCampaign>> | undefined;
+  try {
+    provisioned = await provisionManagedMetaCampaign({ accountId, businessName: account?.business_name || 'Our Team',
+      trade: job.trade || getSiteContent(site?.content).trade || 'Contracting', city, radiusMiles: radius,
+      latitude: lat, longitude: lng, monthlyBudgetDollars: budget * 30.4 / duration, lifetimeBudgetDollars: budget,
+      durationDays: duration, endTime: expiresAt, landingPageUrl: landingUrl, startPaused: true,
+      imageUrl: photoUrls[0], headline: creative.copy.headline, primaryText: creative.copy.primaryText });
+    if (provisioned.campaignId) {
+      const partial = await admin.from('neighborhood_halo_campaigns').update({ meta_campaign_id: provisioned.campaignId }).eq('id', haloCampaignId).eq('account_id', accountId);
+      if (partial.error) throw new Error('Could not persist provider recovery reference.');
     }
-    throw new Error(`Failed to create neighborhood halo campaign: ${insertError.message}`);
+    if (!provisioned.success || provisioned.status !== 'paused' || !provisioned.campaignId || !provisioned.adSetId || !provisioned.adId) throw new Error(provisioned.message || 'Meta did not create all paused resources.');
+    const saved = await admin.from('neighborhood_halo_campaigns').update({ meta_campaign_id: provisioned.campaignId,
+      meta_ad_set_id: provisioned.adSetId, meta_ad_id: provisioned.adId, updated_at: new Date().toISOString() }).eq('id', haloCampaignId).eq('account_id', accountId).select('id').single();
+    if (saved.error || !saved.data) throw new Error('Could not persist Meta campaign resources.');
+    activationAttempted = true;
+    const activated = await activateMetaCampaign(provisioned);
+    if (!activated.success) throw new Error(activated.message);
+    const active = await admin.from('neighborhood_halo_campaigns').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', haloCampaignId).eq('account_id', accountId).select().single();
+    if (active.error || !active.data) throw new Error('Could not record campaign activation.');
+    return mapRowToCampaign(active.data);
+  } catch (error) {
+    // Nothing can spend before activation; ambiguous activation retains its reservation.
+    if (activationAttempted) {
+      await killHaloCampaignUnlocked(admin, accountId, haloCampaignId, 'launch_failed');
+    } else {
+      if (provisioned?.campaignId) {
+        const stopped = await pauseMetaCampaign(provisioned.campaignId);
+        if (!stopped.success) throw new Error(`Halo launch needs recovery: ${stopped.message}`);
+      }
+      await settleHaloCampaign(admin, accountId, haloCampaignId, 0, 'failed', 'launch_failed_before_activation');
+    }
+    throw error;
+  } finally {
+    const released = await admin.rpc('release_halo_delivery', { p_account_id: accountId, p_campaign_id: haloCampaignId, p_lease: deliveryLease });
+    if (released.error) console.error('Halo delivery lease awaits expiry:', released.error);
   }
-
-  return mapRowToCampaign(createdRow);
 }
 
-export async function pauseHaloCampaign(
+export async function settleHaloCampaign(admin: SupabaseClient, accountId: string, campaignId: string, spendCents: number, status: 'failed' | 'completed' | 'killed', reason: string) {
+  const result = await admin.rpc('settle_halo_campaign', { p_account_id: accountId, p_campaign_id: campaignId, p_spend_cents: spendCents, p_status: status, p_reason: reason });
+  if (result.error || !result.data?.id) throw new Error(result.error?.message || 'Halo settlement could not be saved.');
+  return mapRowToCampaign(result.data);
+}
+
+async function pauseHaloCampaignUnlocked(
   supabase: SupabaseClient,
   accountId: string,
   campaignId: string
@@ -611,6 +553,7 @@ export async function pauseHaloCampaign(
     throw new Error('Campaign not found.');
   }
 
+  if (!['active', 'paused'].includes(campaign.status)) throw new Error('Only active campaigns can be paused.');
   if (campaign.metaCampaignId) {
     const pauseRes = await pauseMetaCampaign(campaign.metaCampaignId);
     if (!pauseRes.success) {
@@ -618,11 +561,12 @@ export async function pauseHaloCampaign(
     }
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await createAdminClient()
     .from('neighborhood_halo_campaigns')
     .update({ status: 'paused', updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('id', campaignId)
+    .in('status', ['active', 'paused'])
     .select()
     .single();
 
@@ -630,7 +574,7 @@ export async function pauseHaloCampaign(
   return mapRowToCampaign(data);
 }
 
-export async function resumeHaloCampaign(
+async function resumeHaloCampaignUnlocked(
   supabase: SupabaseClient,
   accountId: string,
   campaignId: string
@@ -640,6 +584,7 @@ export async function resumeHaloCampaign(
     throw new Error('Campaign not found.');
   }
 
+  if (campaign.settlementRequestedAt) throw new Error('Campaign is stopped and its final spend is being reconciled.');
   if (campaign.status !== 'paused') {
     throw new Error(`Cannot resume campaign with status '${campaign.status}'. Only paused campaigns can be resumed.`);
   }
@@ -648,38 +593,18 @@ export async function resumeHaloCampaign(
     throw new Error('Cannot resume campaign: campaign duration has expired.');
   }
 
-  const { data, error } = await supabase
-    .from('neighborhood_halo_campaigns')
-    .update({ status: 'active', updated_at: new Date().toISOString() })
-    .eq('account_id', accountId)
-    .eq('id', campaignId)
-    .eq('status', 'paused')
-    .select()
-    .single();
-
-  if (error) throw new Error(`Unable to resume campaign: ${error.message}`);
-
-  if (campaign.metaCampaignId) {
-    try {
-      const resumeRes = await resumeMetaCampaign(campaign.metaCampaignId);
-      if (!resumeRes.success) {
-        throw new Error(resumeRes.message);
-      }
-    } catch (resumeErr) {
-      await supabase
-        .from('neighborhood_halo_campaigns')
-        .update({ status: 'paused', updated_at: new Date().toISOString() })
-        .eq('account_id', accountId)
-        .eq('id', campaignId);
-      const msg = resumeErr instanceof Error ? resumeErr.message : String(resumeErr);
-      throw new Error(`Unable to resume Meta campaign: ${msg}`);
-    }
+  if (!campaign.metaCampaignId) throw new Error('Campaign has no verified Meta resources.');
+  const activated = await activateMetaCampaign({ campaignId: campaign.metaCampaignId, adSetId: campaign.metaAdSetId || undefined, adId: campaign.metaAdId || undefined });
+  if (!activated.success) throw new Error(activated.message);
+  const updated = await createAdminClient().from('neighborhood_halo_campaigns').update({ status: 'active', updated_at: new Date().toISOString() }).eq('account_id', accountId).eq('id', campaignId).eq('status', 'paused').select().single();
+  if (updated.error || !updated.data) {
+    const paused = await pauseMetaCampaign(campaign.metaCampaignId);
+    throw new Error(`Could not persist campaign resume.${paused.success ? '' : ' Provider pause needs recovery.'}`);
   }
-
-  return mapRowToCampaign(data);
+  return mapRowToCampaign(updated.data);
 }
 
-export async function killHaloCampaign(
+async function killHaloCampaignUnlocked(
   supabase: SupabaseClient,
   accountId: string,
   campaignId: string,
@@ -692,48 +617,27 @@ export async function killHaloCampaign(
     throw new Error('Campaign not found.');
   }
 
-  // If a live Meta campaign is running, pause it on Meta to halt real ad delivery immediately
+  if (['killed', 'completed', 'failed'].includes(campaign.status)) return campaign;
+  let spendCents = 0;
+  const terminalStatus = campaign.settlementStatus || (reason === 'duration_complete' ? 'completed' : reason === 'launch_failed' ? 'failed' : 'killed');
   if (campaign.metaCampaignId) {
-    const pauseRes = await pauseMetaCampaign(campaign.metaCampaignId);
-    if (!pauseRes.success) {
-      throw new Error(`Unable to pause Meta campaign on kill: ${pauseRes.message}`);
+    const stopped = await pauseMetaCampaign(campaign.metaCampaignId);
+    if (!stopped.success) throw new Error(`Unable to stop Meta delivery: ${stopped.message}`);
+    if (!campaign.settlementRequestedAt) {
+      const saved = await admin.from('neighborhood_halo_campaigns').update({ status: 'paused', settlement_requested_at: new Date().toISOString(),
+        settlement_status: terminalStatus, auto_kill_reason: reason }).eq('id', campaignId).eq('account_id', accountId).select().single();
+      if (saved.error || !saved.data) throw new Error('Meta is paused; stopping status needs recovery.');
+      return mapRowToCampaign(saved.data);
     }
+    // Provider reporting can lag delivery. Keep funds reserved during reconciliation.
+    if (Date.now() - Date.parse(campaign.settlementRequestedAt) < 72 * 3600000) return campaign;
+    const insights = await fetchMetaCampaignDailySpend(campaign.metaCampaignId, undefined, 'maximum');
+    if (!insights.success) throw new Error('Meta is paused; waiting for verified final spend before refunding.');
+    spendCents = insights.spendCents;
+  } else if (campaign.status !== 'pending_provisioning' && campaign.walletDeductedCents > 0) {
+    throw new Error('Campaign has no provider reference; reserved budget requires reconciliation.');
   }
-
-  // Refunds are strictly tied to proven debits
-  const provenDebitedCents = campaign.walletDeductedCents || 0;
-  const actualSpendCents = Math.round(campaign.spendDollars * 100);
-  const refundableCents = Math.max(0, provenDebitedCents - actualSpendCents);
-
-  const { data, error } = await supabase
-    .from('neighborhood_halo_campaigns')
-    .update({
-      status: 'killed',
-      auto_killed_at: new Date().toISOString(),
-      auto_kill_reason: reason,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('account_id', accountId)
-    .eq('id', campaignId)
-    .select()
-    .single();
-
-  if (error) throw new Error(`Unable to kill campaign: ${error.message}`);
-
-  if (refundableCents > 0) {
-    try {
-      await admin.rpc('atomic_ad_wallet_credit', {
-        p_account_id: accountId,
-        p_payment_intent_id: `refund_halo_kill_${campaignId}`,
-        p_credit_cents: refundableCents,
-        p_fee_cents: 0,
-      });
-    } catch (refundErr) {
-      console.warn(`Failed to refund proven unspent budget for halo ${campaignId}:`, refundErr);
-    }
-  }
-
-  return mapRowToCampaign(data);
+  return settleHaloCampaign(admin, accountId, campaignId, spendCents, terminalStatus, reason);
 }
 
 export async function triggerNeighborhoodHaloOnJobComplete(
@@ -752,4 +656,26 @@ export async function triggerNeighborhoodHaloOnJobComplete(
     console.warn(`[NeighborhoodHalo] Auto-launch skipped for job ${jobId}:`, error instanceof Error ? error.message : error);
     return null;
   }
+}
+
+async function withHaloDeliveryLease(supabase: SupabaseClient, accountId: string, campaignId: string, work: () => Promise<HaloCampaignRecord>) {
+  const owned = await getHaloCampaignById(supabase, campaignId);
+  if (!owned || owned.accountId !== accountId) throw new Error('Campaign not found.');
+  const admin = createAdminClient();
+  const lease = crypto.randomUUID();
+  const claim = await admin.rpc('claim_halo_delivery', { p_account_id: accountId, p_campaign_id: campaignId, p_lease: lease });
+  if (claim.error || claim.data !== true) throw new Error('Campaign delivery is being updated. Please retry shortly.');
+  try { return await work(); } finally {
+    const released = await admin.rpc('release_halo_delivery', { p_account_id: accountId, p_campaign_id: campaignId, p_lease: lease });
+    if (released.error) console.error('Halo delivery lease awaits expiry:', released.error);
+  }
+}
+export async function pauseHaloCampaign(supabase: SupabaseClient, accountId: string, campaignId: string) {
+  return withHaloDeliveryLease(supabase, accountId, campaignId, () => pauseHaloCampaignUnlocked(supabase, accountId, campaignId));
+}
+export async function resumeHaloCampaign(supabase: SupabaseClient, accountId: string, campaignId: string) {
+  return withHaloDeliveryLease(supabase, accountId, campaignId, () => resumeHaloCampaignUnlocked(supabase, accountId, campaignId));
+}
+export async function killHaloCampaign(supabase: SupabaseClient, accountId: string, campaignId: string, reason = 'manual_cancellation') {
+  return withHaloDeliveryLease(supabase, accountId, campaignId, () => killHaloCampaignUnlocked(supabase, accountId, campaignId, reason));
 }

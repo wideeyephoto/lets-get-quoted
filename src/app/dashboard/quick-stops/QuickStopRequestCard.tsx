@@ -153,6 +153,7 @@ export default function QuickStopRequestCard({
   route,
   defaults,
   readOnly = false,
+  canCreateOffer = true,
 }: {
   businessName: string;
   request: CardRequest;
@@ -160,6 +161,7 @@ export default function QuickStopRequestCard({
   route: CardRoute | null;
   defaults: CardDefaults;
   readOnly?: boolean;
+  canCreateOffer?: boolean;
 }) {
   const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info' | 'cancel' | 'window' | 'diag'>('idle');
   const [arriving, setArriving] = useState(false);
@@ -704,7 +706,7 @@ export default function QuickStopRequestCard({
         <>
           {mode === 'idle' ? (
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-              <button type="button" className="btn primary" onClick={() => setMode('offer')} style={{ minHeight: '44px' }}>
+              <button type="button" className="btn primary" disabled={!canCreateOffer} onClick={() => setMode('offer')} style={{ minHeight: '44px' }}>
                 Create Custom Offer
               </button>
               <button type="button" className="btn secondary" onClick={() => setMode('info')} style={{ minHeight: '44px' }}>
@@ -716,7 +718,7 @@ export default function QuickStopRequestCard({
             </div>
           ) : null}
 
-          {mode === 'offer' ? (
+          {canCreateOffer && mode === 'offer' ? (
             <form action={createQuickStopOfferAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
               <div className="field">
                 <label htmlFor={`ad-${request.id}`}>Arrival date</label>

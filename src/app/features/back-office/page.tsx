@@ -568,7 +568,7 @@ export default function BackOfficePage() {
       /* The page's whole claim is "one job record", so the proof action is
          opening one. It was the third button, behind a signup and a jump link
          to a section that describes the record this button lets you use. */
-      primary={{ label: 'Open a live job record', href: '/demo/jobs/job-1' }}
+      primary={{ label: 'See the back office in the demo', href: '/demo/jobs/job-1' }}
       demo={<ShotSlider shots={HERO_SHOTS} label="Back office screens" />}
       proof={[
         { title: 'Quotes + e-sign', body: 'Professional, itemized and ready for approval.' },

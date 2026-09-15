@@ -119,7 +119,7 @@ describe('buildSitemapXml', () => {
   it('produces a valid document with the origin on every loc', () => {
     const xml = buildSitemapXml('https://brokepipes.com', siteIndexablePages(site({ content: withPost('fall-tips') as never })));
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true);
-    expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+    expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
     expect(xml).toContain('<loc>https://brokepipes.com</loc>');
     expect(xml).toContain('<loc>https://brokepipes.com/blog/fall-tips</loc>');
     expect(xml.trimEnd().endsWith('</urlset>')).toBe(true);

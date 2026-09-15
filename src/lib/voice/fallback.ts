@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
+import { normalizeUsPhone } from '@/lib/phone';
 import { verifySignedVoiceWebhook } from '@/lib/voice/auth';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 
@@ -25,11 +26,15 @@ export async function handleVoiceProviderFallback(request: Request): Promise<Res
   try { inbound = isJson ? JSON.parse(rawBody) : Object.fromEntries(new URLSearchParams(rawBody)); } catch { /* recovery must still answer */ }
   const call = signalwireVoiceProvider.parseInboundCall(inbound);
   const origin = trustedProviderCallbackOrigin();
-  const recordingStatusUrl = origin && call ? new URL('/api/voice/recording-status', origin) : null;
-  if (recordingStatusUrl && call) {
-    recordingStatusUrl.searchParams.set('to', call.toNumber);
-    if (call.fromNumber) recordingStatusUrl.searchParams.set('from', call.fromNumber);
-  }
+  // Native recording callbacks on query-bearing URLs failed signature checks
+  // in live acceptance. Keep attribution in the signed path, using numeric
+  // segments so provider URL normalization cannot rewrite plus signs.
+  const toNumber = normalizeUsPhone(call?.toNumber ?? '');
+  const fromNumber = normalizeUsPhone(call?.fromNumber ?? '');
+  const recordingStatusUrl = origin && toNumber ? new URL(
+    `/api/voice/recording-status/${toNumber.slice(1)}/${fromNumber?.slice(1) || 'unknown'}`,
+    origin,
+  ) : null;
   const answer = signalwireVoiceProvider.renderAnswer({
     kind: 'voicemail',
     ...(recordingStatusUrl ? { recordingStatusUrl: recordingStatusUrl.toString() } : {}),

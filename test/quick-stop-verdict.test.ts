@@ -123,6 +123,42 @@ describe('the verdict token is not a way in', () => {
     expect(makeQuickStopVerdictToken(ACCOUNT, FACTS, approved({ decidedBy: 'unavailable' }))).toBeNull();
     expect(makeQuickStopVerdictToken('', FACTS, approved())).toBeNull();
   });
+
+  it('is refused when text is shifted across field boundaries', () => {
+    const token = makeQuickStopVerdictToken(
+      ACCOUNT,
+      {
+        issue: 'broken pipe',
+        startedWhen: 'today',
+        worsening: 'no',
+        propertyType: 'house',
+      },
+      approved(),
+    );
+    expect(
+      readQuickStopVerdictToken(token, ACCOUNT, {
+        issue: 'broken',
+        startedWhen: 'pipe today',
+        worsening: 'no',
+        propertyType: 'house',
+      }),
+    ).toBeNull();
+  });
+
+  it('throws if SUPABASE_SERVICE_ROLE_KEY is unset rather than signing with an empty key', () => {
+    const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    try {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      expect(() => makeQuickStopVerdictToken(ACCOUNT, FACTS, approved())).toThrow(
+        /SUPABASE_SERVICE_ROLE_KEY is required/,
+      );
+      expect(() => readQuickStopVerdictToken('payload.signature', ACCOUNT, FACTS)).toThrow(
+        /SUPABASE_SERVICE_ROLE_KEY is required/,
+      );
+    } finally {
+      process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+    }
+  });
 });
 
 describe('reaffirmQualification — a token skips the AI, never the safety net', () => {

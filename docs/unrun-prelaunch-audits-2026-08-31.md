@@ -1,5 +1,8 @@
 # Unrun pre-launch audits — 2026-08-31
 
+> September 9 correction: the statements below that the LGQ refund engine has never run live are superseded by [Stripe request, transfer reversal, platform-fee and LGQ ledger evidence](prelaunch-payments-verification-2026-09-09.md). The September 7 programmatic partial refund is verified; a new dashboard-click/full-refund exercise and the paid add-on production lifecycle remain separate. This document otherwise retains its historical audit scope.
+
+
 **Scope:** answers "what audits have NOT been run yet that are needed pre-launch?" Baseline is [docs/audit-gap-sweep-2026-08-30.md](./audit-gap-sweep-2026-08-30.md) (12 named, mostly still unrun) plus everything after the audit frontier `b5520fc4` — the AI-operator wave, the Next 14→15.5.24 upgrade, CSP report-only, the email template rewrite, and the P0 remediations — which has had **no audit of any kind**.
 
 ---

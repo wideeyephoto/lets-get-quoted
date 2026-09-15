@@ -159,7 +159,7 @@ export default function ClientPortalPage() {
          idea — both sides of one conversation — and splitting them made the
          reader choose between halves of an argument. The live thread wins,
          because it shows both sides rather than describing them. */
-      primary={{ label: 'See both sides of a customer conversation', href: '/demo/messages' }}
+      primary={{ label: 'See the client portal in the demo', href: '/demo/messages' }}
       proof={[
         { title: 'Two-way texting', body: 'Replies stay connected to the right job.' },
         { title: 'A unique job portal', body: 'One customer view for every project.' },

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import { TERMS_EFFECTIVE_DATE } from '@/lib/terms';
 import styles from '../legal.module.css';
 
@@ -352,7 +353,7 @@ export default function TermsOfServicePage() {
           <h2>14. Contact</h2>
           <p>
             Questions or notices regarding these Terms may be submitted through our <Link href="/contact">contact page</Link> or by
-            written notice to LETS GET QUOTED LLC.
+            written notice to {LGQ_LEGAL_NAME}, {LGQ_MAILING_ADDRESS}.
           </p>
         </section>
       </div>

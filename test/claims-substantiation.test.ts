@@ -24,6 +24,8 @@ describe('Legal & Claims Substantiation Invariants', () => {
       // returning. "Trial by jury" in terms/page.tsx is unaffected by both.
       /\bfree\s+(platform\s+)?trial\b/i,
       /\btrial\s+period\b/i,
+      /\bstart\s+(free\s+)?(platform\s+)?trial\b/i,
+      /\bplatform\s+trial\b/i,
     ];
 
     function scanDirectory(dir: string): Array<{ file: string; match: string }> {
@@ -121,5 +123,73 @@ describe('Legal & Claims Substantiation Invariants', () => {
     expect(crewSeatsRow?.[2]).toBe(String(BILLING_PLANS.solo.allowances.crewUsers));
     expect(crewSeatsRow?.[3]).toBe(String(BILLING_PLANS.growth.allowances.crewUsers));
     expect(crewSeatsRow?.[4]).toBe(String(BILLING_PLANS.scale.allowances.crewUsers));
+  });
+  
+  it('requires AI tier claim evidence artifact if the privacy page claims it is verified', () => {
+    const privacyPagePath = path.resolve(process.cwd(), 'src/app/privacy/page.tsx');
+    if (fs.existsSync(privacyPagePath)) {
+      const content = fs.readFileSync(privacyPagePath, 'utf8');
+      if (content.includes('verified: Google Cloud Billing active on Gemini API project')) {
+        const evidenceDir = path.resolve(process.cwd(), 'docs/evidence');
+        expect(fs.existsSync(evidenceDir)).toBe(true);
+        const evidenceFiles = fs.readdirSync(evidenceDir);
+        const hasAiTierEvidence = evidenceFiles.some(f => f.startsWith('ai-tier-inspection') && f.endsWith('.txt'));
+        expect(hasAiTierEvidence).toBe(true);
+      }
+    }
+  });
+
+  it('prohibits promoting expired Section 25C tax credits as rebates on public pages', () => {
+    const publicDir = path.resolve(process.cwd(), 'src/app');
+    const prohibited = [
+      /25C\s+Rebate/i,
+      /\$2,000\s+IRA\s+Federal\s+Tax\s+Credit/i,
+    ];
+
+    function checkDir(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (!['api', 'dashboard'].includes(entry.name)) {
+            checkDir(full);
+          }
+        } else if (/\.(tsx|ts)$/.test(entry.name)) {
+          const text = fs.readFileSync(full, 'utf8');
+          for (const p of prohibited) {
+            expect(text, `Prohibited 25C pattern ${p} found in ${entry.name}`).not.toMatch(p);
+          }
+        }
+      }
+    }
+
+    checkDir(publicDir);
+  });
+
+  it('prohibits unlimited crew misrepresentations and guaranteed savings in marketing copy', () => {
+    const srcDir = path.resolve(process.cwd(), 'src');
+    const prohibitedPatterns = [
+      /unlimited\s+crew\s+members/i,
+      /unlimited\s+field\s+crew/i,
+      /unlimited\s+field\s+and\s+dispatch\s+logins/i,
+      /your\s+guaranteed\s+savings/i,
+    ];
+
+    function scan(dir: string) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (!['node_modules', '.next', '.git'].includes(entry.name)) {
+            scan(full);
+          }
+        } else if (/\.(tsx|ts)$/.test(entry.name)) {
+          const text = fs.readFileSync(full, 'utf8');
+          for (const pattern of prohibitedPatterns) {
+            expect(text, `Prohibited pattern ${pattern} found in ${entry.name}`).not.toMatch(pattern);
+          }
+        }
+      }
+    }
+
+    scan(srcDir);
   });
 });

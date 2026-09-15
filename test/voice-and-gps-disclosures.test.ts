@@ -36,8 +36,11 @@ describe('Voice & GPS Compliance Disclosures', () => {
       expect(recordingOccurrences).toBe(1);
     });
 
-    it('normalizes the legacy fixed disclosure without duplicating the opening', () => {
-      const greeting = greetingWithAiDisclosure('You are speaking with an AI assistant. Thanks for calling Apex.');
+    it.each([
+      'You are speaking with an AI assistant.',
+      "Hi, I'm your AI assistant.",
+    ])('normalizes the legacy disclosure "%s" without duplicating the opening', (legacyDisclosure) => {
+      const greeting = greetingWithAiDisclosure(`${legacyDisclosure} Thanks for calling Apex.`);
       expect(greeting).toBe(`${AI_VOICE_DISCLOSURE} Thanks for calling Apex.`);
       expect(greetingWithAiDisclosure(greeting)).toBe(greeting);
     });
@@ -66,8 +69,8 @@ describe('Voice & GPS Compliance Disclosures', () => {
 
       expect(recordAction).toBeDefined();
       expect(playAction).toBeDefined();
-      expect(playAction.play.urls[1]).toContain(AI_VOICE_DISCLOSURE);
-      expect(playAction.play.urls[1]).toContain(RECORDING_DISCLOSURE);
+      expect(playAction.play.urls[0]).toContain(AI_VOICE_DISCLOSURE);
+      expect(playAction.play.urls[2]).toContain(RECORDING_DISCLOSURE);
     });
   });
 

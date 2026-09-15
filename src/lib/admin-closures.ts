@@ -16,6 +16,7 @@ export type AdminAccountClosureJob = Readonly<{
   quickbooksState: string;
   storageState: string;
   authCleanupState: string;
+  domainCleanupState: string;
   attempts: number;
   maxAttempts: number;
   nextRetryAt: string | null;
@@ -83,7 +84,7 @@ export async function loadPendingIrreversibleWork(
   const [closuresResult, deletionsResult, accountsResult] = await Promise.all([
     admin
       .from('account_closure_jobs')
-      .select('id, closure_subject_id, account_id, requested_by_user_id, requested_by_role, access_revoked_at, local_disposal_state, stripe_state, quickbooks_state, storage_state, auth_cleanup_state, attempts, max_attempts, next_retry_at, last_error, completed_at, created_at, updated_at')
+      .select('id, closure_subject_id, account_id, requested_by_user_id, requested_by_role, access_revoked_at, local_disposal_state, stripe_state, quickbooks_state, storage_state, auth_cleanup_state, domain_cleanup_state, attempts, max_attempts, next_retry_at, last_error, completed_at, created_at, updated_at')
       .order('created_at', { ascending: false })
       .limit(limit),
     admin
@@ -123,6 +124,7 @@ export async function loadPendingIrreversibleWork(
       quickbooksState: String(r.quickbooks_state || 'pending'),
       storageState: String(r.storage_state || 'pending'),
       authCleanupState: String(r.auth_cleanup_state || 'pending'),
+      domainCleanupState: String(r.domain_cleanup_state || 'operator_review'),
       attempts: Number(r.attempts ?? 0),
       maxAttempts: Number(r.max_attempts ?? 5),
       nextRetryAt: r.next_retry_at ? String(r.next_retry_at) : null,
@@ -168,7 +170,7 @@ export async function loadPendingIrreversibleWork(
   const activeTrash = recoverableDeletions.filter((d) => d.status === 'trashed' && !d.isExpired);
   const expiringSoonTrash = activeTrash.filter((d) => d.daysRemaining <= 7);
   const failedClosures = activeClosures.filter(
-    (c) => c.localDisposalState === 'failed' || c.attempts >= c.maxAttempts,
+    (c) => c.localDisposalState === 'failed' || ['retry', 'operator_review'].includes(c.domainCleanupState) || c.attempts >= c.maxAttempts,
   );
 
   return {
@@ -197,7 +199,7 @@ export async function loadAccountIrreversibleWork(
   const [closureResult, deletionsResult] = await Promise.all([
     admin
       .from('account_closure_jobs')
-      .select('id, closure_subject_id, account_id, requested_by_user_id, requested_by_role, access_revoked_at, local_disposal_state, stripe_state, quickbooks_state, storage_state, auth_cleanup_state, attempts, max_attempts, next_retry_at, last_error, completed_at, created_at, updated_at')
+      .select('id, closure_subject_id, account_id, requested_by_user_id, requested_by_role, access_revoked_at, local_disposal_state, stripe_state, quickbooks_state, storage_state, auth_cleanup_state, domain_cleanup_state, attempts, max_attempts, next_retry_at, last_error, completed_at, created_at, updated_at')
       .eq('closure_subject_id', accountId)
       .is('completed_at', null)
       .maybeSingle(),
@@ -226,6 +228,7 @@ export async function loadAccountIrreversibleWork(
       quickbooksState: String(r.quickbooks_state || 'pending'),
       storageState: String(r.storage_state || 'pending'),
       authCleanupState: String(r.auth_cleanup_state || 'pending'),
+      domainCleanupState: String(r.domain_cleanup_state || 'operator_review'),
       attempts: Number(r.attempts ?? 0),
       maxAttempts: Number(r.max_attempts ?? 5),
       nextRetryAt: r.next_retry_at ? String(r.next_retry_at) : null,

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TERMS_EFFECTIVE_DATE } from '@/lib/terms';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import styles from '../legal.module.css';
 
 export const metadata: Metadata = {
@@ -192,6 +193,7 @@ export default function SmsTermsPage() {
           <p>
             For SMS support or questions about these terms, reach us through our <Link href="/contact">contact page</Link>.
           </p>
+          <p>Mailing address: {LGQ_LEGAL_NAME}, {LGQ_MAILING_ADDRESS}.</p>
         </section>
       </div>
 

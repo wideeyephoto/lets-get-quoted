@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceStaffCaller } from '@/lib/voice/caller-identity';
 import { voiceRequestDeadline } from '@/lib/voice/timing';
+import { spokenUsd } from '@/lib/voice/spoken-money';
 
 export const CONTRACTOR_VOICE_FUNCTIONS = new Set([
   'lookup_jobs',
@@ -226,14 +227,14 @@ export async function resolveVoiceJob(
 
 function jobChoices(jobs: VoiceJobCandidate[], detailsRequested = false, totalCount = jobs.length): string {
   const choices = jobs.slice(0, 3).map((job, index) => {
+    const quote = detailsRequested ? spokenUsd(job.quoted_amount) : null;
     const details = [
       `Option ${index + 1}: ${job.ref}, ${job.client_name}`,
       job.scope ? `work: ${job.scope.slice(0, detailsRequested ? 240 : 70)}` : null,
       job.address ? `address: ${job.address}` : null,
       detailsRequested && job.status ? `status: ${job.status.replace(/_/g, ' ')}` : null,
       detailsRequested ? (job.scheduled_for ? `scheduled: ${job.scheduled_for}${job.scheduled_time ? ` at ${job.scheduled_time}` : ''}` : 'not scheduled') : null,
-      detailsRequested && job.quoted_amount != null && numberValue(job.quoted_amount) !== null
-        ? `recorded quote: $${Number(job.quoted_amount).toFixed(2)}` : null,
+      quote === null ? null : `recorded quote: ${quote}`,
     ];
     return details.filter(Boolean).join('; ');
   });

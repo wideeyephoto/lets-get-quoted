@@ -95,8 +95,7 @@ function fakeCronAdmin() {
     data: { id: '10000000-0000-4000-8000-000000000001' },
     error: null,
   }));
-  builder.update = vi.fn(() => builder);
-  builder.eq = vi.fn(async () => ({ data: null, error: null }));
+  builder.upsert = vi.fn(async () => ({ data: null, error: null }));
   builder.delete = vi.fn(() => builder);
   builder.lt = vi.fn(async () => ({ data: null, error: null }));
   return {
@@ -354,10 +353,10 @@ describe('dark billing worker route gates', () => {
       },
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ requested: 10, claimed: 3, failures: 1 }),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('collapses Quick Stop Stripe initialization failure to one PII-free count', async () => {
@@ -383,11 +382,11 @@ describe('dark billing worker route gates', () => {
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
     expect(doubles.runQuickStopLateRefundBatch).not.toHaveBeenCalled();
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
       error: expect.stringContaining('reported logical failures'),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('uses one fixed projection batch and returns only the monitored summary', async () => {
@@ -420,10 +419,10 @@ describe('dark billing worker route gates', () => {
     );
     expect(responseBody).toMatchObject({ requested: 10, claimed: 1, replayed: 1, failures: 0 });
     expect(JSON.stringify(responseBody)).not.toContain('private-event-id');
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: true,
       summary: expect.objectContaining({ requested: 10, claimed: 1, failures: 0 }),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('uses one fixed connected-payment batch and records only count-based monitoring', async () => {
@@ -480,14 +479,14 @@ describe('dark billing worker route gates', () => {
       },
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({
         requested: 10,
         selected: 2,
         failures: 1,
       }),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('collapses a top-level connected-payment worker exception to one fixed count', async () => {
@@ -515,11 +514,11 @@ describe('dark billing worker route gates', () => {
       },
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
       error: expect.stringContaining('reported logical failures'),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('uses one fixed allowance-reset batch and records the heartbeat', async () => {
@@ -541,10 +540,10 @@ describe('dark billing worker route gates', () => {
       PAID_PLAN_ALLOWANCE_RESET_BATCH_SIZE,
     );
     expect(await response.json()).toMatchObject({ requested: 10, claimed: 0, failures: 0 });
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: true,
       summary: expect.objectContaining({ requested: 10, claimed: 0, failures: 0 }),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('uses one fixed direct-settlement batch and returns only count-based monitoring', async () => {
@@ -593,10 +592,10 @@ describe('dark billing worker route gates', () => {
       failures: 0,
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: true,
       summary: expect.objectContaining({ requested: 10, claimed: 2, failures: 0 }),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('keeps an indeterminate SMS terminal and visible as count-only failed work', async () => {
@@ -632,10 +631,10 @@ describe('dark billing worker route gates', () => {
       },
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ sms_indeterminate: 1, failures: 1 }),
-    }));
+    }), { onConflict: 'id' });
   });
 
   it('collapses a top-level settlement exception to one PII-free worker error', async () => {
@@ -658,11 +657,11 @@ describe('dark billing worker route gates', () => {
       summary: { claimed: 0, worker_errors: 1, failures: 1 },
     });
     expect(JSON.stringify(responseBody)).not.toContain(secret);
-    expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
+    expect(builder.upsert).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
       error: expect.stringContaining('reported logical failures'),
-    }));
+    }), { onConflict: 'id' });
   });
 });
 
@@ -690,12 +689,44 @@ describe('PII-free billing worker heartbeat summaries', () => {
       in_progress: 0,
       retryable_failures: 1,
       terminal_failures: 0,
+      non_live_mode_rejections: 0,
       worker_errors: 1,
       claim_errors: 0,
       failures: 2,
     });
     expect(JSON.stringify(summary)).not.toContain(secret);
     expect(cronSummaryHasFailures(summary)).toBe(true);
+  });
+
+  it('reports non-live mode rejections separately without failing the batch', () => {
+    const summary = summarizeStripeSubscriptionProjectionBatch({
+      status: 'completed',
+      requestedBatchSize: 10,
+      claimedCount: 1,
+      results: [
+        {
+          status: 'ignored_test_mode',
+          billingEventId: '01d5f287-54dc-48d4-adc7-5561c523d944',
+        },
+      ],
+      errorCode: null,
+    });
+
+    expect(summary).toEqual({
+      requested: 10,
+      claimed: 1,
+      processed: 0,
+      ignored: 0,
+      replayed: 0,
+      in_progress: 0,
+      retryable_failures: 0,
+      terminal_failures: 0,
+      non_live_mode_rejections: 1,
+      worker_errors: 0,
+      claim_errors: 0,
+      failures: 0,
+    });
+    expect(cronSummaryHasFailures(summary)).toBe(false);
   });
 
   it('drops connected payment, workspace, Merchant, provider, and error identifiers', () => {

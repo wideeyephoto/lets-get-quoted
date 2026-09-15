@@ -33,12 +33,16 @@ describe('platform Stripe webhook subscription contract', () => {
     expect(required).toEqual([...new Set(required)].sort());
   });
 
-  it('reports the four events the live endpoint was missing before the fix', () => {
-    // A live endpoint read, not a fixture. These four handlers were dead in
-    // production: two of them are the only paths that settle an ACH payment.
-    // Resolved 2026-08-17; kept so the detector is proven against the real defect.
+  it('reports every event the live endpoint was missing against that snapshot', () => {
+    // A live endpoint read, not a fixture. The first four handlers were dead in
+    // production on 2026-08-17: two of them are the only paths that settle an ACH
+    // payment. `charge.refund.updated` is a later addition — the handler for a
+    // late-failed refund — and the same snapshot lacks it too, which is exactly
+    // the drift this detector exists to surface. Kept so it is proven against the
+    // real defect, and grows as the required set does.
     expect(missingLiveWebhookEvents(LIVE_WEBHOOK_EVENTS_BEFORE_2026_08_17_FIX)).toEqual([
       'charge.dispute.closed',
+      'charge.refund.updated',
       'checkout.session.async_payment_failed',
       'checkout.session.async_payment_succeeded',
       'payment_intent.succeeded',

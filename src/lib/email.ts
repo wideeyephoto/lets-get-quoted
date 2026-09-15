@@ -35,6 +35,11 @@ import type { DailyDigest } from './daily-digest';
 import { quoteFollowupEmailPreview } from './quote-followups';
 import { rebookInviteEmailContent } from './rebook-message';
 import { resolveHomeownerFinancing } from './bnpl-financing';
+import { sendWithDomainFallback } from './email-domain-fallback';
+import { createAdminClient } from '@/lib/auth';
+import { sendDocumentEmail, type DocumentEmailReceipt } from './document-email-sends';
+import { assertEmailSendAllowed } from './email-send-policy';
+import { resendTagValue } from './resend-tags';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -48,14 +53,12 @@ import { resolveHomeownerFinancing } from './bnpl-financing';
  *
  * Every send function below already returns early when the key is missing —
  * that guard was written and was correct and could never run, because the
- * constructor threw one import earlier. Deferring it behind a getter is what
+ * constructor threw one import earlier. Deferring it until send is what
  * makes those guards reachable. crew-auth.ts and magic-link.ts have always
  * constructed theirs inside the function; this file was the odd one out.
  *
- * A getter rather than a `resendClient()` call so the nineteen
- * `resend.emails.send(...)` call sites below are untouched: the failure was one
- * line, and a fix that rewrites nineteen others is a fix you have to review
- * nineteen times.
+ * The shared send wrapper preserves lazy initialization and applies the
+ * definitive domain-rejection fallback consistently across these send paths.
  *
  * DELIBERATELY NOT FIXED BY PUTTING THE KEY IN PREVIEW. A preview build that
  * can send email is a preview build that can email real customers from a
@@ -63,9 +66,15 @@ import { resolveHomeownerFinancing } from './bnpl-financing';
  */
 let resendClient: Resend | null = null;
 const resend = {
-  get emails(): Resend['emails'] {
-    if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
-    return resendClient.emails;
+  emails: {
+    send: (...args: Parameters<Resend['emails']['send']>) => {
+      if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+      const client = resendClient;
+      return sendWithDomainFallback(async (payload, options) => {
+        if (resendTagValue(payload.tags, 'account_id')) await assertEmailSendAllowed(createAdminClient(), payload);
+        return client.emails.send(payload, options);
+      }, ...args);
+    },
   },
 };
 
@@ -158,17 +167,17 @@ export interface SendInvoiceEmailInput {
   invoice: Invoice;
   items: InvoiceItem[];
   businessName: string;
-  accountId?: string;
+  accountId: string;
+  jobRevision: string | undefined;
   clientName: string;
   jobRef: string;
   recipientEmail: string;
   origin: string;
 }
 
-export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<void> {
+export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<DocumentEmailReceipt> {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured; invoice email skipped');
-    return;
+    throw new Error('Email provider is not configured.');
   }
 
   try {
@@ -231,7 +240,11 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
       console.error('Invoice PDF generation failed; sending email without attachment:', pdfErr);
     }
 
-    const result = await resend.emails.send({
+    if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+    const receipt = await sendDocumentEmail(createAdminClient(), resendClient, {
+      accountId: input.accountId, jobId: input.invoice.job_id, jobRevision: input.jobRevision,
+      invoiceId: input.invoice.id, invoiceRevision: input.invoice.document_email_revision,
+    }, {
       from: contractorFrom(brand),
       to: input.recipientEmail,
       subject: `Invoice ${input.invoice.ref} from ${input.businessName}`,
@@ -249,12 +262,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
       tags: defaultTags('invoice', brand, input.accountId),
     });
 
-    if (result.error) {
-      console.error('Failed to send invoice email:', result.error);
-      throw new Error(result.error.message);
-    }
-
-    console.log(`Invoice email sent: ${input.invoice.ref}`);
+    return receipt;
   } catch (err) {
     console.error('Invoice email error:', err);
     throw err;
@@ -271,7 +279,9 @@ export {
 // Client-facing quote email — the fallback channel when a lead has an email but
 // no textable mobile, so the quote still reaches them instead of silently
 // stalling. Throws on provider rejection so the caller can flag delivery failed.
-export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Promise<void> {
+export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput & {
+  accountId: string; jobId: string; jobRevision: string | undefined;
+}): Promise<DocumentEmailReceipt> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -293,7 +303,10 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
   const brand = await brandFor(input);
   const html = renderClientQuoteEmailHtml({ ...input, brand, financingAvailable });
 
-  const result = await resend.emails.send({
+  if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+  return sendDocumentEmail(createAdminClient(), resendClient, {
+    accountId: input.accountId, jobId: input.jobId, jobRevision: input.jobRevision,
+  }, {
     from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
@@ -301,12 +314,6 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     reply_to: replyAddress(brand),
     tags: defaultTags('client_quote', brand, input.accountId),
   });
-
-  if (result.error) {
-    console.error('Failed to send client quote email:', result.error);
-    throw new Error(result.error.message);
-  }
-  console.log(`Client quote email sent: ${input.jobRef}`);
 }
 
 /**
@@ -1241,9 +1248,8 @@ export function renderDailyDigestEmailHtml(input: {
  * sending that news from the broken domain is the one delivery most likely to
  * land in spam or bounce outright. `contractorFrom` is never called here.
  *
- * Their outbound customer mail has already fallen back to the platform address
- * by this point, so nothing is queued or lost; the cost of not reading this is
- * that their invoices keep going out under our name instead of theirs.
+ * Technical downgrade makes the platform sender eligible. This does not prove
+ * receipt of earlier messages or override a separate administrative sending hold.
  */
 export async function sendSendingDomainFailedEmail(input: {
   recipientEmail: string;
@@ -1252,7 +1258,7 @@ export async function sendSendingDomainFailedEmail(input: {
   accountId?: string;
   reason?: string | null;
   settingsUrl: string;
-}): Promise<void> {
+}): Promise<string> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -1264,15 +1270,16 @@ export async function sendSendingDomainFailedEmail(input: {
     subject: `Action needed: ${input.domain} stopped verifying`,
     html: renderBrandedEmail({
       brand,
+      audience: 'account',
       preheader: `Email from ${input.domain} is no longer signed by your domain`,
       eyebrow: 'Action needed',
       heading: 'Your sending domain stopped verifying',
       paragraphs: [
-        `The DNS records that let us send email as ${input.domain} are no longer answering, so we have stopped sending from that address.`,
+        `We could not verify the email connection for ${input.domain}, so we have stopped sending from that address.`,
         input.reason?.trim()
-          ? `What your DNS provider reported: ${input.reason.trim()}`
+          ? `Connection status: ${input.reason.trim()}`
           : 'This usually means the DKIM or SPF record was edited or removed at your DNS provider.',
-        `Nothing has been lost. Your quotes and invoices are still going out — they are just coming from our address instead of yours until the records are back.`,
+        `LGQ can send quotes and invoices from its own address while you fix the records. Check recent deliveries if a customer reports a missing email.`,
       ],
       cta: { label: 'Check my sending domain', url: input.settingsUrl },
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">We are sending this from ${escapeHtml("Let's Get Quoted")} rather than ${escapeHtml(input.domain)} because that domain can no longer sign mail.</p>`,
@@ -1285,6 +1292,8 @@ export async function sendSendingDomainFailedEmail(input: {
     console.error('Failed to send sending-domain failure email:', result.error);
     throw new Error(result.error.message);
   }
+  if (!result.data?.id) throw new Error('Email provider returned no message ID.');
+  return result.data.id;
 }
 
 /**
@@ -1309,17 +1318,18 @@ export async function sendCustomDomainConnectedEmail(input: {
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
-    subject: `${input.domain} is live`,
+    subject: `${input.domain} is connected`,
     html: renderBrandedEmail({
       brand,
-      preheader: `Your website is now serving on ${input.domain}`,
+      audience: 'account',
+      preheader: `The secure connection for ${input.domain} is ready`,
       eyebrow: 'Your domain is connected',
-      heading: 'Your website is live on your own domain',
+      heading: 'Your secure domain connection is ready',
       paragraphs: [
-        `The certificate for ${input.domain} has finished provisioning, so your website is now served securely on your own domain. There is nothing left for you to do.`,
-        'You can put this address on your truck, your cards and your invoices. Your free subdomain keeps working too, so anything already printed still reaches you.',
+        `The certificate for ${input.domain} has finished provisioning. Your domain is ready to serve your published website securely.`,
+        'Check your website settings to review your content and publication status. If your website is still a draft, publish it when you are ready to share it.',
       ],
-      cta: { label: `Visit ${input.domain}`, url: input.siteUrl },
+      cta: { label: 'Review website settings', url: input.settingsUrl },
       footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Manage this domain any time in <a href="${escapeHtml(input.settingsUrl)}" style="color:#6b7280">your website settings</a>.</p>`,
     }),
     reply_to: 'hello@letsgetquoted.com',
@@ -1538,10 +1548,12 @@ export async function sendSupportCaseCustomerEmail(input: {
     to: input.to,
     subject: received ? `We have your request: ${input.subject}` : `Re: ${input.subject}`,
     html: renderBrandedEmail({
+      design: 'platform',
+      audience: 'account',
       brand: {
         businessName: "Let's Get Quoted Support",
-        accent: '#0284c7',
-        theme: 'spotlight',
+        accent: '#ff6a24',
+        theme: 'blueprint',
         logoUrl: null,
         phone: null,
         siteUrl: APP_ORIGIN,
@@ -1570,7 +1582,7 @@ export async function sendSupportCaseCustomerEmail(input: {
 }
 
 /**
- * Dispatches a confirmation email and setup fee receipt to the contractor
+ * Dispatches an application confirmation to the contractor
  * upon submitting their dedicated number / 10DLC application.
  */
 export async function sendMessagingApplicationSubmittedEmail(input: {
@@ -1585,7 +1597,7 @@ export async function sendMessagingApplicationSubmittedEmail(input: {
     return;
   }
   const brand = await brandFor(input);
-  const amount = input.amountPaid || '$49.99';
+  const amount = input.amountPaid;
   const subject = `Application received: 2-way dedicated number for ${input.businessName}`;
   const dashboardUrl = `${APP_ORIGIN}/dashboard/messages/dedicated-number`;
   const result = await resend.emails.send({
@@ -1597,12 +1609,11 @@ export async function sendMessagingApplicationSubmittedEmail(input: {
       audience: 'account',
       preheader: subject,
       eyebrow: '2-WAY NUMBER SETUP & 10DLC REGISTRATION',
+      design: 'platform',
       heading: 'We have received your application',
       accountReplyText: 'Have questions about your application? Reply directly to this email.',
       bodyHtml: `
-        <div style="padding:14px 18px;margin-bottom:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#166534;font-weight:700">
-          ✓ One-Time Setup Fee Confirmed: ${escapeHtml(amount)}
-        </div>
+        ${amount ? `<p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6">Setup fee listed for this application: ${escapeHtml(amount)}. Check your dashboard for payment status.</p>` : ''}
         <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
           Thank you for applying for a dedicated business phone number. Our team has received your registration details for <strong>${escapeHtml(input.businessName)}</strong> in area code <strong>(${escapeHtml(input.desiredAreaCode)})</strong>.
         </p>
@@ -1612,7 +1623,7 @@ export async function sendMessagingApplicationSubmittedEmail(input: {
         <ol style="margin:0 0 16px 20px;padding:0;font-size:14px;line-height:1.6;color:#374151">
           <li style="margin-bottom:6px">LGQ staff reviews your business entity, website, and opt-in consent flow.</li>
           <li style="margin-bottom:6px">We submit your brand and customer-care campaign to US mobile carrier registries (10DLC).</li>
-          <li style="margin-bottom:6px">Once carrier approval is granted (typically 1–3 business days), your dedicated number is provisioned and 2-way texting is instantly unlocked in your inbox.</li>
+          <li style="margin-bottom:6px">Carrier review and number setup can take time. Check the status in your dashboard; we’ll let you know if more information is needed and when your number is ready.</li>
         </ol>
       `,
       cta: { label: 'View Application Status', url: dashboardUrl },
@@ -1707,6 +1718,7 @@ export async function sendMessagingApplicationStatusEmail(input: {
       eyebrow,
       heading,
       accountReplyText: 'Reply to this email if you need assistance from our support team.',
+      design: 'platform',
       bodyHtml: bodyContent,
       cta: { label: 'Open Messaging Dashboard', url: dashboardUrl },
     }),

@@ -367,14 +367,14 @@ describe('a partial refund is not invisible', () => {
 
 describe('a priority visit fee is not called a deposit', () => {
   const QUICK_STOP_PAYMENTS = readFileSync(
-    join(process.cwd(), 'src/lib/quick-stop-payments.ts'), 'utf8');
+    join(process.cwd(), 'migrations/20260914145745_quick_stop_atomic_offer.sql'), 'utf8');
   const PAYMENTS_LIB2 = readFileSync(join(process.cwd(), 'src/lib/payments.ts'), 'utf8');
 
   it('is stored as a deposit, which is why the label was wrong', () => {
     // quick-stop-payments writes kind: 'deposit' because it is the closest
     // existing kind. The page then rendered "Deposit" over a $75 priority fee,
     // which tells a homeowner it comes off the job total.
-    expect(QUICK_STOP_PAYMENTS).toContain("kind: 'deposit'");
+    expect(QUICK_STOP_PAYMENTS).toContain("p_account_id, v_job_id, 'deposit', 'Quick Stop priority visit fee'");
   });
 
   it('labels it from the offer, not from the kind', () => {

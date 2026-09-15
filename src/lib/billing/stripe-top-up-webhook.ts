@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { ADDON_REFUND_FLAG, ingestAddonRefundDelivery, isAddonRefundCandidate } from '@/lib/billing/addon-refunds';
+
 import {
   StripeEventInboxValidationError,
   StripeEventInboxVerificationError,
@@ -44,6 +46,7 @@ type TopUpInboxIngest = (delivery: StripeEventInboxDelivery) => Promise<StripeEv
 export type StripeTopUpWebhookDependencies = Readonly<{
   env?: TopUpWebhookEnvironment;
   ingest?: TopUpInboxIngest;
+  ingestRefund?: typeof ingestAddonRefundDelivery;
 }>;
 
 export function stripeTopUpWebhookEnabled(
@@ -123,6 +126,10 @@ export async function handleStripeTopUpWebhook(
   }
 
   try {
+    if (env[ADDON_REFUND_FLAG] === '1' && isAddonRefundCandidate(rawBody)) {
+      const result = await (dependencies.ingestRefund ?? ingestAddonRefundDelivery)({ rawBody, signature, webhookSecret });
+      return json({ received: true, duplicate: !result.inserted }, 200);
+    }
     const result = await (dependencies.ingest ?? ingestStripeEventInboxDelivery)({
       rawBody,
       signature,

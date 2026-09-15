@@ -92,6 +92,8 @@ export async function completeFirstRunAction(input: {
   goal?: string | null;
   feature?: string | null;
   next?: string | null;
+  tradeSource?: 'guessed' | 'typed' | 'url';
+  zipResolved?: boolean;
 }): Promise<FirstRunResult> {
   const { supabase, accountId, userId, account } = await requireOwnerContext({ skipFirstRunGate: true });
   const signupConversionTransactionId = initialSignupConversionTransactionId(accountId, account);
@@ -164,6 +166,23 @@ export async function completeFirstRunAction(input: {
       trade: resolvedTradeSlug || 'General',
       postalCode: input.postalCode,
     });
+  }
+
+  // Record first-run completion event for trade accuracy instrumentation.
+  // Best-effort and deliberately after the acceptance write: a telemetry error
+  // must never block signup.
+  try {
+    await recordAccountEvent({
+      accountId,
+      kind: 'first_run_completed',
+      summary: `Completed initial business setup (${resolvedTradeSlug || 'no trade'})`,
+      meta: {
+        trade_source: input.tradeSource || 'typed',
+        zip_resolved: Boolean(input.zipResolved),
+      },
+    });
+  } catch (error) {
+    console.error('first_run_completed recording failed:', error instanceof Error ? error.message : error);
   }
 
   const intent = resolvePlanIntent(input);

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   encryptVendorHandles,
   decryptVendorHandles,
@@ -118,6 +118,8 @@ describe('account closure orchestrator & encryption', () => {
     let jobVersion = 1;
     const jobRecord = {
       id: 'job-123',
+      lease_token: 'lease-test', lease_expires_at: new Date(Date.now() + 300_000).toISOString(),
+      closure_state: 'processing', domain_cleanup_state: 'not_applicable',
       closure_subject_id: 'acc-123',
       local_disposal_state: 'pending',
       stripe_state: 'pending',
@@ -192,7 +194,7 @@ describe('account closure orchestrator & encryption', () => {
     const result = await processClosureJob(mockAdmin, 'job-123', {
       stripeCancel: mockStripeCancel,
       quickbooksRevoke: mockQuickBooksRevoke,
-    });
+    }, 'lease-test');
 
     expect(result.success).toBe(true);
     expect(result.completed).toBe(true);
@@ -207,10 +209,12 @@ describe('account closure orchestrator & encryption', () => {
 
   it('runClosureWorkerBatch claims and processes queued jobs', async () => {
     let claimCount = 0;
+    let leaseToken: string;
     const mockAdmin = {
-      rpc: vi.fn((fnName: string) => {
+      rpc: vi.fn((fnName: string, args: any) => {
         if (fnName === 'claim_account_closure_job') {
           if (claimCount === 0) {
+            leaseToken = args.p_lease_token;
             claimCount += 1;
             return Promise.resolve({ data: [{ id: 'job-batch-1', closure_subject_id: 'acc-1' }], error: null });
           }
@@ -224,9 +228,11 @@ describe('account closure orchestrator & encryption', () => {
       from: vi.fn(() => ({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
+            single: vi.fn().mockImplementation(async () => ({
               data: {
                 id: 'job-batch-1',
+                lease_token: leaseToken, lease_expires_at: new Date(Date.now() + 300_000).toISOString(),
+                closure_state: 'processing', domain_cleanup_state: 'not_applicable',
                 closure_subject_id: 'acc-1',
                 local_disposal_state: 'completed',
                 stripe_state: 'not_applicable',
@@ -238,7 +244,7 @@ describe('account closure orchestrator & encryption', () => {
                 legal_hold: false,
               },
               error: null,
-            }),
+            })),
           }),
         }),
         delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
@@ -306,6 +312,9 @@ describe('account closure orchestrator & encryption', () => {
   it('processClosureJob transitions failed storage adapter to retry and does not report terminal completion', async () => {
     const jobRecord = {
       id: 'job-storage-fail',
+      legal_hold: false,
+      lease_token: 'lease-test', lease_expires_at: new Date(Date.now() + 300_000).toISOString(),
+      closure_state: 'processing', domain_cleanup_state: 'not_applicable',
       closure_subject_id: 'acc-storage-fail',
       local_disposal_state: 'completed',
       stripe_state: 'not_applicable',
@@ -343,7 +352,7 @@ describe('account closure orchestrator & encryption', () => {
 
     const result = await processClosureJob(mockAdmin, 'job-storage-fail', {
       storageDelete: mockStorageDelete,
-    });
+    }, 'lease-test');
 
     expect(result.success).toBe(false);
     expect(result.completed).toBe(false);
@@ -353,3 +362,41 @@ describe('account closure orchestrator & encryption', () => {
   });
 });
 
+
+describe('vendor handle encryption key', () => {
+  const saved = { ...process.env };
+  afterEach(() => { process.env = { ...saved }; });
+
+  const handles: VendorHandles = { stripeCustomerId: 'cus_123', quickbooksRealmId: '4620816' };
+
+  it('refuses to encrypt when no key is configured', () => {
+    delete process.env.CLOSURE_ENCRYPTION_SECRET;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // There used to be a literal fallback key in this file's source. Anything
+    // sealed under it was readable by anyone with the ciphertext and a checkout.
+    expect(() => encryptVendorHandles(handles)).toThrow(/CLOSURE_ENCRYPTION_SECRET|SUPABASE_SERVICE_ROLE_KEY/);
+  });
+
+  it('refuses to decrypt when no key is configured', () => {
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'a-configured-closure-secret';
+    const sealed = encryptVendorHandles(handles);
+
+    delete process.env.CLOSURE_ENCRYPTION_SECRET;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // decryptVendorHandles swallows its own failures and returns null, so the
+    // assertion is that it does not quietly succeed under a guessable key.
+    expect(decryptVendorHandles(sealed)).toBeNull();
+  });
+
+  it('round-trips under a configured key', () => {
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'a-configured-closure-secret';
+    expect(decryptVendorHandles(encryptVendorHandles(handles))).toEqual(handles);
+  });
+
+  it('does not decrypt a payload sealed under a different key', () => {
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'first-closure-secret';
+    const sealed = encryptVendorHandles(handles);
+    process.env.CLOSURE_ENCRYPTION_SECRET = 'second-closure-secret';
+    expect(decryptVendorHandles(sealed)).toBeNull();
+  });
+});

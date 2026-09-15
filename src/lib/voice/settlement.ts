@@ -375,10 +375,14 @@ export function inferProviderOutcome(receipt: VoiceReceipt): VoiceCallProviderOu
   const hasAssistantTurns = log.some((turn) => turn.role === 'assistant' && turn.content.trim().length > 0);
 
   const transferMentioned = log.some((turn) => {
+    // Prompt instructions and caller requests do not prove an attempted handoff.
+    if (turn.role !== 'assistant' && turn.role !== 'tool') return false;
     const text = turn.content.toLowerCase();
     return text.includes('connecting you now')
       || text.includes('connecting you with')
       || text.includes('transfer_to_business')
+      || text.includes('transfer_to_emergency')
+      || text.includes('connect you with our on-call team')
       || text.includes('transferring you')
       || text.includes('transfer to business');
   });

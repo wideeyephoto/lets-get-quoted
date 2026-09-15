@@ -54,6 +54,12 @@ vi.mock('@/lib/supabase-server', () => ({ createSupabaseServerClient: () => ({})
 
 const redirected: string[] = [];
 vi.mock('next/navigation', () => ({
+  // Matches the real export: Next's own control-flow errors go back up, and
+  // anything else is left for the caller's catch to handle.
+  unstable_rethrow: (thrown: unknown) => {
+    const digest = (thrown as { digest?: unknown })?.digest;
+    if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw thrown;
+  },
   notFound: () => { throw new Error('notFound'); },
   redirect: (to: string) => { redirected.push(to); throw new Error(`REDIRECT:${to}`); },
 }));

@@ -353,10 +353,11 @@ describe('rendering an answer', () => {
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
     expect(swml.sections.main[1].play.urls).toEqual([
-      'https://letsgetquoted.com/audio/dispatch-connected-v1.wav',
-      "say: Hi, I'm your AI assistant. Thanks for calling.",
+      "say: Your personal Let's Get Quoted AI Assistant is loading.",
+      'https://letsgetquoted.com/audio/dispatch-connected-v3.wav',
+      'say: Thanks for calling.',
     ]);
-    expect(swml.sections.main[1].play.say_voice).toBe('rime.luna:coda');
+    expect(swml.sections.main[1].play.say_voice).toBe('rime.eyre:coda');
     expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
@@ -390,8 +391,8 @@ describe('rendering an answer', () => {
 
     expect(playIndex).toBeGreaterThan(-1);
     expect(recordIndex).toBeGreaterThan(playIndex);
-    expect(main[playIndex].play.urls[1]).toContain("Hi, I'm your AI assistant.");
-    expect(main[playIndex].play.urls[1]).toContain('This call may be recorded for quality and training purposes.');
+    expect(main[playIndex].play.urls[0]).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
+    expect(main[playIndex].play.urls[2]).toContain('This call may be recorded for quality and training purposes.');
   });
 
   it('hard-disables provider recording on contractor calls and asks the provider to redact spoken codes', () => {
@@ -403,7 +404,7 @@ describe('rendering an answer', () => {
     });
     const main = JSON.parse(answer.body).sections.main;
     expect(main.some((section: Record<string, unknown>) => 'record_call' in section)).toBe(false);
-    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.urls[1])
+    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.urls.join(' '))
       .not.toContain('This call may be recorded');
     const ai = main.find((section: Record<string, unknown>) => 'ai' in section).ai;
     expect(ai.params.redact_prompt).toMatch(/six-digit authentication codes/i);
@@ -571,7 +572,7 @@ describe('rendering an answer', () => {
     expect(vSwml.sections.main[3]).toEqual({ hangup: {} });
   });
 
-  it('renders transfer_to_business with whisper confirm, timeout, and voicemail fallback', () => {
+  it.each(['transfer_to_business', 'transfer_to_emergency'])('renders %s with its own destination, whisper, timeout, and voicemail fallback', (functionName) => {
     const aiAnswer = provider.renderAnswer({
       kind: 'ai_agent',
       receiptUrl: 'https://x.test/receipt',
@@ -579,18 +580,19 @@ describe('rendering an answer', () => {
       greeting: 'Hello',
       capMinutes: 10,
       transferTo: '+15558889999',
+      emergencyTransferTo: '+15557778888',
       transferStatusUrl: 'https://x.test/api/voice/ai/status',
       recordingStatusUrl: 'https://x.test/api/voice/recording-status',
     });
     const parsed = JSON.parse(aiAnswer.body);
     const aiSection = parsed.sections.main.find((s: Record<string, unknown>) => 'ai' in s);
     const swaig = aiSection.ai.SWAIG.functions;
-    const transferFn = swaig.find((f: Record<string, unknown>) => f.function === 'transfer_to_business');
+    const transferFn = swaig.find((f: Record<string, unknown>) => f.function === functionName);
     expect(transferFn).toBeDefined();
     const action = transferFn.data_map.expressions[0].output.action[0];
     expect(action.transfer).toBe(true);
     const transferMain = action.SWML.sections.main;
-    expect(transferMain[0].connect.to).toBe('+15558889999');
+    expect(transferMain[0].connect.to).toBe(functionName === 'transfer_to_emergency' ? '+15557778888' : '+15558889999');
     expect(transferMain[0].connect.timeout).toBe(25);
     expect(transferMain[0].connect.max_duration).toBe(598);
     expect(transferMain[0].connect.status_url).toBe('https://x.test/api/voice/ai/status');

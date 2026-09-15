@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { loadOfficeTeam } from '@/lib/office-team';
 import { loadOverageSummary } from '@/lib/billing/overage-summary';
@@ -15,7 +16,9 @@ import GoogleLocalServicesSection from './GoogleLocalServicesSection';
 import { googleLsaConnectionStatus } from '@/lib/google-lsa/connection';
 import SaveButton from '@/components/save-button';
 import ThemeToggle from '@/components/theme-toggle';
+import LanguageSettingsSection from './LanguageSettingsSection';
 import CopilotSettingsSection from './CopilotSettingsSection';
+import { LOCALE_COOKIE, parseLocale } from '@/lib/i18n';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import TradeAutocomplete from '@/components/trade-autocomplete';
 import ExportData from './ExportData';
@@ -24,6 +27,7 @@ import { updateBusinessAddressesAction, updateBusinessBasicsAction, deleteAccoun
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import { chooseGoogleLsaCustomerAction, syncGoogleLsaAction } from './actions';
 import InsuranceSection from './InsuranceSection';
+import ContractorLicensingSection from './ContractorLicensingSection';
 import FieldFormsSettingsSection from './FieldFormsSettingsSection';
 import { listFormTemplates } from '@/lib/forms/forms-data';
 import BusinessWorkspace from './BusinessWorkspace';
@@ -68,7 +72,7 @@ import PriceBookSettingsSection from './PriceBookSettingsSection';
 import StationerySettingsSection from './StationerySettingsSection';
 import EmailSendingDomainSection from './EmailSendingDomainSection';
 import { type EmailSendingDomainRow } from './email-domain-actions';
-import { isEmailSendingDomainsFeatureEnabled, isWorkspaceEligibleForSendingDomains } from '@/lib/resend-domains';
+import { isWorkspaceEligibleForSendingDomains } from '@/lib/resend-domains';
 import HomeownerFinancingSection from './HomeownerFinancingSection';
 import { isHomeownerFinancingFeatureEnabled } from '@/lib/acorn-financing';
 import type { HomeownerFinancingEnrollmentRow } from '@/lib/bnpl-financing';
@@ -100,6 +104,8 @@ export default async function SettingsPage({
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
+  const jar = await cookies();
+  const currentLocale = parseLocale(jar.get(LOCALE_COOKIE)?.value) ?? 'en';
 
   const [
     { data: userData },
@@ -119,7 +125,7 @@ export default async function SettingsPage({
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.auth.getUserIdentities(),
-    supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone').eq('id', accountId).single(),
+    supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone, license_type, state_employer_number, fein').eq('id', accountId).single(),
     supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
     supabase.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', accountId).in('status', ['requested', 'processing']),
     pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
@@ -147,19 +153,16 @@ export default async function SettingsPage({
   const webhookSubscriptions = ((webhookSubsResult?.data ?? []) as unknown[]) as WebhookSubscriptionView[];
   const webhookDeliveries = ((webhookDeliveriesResult?.data ?? []) as unknown[]) as WebhookDeliveryView[];
 
-  const emailSendingDomainsEnabled = isEmailSendingDomainsFeatureEnabled();
   const isWorkspaceEligibleForDomains = isWorkspaceEligibleForSendingDomains(accountId);
-  const { data: emailDomainData } = emailSendingDomainsEnabled
-    ? await supabase
-        .from('email_sending_domains')
-        .select('*')
-        .eq('account_id', accountId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
+  const { data: emailDomainData } = await supabase
+    .from('email_sending_domains')
+    .select('*')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const showEmailSendingDomains =
-    emailSendingDomainsEnabled && (isWorkspaceEligibleForDomains || Boolean(emailDomainData));
+    isWorkspaceEligibleForDomains || Boolean(emailDomainData);
 
   const homeownerFinancingEnabled = isHomeownerFinancingFeatureEnabled();
   const { data: financingEnrollmentData } = homeownerFinancingEnabled
@@ -514,6 +517,7 @@ export default async function SettingsPage({
                 overageSelfServe={overageSelfServe}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
+                addonRefundsEnabled={process.env.LGQ_ADDON_REFUND_REVERSAL_ENABLED === '1'}
                 topUpCheckoutStatus={topUpCheckoutStatus}
                 adWallet={(site?.content as Record<string, unknown> | null | undefined)?.adCampaign as AdBudgetWalletState | undefined ?? null}
               />
@@ -522,7 +526,7 @@ export default async function SettingsPage({
           {
             id: 'account',
             label: 'Login & security',
-            anchors: ['appearance', 'customization', 'branding', 'nav-branding', 'copilot', 'support', 'danger-zone', 'account'],
+            anchors: ['appearance', 'language', 'customization', 'branding', 'nav-branding', 'copilot', 'support', 'danger-zone', 'account'],
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -556,6 +560,8 @@ export default async function SettingsPage({
                   </p>
                   <ThemeToggle />
                 </section>
+
+                <LanguageSettingsSection initialLocale={currentLocale} />
 
                 <CopilotSettingsSection
                   initialLogoUrl={site?.logo_url ?? null}
@@ -658,12 +664,16 @@ export default async function SettingsPage({
               'marketing-address',
               'finances',
               'insurance',
+              'licensing',
+              'credentials',
               'forms',
               'field-forms',
               'qa',
               'quickbooks',
               'addresses',
               'alerts',
+              'voice-assistant',
+              'ai-receptionist',
             ],
             content: (
               <BusinessWorkspace
@@ -814,7 +824,7 @@ export default async function SettingsPage({
                 {showEmailSendingDomains && (
                   <EmailSendingDomainSection
                     initialDomain={emailDomainData as EmailSendingDomainRow | null}
-                    isEnabled={emailSendingDomainsEnabled}
+                    isEnabled={showEmailSendingDomains}
                     isEnrollmentAllowed={isWorkspaceEligibleForDomains}
                   />
                 )}
@@ -839,7 +849,7 @@ export default async function SettingsPage({
           id: 'trust',
           label: 'Trust & compliance',
           blurb: 'The credentials that go in front of a customer.',
-          anchors: ['insurance', 'forms', 'field-forms', 'qa'],
+          anchors: ['insurance', 'licensing', 'credentials', 'forms', 'field-forms', 'qa'],
           content: (
             <>
               <InsuranceSection
@@ -850,6 +860,16 @@ export default async function SettingsPage({
                 saveAction={updateInsuranceAction}
                 removeAction={removeInsuranceAction}
               />
+              <ContractorLicensingSection
+                initialCompliance={{
+                  licenseType: (account as any)?.license_type || '',
+                  stateEmployerNumber: (account as any)?.state_employer_number || '',
+                  hasFein: Boolean((account as any)?.fein),
+                  maskedFein: (account as any)?.fein
+                    ? `••-•••${((account as any).fein as string).replace(/[^\d]/g, '').slice(-4)}`
+                    : '',
+                }}
+              />
               <FieldFormsSettingsSection templates={formTemplates} />
             </>
           ),
@@ -858,9 +878,27 @@ export default async function SettingsPage({
           id: 'apps',
           label: 'Connected apps',
           blurb: 'The other tools your business runs on.',
-          anchors: ['quickbooks', 'google-local-services', 'financing', 'homeowner-financing'],
+          anchors: ['quickbooks', 'google-local-services', 'financing', 'homeowner-financing', 'voice-assistant', 'ai-receptionist'],
           content: (
               <>
+                <section className="panel workspace-section-card" id="voice-assistant">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">AI Voice</p>
+                    <h2>24/7 AI Receptionist &amp; Call Handling</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Answers inbound customer calls 24/7, screens inquiries, quotes standard repairs, books arrival windows, and triages emergency calls while you are in the field.
+                  </p>
+                  <div className="workspace-inline-row" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <Link href="/dashboard/voice-calls?view=settings" className="btn primary">
+                      Configure AI receptionist
+                    </Link>
+                    <Link href="/dashboard/voice-calls" className="btn secondary">
+                      Open call log &amp; queue
+                    </Link>
+                  </div>
+                </section>
+
                 {homeownerFinancingEnabled ? (
                   <HomeownerFinancingSection
                     enrollment={(financingEnrollmentData as HomeownerFinancingEnrollmentRow | null) || null}

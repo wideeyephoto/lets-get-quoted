@@ -1,3 +1,4 @@
+import { isLgqSmsPurpose, lgqSmsText } from '@/lib/sms-brand';
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -112,7 +113,7 @@ export async function enqueueInboundReply(
   const queued = await enqueueSmsDelivery({
     accountId: input.accountId,
     phoneNumber: input.phoneNumber,
-    body: input.body,
+    body: isLgqSmsPurpose(input.senderPurpose) ? lgqSmsText(input.body) : input.body,
     messageKind: event.messageKind,
     billingCategory: inboundReplyBillingCategory(input.senderPurpose),
     senderPurpose: input.senderPurpose,

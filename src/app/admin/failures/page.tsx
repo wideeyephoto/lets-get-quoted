@@ -109,7 +109,7 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
       <h2 className={styles.panelTitle}>
         Failed emails · {totalEmails.toLocaleString('en-US')} total {totalEmails > emails.length ? `(${emails.length} latest in ${emailGroups.length} groups)` : `in ${emailGroups.length} groups`}
       </h2>
-      {emailGroups.length === 0 && !diagnostics.failed.includes('failedEmails') ? <p className={styles.emptyState}>No bounced or complained emails.</p> : null}
+      {emailGroups.length === 0 && !diagnostics.failed.includes('failedEmails') ? <p className={styles.emptyState}>No failed, bounced, suppressed or complained email events found.</p> : null}
       {emailGroups.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Kind</th><th>Status</th><th>Error</th><th className="num">Occurrences</th><th>Latest</th></tr></thead><tbody>
         {emailGroups.map((entry) => <tr key={entry.key}><td>{entry.sample.kind}</td><td>{entry.sample.status}</td><td className={styles.muted}>{entry.sample.error_reason || '—'}</td><td className="num">{entry.count}</td><td>{fmt(entry.latestAt)}</td></tr>)}
       </tbody></table></div> : null}

@@ -31,6 +31,12 @@ vi.mock('next/cache', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
+  // Matches the real export: Next's own control-flow errors go back up, and
+  // anything else is left for the caller's catch to handle.
+  unstable_rethrow: (thrown: unknown) => {
+    const digest = (thrown as { digest?: unknown })?.digest;
+    if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw thrown;
+  },
   redirect: vi.fn().mockImplementation((url: string) => {
     const err = new Error('NEXT_REDIRECT');
     (err as any).digest = `NEXT_REDIRECT;replace;${url}`;

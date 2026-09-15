@@ -9,7 +9,7 @@ import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib
 import { createLead } from '@/lib/leads';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { authorizeVoiceToolInvocation } from '@/lib/voice/tool-admission';
-import { normalizeUsPhone } from '@/lib/phone';
+import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
 import { VoiceToolTiming, voiceReadDeadline } from '@/lib/voice/timing';
 import {
@@ -337,7 +337,7 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
       }) : { ok: false };
 
       return NextResponse.json({
-        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' A confirmation text is queued for your mobile phone.' : ' The request is saved, but the confirmation text could not be queued.'} Our team will review and confirm the appointment.`,
+        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' A text about your request is queued for your mobile phone.' : ' The request is saved, but its text message could not be queued.'} Our team will review and confirm the appointment.`,
       });
     } catch (err) {
       console.error('Error creating in-call booking:', err);
@@ -659,7 +659,7 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
       message = message ? `${message}\n${noteTag}` : noteTag;
     }
 
-    const finalName = callerName || (phone ? `AI call — ${phone}` : 'AI Phone Caller');
+    const finalName = callerName || (phone ? `AI call — ${formatPhoneDashes(phone)}` : 'AI Phone Caller');
 
     try {
       const savedLead = await createLead(admin, accountId, {

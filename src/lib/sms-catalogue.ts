@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import type { AutomationKey } from '@/lib/automations';
 import {
   adWalletRefillText,
@@ -17,6 +18,7 @@ import {
   crewScheduleSelectedText,
   inboxReplyText,
   intakeConfirmationText,
+  formatPrivateSmsText,
   jobUpdateText,
   leadDeclineText,
   leadQuoteVisitOptionsText,
@@ -665,7 +667,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'A lead replies YES while their offer is held and the visit is added to your day',
     audience: 'owner',
     control: always('Goes to your own mobile'),
-    body: withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'booked' })),
+    body: lgqSmsText(withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'booked' }))),
   },
   {
     id: 'owner-estimate-accepted-late',
@@ -673,7 +675,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'A lead replies YES after the offer hold expires and no visit is booked',
     audience: 'owner',
     control: always('Goes to your own mobile'),
-    body: withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'expired' })),
+    body: lgqSmsText(withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'expired' }))),
   },
   {
     id: 'owner-estimate-booking-failed',
@@ -681,7 +683,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'A lead accepts a held offer but the visit could not be added to your day',
     audience: 'owner',
     control: always('Goes to your own mobile'),
-    body: withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'booking_failed' })),
+    body: lgqSmsText(withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'booking_failed' }))),
   },
 
   // -- money -----------------------------------------------------------------
@@ -784,6 +786,15 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     control: manual('You type it'),
     ownerAuthored: true,
     body: inboxReplyText({ businessName: SAMPLE.business, body: 'Yes — Thursday morning works, see you at 9.' }),
+  },
+  {
+    id: 'private-text',
+    title: 'Private text',
+    trigger: 'You send a direct message from a lead or job page',
+    audience: 'customer',
+    control: manual('You type it'),
+    ownerAuthored: true,
+    body: formatPrivateSmsText({ businessName: SAMPLE.business, body: 'Are you available for a site visit this afternoon?' }),
   },
   {
     id: 'owner-voice-emergency-alert',
