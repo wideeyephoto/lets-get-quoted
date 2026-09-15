@@ -588,6 +588,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
                 type: 'string',
                 description: 'Description of the customer issue, request, or details.',
               },
+              preferred_time: {
+                type: 'string',
+                description: 'The caller\'s preferred appointment date or time in their own words, such as tomorrow morning.',
+              },
               email: {
                 type: 'string',
                 description: 'Optional email address of the customer.',
@@ -920,7 +924,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
               + 'Phone numbers are stored internally in international format, but that storage format must never be spoken. During an intake review, omit the full callback number and say "the callback number you provided." If the caller explicitly asks to hear it, silently remove a leading "+1" or "1" and speak exactly the remaining 10 digits starting with the area code (e.g. 810-304-2061). Never say "+1", "plus one", "country code", or read a leading "1" aloud. '
-              + 'Deliver the final intake recap at about 1.2 times your normal speaking speed. Keep it to one compact sentence with commas between the caller\'s name, service address, request, and preferred time. Do not add field labels, filler, or the callback number. Return to normal speed after the recap. '
+              + 'Pass the caller\'s preferred appointment wording to capture_lead as preferred_time. Deliver the final intake recap at about 1.2 times your normal speaking speed. Use the complete saved intake recap returned by capture_lead and include every provided detail: caller name, service address, work requested, and preferred time. Keep it to one compact sentence with commas between the details. Do not add field labels, filler, or the callback number. Return to normal speed after the recap. '
               + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '

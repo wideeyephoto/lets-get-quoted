@@ -87,34 +87,33 @@ export function NavigationSidebar({
           const active = isActive(pathname, item.href);
           const extraClass = ''; // add demoted logic if we want
           return (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
-              title={isCollapsed ? `${item.label}${item.hint ? ` - ${item.hint}` : ''}` : item.hint}
-            >
-              <NavIcon href={item.href} />
-              <span className="sidenav-label">{item.label}</span>
-              {renderPillAndCount(item.href)}
-              <div className="sidenav-link-actions">
-                <button
-                  type="button"
-                  className="sidenav-pin"
-                  aria-label={isPinned(item.href) ? `Unpin ${item.label}` : `Pin ${item.label}`}
-                  title={isPinned(item.href) ? 'Unpin from primary navigation' : 'Pin to primary navigation'}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    togglePin(item.href);
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" width="12" height="12" fill={isPinned(item.href) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <line x1="12" y1="17" x2="12" y2="22" />
-                    <path d="M5 17h14v-2l-3-3V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v7l-3 3v2z" />
-                  </svg>
-                </button>
-              </div>
-            </Link>
+            <div className="sidenav-link-row" key={item.id}>
+              <Link
+                href={item.href}
+                className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
+                title={isCollapsed ? `${item.label}${item.hint ? ` - ${item.hint}` : ''}` : item.hint}
+              >
+                <NavIcon href={item.href} />
+                <span className="sidenav-label">{item.label}</span>
+                {renderPillAndCount(item.href)}
+              </Link>
+              <button
+                type="button"
+                className="sidenav-pin-toggle"
+                aria-label={isPinned(item.href) ? `Unpin ${item.label}` : `Pin ${item.label}`}
+                title={isPinned(item.href) ? 'Unpin from primary navigation' : 'Pin to primary navigation'}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  togglePin(item.href);
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="12" height="12" fill={isPinned(item.href) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="12" y1="17" x2="12" y2="22" />
+                  <path d="M5 17h14v-2l-3-3V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v7l-3 3v2z" />
+                </svg>
+              </button>
+            </div>
           );
         });
 

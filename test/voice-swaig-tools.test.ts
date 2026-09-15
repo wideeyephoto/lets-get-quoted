@@ -89,6 +89,8 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     expect(bookFn.argument.required).toContain('caller_name');
     expect(bookFn.argument.required).toContain('requested_date');
     expect(bookFn.argument.required).toContain('requested_time');
+    const captureLeadFn = functions.find((f: any) => f.function === 'capture_lead');
+    expect(captureLeadFn.argument.properties.preferred_time.description).toContain('tomorrow morning');
   });
 
   it('formats caller booking link and confirmation SMS copy accurately with opt-out compliance', () => {
@@ -267,7 +269,9 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
           name: 'Sarah Connor',
           phone: 'none',
           address: '123 Resistance Way',
+          project_type: 'Emergency plumbing',
           notes: 'Burst pipe under kitchen sink',
+          preferred_time: 'Friday morning',
         },
       }),
     });
@@ -277,6 +281,10 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     const data = await res.json();
     expect(data.response).toContain('Sarah Connor');
     expect(data.response).toContain('123 Resistance Way');
+    expect(data.response).toContain('Emergency plumbing');
+    expect(data.response).toContain('Friday morning');
+    expect(data.response).toContain('callback number you provided');
+    expect(data.response).toContain('repeat every provided detail');
   });
 });
 

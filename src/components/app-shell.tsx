@@ -1356,22 +1356,24 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               </Link>
             )}
 
-            <NavigationSettingsButton />
-            <button
-              type="button"
-              className="sidenav-collapse-toggle"
-              onClick={toggleCollapsed}
-              aria-expanded={!isCollapsed}
-              aria-controls="primary-nav"
-              aria-label={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
-              title={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
-            >
-              <svg className="sidenav-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect width="18" height="18" x="3" y="3" rx="4" />
-                <path d="M9 3v18" />
-                {isCollapsed ? <path d="m13 15 3-3-3-3" /> : <path d="m14 9-3 3 3 3" />}
-              </svg>
-            </button>
+            <div className="sidenav-topbar-actions">
+              <NavigationSettingsButton />
+              <button
+                type="button"
+                className="sidenav-collapse-toggle"
+                onClick={toggleCollapsed}
+                aria-expanded={!isCollapsed}
+                aria-controls="primary-nav"
+                aria-label={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
+                title={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
+              >
+                <svg className="sidenav-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect width="18" height="18" x="3" y="3" rx="4" />
+                  <path d="M9 3v18" />
+                  {isCollapsed ? <path d="m13 15 3-3-3-3" /> : <path d="m14 9-3 3 3 3" />}
+                </svg>
+              </button>
+            </div>
 
             {isNavOpen ? (
               <button type="button" className="sidenav-close" onClick={closeNav} aria-label="Close navigation">
@@ -1439,6 +1441,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
 
           <nav className="sidenav-nav" aria-label="Dashboard">
+            {renderSideLink('/dashboard')}
             <NavigationSidebar
               preferences={navPreferences}
               eligibleNavIds={eligibleNavIds}
@@ -1469,7 +1472,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 );
               }}
             />
-            {renderSideLink('/dashboard', 'sidenav-bottom')}
+            
           </nav>
 
           {/* A DOOR, NOT A DRAWER OF DOORS.

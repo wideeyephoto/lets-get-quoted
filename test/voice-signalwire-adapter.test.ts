@@ -362,6 +362,7 @@ describe('rendering an answer', () => {
     expect(ai.prompt.text).toContain('silently remove a leading "+1" or "1"');
     expect(ai.prompt.text).toContain('Never say "+1", "plus one", "country code", or read a leading "1" aloud');
     expect(ai.prompt.text).toContain('final intake recap at about 1.2 times your normal speaking speed');
+    expect(ai.prompt.text).toContain('complete saved intake recap returned by capture_lead');
     expect(ai.languages).toEqual([
       expect.objectContaining({ name: 'English', auto_speed: true }),
       expect.objectContaining({ name: 'Spanish', auto_speed: true }),
