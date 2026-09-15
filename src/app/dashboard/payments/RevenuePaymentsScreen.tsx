@@ -50,6 +50,7 @@ function formatUsd(n: number): string {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+import { useRouter } from 'next/navigation';
 export default function RevenuePaymentsScreen({
   initialPayments,
   ledgerSummary,
@@ -62,7 +63,8 @@ export default function RevenuePaymentsScreen({
   isOwner = false,
   stripeError,
   businessName,
-}: Props) {
+}: Props) { 
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState(stripeError ? 'payouts' : 'ledger');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedPayment, setSelectedPayment] = useState<PaymentLedgerItem | null>(null);
@@ -690,14 +692,11 @@ export default function RevenuePaymentsScreen({
               setActiveModal('promise_to_pay');
             }}
             onOpenNoiGenerator={(item) => {
-              setSelectedPayment({
-                id: item.id,
-                amount: item.amount,
-                clientName: item.clientName,
-                jobRef: '',
-                label: 'Payment Request',
-              } as PaymentLedgerItem);
-              setActiveModal('noi_generator');
+              if (item.jobId) {
+                router.push(`/dashboard/jobs/${item.jobId}/lien-help`);
+              } else {
+                alert('No job associated with this payment.');
+              }
             }}
             onOpenLienWaiver={(item) => {
               setSelectedPayment({

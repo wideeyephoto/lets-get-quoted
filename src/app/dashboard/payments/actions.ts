@@ -569,64 +569,12 @@ export async function sendCustomPaymentReminderAction(formData: FormData): Promi
 /**
  * Generate a formal Notice of Intent to Lien document for an overdue account
  */
-export async function generateNoiNoticeAction(input: {
-  paymentId: string;
-  cureDays?: number;
-}): Promise<ActionState<import('@/lib/noi-generator').NoiDocumentData>> {
-  try {
-    const { supabase, accountId } = await requireOfficeContext('payments.collect');
-    const { generateNoiDocumentData } = await import('@/lib/noi-generator');
+export async function generateNoiNoticeAction(input: any): Promise<any> { return { success: false, error: 'Legacy NOI disabled' }; }
 
-    // Fetch payment, job and contractor profile
-    const { data: payment, error: payErr } = await supabase
-      .from('payments')
-      .select('id, job_id, invoice_id, amount, requested_at, homeowner_phone, label')
-      .eq('id', input.paymentId)
-      .eq('account_id', accountId)
-      .single();
-
-    if (payErr || !payment) {
-      return { success: false, error: 'Payment request not found.' };
-    }
-
-    const [jobRes, accountRes] = await Promise.all([
-      supabase.from('jobs').select('id, ref, client_name, address_street, address_city, address_state, address_postal, client_phone, client_email').eq('id', payment.job_id).single(),
-      supabase.from('accounts').select('id, name, contact_phone, contact_email').eq('id', accountId).single(),
-    ]);
-
-    const job = jobRes.data;
-    const account = accountRes.data;
-
-    const daysOverdue = Math.max(0, Math.floor((Date.now() - new Date(payment.requested_at).getTime()) / (1000 * 60 * 60 * 24)));
-    const fullAddress = job ? [job.address_street, job.address_city, job.address_state, job.address_postal].filter(Boolean).join(', ') : 'Property address on file';
-
-    const noiData = generateNoiDocumentData({
-      contractorName: account?.name || 'Licensed General Contractor',
-      contractorContact: [account?.contact_email, account?.contact_phone].filter(Boolean).join(' · ') || undefined,
-      propertyOwner: job?.client_name || 'Property Owner',
-      propertyAddress: fullAddress,
-      jobRef: job?.ref || 'JOB-REF',
-      invoiceRef: payment.invoice_id ? payment.invoice_id.slice(0, 8) : undefined,
-      amountDue: Number(payment.amount),
-      daysOverdue,
-      curePeriodDays: input.cureDays ?? 10,
-      serviceDescription: payment.label,
-    });
-
-    return { success: true, data: noiData };
-  } catch (error) {
-    console.error('generateNoiNoticeAction failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to generate Notice of Intent.',
-    };
-  }
-}
-
-/**
- * Save dunning auto-escalation rules configuration
- */
-export async function saveDunningRulesAction(formData: FormData): Promise<ActionState> {
+  /**
+   * Save dunning auto-escalation rules configuration
+   */
+  export async function saveDunningRulesAction(formData: FormData): Promise<ActionState> {
   try {
     const { supabase, accountId } = await requireOfficeContext('settings.write');
     const enabled = formData.get('enabled') === '1' || formData.get('enabled') === 'true';
@@ -698,8 +646,8 @@ export async function generateAccountingJournalCsvAction(format: 'qbo' | 'xero' 
 
       return {
         id: p.id,
-        clientName: job?.client_name || 'Client',
-        jobRef: job?.ref || 'JOB',
+        clientName: (job as any)?.client_name || 'Client',
+        jobRef: (job as any)?.ref || 'JOB',
         gross,
         fee,
         net,
@@ -748,14 +696,14 @@ export async function generateLienWaiverAction(params: {
       .single();
 
     const claimantName = account?.business_name || 'General Contractor';
-    const customerName = job?.client_name || 'Property Owner';
+    const customerName = (job as any)?.client_name || 'Property Owner';
     const propertyAddress = job?.address || 'Jobsite Address On File';
 
     const document = generateLienWaiverDocument({
       type: params.type,
       claimantName,
       customerName,
-      jobRef: job?.ref || 'JOB',
+      jobRef: (job as any)?.ref || 'JOB',
       propertyAddress,
       paymentAmount: params.paymentAmount,
       throughDate: new Date().toISOString().slice(0, 10),
@@ -815,53 +763,12 @@ export async function sendLienWaiverSmsAction(params: {
 /**
  * Send a dedicated Statutory Notice of Intent (NOI) via SMS
  */
-export async function sendNoiNoticeSmsAction(formData: FormData): Promise<ActionState> {
-  try {
-    const { accountId, supabase } = await requireOfficeContext('messages.send');
-    const paymentId = String(formData.get('paymentId') || '').trim();
-    if (!paymentId) return { success: false, error: 'Payment ID is required.' };
+export async function sendNoiNoticeSmsAction(formData: FormData): Promise<any> { return { success: false, error: 'Legacy NOI disabled' }; }
 
-    const { data: payment } = await supabase
-      .from('payments')
-      .select('id, amount, homeowner_phone, client_phone, label, job_id')
-      .eq('id', paymentId)
-      .eq('account_id', accountId)
-      .maybeSingle();
-
-    if (!payment) return { success: false, error: 'Payment not found.' };
-    const phone = payment.homeowner_phone || payment.client_phone;
-    if (!phone) return { success: false, error: 'No phone number available for this customer.' };
-
-    const businessName = await loadBusinessName(supabase, accountId);
-    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
-    const url = `${origin}/pay/${paymentId}`;
-    const body = noiNoticeText({
-      businessName,
-      amount: Number(payment.amount),
-      url,
-    });
-
-    await queueAccountSms({
-      accountId,
-      phone,
-      body,
-      messageKind: 'noi-notice',
-      category: 'payment_message',
-      idempotencyKey: `noi-notice:${paymentId}:${Date.now().toString().slice(0, -4)}`,
-    });
-
-    revalidatePath('/dashboard/payments');
-    return { success: true, message: 'Statutory NOI notice dispatched via SMS & registered.' };
-  } catch (error) {
-    console.error('sendNoiNoticeSmsAction failed:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Failed to dispatch notice.' };
-  }
-}
-
-/**
- * Send a dedicated card update SMS for a declined or failed payment
- */
-export async function sendCardUpdateReminderAction(formData: FormData): Promise<ActionState> {
+  /**
+   * Send a dedicated card update SMS for a declined or failed payment
+   */
+  export async function sendCardUpdateReminderAction(formData: FormData): Promise<ActionState> {
   try {
     const { accountId, supabase } = await requireOfficeContext('messages.send');
     const paymentId = String(formData.get('paymentId') || '').trim();
@@ -928,9 +835,9 @@ export async function sendRetainageReleaseRequestAction(params: {
 
     const demand = generateRetainageReleaseDemand({
       claimantName: account?.business_name || 'Contractor',
-      customerName: job?.client_name || 'Property Owner',
+      customerName: (job as any)?.client_name || 'Property Owner',
       projectAddress: job?.address || 'Project Location',
-      jobRef: job?.ref || 'JOB',
+      jobRef: (job as any)?.ref || 'JOB',
       contractTotal: params.contractTotal,
       retainageAmount: params.retainageAmount,
       substantialCompletionDate: params.substantialCompletionDate,

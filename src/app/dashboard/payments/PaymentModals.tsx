@@ -32,13 +32,13 @@ import {
   confirmTerminalPaymentAction,
 } from './actions';
 import SmsPreview from '@/components/sms/SmsPreview';
-import { paymentText, noiNoticeText, lienWaiverText } from '@/lib/sms-templates';
+import { paymentText, lienWaiverText } from '@/lib/sms-templates';
 import type { TerminalReader, TerminalPaymentStatusResult } from '@/lib/stripe-terminal';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
 import { HOMEOWNER_FINANCING } from '@/lib/financing-status';
 import { calculateEarlyPayDiscount } from '@/lib/early-pay-discount';
-import type { NoiDocumentData } from '@/lib/noi-generator';
+
 import type { LienWaiverDocument, LienWaiverType } from '@/lib/lien-waiver';
 import { LIEN_WAIVER_TITLES } from '@/lib/lien-waiver';
 import { groupReceivablesByClient } from '@/lib/consolidated-billing';
@@ -69,7 +69,7 @@ export type ModalType =
   | 'field_collect'
   | 'promise_to_pay'
   | 'surcharge_lab'
-  | 'noi_generator'
+  
   | 'dunning_rules'
   | 'accounting_sync'
   | 'card_on_file_auth'
@@ -248,11 +248,6 @@ export default function PaymentModals({
   const [surchargeVolume, setSurchargeVolume] = useState('25000');
   const [surchargePct, setSurchargePct] = useState(3.0);
 
-  // NOI State
-  const [noiData, setNoiData] = useState<NoiDocumentData | null>(null);
-  const [noiCureDays, _setNoiCureDays] = useState(10);
-  const [noiTrackingNumber, setNoiTrackingNumber] = useState('');
-
   // Dunning Engine State
   const [dunningActive, setDunningActive] = useState(true);
   const [dunning1Days, _setDunning1Days] = useState(1);
@@ -341,15 +336,7 @@ export default function PaymentModals({
         }
       });
     }
-    if (activeModal === 'noi_generator' && selectedPayment) {
-      setLoading(true);
-      generateNoiNoticeAction({ paymentId: selectedPayment.id, cureDays: noiCureDays }).then((res) => {
-        setLoading(false);
-        if (res.success && res.data) {
-          setNoiData(res.data);
-        }
-      });
-    }
+    
     if (activeModal === 'lien_waiver') {
       const jId = waiverJobId || selectedPayment?.jobId || (jobs[0]?.id ?? '');
       const amt = Number.parseFloat(waiverAmount) || (selectedPayment ? selectedPayment.amount : 5200);
@@ -359,7 +346,7 @@ export default function PaymentModals({
         if (res.success && res.data) setWaiverDoc(res.data);
       });
     }
-  }, [activeModal, selectedPayment, noiCureDays, waiverType, waiverJobId, waiverAmount, jobs, terminalJobId]);
+  }, [activeModal, selectedPayment, waiverType, waiverJobId, waiverAmount, jobs, terminalJobId]);
 
   if (!activeModal) return null;
 
@@ -481,7 +468,7 @@ export default function PaymentModals({
       { id: 'retainage_tracker' as ModalType, icon: '🏗️', title: 'Retainage & Punch List Escrow Tracker', desc: 'Track 5%–10% punch list retainage withheld in escrow and generate formal prompt-payment release demands.' },
       { id: 'ach_incentive_settings' as ModalType, icon: '💡', title: 'Homeowner ACH Early-Pay Incentive Switch', desc: 'Configure automatic instant homeowner credits ($50–$250) on ACH bank transfers to eliminate card fees.' },
       { id: 'dunning_rules' as ModalType, icon: '⚡', title: 'Automated Dunning & Escalation Rules', desc: 'Configure automated 4-stage reminder sequences (Day 1 SMS, Day 7 Early Pay, Day 14 Alert, Day 30 Formal Demand).' },
-      { id: 'noi_generator' as ModalType, icon: '🛡️', title: 'Notice of Intent to Lien (NOI) Generator', desc: 'Generate statutory 10-day legal notice of intent to file mechanic’s lien for overdue receivables.' },
+      
       { id: 'accounting_sync' as ModalType, icon: '🏦', title: 'QuickBooks & Xero Accounting Sync Hub', desc: 'Export balanced double-entry general ledger journal entries (Gross Revenue, Stripe Fees, Net Cash).' },
       { id: 'card_on_file_auth' as ModalType, icon: '💳', title: 'Card-on-File Milestone Pre-Authorization', desc: 'Generate compliant customer agreements for automatic milestone draw settlement upon stage sign-off.' },
       { id: 'draw_calendar' as ModalType, icon: '📅', title: 'Expected Cash Flow Draw Calendar', desc: 'Visualize chronological upcoming milestone draws, retainage releases, and net-30 terms across all jobs.' },
@@ -2549,152 +2536,6 @@ export default function PaymentModals({
               Apply Policy to Checkout
             </button>
           </div>
-        </div>
-      </ControlledModal>
-    );
-  }
-
-  // 17. Notice of Intent to Lien (NOI) Legal Generator
-  if (activeModal === 'noi_generator') {
-    return (
-      <ControlledModal title="Notice of Intent to Lien (NOI) Generator" onClose={onClose} maxWidth="640px">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ background: 'rgba(239, 68, 68, 0.06)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '1.5rem' }}>🛡️</span>
-            <div>
-              <strong style={{ fontSize: '0.92rem', color: '#991b1b' }}>Statutory Pre-Lien Notice Generator</strong>
-              <div style={{ fontSize: '0.8rem', color: '#b91c1c' }}>
-                Protects contractor mechanic’s lien rights by serving a formal 10-day notice before county recording.
-              </div>
-            </div>
-          </div>
-
-          {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Compiling statutory notice document...</div>
-          ) : noiData ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', fontSize: '0.84rem' }}>
-                <div style={{ padding: '0.65rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>Property Owner</span>
-                  <strong>{noiData.propertyOwner}</strong>
-                </div>
-                <div style={{ padding: '0.65rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>Unpaid Amount Due</span>
-                  <strong style={{ color: '#dc2626', fontSize: '1rem' }}>{noiData.amountFormatted}</strong>
-                </div>
-                <div style={{ gridColumn: 'span 2', padding: '0.65rem', background: 'var(--panel-subtle, rgba(0,0,0,0.02))', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>Jobsite Real Property Address</span>
-                  <span>{noiData.propertyAddress}</span>
-                </div>
-                <div style={{ padding: '0.65rem', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
-                  <span style={{ color: '#92400e', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Notice Date</span>
-                  <strong>{noiData.noticeDate}</strong>
-                </div>
-                <div style={{ padding: '0.65rem', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.25)' }}>
-                  <span style={{ color: '#991b1b', fontSize: '0.72rem', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>10-Day Cure Deadline</span>
-                  <strong style={{ color: '#dc2626' }}>{noiData.cureDeadlineDate}</strong>
-                </div>
-              </div>
-
-              {/* Legal Notice Document Preview */}
-              <div style={{ border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px', padding: '1rem', background: '#fff', maxHeight: '200px', overflowY: 'auto', fontSize: '0.8rem', lineHeight: '1.5', fontFamily: 'serif' }}>
-                <div style={{ textAlign: 'center', fontWeight: 700, fontSize: '0.88rem', textTransform: 'uppercase', marginBottom: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.4rem' }}>
-                  {noiData.documentTitle}
-                </div>
-                <div style={{ whiteSpace: 'pre-line', color: '#1e293b' }}>
-                  {noiData.legalAdvisementText}
-                </div>
-              </div>
-
-              {/* Certified Mail USPS Tracker */}
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input
-                  type="text"
-                  placeholder="USPS Certified Mail Tracking # (e.g. 7020 0640 0001 ...)"
-                  value={noiTrackingNumber}
-                  onChange={(e) => setNoiTrackingNumber(e.target.value)}
-                  style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.82rem', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px' }}
-                />
-                <button
-                  type="button"
-                  className="btn secondary"
-                  style={{ fontSize: '0.82rem' }}
-                  onClick={() => {
-                    if (!noiTrackingNumber) {
-                      alert('Enter a tracking number.');
-                      return;
-                    }
-                    onSuccess(`Logged USPS Certified Mail Tracking #${noiTrackingNumber}`);
-                  }}
-                >
-                  Log Tracking
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid var(--border-subtle, #e2e8f0)', paddingTop: '0.85rem' }}>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    style={{ fontSize: '0.84rem' }}
-                    onClick={() => {
-                      navigator.clipboard.writeText(noiData.legalAdvisementText);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 2000);
-                    }}
-                  >
-                    {copied ? '✓ Copied' : '📋 Copy Legal Text'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn secondary"
-                    style={{ fontSize: '0.84rem' }}
-                    onClick={() => window.print()}
-                  >
-                    🖨️ Print Legal Notice
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.84rem' }}>
-                    Close
-                  </button>
-                  <SmsPreview
-                    message={noiNoticeText({
-                      businessName: businessName || 'Your Business',
-                      clientName: selectedPayment?.clientName || 'Customer',
-                      amount: selectedPayment?.amount || 0,
-                      url: 'https://lgq.co/pay/…',
-                    })}
-                    phone={selectedPayment?.clientPhone}
-                    recipientLabel={selectedPayment?.clientName || 'Customer'}
-                    triggerLabel="👁 Preview SMS"
-                    buttonClassName="btn secondary"
-                  />
-                  <button
-                    type="button"
-                    className="btn primary"
-                    style={{ fontSize: '0.84rem', background: '#dc2626', borderColor: '#dc2626' }}
-                    onClick={() => {
-                      if (selectedPayment) {
-                        const form = new FormData();
-                        form.set('paymentId', selectedPayment.id);
-                        sendNoiNoticeSmsAction(form).then((res) => {
-                          if (res.success) onSuccess('Statutory NOI notice dispatched via SMS & registered.');
-                          else alert(res.error || 'Failed to dispatch notice.');
-                          onClose();
-                        });
-                      }
-                    }}
-                  >
-                    📱 Serve Notice via SMS
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Select an overdue payment to generate a Notice of Intent.</div>
-          )}
         </div>
       </ControlledModal>
     );
