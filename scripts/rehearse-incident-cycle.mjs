@@ -18,7 +18,7 @@ async function checked(label, query) {
   return data;
 }
 
-export async function rehearseIncidentCycle({ adminClient, anonClient, log = console.log }) {
+export async function rehearseIncidentCycle({ adminClient, anonClient, log = console.log, onState = async () => {} }) {
   // A missing column/grant must fail before any fixture is written. An API
   // error must never count as proof that RLS successfully hid a draft.
   await checked('Admin schema preflight', adminClient.from('platform_incidents').select(fields).limit(0));
@@ -53,17 +53,20 @@ export async function rehearseIncidentCycle({ adminClient, anonClient, log = con
     assert.equal(drafted.resolved_at, null, 'Draft is already resolved');
     assert.deepEqual(await checked('Read draft anonymously', readAnon()), [], 'Anonymous client could read the draft');
     log('PASS: draft hidden from anonymous reads');
+    await onState({ state: 'draft', id, title: fixture.title });
 
     const published = await checked('Publish incident', update({ published: true }));
     assert.equal(published.published, true, 'Publish did not persist');
     await expectAnon('Read published incident', { published: true, description: fixture.description, resolved_at: null });
     log('PASS: published incident visible anonymously');
+    await onState({ state: 'published', id, title: fixture.title });
 
     const description = 'Rehearsal update: publishing verified; checking recovery. No customer outage.';
     const updated = await checked('Update incident', update({ description }));
     assert.equal(updated.description, description, 'Update did not persist');
     await expectAnon('Read incident update', { description, published: true, resolved_at: null });
     log('PASS: incident update visible anonymously');
+    await onState({ state: 'updated', id, title: fixture.title, description });
 
     const resolution_summary = 'Rehearsal completed. No customer outage occurred.';
     const resolved = await checked('Resolve incident', update({ resolved_at: new Date().toISOString(), resolution_summary }));
@@ -71,6 +74,7 @@ export async function rehearseIncidentCycle({ adminClient, anonClient, log = con
     assert.equal(resolved.resolution_summary, resolution_summary, 'Resolution summary did not persist');
     await expectAnon('Read resolution', { resolved_at: resolved.resolved_at, resolution_summary, published: true });
     log('PASS: resolution visible anonymously');
+    await onState({ state: 'resolved', id, title: fixture.title, resolution_summary });
   } catch (error) {
     failure = error;
   } finally {

@@ -1,135 +1,68 @@
-import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import type { Metadata } from 'next';
+import React from 'react';
+import { CircleHelp, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { getPublicIncidentStatus } from '@/lib/public-incident-status';
+import type { PublicIncident } from '@/lib/platform-incidents';
+import styles from './status.module.css';
 
-interface PlatformIncident {
-  id: string;
-  title: string;
-  kind?: string;
-  severity?: string;
-  description?: string;
-  impact_summary?: string;
-  resolution_summary?: string;
-  root_cause?: string;
-  started_at: string;
-  resolved_at?: string | null;
-  published?: boolean;
-}
-
-export const metadata = {
-  title: 'Platform Status - Let\'s Get Quoted',
-  description: 'Current operational status and incident history.',
+export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: 'Platform status',
+  description: 'Current reported incidents and recent service updates for Let’s Get Quoted.',
+  alternates: { canonical: '/status' },
+  openGraph: { title: 'Platform status', url: '/status', description: 'Reported incidents and service updates.' },
 };
 
-export const revalidate = 60; // Refresh cache every minute
+function timestamp(value: string) {
+  return new Date(value).toLocaleString('en-US', { timeZone: 'UTC', dateStyle: 'medium', timeStyle: 'short' }) + ' UTC';
+}
+
+function Incident({ incident }: { incident: PublicIncident }) {
+  return <article className={styles.incident} data-incident-id={incident.id}>
+    <header>
+      <h3>{incident.title}</h3>
+      <span className={styles.badge}>{incident.kind === 'release' ? 'Release' : incident.resolved_at ? 'Resolved' : incident.severity}</span>
+    </header>
+    {incident.affected_services.length > 0 && <p className={styles.meta}>Affected services: {incident.affected_services.join(', ')}</p>}
+    {incident.description && <p className={styles.copy}>{incident.description}</p>}
+    {incident.impact_summary && <p className={styles.copy}><strong>Customer impact:</strong> {incident.impact_summary}</p>}
+    {incident.resolved_at && incident.resolution_summary && <div className={styles.resolution}>
+      <h4>Resolution</h4><p className={styles.copy}>{incident.resolution_summary}</p>
+    </div>}
+    <div className={styles.meta}>
+      <div>Started: <time dateTime={incident.started_at}>{timestamp(incident.started_at)}</time></div>
+      <div>Updated: <time dateTime={incident.updated_at}>{timestamp(incident.updated_at)}</time></div>
+      {incident.resolved_at && <div>Resolved: <time dateTime={incident.resolved_at}>{timestamp(incident.resolved_at)}</time></div>}
+    </div>
+  </article>;
+}
 
 export default async function StatusPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data: incidents, error } = await supabase
-    .from('platform_incidents')
-    .select('*')
-    .eq('published', true)
-    .order('started_at', { ascending: false })
-    .limit(50);
-
-  if (error) {
-    console.error('Failed to load status incidents', error);
-  }
-
-  const typedIncidents = (incidents as PlatformIncident[] | null) || [];
-  const activeIncidents = typedIncidents.filter((i: PlatformIncident) => !i.resolved_at && i.kind === 'incident');
-  const pastIncidents = typedIncidents.filter((i: PlatformIncident) => i.resolved_at || i.kind === 'release');
-
-  const isHealthy = activeIncidents.length === 0;
-
-  return (
-    <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
-          Platform Status
-        </h1>
-        <p className="mt-4 text-xl text-gray-500">
-          Real-time updates on system performance and availability.
-        </p>
-      </div>
-
-      <div className={`rounded-xl p-8 mb-12 border flex items-center gap-6 ${isHealthy ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-        {isHealthy ? (
-          <ShieldCheck className="w-16 h-16 text-green-600" />
-        ) : (
-          <ShieldAlert className="w-16 h-16 text-red-600" />
-        )}
-        <div>
-          <h2 className={`text-2xl font-bold ${isHealthy ? 'text-green-900' : 'text-red-900'}`}>
-            {isHealthy ? 'All Systems Operational' : 'Active Incident Ongoing'}
-          </h2>
-          <p className={`mt-2 ${isHealthy ? 'text-green-700' : 'text-red-700'}`}>
-            {isHealthy 
-              ? 'Our infrastructure is currently running smoothly with no reported issues.' 
-              : 'We are currently investigating a system issue. See details below.'}
-          </p>
-        </div>
-      </div>
-
-      {activeIncidents.length > 0 && (
-        <div className="mb-12">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Active Incidents</h3>
-          <div className="space-y-6">
-            {activeIncidents.map((incident: PlatformIncident) => (
-              <div key={incident.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-red-50 px-6 py-4 border-b border-red-100 flex justify-between items-center">
-                  <h4 className="text-lg font-semibold text-red-900">{incident.title}</h4>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 capitalize">
-                    {incident.severity}
-                  </span>
-                </div>
-                <div className="p-6">
-                  <p className="text-gray-700 whitespace-pre-wrap">{incident.description || incident.impact_summary}</p>
-                  <div className="mt-4 text-sm text-gray-500">
-                    Started: {new Date(incident.started_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+  const { available, active, history } = await getPublicIncidentStatus();
+  const state = !available ? 'unknown' : active.length ? 'active' : 'clear';
+  const Icon = !available ? CircleHelp : active.length ? ShieldAlert : ShieldCheck;
+  return <div className={styles.page}>
+    <p className={styles.eyebrow}>Let’s Get Quoted · Service updates</p>
+    <h1>Platform status</h1>
+    <p className={styles.intro}>Reported incidents, customer impact, and recovery updates from our operations team. Times are shown in UTC.</p>
+    <section className={`${styles.summary} ${styles[state]}`} data-status={state} aria-labelledby="current-status">
+      <Icon size={30} aria-hidden="true" />
       <div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-6">Past Incidents &amp; Releases</h3>
-        {pastIncidents.length === 0 ? (
-          <p className="text-gray-500 italic">No past incidents or updates to display.</p>
-        ) : (
-          <div className="space-y-6">
-            {pastIncidents.map((incident: PlatformIncident) => (
-              <div key={incident.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                  <h4 className="text-lg font-medium text-gray-900">{incident.title}</h4>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 capitalize">
-                    {incident.kind === 'release' ? 'Release' : 'Resolved'}
-                  </span>
-                </div>
-                <div className="p-6">
-                  {incident.description && (
-                    <p className="text-gray-700 whitespace-pre-wrap mb-4">{incident.description}</p>
-                  )}
-                  {incident.resolution_summary && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <h5 className="font-medium text-gray-900 mb-2">Resolution</h5>
-                      <p className="text-gray-700 whitespace-pre-wrap">{incident.resolution_summary}</p>
-                    </div>
-                  )}
-                  <div className="mt-4 flex gap-4 text-sm text-gray-500">
-                    <span>Started: {new Date(incident.started_at).toLocaleString()}</span>
-                    {incident.resolved_at && (
-                      <span>Resolved: {new Date(incident.resolved_at).toLocaleString()}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <h2 id="current-status">{!available ? 'Status temporarily unavailable' : active.length ? 'Service disruption reported' : 'No active incidents reported'}</h2>
+        <p>{!available ? 'We could not load the latest incident reports. Service health is unconfirmed. Please try again shortly.' : active.length ? 'Our team is working on the incidents below. Refresh this page for the latest update.' : 'There are no open published incidents at this time. Refresh this page for the latest reports.'}</p>
       </div>
-    </div>
-  );
+    </section>
+    {available && <>
+      {active.length > 0 && <section className={styles.section} aria-labelledby="active-incidents">
+        <h2 id="active-incidents">Active incidents</h2>
+        {active.map((incident) => <Incident key={incident.id} incident={incident} />)}
+      </section>}
+      <section className={styles.section} aria-labelledby="incident-history">
+        <h2 id="incident-history">Recent incident history</h2>
+        <p className={styles.meta}>The latest 10 resolved incidents and releases.</p>
+        {history.length ? history.map((incident) => <Incident key={incident.id} incident={incident} />) : <p>No published history yet.</p>}
+      </section>
+    </>}
+    <p className={styles.intro}>Need help with your account? <a href="/contact">Contact support</a>.</p>
+  </div>;
 }

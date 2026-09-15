@@ -880,7 +880,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
             energy_level: voiceEnergyLevel(),
-            barge_min_words: voiceBargeMinWords(),
+            // Staff commands such as "Stop" and "Pause" are one word. The
+            // general noise threshold must not prevent their interruption.
+            barge_min_words: plan.contractorMode ? 1 : voiceBargeMinWords(),
             end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
             enable_turn_detection: true,
             turn_detection_timeout: 250,
@@ -890,8 +892,11 @@ export const signalwireVoiceProvider: VoiceProvider = {
               auto_correct: true,
               enable_text_normalization: 'off',
               transparent_barge: true,
+              enable_barge: 'all',
               barge_functions: false,
-              interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
+              // A silence reminder must not restart speech after a staff Stop.
+              attention_timeout: 0,
+              interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, call the native wait_for_user function without speaking or asking a follow-up question. Wait until the caller speaks again; do not restart or summarize the interrupted answer. If the caller includes a new request, answer only that request instead of waiting. Do not repeat a submitted write or claim an unknown save succeeded.',
             } : {}),
             hard_stop_time: `${maxDurationSeconds - 15}s`,
             hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
@@ -920,7 +925,13 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'the work requested, how urgent it is, and any appointment time '
               + 'they preferred. State plainly if any of these were not given.'),
           },
-          ...(swaigFunctions.length > 0 ? { SWAIG: { functions: swaigFunctions } } : {}),
+          ...(swaigFunctions.length > 0 || plan.contractorMode ? { SWAIG: {
+            functions: swaigFunctions,
+            ...(plan.contractorMode ? {
+              native_functions: ['wait_for_user'],
+              internal_fillers: { wait_for_user: { default: [] } },
+            } : {}),
+          } } : {}),
         },
       });
 

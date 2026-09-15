@@ -70,7 +70,7 @@ function harness(...faults) {
   }
   return {
     rows, requests, logs,
-    run: () => rehearseIncidentCycle({ adminClient: client('admin'), anonClient: client('anon'), log: (line) => logs.push(line) }),
+    run: (onState) => rehearseIncidentCycle({ adminClient: client('admin'), anonClient: client('anon'), log: (line) => logs.push(line), onState }),
     assertClean: () => assert.deepEqual([...rows.values()], [unrelated]),
   };
 }
@@ -88,6 +88,12 @@ test('schema errors fail before creating or deleting anything', async () => {
   const h = harness('schema');
   await assert.rejects(h.run(), /Admin schema preflight: schema failed/);
   assert.ok(h.requests.every((request) => request.method === 'GET'));
+  h.assertClean();
+});
+
+test('a failed page-observation hook fails the rehearsal and still removes the fixture', async () => {
+  const h = harness();
+  await assert.rejects(h.run(async ({ state }) => { if (state === 'published') throw new Error('page did not reflect publication'); }), /page did not reflect publication/);
   h.assertClean();
 });
 

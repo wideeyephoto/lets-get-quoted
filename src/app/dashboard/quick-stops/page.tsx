@@ -1,4 +1,5 @@
 import { requireOfficeContext, createAdminClient } from '@/lib/auth';
+import { loadBusinessName, pickBusinessName } from '@/lib/business-name';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
@@ -154,8 +155,7 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
    * other state gets a closed drawer.
    */
   const openPitch = state.kind === 'setup_incomplete' && !state.switchOn && requests.length === 0;
-  const businessName =
-    (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
+  const businessName = pickBusinessName(site, accountRow, '') || await loadBusinessName(supabase, accountId);
 
   // Their own recent work, run through the same deterministic screen a live
   // request gets. Both tables, because a lead carries the customer's own words
@@ -386,7 +386,7 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
           </div>
           <div style={{ marginTop: '1rem' }}>
             {activeCards.map(({ r, route, photoUrls }) => (
-              <QuickStopRequestCard key={r.id} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} canCreateOffer={canCreateOffer} />
+              <QuickStopRequestCard key={r.id} businessName={businessName} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} canCreateOffer={canCreateOffer} />
             ))}
           </div>
         </section>
@@ -472,7 +472,7 @@ export default async function QuickStopsPage({ searchParams: searchParamsPromise
           </div>
           <div style={{ marginTop: '1rem' }}>
             {history.map((r) => (
-              <QuickStopRequestCard key={r.id} request={r as unknown as CardRequest} route={null} photoUrls={[]} defaults={defaults} canCreateOffer={canCreateOffer} />
+              <QuickStopRequestCard key={r.id} businessName={businessName} request={r as unknown as CardRequest} route={null} photoUrls={[]} defaults={defaults} canCreateOffer={canCreateOffer} />
             ))}
           </div>
         </section>

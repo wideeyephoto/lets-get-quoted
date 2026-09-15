@@ -52,7 +52,7 @@ describe('the text a homeowner gets when their quote changes', () => {
 
   it('names the sender first and carries the opt-out line', () => {
     const text = quoteUpdatedText({ businessName: 'Evergreen', jobRef: 'J-1009', link: 'lgq.co/x', total: '$1.00' });
-    expect(text.startsWith('Evergreen here —')).toBe(true);
+    expect(text.startsWith('Evergreen here:')).toBe(true);
     expect(text).toContain('Reply STOP to opt out.');
     expect(text).toContain('lgq.co/x');
   });

@@ -507,14 +507,14 @@ describe('the offer message', () => {
     businessName: 'BrokePipes',
     workDescription: 'Water heater replacement',
     generalLocation: 'Royal Oak',
-    whenLabel: 'Friday 9–11 AM',
+    whenLabel: 'Friday 9-11 AM',
     payAmount: 650,
     expiresLabel: '6 PM',
   });
 
   it('reads like the example, and carries no private detail', () => {
     expect(draft).toBe(
-      'Let\'s Get Quoted: New subcontract job. Workspace: BrokePipes. Water heater replacement in Royal Oak, Friday 9–11 AM. Pay $650. Review and accept by 6 PM: [secure link]',
+      'Let\'s Get Quoted: New subcontract job. Workspace: BrokePipes. Water heater replacement in Royal Oak, Friday 9-11 AM. Pay $650. Review and accept by 6 PM: [secure link]',
     );
     expect(draft).not.toMatch(/\d+\s+\w+\s+(St|Street|Ave|Avenue|Rd|Road)/i);
   });

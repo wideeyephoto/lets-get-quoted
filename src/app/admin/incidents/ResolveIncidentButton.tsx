@@ -14,9 +14,9 @@ export default function ResolveIncidentButton({ incidentId, title }: { incidentI
   if (!open) return <button type="button" className="btn secondary" style={{ minHeight: 32, fontSize: '.8rem' }} onClick={() => setOpen(true)}>Resolve…</button>;
   return (
     <form action={resolveIncidentAction.bind(null, incidentId)} className={styles.formStack} aria-label={`Resolve ${title}`}>
-      <label htmlFor={`resolution-${incidentId}`}>Resolution summary</label>
+      <label htmlFor={`resolution-${incidentId}`}>Public resolution summary</label>
       <input id={`resolution-${incidentId}`} className={styles.compactInput} name="resolution_summary" required minLength={4} placeholder="What restored service?" />
-      <label htmlFor={`root-cause-${incidentId}`}>Root cause (optional)</label>
+      <label htmlFor={`root-cause-${incidentId}`}>Internal root cause (optional)</label>
       <input id={`root-cause-${incidentId}`} className={styles.compactInput} name="root_cause" placeholder="Underlying cause, if known" />
       <button type="submit" className="btn secondary" style={{ minHeight: 32, fontSize: '.8rem' }}>
         Confirm resolved now

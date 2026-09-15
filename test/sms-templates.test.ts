@@ -102,7 +102,7 @@ describe('the extracted builders', () => {
 
     for (const message of [quote, track]) {
       expect(message, 'the reader is not a "client" and has no "dashboard"').not.toMatch(/client dashboard/i);
-      expect(message).toMatch(/^Evergreen here — /);
+      expect(message).toMatch(/^Evergreen here: /);
       expect(message).toContain('https://x.co/j');
       expect(message).toMatch(/Reply STOP to opt out\.$/);
       // The reference belongs in the sentence, not in front of it.

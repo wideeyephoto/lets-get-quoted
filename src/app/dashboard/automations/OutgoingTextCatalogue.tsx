@@ -9,7 +9,7 @@ import {
 import { automationAnchorFor } from '@/lib/nav-helpers';
 
 /**
- * Every text this app can send, as the customer will see it.
+ * System text examples, using the actual sending copy and sample inputs.
  *
  * WHY IT EXISTS. The product sends through contractor, LGQ alert, and LGQ
  * dispatch lanes, and there was nowhere to read those messages together. The
@@ -45,7 +45,7 @@ function ControlCell({ entry }: { entry: SmsCatalogueEntry }) {
   return (
     <>
       <span className={`sms-cat-switch is-${control.kind}`}>
-        {control.kind === 'manual' ? 'Only when you send it' : 'Always on'}
+        {control.kind === 'manual' ? 'Only when you send it' : control.kind === 'configured' ? 'When enabled' : 'Always on'}
       </span>
       <small>{control.label}</small>
     </>
@@ -65,22 +65,23 @@ export default function OutgoingTextCatalogue() {
           cards above are an exclusive accordion and this must not close one. */}
       <details className="workspace-details sms-cat-details" id="outgoing-texts">
         <summary className="workspace-details-summary">
-          <span className="btn secondary">Every text we send · {SMS_CATALOGUE.length}</span>
+          <span className="btn secondary">System text examples · {SMS_CATALOGUE.length}</span>
           <span className="workspace-details-copy">
-            The real wording and sender lane for every outgoing message.
+            Review message wording, recipients and sending triggers.
           </span>
         </summary>
 
         <p className="workspace-card-copy">
-          All {SMS_CATALOGUE.length} of them, written out in full. These are the real messages, built by the
-          same code that sends them — not examples. Names, dates and links below are made up.
+          {SMS_CATALOGUE.length} examples using the same wording as the sending paths.
+          Names, dates and links are made up. Full-length sample links help illustrate text credit usage;
+          actual message lengths vary. This catalogue covers common messages and selected variants.
         </p>
 
         {/* A table on a wide screen and a stack of cards on a phone, from one set
             of rows: the header is hidden below the breakpoint and each cell
             carries its own label. A real <table> that scrolls sideways would put
             the message — the thing you came to read — off the edge. */}
-        <div className="sms-cat-table" role="table" aria-label="Every outgoing text message">
+        <div className="sms-cat-table" role="table" aria-label="Outgoing system text examples">
           <div className="sms-cat-head" role="row">
             <span role="columnheader">When it sends</span>
             <span role="columnheader">What they get</span>

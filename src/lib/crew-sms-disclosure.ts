@@ -17,7 +17,7 @@ export const CREW_SMS_DISCLOSURE =
   'Message frequency varies. Msg & data rates may apply. Reply STOP to unsubscribe or HELP for help. Consent is not a condition of purchase.';
 
 export const CREW_SMS_WELCOME_MESSAGE =
-  'Let’s Get Quoted: Welcome! You’re subscribed to recurring crew assignment, job opportunity, and schedule update texts for businesses using Let’s Get Quoted. Message frequency varies. Msg & data rates may apply. Reply STOP to unsubscribe or HELP for help.';
+  "Let's Get Quoted: Welcome! You're subscribed to recurring crew assignment, job opportunity, and schedule update texts for businesses using Let's Get Quoted. Message frequency varies. Msg & data rates may apply. Reply STOP to unsubscribe or HELP for help.";
 
 /**
  * Full disclosure text as shown to the user / contractor.

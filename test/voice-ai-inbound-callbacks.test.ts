@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  plan: vi.fn(), persist: vi.fn(), verify: vi.fn(), readiness: vi.fn(),
+  plan: vi.fn(), persist: vi.fn(), verify: vi.fn(), readiness: vi.fn(), after: vi.fn(),
+}));
+vi.mock('next/server', async (importOriginal) => ({
+  ...await importOriginal<typeof import('next/server')>(), after: mocks.after,
 }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/webhook-failures', () => ({ logWebhookFailure: vi.fn() }));
@@ -37,6 +40,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe('inbound recovery callback setup', () => {
+  it('returns the answer before route-verification bookkeeping, then awaits that work in after', async () => {
+    const response = await POST(inbound());
+    expect(response.status).toBe(200);
+    expect(mocks.readiness).not.toHaveBeenCalled();
+    expect(mocks.after).toHaveBeenCalledOnce();
+    await mocks.after.mock.calls[0][0]();
+    expect(mocks.readiness).toHaveBeenCalledWith({}, {
+      accountId: 'workspace-1', number: '+18105550100', providerCallId: 'inbound-call',
+    });
+  });
   it('persists fallback context before returning a query-free recording callback', async () => {
     const response = await POST(inbound());
     const body = await response.json();
@@ -80,5 +93,6 @@ describe('inbound recovery callback setup', () => {
     expect((await response.json()).sections.main).toEqual([{ hangup: {} }]);
     expect(mocks.persist).not.toHaveBeenCalled();
     expect(mocks.plan).not.toHaveBeenCalled();
+    expect(mocks.after).not.toHaveBeenCalled();
   });
 });

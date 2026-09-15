@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as terminalReconciliation from '@/lib/voice/terminal-reconciliation';
+import * as grounding from '@/lib/voice/grounding';
 
 import {
   AI_VOICE_FLAG,
@@ -147,6 +148,26 @@ describe('the product flag is not a metering flag', () => {
 });
 
 describe('what a caller gets', () => {
+  it('loads context while admission is pending but never answers AI before admission succeeds', async () => {
+    let finishAdmission!: (value: { outcome: string; reason: string }) => void;
+    admitVoiceCall.mockReturnValue(new Promise((resolve) => { finishAdmission = resolve; }));
+    const context = vi.spyOn(grounding, 'loadVoiceGroundingContext').mockRejectedValue(new Error('context unavailable'));
+    let finished = false;
+    const pending = planInboundCall(admin, call, options).then((result) => {
+      finished = true;
+      return result;
+    });
+    try {
+      await vi.waitFor(() => expect(context).toHaveBeenCalledOnce());
+      expect(admitVoiceCall).toHaveBeenCalledOnce();
+      expect(finished).toBe(false);
+      finishAdmission({ outcome: 'refused', reason: 'admission_unavailable' });
+      expect((await pending).plan.kind).not.toBe('ai_agent');
+    } finally {
+      context.mockRestore();
+    }
+  });
+
   it.each(['owner', 'office', 'crew'])('keeps registered %s Dispatch available during homeowner office hours', async (role) => {
     workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
       ...ACTIVE, answer_mode: 'after_hours', business_hours: { '2': ['08:00', '17:00'] },

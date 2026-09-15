@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { sendQuickStopStatusSms } from '@/lib/sms';
 import { quickStopStatusText } from '@/lib/sms-templates';
+import { loadBusinessName } from '@/lib/business-name';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
 import {
   QUICK_STOP_SETTINGS_COLUMNS,
@@ -155,7 +156,7 @@ export async function markEnRouteQuickStopAction(requestId: string) {
   if (req.client_phone) await sendQuickStopStatusSms({
     accountId,
     toPhone: req.client_phone,
-    message: quickStopStatusText('en_route'),
+    message: quickStopStatusText('en_route', { businessName: await loadBusinessName(supabase, accountId) }),
     idempotencyKey: `quick-stop:${requestId}:en-route`,
   });
   revalidatePath('/dashboard/quick-stops');
@@ -185,7 +186,7 @@ export async function markArrivedQuickStopAction(requestId: string, formData: Fo
   if (req.client_phone) await sendQuickStopStatusSms({
     accountId,
     toPhone: req.client_phone,
-    message: quickStopStatusText('arrived'),
+    message: quickStopStatusText('arrived', { businessName: await loadBusinessName(supabase, accountId) }),
     idempotencyKey: `quick-stop:${requestId}:arrived`,
   });
   revalidatePath('/dashboard/quick-stops');
@@ -204,7 +205,7 @@ export async function sendEtaSmsQuickStopAction(requestId: string, minutes: numb
   await sendQuickStopStatusSms({
     accountId,
     toPhone: req.client_phone,
-    message: quickStopStatusText('eta', { minutes }),
+    message: quickStopStatusText('eta', { businessName: await loadBusinessName(supabase, accountId), minutes }),
     idempotencyKey: `quick-stop:${requestId}:eta-${Date.now().toString().slice(0, -4)}`,
   });
 

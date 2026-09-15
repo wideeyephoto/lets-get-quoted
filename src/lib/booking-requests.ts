@@ -9,6 +9,7 @@
 // says and whether a request is stale are the parts worth pinning with tests,
 // and neither needs a database.
 
+import { normalizeSmsSystemText } from '@/lib/sms-copy';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatJobTime, isMissingColumnError } from './jobs';
 
@@ -111,7 +112,7 @@ export function waitedLabel(createdAtIso: string, nowMs: number): string {
  * a two-segment text bills twice for the same message.
  */
 export function confirmedSmsBody(businessName: string, whenLabel: string): string {
-  return `Your appointment has been confirmed by ${businessName} for ${whenLabel}. See you then — reply to this text if anything changes.`;
+  return `Your appointment has been confirmed by ${businessName} for ${normalizeSmsSystemText(whenLabel)}. See you then. Reply to this text if anything changes.`;
 }
 
 /**
@@ -127,7 +128,7 @@ export function declinedSmsBody(businessName: string, whenLabel: string, altWhen
   if (altWhenLabel) {
     return `${businessName} can't make either time you asked for, so both are released. Reply to this text and they'll find you another slot.`;
   }
-  return `${businessName} can't make ${whenLabel} after all, so that time has been released. Reply to this text and they'll help you find another slot.`;
+  return `${businessName} can't make ${normalizeSmsSystemText(whenLabel)} after all, so that time has been released. Reply to this text and they'll help you find another slot.`;
 }
 
 /** Rows → what the panel renders. Pure, so the labels are testable. */
