@@ -15,7 +15,7 @@ export async function reconcileVoiceTerminalAdmission(
   admin: SupabaseClient,
   accountId: string,
   candidate: VoiceAdmissionCandidate,
-  options: { fetchImpl?: typeof fetch; env?: NodeJS.ProcessEnv } = {},
+  options: { fetchImpl?: typeof fetch; env?: Record<string, string | undefined> } = {},
 ): Promise<boolean> {
   const env = options.env ?? process.env;
   const origin = normalizeSignalWireSpaceOrigin(env.SIGNALWIRE_SPACE_URL ?? '');
