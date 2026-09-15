@@ -55,7 +55,7 @@ export function NavigationPreferencesProvider({
   
   const eligibleItems = CATALOG_ITEMS.filter(item => eligibleIds.has(item.id));
   
-  const catalog = getPresetCatalog(preferences.selectedView, {
+  const catalog = getPresetCatalog(preferences, {
     groups: CATALOG_GROUPS,
     items: eligibleItems
   });

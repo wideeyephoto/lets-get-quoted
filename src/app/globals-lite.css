@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: bf16d7225cdf56fa
+   source-sha256: d22a5c91657332a6
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -35260,3 +35260,6 @@ select optgroup {
 .referral-code-label { font-size: 0.85rem; color: var(--mute-t50); }
 
 .portal-message-thread:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+details.sidenav-group > summary .sidenav-collapse-indicator { transition: transform 0.2s ease; }
+details.sidenav-group[open] > summary .sidenav-collapse-indicator { transform: rotate(180deg); }
+details.sidenav-group > summary::-webkit-details-marker { display: none; }
