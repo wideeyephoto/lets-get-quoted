@@ -4,6 +4,9 @@ import { executeHitlDecision } from './engine';
 import { recordOperatorAudit } from './audit';
 import type { OperatorHitlActionRequest } from './types';
 
+// A hung upstream otherwise holds the whole serverless invocation open.
+const OUTBOUND_TIMEOUT_MS = 10_000;
+
 const APPROVAL_SECRET = process.env.OPERATOR_APPROVAL_SECRET || process.env.CRON_SECRET || 'lgq-operator-default-secret-salt';
 
 /**
@@ -114,6 +117,7 @@ export async function dispatchInteractiveApprovalNotification(
   if (slackWebhookUrl) {
     try {
       await fetch(slackWebhookUrl, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(slackPayload),
@@ -130,6 +134,7 @@ export async function dispatchInteractiveApprovalNotification(
   if (telegramBotToken && telegramChatId) {
     try {
       await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

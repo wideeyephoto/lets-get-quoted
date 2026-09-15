@@ -79,18 +79,108 @@ export async function listClientsWithStats(
   accountId: string,
   options?: { todayKey?: string; fetchAll?: boolean } & TestRecordOptions,
 ): Promise<ClientWithStats[]> {
-  let clients: Client[];
-  let jobs: { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[];
+  const todayKey = options?.todayKey ?? new Date().toISOString().slice(0, 10);
 
+  let clients: Client[] | undefined;
   const fetchAll = options?.fetchAll ?? true;
+
+  type Entry = Omit<ClientWithStats, keyof Client>;
+  const blank = (): Entry => ({ jobCount: 0, totalValue: 0, lastJobAt: null, nextJobAt: null, lastVisitAt: null, unscheduledJobs: 0 });
+  const stats = new Map<string, Entry>();
 
   if (fetchAll) {
     const { fetchAllPages } = await import('@/lib/pagination');
-    [clients, jobs] = await Promise.all([
-      fetchAllPages<Client>((from, to) =>
-        applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options).range(from, to),
-      ),
-      fetchAllPages<{ client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }>((from, to) =>
+
+    if (typeof supabase.rpc === 'function') {
+      try {
+        const [clientsData, statsRes] = await Promise.all([
+          fetchAllPages<Client>((from, to) =>
+            applyTestRecordFilter(supabase.from('clients').select('id, account_id, name, phone, email, address, notes, last_rebook_invite_at, created_at, updated_at').eq('account_id', accountId), options).range(from, to),
+          ),
+          supabase.rpc('get_client_stats', { p_account_id: accountId, p_today: todayKey }),
+        ]);
+        if (statsRes && !statsRes.error && Array.isArray(statsRes.data)) {
+          clients = clientsData;
+          for (const row of statsRes.data) {
+            stats.set(row.client_id, {
+              jobCount: Number(row.job_count) || 0,
+              totalValue: Number(row.total_value) || 0,
+              lastJobAt: row.last_job_at,
+              nextJobAt: row.next_job_at,
+              lastVisitAt: row.last_visit_at,
+              unscheduledJobs: Number(row.unscheduled_jobs) || 0,
+            });
+          }
+        }
+      } catch {
+        // Fallback to table queries below
+      }
+    }
+
+    if (!clients) {
+      let jobs: { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[];
+      [clients, jobs] = await Promise.all([
+        fetchAllPages<Client>((from, to) =>
+          applyTestRecordFilter(supabase.from('clients').select('id, account_id, name, phone, email, address, notes, last_rebook_invite_at, created_at, updated_at').eq('account_id', accountId), options).range(from, to),
+        ),
+        fetchAllPages<{ client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }>((from, to) =>
+          applyTestRecordFilter(
+            supabase
+              .from('jobs')
+              .select('client_id, quoted_amount, created_at, scheduled_for')
+              .eq('account_id', accountId)
+              .not('client_id', 'is', null),
+            options,
+          ).range(from, to),
+        ),
+      ]);
+
+      for (const job of jobs ?? []) {
+        const key = job.client_id as string;
+        const entry = stats.get(key) ?? blank();
+        entry.jobCount += 1;
+        entry.totalValue += Number(job.quoted_amount) || 0;
+        if (!entry.lastJobAt || job.created_at > entry.lastJobAt) entry.lastJobAt = job.created_at;
+
+        const scheduled = (job.scheduled_for as string | null)?.slice(0, 10) ?? null;
+        if (!scheduled) {
+          entry.unscheduledJobs += 1;
+        } else if (scheduled >= todayKey) {
+          if (!entry.nextJobAt || scheduled < entry.nextJobAt) entry.nextJobAt = scheduled;
+        } else if (!entry.lastVisitAt || scheduled > entry.lastVisitAt) {
+          entry.lastVisitAt = scheduled;
+        }
+        stats.set(key, entry);
+      }
+    }
+  } else {
+    if (typeof supabase.rpc === 'function') {
+      try {
+        const [clientsRes, statsRes] = await Promise.all([
+          applyTestRecordFilter(supabase.from('clients').select('id, account_id, name, phone, email, address, notes, last_rebook_invite_at, created_at, updated_at').eq('account_id', accountId), options),
+          supabase.rpc('get_client_stats', { p_account_id: accountId, p_today: todayKey }),
+        ]);
+        if (statsRes && !statsRes.error && Array.isArray(statsRes.data)) {
+          clients = (clientsRes.data ?? []) as Client[];
+          for (const row of statsRes.data) {
+            stats.set(row.client_id, {
+              jobCount: Number(row.job_count) || 0,
+              totalValue: Number(row.total_value) || 0,
+              lastJobAt: row.last_job_at,
+              nextJobAt: row.next_job_at,
+              lastVisitAt: row.last_visit_at,
+              unscheduledJobs: Number(row.unscheduled_jobs) || 0,
+            });
+          }
+        }
+      } catch {
+        // Fallback below
+      }
+    }
+
+    if (!clients) {
+      const [clientsRes, jobsRes] = await Promise.all([
+        applyTestRecordFilter(supabase.from('clients').select('id, account_id, name, phone, email, address, notes, last_rebook_invite_at, created_at, updated_at').eq('account_id', accountId), options),
         applyTestRecordFilter(
           supabase
             .from('jobs')
@@ -98,51 +188,27 @@ export async function listClientsWithStats(
             .eq('account_id', accountId)
             .not('client_id', 'is', null),
           options,
-        ).range(from, to),
-      ),
-    ]);
-  } else {
-    const [clientsRes, jobsRes] = await Promise.all([
-      applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options),
-      applyTestRecordFilter(
-        supabase
-          .from('jobs')
-          .select('client_id, quoted_amount, created_at, scheduled_for')
-          .eq('account_id', accountId)
-          .not('client_id', 'is', null),
-        options,
-      ),
-    ]);
-    clients = (clientsRes.data ?? []) as Client[];
-    jobs = (jobsRes.data ?? []) as { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[];
-  }
+        ),
+      ]);
+      clients = (clientsRes.data ?? []) as Client[];
+      for (const job of (jobsRes.data ?? []) as { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[]) {
+        const key = job.client_id as string;
+        const entry = stats.get(key) ?? blank();
+        entry.jobCount += 1;
+        entry.totalValue += Number(job.quoted_amount) || 0;
+        if (!entry.lastJobAt || job.created_at > entry.lastJobAt) entry.lastJobAt = job.created_at;
 
-  // The caller passes today so the split between "booked" and "been" is made
-  // in the owner's zone rather than the server's — on UTC Vercel an Eastern
-  // evening would otherwise roll tomorrow's jobs into the past.
-  const todayKey = options?.todayKey ?? new Date().toISOString().slice(0, 10);
-
-  type Entry = Omit<ClientWithStats, keyof Client>;
-  const blank = (): Entry => ({ jobCount: 0, totalValue: 0, lastJobAt: null, nextJobAt: null, lastVisitAt: null, unscheduledJobs: 0 });
-
-  const stats = new Map<string, Entry>();
-  for (const job of jobs ?? []) {
-    const key = job.client_id as string;
-    const entry = stats.get(key) ?? blank();
-    entry.jobCount += 1;
-    entry.totalValue += Number(job.quoted_amount) || 0;
-    if (!entry.lastJobAt || job.created_at > entry.lastJobAt) entry.lastJobAt = job.created_at;
-
-    const scheduled = (job.scheduled_for as string | null)?.slice(0, 10) ?? null;
-    if (!scheduled) {
-      entry.unscheduledJobs += 1;
-    } else if (scheduled >= todayKey) {
-      // Soonest upcoming, not latest — "when are we next there" is the question.
-      if (!entry.nextJobAt || scheduled < entry.nextJobAt) entry.nextJobAt = scheduled;
-    } else if (!entry.lastVisitAt || scheduled > entry.lastVisitAt) {
-      entry.lastVisitAt = scheduled;
+        const scheduled = (job.scheduled_for as string | null)?.slice(0, 10) ?? null;
+        if (!scheduled) {
+          entry.unscheduledJobs += 1;
+        } else if (scheduled >= todayKey) {
+          if (!entry.nextJobAt || scheduled < entry.nextJobAt) entry.nextJobAt = scheduled;
+        } else if (!entry.lastVisitAt || scheduled > entry.lastVisitAt) {
+          entry.lastVisitAt = scheduled;
+        }
+        stats.set(key, entry);
+      }
     }
-    stats.set(key, entry);
   }
 
   return (clients ?? [])

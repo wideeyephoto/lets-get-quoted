@@ -46,7 +46,7 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
-const RAIL = '20260819080000_usage_overage_authorization.sql';
+const RAIL = '20260820114124_usage_overage_authorization.sql';
 const DOOR = '20260822100000_overage_self_serve_authorization.sql';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';

@@ -19,7 +19,7 @@ const compact = sql.replace(/\s+/g, ' ').toLowerCase();
  *
  * Newest-wins, so this reads the later migration when it defines the constraint.
  */
-const BINDING_FILE = '20260819180000_top_up_ledger_voice_skus.sql';
+const BINDING_FILE = '20260820004414_top_up_ledger_voice_skus.sql';
 const effectiveBinding = readFileSync(join(process.cwd(), 'migrations', BINDING_FILE), 'utf8')
   .replace(/\r\n/g, '\n')
   .replace(/\s+/g, ' ')

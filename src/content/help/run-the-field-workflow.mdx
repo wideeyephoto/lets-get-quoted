@@ -1,0 +1,35 @@
+---
+title: "Run the daily field workflow and voice notes"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Getting set up"
+---
+
+# Purpose
+Clock in, navigate to job sites, tap On My Way, record in-app voice notes, and sync offline updates.
+
+# Steps
+## Daily technician routine
+1. Open the Field App on mobile (/field) and tap "Clock In" at the start of the shift.
+2. Select the first assigned job to view the customer name, address, access codes, and scope checklist.
+3. Tap "On My Way" to notify the homeowner with an automated arrival ETA.
+4. Complete job milestone checklist items as work progresses.
+5. Tap "Clock Out" when the shift ends.
+
+## Record in-app voice notes (No telephone hotline required)
+Technicians record field notes directly using the 🎙️ Voice Note button on the job page (/field/jobs/[id]) or by texting voice memos to Text-to-Job. There is no telephone call-in hotline—everything is captured cleanly within the app interface.
+
+## 12-hour offline sync expiration invariant
+CRITICAL OFFLINE INVARIANT: Job notes, checklist completions, and time punches recorded without mobile signal are queued locally. When signal is restored, the queue syncs automatically. However, offline entries older than 12 hours are permanently refused by server sync to prevent stale data conflicts. Always sync before the end of your shift.
+
+
+
+# Done State
+Technicians will execute their daily jobs smoothly from their truck with fast in-app voice notes.
+
+# Common Failure
+**Voice note transcription failed.**
+Ensure microphone permissions are allowed in the mobile browser settings and record in a quiet environment.
+
+**Offline entries failed to sync.**
+Verify entries were recorded within the last 12 hours and check that internet connectivity is restored.

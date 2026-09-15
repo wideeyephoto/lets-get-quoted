@@ -1027,6 +1027,120 @@ async function dispatchStripeEvent(
     }
   }
 
+  // A refund's own status changed after the fact. The one that matters is a late
+  // FAILURE: an async refund (ACH) can settle days after `charge.refunded`
+  // optimistically recorded it, and when it fails Stripe adds the amount back to
+  // the charge WITHOUT re-emitting `charge.refunded`. Left alone, the payment
+  // stays marked `refunded`, the customer never received the money, and nothing
+  // else ever notices — this event is the only signal of it. A `succeeded`
+  // transition needs nothing here; `charge.refunded` owns the forward accounting.
+  //
+  // Quick Stop refunds are not re-opened from here on purpose: they run through
+  // quick_stop_refund_tasks, whose worker only marks a task `completed` once
+  // Stripe confirms the refund succeeded and flips it to review on a failure
+  // (executeQuickStopRefundTask), so that path detects a failed refund itself.
+  if (event.type === 'charge.refund.updated') {
+    const refund = event.data.object;
+    if (refund.status === 'failed' || refund.status === 'canceled') {
+      const chargeId = typeof refund.charge === 'string' ? refund.charge : refund.charge?.id ?? null;
+      if (chargeId) {
+        // Re-read the charge for Stripe's authoritative cumulative
+        // `amount_refunded` AFTER the failure reversal, and SET our stored total
+        // to it. Setting the absolute value (rather than decrementing by
+        // refund.amount) is what makes this idempotent under at-least-once
+        // redelivery, and it lets the total move DOWN — which the monotonic-up
+        // guard on `charge.refunded` deliberately forbids and cannot do itself.
+        const charge = await stripe.charges.retrieve(chargeId);
+        const paymentId = charge.metadata?.payment_id;
+        if (paymentId) {
+          console.error(
+            `[REFUND] ${refund.status} refund ${refund.id} for payment ${paymentId}: ${refund.failure_reason ?? 'no reason given'}`
+          );
+          const rail = await inspectLegacyDestinationPaymentRail(admin, paymentId);
+          if (rail.kind !== 'allowed') return;
+          const authoritativeRefunded = fromCents(charge.amount_refunded);
+          const stillFullyRefunded =
+            typeof charge.amount === 'number' ? charge.amount_refunded >= charge.amount : false;
+
+          // charge_model rides along only when the column exists, so
+          // isLegacyDestinationPayment reads a genuinely-absent property as a
+          // legacy row rather than a fabricated one — same contract as the
+          // charge.refunded read above.
+          const refundedPaymentColumns = 'id, account_id, job_id, invoice_id, status, amount, platform_fee, refunded_amount';
+          const { data: payment, error: paymentError } = (await admin
+            .from('payments')
+            .select(rail.chargeModelColumnPresent ? `${refundedPaymentColumns}, charge_model` : refundedPaymentColumns)
+            .eq('id', paymentId)
+            .maybeSingle()) as unknown as {
+              data: {
+                id: string;
+                account_id: string;
+                job_id: string | null;
+                invoice_id: string | null;
+                status: string;
+                amount: number;
+                platform_fee: number | null;
+                refunded_amount: number | null;
+                charge_model?: unknown;
+              } | null;
+              error: { code?: string | null } | null;
+            };
+          if (paymentError) throw paymentError;
+
+          // Act only on a real correction to a collected payment, never on a
+          // disputed one. The exact-equality guard makes a redelivered event
+          // (whose authoritative total already equals what we stored) a no-op,
+          // so nothing double-reverses and no second alert goes out.
+          if (
+            payment &&
+            isLegacyDestinationPayment(payment) &&
+            (payment.status === 'paid' || payment.status === 'refunded') &&
+            toCents(Number(payment.refunded_amount) || 0) !== toCents(authoritativeRefunded)
+          ) {
+            let transition = admin
+              .from('payments')
+              .update({
+                refunded_amount: authoritativeRefunded,
+                // A failed refund that dropped the total below the full amount
+                // is once again a collectible, standing payment.
+                status: stillFullyRefunded ? 'refunded' : 'paid',
+                refunded_at: authoritativeRefunded > 0 ? new Date().toISOString() : null,
+                platform_fee_refunded: reversedPlatformFee({
+                  amount: payment.amount,
+                  platformFee: payment.platform_fee,
+                  refundedTotal: authoritativeRefunded,
+                }),
+              })
+              .eq('id', payment.id);
+            if (rail.kind === 'allowed' && rail.chargeModelColumnPresent) {
+              transition = transition.eq('charge_model', 'destination');
+            }
+            const { data: transitioned, error: transitionError } = await transition
+              .in('status', ['paid', 'refunded'])
+              .select('id, account_id, job_id')
+              .maybeSingle();
+            if (transitionError) throw transitionError;
+            if (transitioned) {
+              // A refund the customer was told to expect did not arrive. This
+              // needs a human — usually to re-issue it or reach the customer —
+              // so the owner is emailed rather than only logged.
+              await emailContractorAlert(admin, transitioned.account_id, {
+                subject: 'A refund did not go through',
+                heading: 'A refund failed to reach the customer',
+                bodyLines: [
+                  `A refund of $${fromCents(refund.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} was returned unpaid${refund.failure_reason ? ` (${refund.failure_reason})` : ''}, so this payment is collected again.`,
+                  'The money is back with the platform, not the customer. Re-issue the refund or contact the customer to arrange it.',
+                ],
+                ctaLabel: 'Open the job',
+                ctaPath: `/dashboard/jobs/${transitioned.job_id}`,
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
   // Payment intent failed — alternative to charge.failed for some scenarios.
   if (event.type === 'payment_intent.payment_failed') {
     const paymentIntent = event.data.object;

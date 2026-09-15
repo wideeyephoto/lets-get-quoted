@@ -39,3 +39,43 @@ export function evaluateVipOnboardingCandidate(params: {
       : 'Automated lifecycle step Day 0.',
   };
 }
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+export async function scanForVipCandidates(
+  supabase: SupabaseClient,
+): Promise<{
+  candidatesCount: number;
+  candidates: VipContractorOpportunity[];
+}> {
+  try {
+    const { data: accountsData, error: accountsError } = await supabase
+      .from('accounts')
+      .select('id, business_name, trade, crew_member_count, past_client_imports_count')
+      .or('crew_member_count.gte.3,past_client_imports_count.gte.10')
+      .neq('status', 'suspended');
+
+    if (accountsError || !accountsData) {
+      throw new Error(accountsError?.message || 'Failed to fetch vip candidates');
+    }
+
+    const candidates = accountsData.map((acc: any) => evaluateVipOnboardingCandidate({
+      accountId: acc.id,
+      businessName: acc.business_name || 'Unknown Business',
+      trade: acc.trade || 'general',
+      crewMembersCount: acc.crew_member_count || 0,
+      pastClientImportsCount: acc.past_client_imports_count || 0,
+    }));
+
+    return {
+      candidatesCount: candidates.length,
+      candidates,
+    };
+  } catch (error) {
+    console.error('Error scanning for VIP candidates:', error);
+    return {
+      candidatesCount: 0,
+      candidates: [],
+    };
+  }
+}

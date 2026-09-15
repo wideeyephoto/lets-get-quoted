@@ -8,6 +8,7 @@ import {
   getJobFormSubmission,
   saveJobFormSubmission,
 } from '@/lib/forms/forms-data';
+import { unstable_rethrow } from 'next/navigation';
 
 /**
  * Attaches a new form template to a job.
@@ -38,6 +39,9 @@ export async function attachJobFormAction(
     revalidatePath(`/dashboard/jobs/${jobId}`);
     return { success: true, submissionId: submission.id };
   } catch (err: any) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     return { success: false, error: err.message || 'Failed to attach form.' };
   }
 }

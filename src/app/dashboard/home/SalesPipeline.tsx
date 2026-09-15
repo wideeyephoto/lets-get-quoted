@@ -14,12 +14,12 @@ export default function SalesPipeline({
 
   return (
     <section className="panel workspace-section-card sales-pipeline-panel">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">Sales</p>
           <h2>Activity pipeline</h2>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.82rem', color: 'var(--muted)' }}>
+        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.82rem', color: 'var(--muted)', marginLeft: 'auto', alignSelf: 'flex-start' }}>
           {quoteApprovalRatePct !== null ? (
             <span>
               Approval rate: <strong style={{ color: 'var(--text)' }}>{quoteApprovalRatePct}%</strong>

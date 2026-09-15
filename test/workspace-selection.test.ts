@@ -5,7 +5,7 @@ const state = vi.hoisted(() => ({
   user: { id: 'brett', email: 'brett@example.com' } as { id: string; email: string } | null,
 }));
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => ({ value: state.cookie }), set: state.set }) }));
-vi.mock('next/navigation', () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
+vi.mock('next/navigation', () => ({ unstable_rethrow: (t: unknown) => { const d = (t as { digest?: unknown })?.digest; if (typeof d === 'string' && d.startsWith('NEXT_REDIRECT')) throw t; }, redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 vi.mock('@/lib/supabase-server', () => ({ createSupabaseServerClient: async () => ({ auth: { getUser: async () => ({ data: { user: state.user } }) } }) }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: () => {
   const query = { select: () => query, eq: (key: string, value: string) => { state.eq(key, value); return query; }, maybeSingle: async () => ({ data: state.member, error: null }) };

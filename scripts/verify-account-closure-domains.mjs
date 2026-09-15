@@ -43,10 +43,10 @@ try {
   await db.query(source('20260907180000_email_sending_domains.sql'));
   const legacyAccount = (await db.query('insert into accounts default values returning id')).rows[0].id;
   const legacy = (await db.query("insert into account_closure_jobs(closure_subject_id,account_id,requested_by_role,recoverable_until) values($1,$1,'admin',now()+interval '30 days') returning id", [legacyAccount])).rows[0].id;
-  await db.query(source('20260910133921_account_closure_domain_cleanup.sql'));
-  await db.query(source('20260910140253_account_closure_request_contract.sql'));
-  await db.query(source('20260910140758_account_closure_actor_type.sql'));
-  const actorRepair = source('20260912085100_account_closure_actor_drift_repair.sql');
+  await db.query(source('20260910135949_account_closure_domain_cleanup.sql'));
+  await db.query(source('20260910140640_account_closure_request_contract.sql'));
+  await db.query(source('20260910140859_account_closure_actor_type.sql'));
+  const actorRepair = source('20260912085216_account_closure_actor_drift_repair.sql');
   const actorDefinition = async () => (await db.query("select pg_get_functiondef('public.request_account_closure_atomic(uuid,uuid,text,text,boolean,boolean,boolean)'::regprocedure) definition")).rows[0].definition;
   const correctDefinition = await actorDefinition();
   await db.query(actorRepair);

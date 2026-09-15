@@ -55,21 +55,22 @@ export async function getPermitIntelligence(params: {
 
   // Configure authority contact and portal action
   let portalAction: PermitPortalAction | undefined;
-  let contactPhone = '248-246-3210';
-  let officeHours = 'Monday – Friday, 8:00 AM – 4:30 PM';
-  const inspectorHours = '8:00 AM – 9:00 AM & 3:30 PM – 4:30 PM';
-  let department = 'Building Inspection Division';
+  let contactPhone = 'Contact local authority';
+  let officeHours: string | undefined;
+  let inspectorHours: string | undefined;
+  let department = jurisdiction.agencyName || jurisdiction.authorityName || 'Building Department';
 
   if (jurisdiction.authorityId === 'mi-royal-oak') {
     portalAction = {
-      label: 'Open City of Royal Oak BS&A Portal (AccessMyGov)',
-      url: 'https://www.accessmygov.com/?uid=1349',
+      label: 'Open City of Royal Oak BS&A Online Portal',
+      url: 'https://bsaonline.com/?uid=1652',
       providerType: 'bsa_accessmygov',
       requiresContractorPin: true,
-      pinInstructions: 'A City-issued Contractor PIN is required to link an existing registration on AccessMyGov.',
+      pinInstructions: 'A City-issued Contractor PIN is required to link an existing registration on BS&A Online.',
     };
     contactPhone = '248-246-3210';
     officeHours = 'Monday – Friday, 8:00 AM – 4:30 PM';
+    inspectorHours = '8:00 AM – 9:00 AM & 3:30 PM – 4:30 PM';
     department = 'Building Inspection Division';
   } else if (jurisdiction.authorityId === 'mi-detroit') {
     portalAction = {
@@ -82,7 +83,7 @@ export async function getPermitIntelligence(params: {
   } else if (jurisdiction.authorityId === 'mi-grand-rapids') {
     portalAction = {
       label: 'Open Grand Rapids Citizen Access Portal',
-      url: 'https://www.citizenaccess.grandrapidsmi.gov',
+      url: 'https://inspections.grcity.us/citizenaccess',
       providerType: 'accela',
     };
     contactPhone = '616-456-4100';

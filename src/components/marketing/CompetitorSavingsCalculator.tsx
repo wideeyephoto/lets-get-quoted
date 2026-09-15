@@ -99,7 +99,12 @@ export default function CompetitorSavingsCalculator({
   const competitorTotalMonthly = competitorBaseMonthly + websiteHostingMonthly;
   const competitorAnnualTotal = competitorTotalMonthly * 12;
 
-  const lgqFlexAnnual = 0;
+  // Flex includes 2 office users + 2 field crew users (4 included users).
+  // Extra field crew seats are $5/mo ($60/yr) each.
+  const extraCrewSeats = Math.max(0, team.users - 4);
+  const lgqExtraCrewMonthly = extraCrewSeats * 5;
+  const lgqFlexMonthly = lgqExtraCrewMonthly;
+  const lgqFlexAnnual = lgqFlexMonthly * 12;
   const annualSavingsOnFlex = competitorAnnualTotal - lgqFlexAnnual;
 
   return (
@@ -263,11 +268,16 @@ export default function CompetitorSavingsCalculator({
               <div className={styles.priceDisplayLgq}>
                 <div className={styles.monthlyAmountLgq}>
                   <span className={styles.currencyLgq}>$</span>
-                  <span className={styles.numberLgq}>0</span>
-                  <span className={styles.periodLgq}>/ month base</span>
+                  <span className={styles.numberLgq}>{lgqFlexMonthly}</span>
+                  <span className={styles.periodLgq}>/ month fixed</span>
                 </div>
                 <div className={styles.annualAmountLgq}>
-                  Pay only 1.25% platform fee <em>when you get paid</em>
+                  {extraCrewSeats > 0 ? (
+                    <>$0 base + ${lgqExtraCrewMonthly}/mo for {extraCrewSeats} extra crew · </>
+                  ) : (
+                    <>$0/mo fixed software bills · </>
+                  )}
+                  Pay 1.25% platform fee <em>when you get paid</em>
                 </div>
               </div>
 
@@ -275,7 +285,12 @@ export default function CompetitorSavingsCalculator({
                 <li>
                   <span className={styles.iconGreen}>✓</span>
                   <span>
-                    <strong>$0/mo fixed software bills</strong> — zero overhead risk
+                    <strong>$0/mo base plan</strong>
+                    {extraCrewSeats > 0 ? (
+                      <> (+${lgqExtraCrewMonthly}/mo for {extraCrewSeats} extra crew seats, 4 included)</>
+                    ) : (
+                      <> — includes 2 office + 2 field crew users</>
+                    )}
                   </span>
                 </li>
                 <li>
@@ -300,16 +315,20 @@ export default function CompetitorSavingsCalculator({
 
               {/* Huge Savings Callout */}
               <div className={styles.savingsBox}>
-                <div className={styles.savingsTag}>Your Guaranteed Savings</div>
+                <div className={styles.savingsTag}>Estimated Fixed Subscription Savings</div>
                 <div className={styles.savingsFigure}>
                   +${annualSavingsOnFlex.toLocaleString()} / year
                 </div>
                 <div className={styles.savingsSub}>
-                  Keep your hard-earned profits instead of paying recurring subscription bills.
+                  Save on recurring monthly software bills regardless of whether you have an active job.
                 </div>
               </div>
             </div>
           </div>
+
+          <p className={styles.disclaimerText}>
+            * Compares fixed monthly subscription and user seat license fees. Competitor pricing based on published list prices (billed annually) and third-party website hosting fees as of 2026. Let’s Get Quoted Flex charges $0/month base with 2 office seats and 2 crew users included ($5/month per additional crew seat). A 1.25% platform fee applies to customer payments processed through Let’s Get Quoted (or 0.50% on Solo, 0.40% on Growth).
+          </p>
 
           {/* Card Footer CTA */}
           <div className={styles.cardFooter}>

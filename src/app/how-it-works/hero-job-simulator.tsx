@@ -404,11 +404,11 @@ export const TRADE_PRESETS: Record<TradeId, TradePreset> = {
         amountMain: '$11,200.00',
         amountSub: '$3,000.00 deposit paid via Stripe',
         facts: [
-          { label: 'Rebate', value: '$2,000 IRA Federal Tax Credit eligible' },
+          { label: 'Utility Rebate', value: '$1,200 Electric Utility Rebate eligible' },
           { label: 'Financing', value: '0%-interest installment plan chosen' },
           { label: 'Approved', value: 'Sarah Jenkins · E-signed' },
         ],
-        copilotText: 'Quote accepted with 0%-interest installment schedule and manufacturer rebate certificate.',
+        copilotText: 'Quote accepted with 0%-interest installment schedule and utility rebate certificate.',
         smsPreview: {
           label: 'QUOTE APPROVAL',
           to: 'Sarah',

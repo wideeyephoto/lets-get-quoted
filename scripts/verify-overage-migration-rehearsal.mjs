@@ -93,8 +93,8 @@ try {
     create table public.operational_alert_findings (source_key text primary key, category text, reference text, occurred_at timestamptz, detail text, action_required text, admin_path text, last_seen_at timestamptz, resolved_at timestamptz, delivery_id uuid, detected_at timestamptz);
   `);
 
-  await q(m('20260819260000_overage_settlement.sql'));
-  await q(m('20260909210000_overage_settlement_reaper_and_starvation.sql'));
+  await q(m('20260820074457_overage_settlement.sql'));
+  await q(m('20260909224107_overage_settlement_reaper_and_starvation.sql'));
 
   const accountId = '11111111-1111-4111-8111-111111111111';
   await q('insert into public.accounts (id) values ($1)', [accountId]);

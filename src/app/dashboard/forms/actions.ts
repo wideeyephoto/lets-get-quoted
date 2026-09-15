@@ -9,6 +9,7 @@ import {
   saveFormTemplate,
 } from '@/lib/forms/forms-data';
 import { PRESET_FORM_TEMPLATES } from '@/lib/forms/preset-templates';
+import { unstable_rethrow } from 'next/navigation';
 
 /**
  * Saves or updates a form template.
@@ -24,6 +25,9 @@ export async function saveTemplateAction(
     revalidatePath(`/dashboard/forms/${saved.id}`);
     return { success: true, id: saved.id };
   } catch (err: any) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(err);
     return { success: false, error: err.message || 'Failed to save template.' };
   }
 }

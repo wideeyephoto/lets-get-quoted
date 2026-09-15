@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import type { SiteBeforeAfterItem } from '@/lib/site-content';
 import styles from './themes.module.css';
+import SafeImage from './SafeImage';
 
 function Slider({ item }: { item: SiteBeforeAfterItem }) {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -51,9 +52,9 @@ function Slider({ item }: { item: SiteBeforeAfterItem }) {
         onPointerUp={stopDragging}
         onPointerCancel={stopDragging}
       >
-        <img className={styles.baImg} src={item.afterUrl} alt={item.afterAlt || item.label || 'After'} loading="lazy" decoding="async" draggable={false} data-edit={`baimg-${item.id}-after`} />
+        <SafeImage className={styles.baImg} src={item.afterUrl} alt={item.afterAlt || item.label || 'After'} loading="lazy" decoding="async" draggable={false} data-edit={`baimg-${item.id}-after`}   width={item.afterWidth || undefined} height={item.afterHeight || undefined} />
         <div className={styles.baBefore} style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-          <img className={styles.baImg} src={item.beforeUrl} alt={item.beforeAlt || item.label || 'Before'} loading="lazy" decoding="async" draggable={false} data-edit={`baimg-${item.id}-before`} />
+          <SafeImage className={styles.baImg} src={item.beforeUrl} alt={item.beforeAlt || item.label || 'Before'} loading="lazy" decoding="async" draggable={false} data-edit={`baimg-${item.id}-before`}   width={item.beforeWidth || undefined} height={item.beforeHeight || undefined} />
         </div>
         <span className={`${styles.baTag} ${styles.baTagBefore}`} aria-hidden="true">Before</span>
         <span className={`${styles.baTag} ${styles.baTagAfter}`} aria-hidden="true">After</span>

@@ -3,7 +3,7 @@
 import BrandLogo from '@/components/brand-logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Fragment, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, useCallback, useTransition, type FormEvent as ReactFormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
@@ -45,6 +45,7 @@ export const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
   { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
   { href: '/dashboard/text-to-job', icon: '/dashboard/text-to-job', label: 'Voice / SMS memo' },
+  { href: '/dashboard/voice-calls', icon: '/dashboard/voice-calls', label: 'AI Voice Receptionist' },
   // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
@@ -327,9 +328,34 @@ function getPrimaryAction(isLoggedIn = false, pathname: string | null = null) {
   return { href: APP_SIGNUP_URL, label: 'Create Free Account' };
 }
 
+function WorkspaceSwitchOverlay({ workspaceName }: { workspaceName: string }) {
+  return (
+    <div
+      className="workspace-switch-overlay"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={workspaceName ? `Switching to ${workspaceName}…` : 'Switching workspace…'}
+    >
+      <div className="workspace-switch-modal">
+        <div className="workspace-switch-spinner-wrap" aria-hidden="true">
+          <div className="workspace-switch-spinner" />
+        </div>
+        <h3 className="workspace-switch-title">
+          {workspaceName ? `Switching to ${workspaceName}…` : 'Switching workspace…'}
+        </h3>
+        <p className="workspace-switch-subtitle">
+          Loading workspace data and live pipeline…
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
   const pathname = usePathname();
-  const { isNavOpen, closeNav, toggleNav } = useAppShell();
+  const { isNavOpen, closeNav, toggleNav, switchingWorkspace, setSwitchingWorkspace } = useAppShell();
+  const [, startTransition] = useTransition();
   const { contractorLogoTop } = useNavCustomization();
   const { isCollapsed, toggleCollapsed } = useNavCollapsed();
   const { nav, setNav } = useNavVisibility();
@@ -714,6 +740,89 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     setIsWorkspaceMenuOpen(false);
   }, [pathname]);
 
+  // Clear switching workspace on route navigation
+  useEffect(() => {
+    setSwitchingWorkspace(null);
+  }, [pathname, setSwitchingWorkspace]);
+
+  // Safety timeout in case a workspace switch hangs or network stalls
+  useEffect(() => {
+    if (!switchingWorkspace) return;
+    const timer = setTimeout(() => {
+      setSwitchingWorkspace(null);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [switchingWorkspace, setSwitchingWorkspace]);
+
+  const loadStatus = useCallback(() => {
+    return fetch('/api/account/status', { cache: 'no-store' })
+      .then((res) => (res.ok ? (res.json() as Promise<AccountStatus>) : null))
+      .then((data) => {
+        if (data) {
+          setStripeOnboarded(Boolean(data.onboarded));
+          setSitePublished(Boolean(data.sitePublished));
+          setSiteUrl(data.siteUrl ?? null);
+          setBusinessName(data.businessName ?? null);
+          setWorkspaces(Array.isArray(data.workspaces) ? data.workspaces : []);
+          setContractorLogoUrl(data.logoUrl ?? null);
+          setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
+          setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
+          setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
+          setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
+          setOpenQuickStopCount(Number(data.openQuickStopRequestCount ?? 0));
+          setOpenLeadCount(Number(data.openLeadCount ?? 0));
+          setLeadTitle(typeof data.leadRailTitle === 'string' ? data.leadRailTitle : null);
+          setActiveJobCount(Number(data.activeJobCount ?? 0));
+          setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
+          setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
+          setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
+          setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
+          setTextToJobCount(Number(data.textToJobCount ?? 0));
+          setNewestTextToJobCreatedAt(data.newestTextToJobCreatedAt ?? null);
+          setQuickStopState(navState(data.quickStopState));
+          setBookingState(navState(data.bookingState));
+          setLowCreditAlert(Boolean(data.lowCreditAlert));
+          if (data.nav) {
+            setNav(data.nav);
+          }
+        }
+        return data;
+      })
+      .catch(() => null);
+  }, [setNav]);
+
+  const handleSwitchWorkspace = (e: ReactFormEvent<HTMLFormElement>, ws: ShellWorkspace) => {
+    e.preventDefault();
+    if (ws.isCurrent || switchingWorkspace) return;
+
+    setSwitchingWorkspace(ws.businessName);
+    setIsWorkspaceMenuOpen(false);
+
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.append('accountId', ws.accountId);
+        await selectWorkspaceAction(formData);
+      } catch (err: unknown) {
+        const isNextRedirect =
+          (err && typeof err === 'object' && 'digest' in err && typeof (err as { digest: unknown }).digest === 'string' && ((err as { digest: string }).digest.includes('NEXT_REDIRECT') || (err as { digest: string }).digest.includes('redirect:'))) ||
+          (err instanceof Error && (err.message.includes('NEXT_REDIRECT') || err.message.includes('redirect:')));
+
+        if (!isNextRedirect) {
+          console.error('Failed to switch workspace:', err);
+          setSwitchingWorkspace(null);
+        }
+      } finally {
+        try {
+          await loadStatus();
+        } catch {
+          // ignore
+        }
+        setSwitchingWorkspace(null);
+      }
+    });
+  };
+
   // Arrow keys move focus between workspace menu items.
   function onWorkspaceMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
@@ -740,7 +849,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         </div>
         <div className="sidenav-workspace-list">
           {workspaces.map((ws) => (
-            <form key={ws.accountId} action={selectWorkspaceAction} className="sidenav-workspace-form">
+            <form key={ws.accountId} action={selectWorkspaceAction} onSubmit={(e) => handleSwitchWorkspace(e, ws)} className="sidenav-workspace-form">
               <input type="hidden" name="accountId" value={ws.accountId} />
               <button
                 type="submit"
@@ -827,42 +936,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setIsWorkspaceMenuOpen(false);
       return;
     }
-    let cancelled = false;
-    const loadStatus = () => {
-      fetch('/api/account/status', { cache: 'no-store' })
-        .then((res) => (res.ok ? res.json() as Promise<AccountStatus> : null))
-        .then((data) => {
-          if (!cancelled && data) {
-            setStripeOnboarded(Boolean(data.onboarded));
-            setSitePublished(Boolean(data.sitePublished));
-            setSiteUrl(data.siteUrl ?? null);
-            setBusinessName(data.businessName ?? null);
-            setWorkspaces(Array.isArray(data.workspaces) ? data.workspaces : []);
-            setContractorLogoUrl(data.logoUrl ?? null);
-            setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
-            setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
-            setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
-            setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
-            setOpenQuickStopCount(Number(data.openQuickStopRequestCount ?? 0));
-            setOpenLeadCount(Number(data.openLeadCount ?? 0));
-            setLeadTitle(typeof data.leadRailTitle === 'string' ? data.leadRailTitle : null);
-            setActiveJobCount(Number(data.activeJobCount ?? 0));
-            setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
-            setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
-            setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
-            setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
-            setTextToJobCount(Number(data.textToJobCount ?? 0));
-            setNewestTextToJobCreatedAt(data.newestTextToJobCreatedAt ?? null);
-            setQuickStopState(navState(data.quickStopState));
-            setBookingState(navState(data.bookingState));
-            setLowCreditAlert(Boolean(data.lowCreditAlert));
-            if (data.nav) {
-              setNav(data.nav);
-            }
-          }
-        })
-        .catch(() => {});
-    };
     loadStatus();
     // Surface a new lead/job even while the owner sits on one page: re-check on
     // an interval, and immediately whenever they switch back to the tab.
@@ -870,11 +943,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const onFocus = () => loadStatus();
     window.addEventListener('focus', onFocus);
     return () => {
-      cancelled = true;
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [showAppRail, pathname, setNav]);
+  }, [showAppRail, pathname, loadStatus]);
 
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) return;
@@ -916,7 +988,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   }, [isLoggedIn, pathname, newestQuoteRequestCreatedAt, newestJobCreatedAt, newestTextToJobCreatedAt]);
 
   if (isStandaloneSite) {
-    return <>{children}</>;
+    return (
+      <div className="standalone-site-root">
+        <a className="skip-link shell-skip-link" href="#main-content">Skip to content</a>
+        {children}
+      </div>
+    );
   }
 
   // The /demo experience renders its own sidebar chrome (see demo/layout.tsx),
@@ -1164,7 +1241,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const contractorInitials = (businessName || 'HQ').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
     return (
-      <div className={`chrome-shell chrome-shell-sidenav${isCollapsed ? ' sidenav-is-collapsed' : ''}`}>
+      <div className={`chrome-shell chrome-shell-sidenav${isCollapsed ? ' sidenav-is-collapsed' : ''}${switchingWorkspace ? ' is-switching-workspace' : ''}`}>
         <header className="sidenav-mobilebar" ref={mobileBarRef}>
           {contractorLogoTop ? (
             <Link
@@ -1788,12 +1865,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           {children}
           {!pathname.startsWith('/login') && !pathname.startsWith('/dashboard') && <SparkyCopilot />}
         </div>
+        {switchingWorkspace ? <WorkspaceSwitchOverlay workspaceName={switchingWorkspace} /> : null}
       </div>
     );
   }
 
   return (
-    <div className="chrome-shell">
+    <div className={`chrome-shell${switchingWorkspace ? ' is-switching-workspace' : ''}`}>
       <header className="topbar">
         <div className="topbar-inner">
           <Link
@@ -1931,6 +2009,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       ) : null}
 
       <div className={`app-main${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
+      {switchingWorkspace ? <WorkspaceSwitchOverlay workspaceName={switchingWorkspace} /> : null}
     </div>
   );
 }

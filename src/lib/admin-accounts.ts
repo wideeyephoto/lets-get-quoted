@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+export { ownerEmailsForAccounts } from './account-owner-emails';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo, type TierInfo } from '@/lib/stripe';
 import { getAccountOwnerEmail } from '@/lib/email';
@@ -8,6 +9,7 @@ import { listAccountNotes, listAccountTags, type AccountNote, type AccountTag } 
 import { listAccountAttachments, type AccountAttachment } from '@/lib/account-attachments';
 import { listPrivacyRequests, type PrivacyRequest } from '@/lib/privacy-requests';
 import type { AccountFilter } from '@/lib/admin-account-filters';
+import { getUnprofitableAccountIds } from '@/lib/admin-margin';
 import {
   normalizeAdminEntitlementSnapshot,
   normalizeAdminSubscriptionSnapshot,
@@ -15,6 +17,7 @@ import {
   type AdminSnapshotRead,
   type AdminSubscriptionSnapshot,
 } from '@/lib/admin-plan-authority';
+import { ilikeAcross } from './postgrest-filter';
 
 // Data layer for the admin console's account views. All reads use the passed-in
 // service-role client (RLS is owner-scoped, so a session client can't cross
@@ -81,6 +84,9 @@ function applyAccountFilter(query: any, filter: AccountFilter | undefined, joine
       return query.not('connect_disabled_at', 'is', null);
     case 'suspended':
       return query.not('suspended_at', 'is', null);
+    case 'unprofitable':
+      // Handled via external ID narrowing
+      return query;
     default:
       return query;
   }
@@ -97,6 +103,23 @@ export async function countAccountsForAdmin(
   admin: SupabaseClient,
   opts: { filter?: AccountFilter; joinedSince?: string; includeTestRecords?: boolean; onError?: (context: string, error: unknown) => void } = {},
 ): Promise<number> {
+  if (opts.filter === 'unprofitable') {
+    try {
+      const ids = await getUnprofitableAccountIds(admin, opts.joinedSince);
+      if (!ids.length) return 0;
+      let query = admin.from('accounts').select('id', { count: 'exact', head: true }).in('id', ids);
+      if (!opts.includeTestRecords) query = query.is('test_marker', null);
+      if (opts.joinedSince) query = query.gte('created_at', opts.joinedSince);
+      const { count, error } = await query;
+      if (error) throw error;
+      return count ?? 0;
+    } catch (error) {
+      console.error('countAccountsForAdmin (unprofitable) failed:', error);
+      opts.onError?.('account count', error);
+      return 0;
+    }
+  }
+
   let query = admin.from('accounts').select('id', { count: 'exact', head: true });
   if (!opts.includeTestRecords) query = query.is('test_marker', null);
   const { count, error } = await applyAccountFilter(
@@ -153,22 +176,6 @@ export async function accountIdsByOwnerEmail(admin: SupabaseClient, term: string
   return [...new Set(((data ?? []) as { account_id: string }[]).map((r) => r.account_id))];
 }
 
-/** Owner emails for a page of accounts, in one round trip rather than one per row. */
-export async function ownerEmailsForAccounts(admin: SupabaseClient, ids: string[], onError?: (context: string, error: unknown) => void): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  if (!ids.length) return map;
-  const { data, error } = await admin.rpc('owner_emails_for_accounts', { ids });
-  if (error) {
-    console.error('ownerEmailsForAccounts failed:', error);
-    onError?.('owner email hydration', error);
-    return map;
-  }
-  for (const row of (data ?? []) as { account_id: string; email: string | null }[]) {
-    if (row.email) map.set(row.account_id, row.email);
-  }
-  return map;
-}
-
 /**
  * Searches phone numbers across accounts, sites, voice inventory, and messaging sender numbers.
  * Matches on the last 10 and last 7 digits so local and E.164 formats both resolve.
@@ -199,12 +206,12 @@ export async function accountIdsByPhone(
       voiceInventory,
       smsSenders,
     ] = await Promise.all([
-      admin.from('accounts').select('id, call_tracking_number').or(`call_tracking_number.ilike.%${last10}%,call_tracking_number.ilike.%${last7}%`).limit(limit),
-      admin.from('accounts').select('id, sms_number').or(`sms_number.ilike.%${last10}%,sms_number.ilike.%${last7}%`).limit(limit),
-      admin.from('accounts').select('id, alert_phone').or(`alert_phone.ilike.%${last10}%,alert_phone.ilike.%${last7}%`).limit(limit),
-      admin.from('sites').select('account_id, phone').or(`phone.ilike.%${last10}%,phone.ilike.%${last7}%`).limit(limit),
-      admin.from('voice_number_inventory').select('account_id, e164_number').or(`e164_number.ilike.%${last10}%,e164_number.ilike.%${last7}%`).limit(limit),
-      admin.from('sms_sender_numbers').select('account_id, e164_number').or(`e164_number.ilike.%${last10}%,e164_number.ilike.%${last7}%`).limit(limit),
+      admin.from('accounts').select('id, call_tracking_number').or([ilikeAcross(['call_tracking_number'], last10), ilikeAcross(['call_tracking_number'], last7)].join(',')).limit(limit),
+      admin.from('accounts').select('id, sms_number').or([ilikeAcross(['sms_number'], last10), ilikeAcross(['sms_number'], last7)].join(',')).limit(limit),
+      admin.from('accounts').select('id, alert_phone').or([ilikeAcross(['alert_phone'], last10), ilikeAcross(['alert_phone'], last7)].join(',')).limit(limit),
+      admin.from('sites').select('account_id, phone').or([ilikeAcross(['phone'], last10), ilikeAcross(['phone'], last7)].join(',')).limit(limit),
+      admin.from('voice_number_inventory').select('account_id, e164_number').or([ilikeAcross(['e164_number'], last10), ilikeAcross(['e164_number'], last7)].join(',')).limit(limit),
+      admin.from('sms_sender_numbers').select('account_id, e164_number').or([ilikeAcross(['e164_number'], last10), ilikeAcross(['e164_number'], last7)].join(',')).limit(limit),
     ]);
 
     for (const r of (acctCallTracking.data ?? []) as { id: string; call_tracking_number: string }[]) {
@@ -243,11 +250,29 @@ export async function listAccountsForAdmin(
   const limit = opts.limit ?? 50;
   const term = opts.query?.trim();
   const filter = opts.filter;
+
+  let unprofitableIds: string[] | null = null;
+  if (filter === 'unprofitable') {
+    try {
+      unprofitableIds = await getUnprofitableAccountIds(admin, opts.joinedSince);
+      if (unprofitableIds.length === 0) {
+        return [];
+      }
+    } catch (err) {
+      console.error('listAccountsForAdmin (unprofitable) failed:', err);
+      opts.onError?.('unprofitable accounts lookup', err);
+      return [];
+    }
+  }
+
   // Every branch below narrows through this, so a search and a filter compose
   // rather than one silently winning.
   const base = () => {
     let query = admin.from('accounts').select(ACCOUNT_LIST_COLUMNS);
     if (!opts.includeTestRecords) query = query.is('test_marker', null);
+    if (unprofitableIds) {
+      query = query.in('id', unprofitableIds);
+    }
     return applyAccountFilter(query, filter, opts.joinedSince);
   };
   let rows: AdminAccountBaseRow[] = [];

@@ -9,7 +9,7 @@ import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib
 import { createLead } from '@/lib/leads';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { authorizeVoiceToolInvocation } from '@/lib/voice/tool-admission';
-import { normalizeUsPhone } from '@/lib/phone';
+import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
 import { VoiceToolTiming, voiceReadDeadline } from '@/lib/voice/timing';
 import {
@@ -659,7 +659,7 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
       message = message ? `${message}\n${noteTag}` : noteTag;
     }
 
-    const finalName = callerName || (phone ? `AI call — ${phone}` : 'AI Phone Caller');
+    const finalName = callerName || (phone ? `AI call — ${formatPhoneDashes(phone)}` : 'AI Phone Caller');
 
     try {
       const savedLead = await createLead(admin, accountId, {

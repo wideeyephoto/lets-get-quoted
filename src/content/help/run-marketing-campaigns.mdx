@@ -1,0 +1,34 @@
+---
+title: "Run targeted promotional campaigns"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Intake and quoting"
+---
+
+# Purpose
+Broadcast SMS and email promotions, understand immediate send execution, and the 250-recipient limit.
+
+# Steps
+## Compose your promotional campaign
+1. Open Campaigns and click "Create Campaign".
+2. Choose SMS Broadcast or Email Newsletter.
+3. Write your message with a compelling call-to-action and direct booking link.
+4. Preview the message on desktop and mobile mockups.
+
+## Understand campaign send realities and limits
+- Immediate Execution: Marketing sends are executed immediately upon clicking Send. There is no delayed queue or cancel-after-send mechanism.
+- 250-Recipient Cap: Campaign audiences are sliced to MAX_RECIPIENTS = 250 per run. If your audience has 400 contacts, the system sends to the first 250.
+- Opted-In List Composition: The SMS broadcast list filters on status = opted_in. Contacts generated during transactional quoting or booking are included unless they have texted STOP.
+- Performance Tracking: Tracks actual operational metrics: runs, sent, queued, and failed counts.
+
+
+
+# Done State
+You will launch revenue-generating marketing broadcasts while staying within delivery and compliance limits.
+
+# Common Failure
+**Campaign sends to fewer people than expected.**
+Campaign runs are capped at 250 recipients (MAX_RECIPIENTS = 250), and contacts who previously texted STOP are automatically excluded.
+
+**Campaign cannot be sent.**
+Verify a physical business mailing address is saved in Settings → Business (required for anti-spam compliance).

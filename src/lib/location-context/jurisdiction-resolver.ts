@@ -60,7 +60,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
         sourceUrl: 'https://www.romi.gov/176/Building-Inspection',
       },
     },
-    portalUrl: 'https://www.accessmygov.com/?uid=1349',
+    portalUrl: 'https://bsaonline.com/?uid=1652',
     verifiedAt: '2026-08-26',
   },
   {
@@ -76,7 +76,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'City of Troy Mechanical Division', level: 'municipality' },
       plumbing: { enforcingAgency: 'City of Troy Plumbing Division', level: 'municipality' },
     },
-    portalUrl: 'https://www.accessmygov.com/?uid=1355',
+    portalUrl: 'https://bsaonline.com/?uid=250',
     verifiedAt: '2026-08-26',
   },
   {
@@ -124,7 +124,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'City of Southfield Mechanical Inspection', level: 'municipality' },
       plumbing: { enforcingAgency: 'City of Southfield Plumbing Inspection', level: 'municipality' },
     },
-    portalUrl: 'https://bsaonline.com/?uid=380',
+    portalUrl: 'https://bsaonline.com/?uid=272',
     verifiedAt: '2026-08-26',
   },
   {
@@ -140,7 +140,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'City of Birmingham Mechanical Division', level: 'municipality' },
       plumbing: { enforcingAgency: 'City of Birmingham Plumbing Division', level: 'municipality' },
     },
-    portalUrl: 'https://www.accessmygov.com/?uid=1326',
+    portalUrl: 'https://bsaonline.com/?uid=241',
     verifiedAt: '2026-08-26',
   },
   {
@@ -176,7 +176,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'Oakland Township Mechanical Inspection', level: 'township' },
       plumbing: { enforcingAgency: 'Oakland Township Plumbing Inspection', level: 'township' },
     },
-    portalUrl: 'https://www.accessmygov.com/?uid=1342',
+    portalUrl: 'https://bsaonline.com/?uid=657',
     verifiedAt: '2026-08-26',
   },
   {
@@ -208,7 +208,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'City of Pontiac Mechanical Division', level: 'municipality' },
       plumbing: { enforcingAgency: 'City of Pontiac Plumbing Division', level: 'municipality' },
     },
-    portalUrl: 'https://bsaonline.com/?uid=364',
+    portalUrl: 'https://bsaonline.com/?uid=825',
     verifiedAt: '2026-08-26',
   },
 
@@ -306,7 +306,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'Westland Mechanical Inspection', level: 'municipality' },
       plumbing: { enforcingAgency: 'Westland Plumbing Inspection', level: 'municipality' },
     },
-    portalUrl: 'https://bsaonline.com/?uid=396',
+    portalUrl: 'https://bsaonline.com/?uid=294',
     verifiedAt: '2026-08-26',
   },
 
@@ -356,7 +356,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'Clinton Township Mechanical Division', level: 'township' },
       plumbing: { enforcingAgency: 'Clinton Township Plumbing Division', level: 'township' },
     },
-    portalUrl: 'https://bsaonline.com/?uid=323',
+    portalUrl: 'https://bsaonline.com/?uid=2622',
     verifiedAt: '2026-08-26',
   },
   {
@@ -372,7 +372,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'Shelby Township Mechanical Inspection', level: 'township' },
       plumbing: { enforcingAgency: 'Shelby Township Plumbing Inspection', level: 'township' },
     },
-    portalUrl: 'https://bsaonline.com/?uid=376',
+    portalUrl: 'https://bsaonline.com/?uid=300',
     verifiedAt: '2026-08-26',
   },
 
@@ -406,7 +406,7 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
         sourceUrl: 'https://www.grandrapidsmi.gov/Government/Departments/Development-Center',
       },
     },
-    portalUrl: 'https://www.citizenaccess.grandrapidsmi.gov',
+    portalUrl: 'https://inspections.grcity.us/citizenaccess',
     verifiedAt: '2026-08-26',
   },
   {
@@ -504,8 +504,8 @@ export const MICHIGAN_JURISDICTION_REGISTRY: JurisdictionRegistryEntry[] = [
       mechanical: { enforcingAgency: 'Pittsfield Township Mechanical Division', level: 'township' },
       plumbing: { enforcingAgency: 'Pittsfield Township Plumbing Division', level: 'township' },
     },
-    portalUrl: 'https://bsaonline.com/?uid=362',
-    verifiedAt: '2026-08-26',
+    portalUrl: 'https://www.washtenaw.org/1007/Online-Permitting',
+    verifiedAt: '2026-09-14',
   },
 ];
 

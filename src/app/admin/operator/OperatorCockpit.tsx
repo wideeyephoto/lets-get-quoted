@@ -566,7 +566,7 @@ export default function OperatorCockpit({
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <h2>💬 Interactive Operations Console & Copilot</h2>
-          <span className={styles.categoryTag}>Gemini 2.5 Operator Core</span>
+          <span className={styles.categoryTag}>Gemini 3.6 Operator Core</span>
         </div>
 
         <div className={styles.chatBox}>

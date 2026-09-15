@@ -417,15 +417,15 @@ export type FailedEmailEventRow = {
 };
 
 // Fed by the Resend delivery webhook (src/app/api/resend/webhook/route.ts).
-// A complaint is treated the same as a bounce here — both mean the send did
-// not land as a good transactional message, and either can indicate a client
-// contact detail gone bad.
+// Include recipient complaints, delivery failures and provider suppression.
+// These signals need review; they do not all imply an invalid address.
+const EMAIL_FAILURE_STATUSES = ['bounced', 'complained', 'failed', 'suppressed'];
 export async function getFailedEmailEvents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<FailedEmailEventRow[]> {
   const { data, error } = await admin
     .from('email_events')
     .select('id, account_id, kind, recipient, status, error_reason, occurred_at')
     .is('test_marker', null)
-    .in('status', ['bounced', 'complained'])
+    .in('status', EMAIL_FAILURE_STATUSES)
     .order('occurred_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
@@ -486,7 +486,7 @@ export async function countFailedEmailEvents(admin: SupabaseClient): Promise<num
     .from('email_events')
     .select('id', { count: 'exact', head: true })
     .is('test_marker', null)
-    .in('status', ['bounced', 'complained']);
+    .in('status', EMAIL_FAILURE_STATUSES);
   if (error) return 0;
   return count ?? 0;
 }
@@ -494,19 +494,19 @@ export async function countFailedEmailEvents(admin: SupabaseClient): Promise<num
 export type PlatformIncidentRow = {
   id: string;
   kind: string;
+  severity: string;
   title: string;
   description: string | null;
-  severity: string;
+  impact_summary: string | null;
+  affected_services: string[];
+  resolution_summary: string | null;
+  root_cause: string | null;
+  external_url: string | null;
   started_at: string;
   resolved_at: string | null;
-  /** Who wrote it down. These rows are hand-authored, so it always matters. */
-  created_by: string | null;
+  created_by: string;
   owner: string | null;
-  affected_services: string[];
-  impact_summary: string | null;
-  root_cause: string | null;
-  resolution_summary: string | null;
-  external_url: string | null;
+  published: boolean;
 };
 
 export type ListIncidentsResult = {

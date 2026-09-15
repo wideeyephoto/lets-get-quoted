@@ -38,15 +38,9 @@ describe('Cached Public Sites & Hero Image Optimization', () => {
     expect(heroCode).toContain('priority');
   });
 
-  it('verifies site/[subdomain]/page.tsx uses getCachedPublicSiteBySubdomain', () => {
-    const pageCode = read('src', 'app', 'site', '[subdomain]', 'page.tsx');
-    expect(pageCode).toContain("import { getCachedPublicSiteBySubdomain } from '@/lib/cached-sites';");
-    expect(pageCode).toContain('getCachedPublicSiteBySubdomain(subdomain)');
-  });
-
-  it('verifies site-domain/[domain]/page.tsx uses getCachedPublicSiteByCustomDomain', () => {
-    const domainPageCode = read('src', 'app', 'site-domain', '[domain]', 'page.tsx');
-    expect(domainPageCode).toContain("import { getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';");
-    expect(domainPageCode).toContain('getCachedPublicSiteByCustomDomain(');
+  it('verifies site/[kind]/[tenant]/page.tsx uses getCachedPublicSiteBySubdomain and getCachedPublicSiteByCustomDomain', () => {
+    const pageCode = read('src', 'app', 'site', '[kind]', '[tenant]', 'page.tsx');
+    expect(pageCode).toContain('getCachedPublicSiteBySubdomain');
+    expect(pageCode).toContain('getCachedPublicSiteByCustomDomain');
   });
 });

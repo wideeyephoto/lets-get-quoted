@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireOfficeContext } from '@/lib/auth';
 import { buildAuthenticatedSmsMediaRequest, type SmsProviderId } from '@/lib/sms-provider';
 import { fetchSmsMedia, SmsMediaBlockedError } from '@/lib/sms-media-fetch';
+import { unstable_rethrow } from 'next/navigation';
 
 export const runtime = 'nodejs';
 const MAX_MEDIA_REDIRECTS = 3;
@@ -144,6 +145,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     if (error instanceof SmsMediaBlockedError) {
       return NextResponse.json({ error: 'Disallowed media location' }, { status: 403 });
     }

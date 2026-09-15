@@ -26,7 +26,7 @@ try {
       resolved_at timestamptz,resolved_by text);
     grant select on voice_events,voice_calls,voice_call_admissions,usage_reservations to service_role;
     grant select,insert,update on webhook_failures to service_role;`);
-  const sql=await readFile(new URL('../migrations/20260908210359_voice_operational_health_alerts.sql',import.meta.url),'utf8');
+  const sql=await readFile(new URL('../migrations/20260908210829_voice_operational_health_alerts.sql',import.meta.url),'utf8');
   await db.exec(sql); await db.exec(sql);
   await test('healthy database reports no exceptions',async()=>assert.equal((await check()).failed,0));
   await db.exec(`insert into voice_events(processing_status) values('failed');

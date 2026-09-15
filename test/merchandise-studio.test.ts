@@ -1266,6 +1266,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
 
     it('contains all 8 required trade styles with unique IDs and rich metadata', () => {
       const expectedIds = [
+        'traditional',
         'executive',
         'modern_split',
         'industrial',
@@ -1273,7 +1274,6 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         'qr_first',
         'verified_pro',
         'double_sided',
-        'traditional',
       ];
 
       const templateIds = BUSINESS_CARD_TEMPLATES.map((t) => t.id);
@@ -1295,7 +1295,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       }
     });
 
-    it('retrieves templates by ID accurately with fallback to executive default', () => {
+    it('retrieves templates by ID accurately with fallback to traditional default', () => {
       const blueprint = getCardTemplateById('blueprint');
       expect(blueprint.id).toBe('blueprint');
       expect(blueprint.name).toBe('The Blueprint Technical');
@@ -1307,10 +1307,10 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
 
       // Fallback on unknown or undefined
       const unknownFallback = getCardTemplateById('non_existent' as any);
-      expect(unknownFallback.id).toBe('executive');
+      expect(unknownFallback.id).toBe('traditional');
 
       const nullFallback = getCardTemplateById(null);
-      expect(nullFallback.id).toBe('executive');
+      expect(nullFallback.id).toBe('traditional');
     });
 
     it('formats checkout detailParts with template information for print line items', () => {

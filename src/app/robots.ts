@@ -36,7 +36,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const servedElsewhere = marketingHostFor(rootDomain, host);
 
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/dashboard/', '/api/', '/pay/'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/dashboard/', '/api/', '/pay/', '/admin/'] },
     ...(servedElsewhere ? {} : { sitemap: `${marketingOrigin(rootDomain)}/sitemap.xml` }),
   };
 }

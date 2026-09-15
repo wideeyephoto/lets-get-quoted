@@ -12,7 +12,24 @@ export interface VendorHandles {
 }
 
 function getEncryptionKey(): Buffer {
-  const secret = process.env.CLOSURE_ENCRYPTION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'default-dev-service-role-secret-key-32-chars!!';
+  const secret = process.env.CLOSURE_ENCRYPTION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  // The literal that used to sit here as a third fallback was in the repository,
+  // so anything it encrypted was readable by anyone holding the ciphertext and a
+  // checkout. Vendor handles are Stripe customer and subscription ids, a
+  // QuickBooks realm id and owner user ids — the identifiers a closure needs in
+  // order to reach into each vendor — and "encrypted under a published key" is
+  // not encrypted.
+  //
+  // Missing configuration now fails loudly instead, which is what
+  // neighborhood-halo-claim-token and estimate-continuation-token already do
+  // with their own signing secrets.
+  if (!secret) {
+    throw new Error(
+      'CLOSURE_ENCRYPTION_SECRET or SUPABASE_SERVICE_ROLE_KEY must be set to encrypt vendor handles.',
+    );
+  }
+
   return crypto.createHash('sha256').update(`lgq:closure-vendor-handles:${secret}`).digest();
 }
 

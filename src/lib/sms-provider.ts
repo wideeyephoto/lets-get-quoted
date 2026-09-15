@@ -12,6 +12,7 @@ import { billsTextCredits, type SmsSendContext } from '@/lib/sms-billing-policy'
 import { releaseUsageOverage } from '@/lib/billing/usage-overage';
 import type { TextCreditOverage } from '@/lib/billing/text-credit-usage';
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
+import { assertSupportedSmsDestination } from '@/lib/sms-destination-policy';
 
 /**
  * EVERY provider-shaped fact in the application lives in this file.
@@ -52,6 +53,15 @@ export class SmsBillingRefusalError extends Error {
 
   constructor() {
     super('This workspace is out of text credits. Buy a top-up to keep texting.');
+  }
+}
+
+/** A local configuration failure: no carrier request or credit hold was made. */
+export class SmsCallbackConfigurationError extends Error {
+  override readonly name = 'SmsCallbackConfigurationError';
+
+  constructor() {
+    super('SMS delivery tracking is not configured. Set a trusted HTTPS provider callback origin before sending.');
   }
 }
 
@@ -406,14 +416,25 @@ export function buildSendRequest(
   to: string,
   body: string,
   fromOverride?: string,
+  mediaUrls?: string[],
 ): SendRequest {
   const data = new URLSearchParams({ To: to, Body: body });
   if (fromOverride) data.set('From', fromOverride);
   else if (config.senderPoolId) data.set('MessagingServiceSid', config.senderPoolId);
   else if (config.from) data.set('From', config.from);
 
+  if (mediaUrls && mediaUrls.length > 0) {
+    for (const url of mediaUrls) {
+      data.append('MediaUrl', url);
+    }
+  }
+
   const origin = trustedProviderCallbackOrigin();
-  if (origin) data.set('StatusCallback', `${origin}/api/sms/status`);
+  if (origin) {
+    data.set('StatusCallback', `${origin}/api/sms/status`);
+  } else if (process.env.NODE_ENV === 'production') {
+    throw new SmsCallbackConfigurationError();
+  }
 
   return {
     url: config.messagesUrl,
@@ -592,6 +613,7 @@ export async function sendProviderMessage(
      * omit it and retain their existing behavior.
      */
     beforeRequest?: (usage: SmsUsageEvidence) => Promise<void>;
+    mediaUrls?: string[];
   }> = {},
 ): Promise<string> {
   const suppressed = outboundSmsSuppression();
@@ -608,10 +630,29 @@ export async function sendProviderMessage(
     return SIMULATED_PROVIDER_ID;
   }
 
+  // Repeat the enqueue boundary for legacy queued rows and direct senders,
+  // before any circuit-breaker read, credit reservation, or carrier request.
+  assertSupportedSmsDestination(to);
+
+  try {
+    const { checkCircuitBreaker } = await import('@/lib/circuit-breaker');
+    const breaker = await checkCircuitBreaker('sms_outbound', context.accountId);
+    if (breaker.blocked) {
+      console.info(`Outbound SMS suppressed by circuit breaker (${breaker.scope}: ${breaker.reason}).`);
+      return SIMULATED_PROVIDER_ID;
+    }
+  } catch (err) {
+    console.error('Circuit breaker check failed for SMS outbound:', err);
+  }
+
   const config = options.provider
     ? smsProviderConfigFor(options.provider)
     : smsProviderConfig();
   if (!config) throw new Error('SMS provider is not configured.');
+
+  // Validate delivery tracking before reserving credits or recording that a
+  // carrier request started. A configuration repair can then retry safely.
+  const request = buildSendRequest(config, to, body, options.from, options.mediaUrls);
 
   // Hold the credits before the carrier call, spend them once it is accepted.
   // Dark by default: with the meter off there is no service-role client and no
@@ -649,7 +690,6 @@ export async function sendProviderMessage(
 
   let requestAttempted = false;
   try {
-    const request = buildSendRequest(config, to, body, options.from);
     const usage: SmsUsageEvidence = lease
       ? Object.freeze({
         kind: 'reservation' as const,
@@ -735,7 +775,7 @@ function isDefinitiveProviderRejection(status: number): boolean {
 
 export type SignatureCheck =
   | { ok: true; provider: SmsProviderId }
-  | { ok: false; reason: 'missing-header' | 'secret-not-configured' | 'mismatch' };
+  | { ok: false; reason: 'missing-header' | 'secret-not-configured' | 'mismatch' | 'twilio_sunset' };
 
 /**
  * Whether this webhook really came from the provider it claims to be.
@@ -796,6 +836,11 @@ export function validateWebhookSignature(
 
   if (!claim) return { ok: false, reason: 'missing-header' };
   if (!claim.key) return { ok: false, reason: 'secret-not-configured' };
+
+  // C4: Hardcoded sunset for legacy Twilio callbacks
+  if (claim.provider === 'twilio' && Date.now() > new Date('2026-10-31T00:00:00Z').getTime()) {
+    return { ok: false, reason: 'twilio_sunset' };
+  }
 
   const urls = candidateUrls(request);
   if (urls.length === 0) return { ok: false, reason: 'mismatch' };

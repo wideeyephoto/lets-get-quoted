@@ -40,13 +40,13 @@ describe('Messages consent boundary', () => {
   it('fails manual-compose consent reads closed', () => {
     const body = exportedBody(SMS, 'hasCurrentSmsConsent');
     expect(body).toContain(".from('sms_consent_scopes')");
-    expect(body).toContain(".eq('consent_scope', 'customer')");
+    expect(body).toContain(".eq('consent_scope', requiredScope)");
     expect(body).toContain('if (baseResult.error || scopeResult.error)');
     expect(body).toContain('return false;');
-    expect(body).toContain("scopeResult.data?.consent_scope === 'customer'");
-    expect(body).toContain("base?.status === 'opted_in'");
-    expect(body).toContain('Boolean(base.consented_at)');
-    expect(body).toContain('!base.opted_out_at');
+    expect(body).toContain("scopeResult.data?.consent_scope === requiredScope");
+    expect(body).toContain("base.status !== 'opted_in'");
+    expect(body).toContain('!base.consented_at');
+    expect(body).toContain('base.opted_out_at');
   });
 
   it('baselines recipient-initiated portal and missed-call replies before enqueue', () => {
