@@ -32,6 +32,7 @@ import {
 import { staffCan } from '@/lib/staff';
 import { scanContractorsForChurnRisk } from './churn-detector';
 import { generateLiveFinancialForecast } from './financial-forecasting';
+import { diagnoseDomainHealth } from './domain-health-resolver';
 
 type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
@@ -41,6 +42,21 @@ type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
  * AI Operator Tool Declarations formatted for Gemini Function Calling
  */
 export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
+  {
+    name: 'diagnose_domain_health',
+    description:
+      'Performs an automated DNS lookup and uses AI to diagnose custom domain health (A, CNAME, SPF/DKIM), providing remediation steps for the contractor.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        domain: {
+          type: Type.STRING,
+          description: 'The domain name to diagnose',
+        },
+      },
+      required: ['domain'],
+    },
+  },
   {
     name: 'get_system_health',
     description:
@@ -350,6 +366,24 @@ export async function executeOperatorTool(
   const { supabase } = ctx;
 
   switch (toolName) {
+    case 'diagnose_domain_health': {
+      try {
+        if (!args.domain || typeof args.domain !== 'string') {
+          return {
+            status: 'error',
+            message: 'Validation Error: domain is required and must be a string.',
+          };
+        }
+        const data = await diagnoseDomainHealth(args.domain);
+        return {
+          status: 'success',
+          data,
+          display: 'raw',
+        };
+      } catch (e: any) {
+        return { status: 'error', message: e.message || 'Error diagnosing domain' };
+      }
+    }
     case 'get_system_health': {
       try {
         const [
