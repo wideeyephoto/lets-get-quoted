@@ -37,14 +37,14 @@ export type CardFinishId =
   | 'spot_uv';
 
 export type BusinessCardTemplateId =
+  | 'traditional'
   | 'executive'
   | 'modern_split'
   | 'industrial'
   | 'blueprint'
   | 'qr_first'
   | 'verified_pro'
-  | 'double_sided'
-  | 'traditional';
+  | 'double_sided';
 
 export type ProductColorOption = {
   id: string;

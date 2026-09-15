@@ -83,7 +83,7 @@ export default function Product3DMockupStage({
   renderBranding,
   logoSrc = '',
   onExportReady,
-  cardTemplateId = 'executive',
+  cardTemplateId = 'traditional',
   cardFinish = 'velvet_matte',
   notepadTemplateId = 'work_order',
 }: Props) {

@@ -15,7 +15,7 @@ let db,other;
 try {
   await pg.initialise();await pg.start();await pg.createDatabase('ops');db=pg.getPgClient('ops');await db.connect();
   await db.query('create role anon;create role authenticated;create role service_role bypassrls;grant usage on schema public to anon,authenticated,service_role');
-  await db.query(readFileSync(join(root,'migrations/20260909200503_operational_sms_paging.sql'),'utf8'));
+  await db.query(readFileSync(join(root,'migrations/20260909202110_operational_sms_paging.sql'),'utf8'));
   await db.query('set role anon');await assert.rejects(db.query('select * from operational_sms_pages'),/permission denied/);await db.query('reset role');
   await db.query('set role authenticated');await assert.rejects(db.query('select * from operational_sms_pages'),/permission denied/);await db.query('reset role');
   await db.query('set role service_role');other=pg.getPgClient('ops');await other.connect();await other.query('set role service_role');

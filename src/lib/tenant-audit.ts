@@ -19,7 +19,7 @@ export type TenantAuditEntityType =
   // any string. typescript-eslint 8 removed `ban-types` and split it up; this
   // pattern is now flagged by no-empty-object-type.
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  | (string & {});
+  | (string & Record<never, never>);
 
 export interface ActorSnapshot {
   userId?: string | null;

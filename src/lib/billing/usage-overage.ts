@@ -122,13 +122,6 @@ export type UsageOverageInput = Readonly<{
   idempotencyKey: string;
 }>;
 
-/**
- * The period a cap applies to.
- *
- * A paid workspace has one on its entitlement. A Flex workspace does not, so it
- * falls back to the calendar month — which is the same shape and, since Flex has
- * no subscription to overrun against, is only ever a bookkeeping boundary.
- */
 
 
 /**

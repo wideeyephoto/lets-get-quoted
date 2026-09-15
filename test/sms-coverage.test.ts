@@ -104,7 +104,7 @@ describe('sms.ts coverage', () => {
           select: vi.fn(() => chain),
           eq: vi.fn(() => chain),
           maybeSingle: vi.fn(() => {
-            if (table === 'sms_consent') return Promise.resolve({ data: { status: 'opted_in', consented_at: '2023-01-01' }, error: null });
+            if (table === 'sms_consent') return Promise.resolve({ data: { status: 'opted_in', consented_at: new Date().toISOString() }, error: null });
             if (table === 'sms_consent_scopes') return Promise.resolve({ data: { consent_scope: 'customer' }, error: null });
             return Promise.resolve({ data: null, error: null });
           }),

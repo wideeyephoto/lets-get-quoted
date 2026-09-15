@@ -647,9 +647,9 @@ export function formatPrivateSmsText(params: {
 }): string {
   const text = params.body.trim();
   if (text.toLowerCase().includes(params.businessName.toLowerCase())) {
-    return text;
+    return withOptOut(text);
   }
-  return `${params.businessName}: ${text}`;
+  return withOptOut(`${params.businessName}: ${text}`);
 }
 
 

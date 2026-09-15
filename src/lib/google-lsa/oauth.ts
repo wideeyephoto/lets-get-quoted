@@ -10,8 +10,7 @@ export const GOOGLE_ADS_SCOPE = 'https://www.googleapis.com/auth/adwords';
 export function googleLsaConfigured(): boolean {
   return Boolean(
     process.env.GOOGLE_ADS_CLIENT_ID
-      && process.env.GOOGLE_ADS_CLIENT_SECRET
-      && process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+      && process.env.GOOGLE_ADS_CLIENT_SECRET,
   );
 }
 

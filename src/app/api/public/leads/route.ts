@@ -14,11 +14,17 @@ import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { loadLeadPhoneVerificationReadiness } from '@/lib/lead-phone-verification-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { sendIntakeConfirmationSms, sendOwnerHighValueLeadSms, ensureSmsConsentBaseline } from '@/lib/sms';
+import {
+  sendIntakeConfirmationSms,
+  sendOwnerHighValueLeadSms,
+  ensureSmsConsentBaseline,
+  recordCustomerSmsConsentEvidence,
+} from '@/lib/sms';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { serviceAreaVerdict } from '@/lib/service-area-match';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
+import { verifyContinuationToken } from '@/lib/estimate-continuation-token';
 
 export const runtime = 'nodejs';
 
@@ -104,7 +110,56 @@ export async function POST(request: NextRequest) {
   const name = text(data, 'name', 100);
   const phone = text(data, 'phone', 40);
   const email = text(data, 'email', 160).toLowerCase();
-  const message = text(data, 'message', 3000);
+  let message = text(data, 'message', 3000);
+  
+  const continuationToken = text(data, 'continuationToken', 10000);
+  if (continuationToken) {
+    const tokenData = verifyContinuationToken(continuationToken, siteId);
+    if (tokenData && Array.isArray(tokenData.history)) {
+      const qaLines: string[] = [];
+      for (const item of tokenData.history) {
+        if (!item || typeof item !== 'object') continue;
+        const role = (item as any).role;
+        
+        if (role === 'assistant') {
+          const content = (item as any).content;
+          if (Array.isArray(content)) {
+            const textPart = content.find((p: any) => p?.type === 'output_text');
+            if (textPart?.text) {
+              try {
+                const parsed = JSON.parse(textPart.text);
+                if (parsed.question) qaLines.push(`Q: ${parsed.question}`);
+              } catch {
+                // Ignore JSON parse errors
+              }
+            }
+          }
+        } else if (role === 'user') {
+          const content = (item as any).content;
+          let answerText = '';
+          if (typeof content === 'string') {
+            answerText = content.replace(/\n\nRespond with json only\.$/, '');
+          } else if (Array.isArray(content)) {
+            const textPart = content.find((p: any) => p?.type === 'input_text');
+            if (textPart?.text) {
+              answerText = textPart.text.replace(/\n\nRespond with json only\.$/, '');
+            }
+          }
+          if (qaLines.length > 0 && answerText) {
+            qaLines.push(`A: ${answerText}`);
+          }
+        }
+      }
+      if (qaLines.length > 0) {
+        message += `\n\n=== AI Intake Details ===\n${qaLines.join('\n')}`;
+      }
+    }
+  }
+
+  const visualObservation = text(data, 'visualObservation', 2000);
+  if (visualObservation) {
+    message += `\n\nAI Photo Observation: ${visualObservation}`;
+  }
   if (!siteId || !name) {
     return NextResponse.json({ error: 'Add your name to send this request.' }, { status: 400 });
   }
@@ -222,7 +277,7 @@ export async function POST(request: NextRequest) {
   // field to decide which owners get interrupted, and never make lead creation
   // wait on an external geocoder. A bare ZIP stays unknown for now; the live
   // form asks for a town or city so normal submissions are deterministic.
-  if (fromWizard && filters.serviceAreaGate) {
+  if (location && filters.serviceAreaGate) {
     const servedCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
     if ((await serviceAreaVerdict(location, servedCities)) === false) flags.push('out_of_area');
   }
@@ -248,7 +303,7 @@ export async function POST(request: NextRequest) {
   // not check" must never render identically to "we checked": the lead still
   // goes through, because rejecting real customers over our own configuration
   // is worse, but it is flagged as unchecked rather than silently unflagged.
-  if (filters.phoneVerification && text(data, 'wizard', 4) === '1') {
+  if (filters.phoneVerification) {
     const verificationReadiness = await loadLeadPhoneVerificationReadiness(
       site.account_id,
       admin,
@@ -280,23 +335,41 @@ export async function POST(request: NextRequest) {
   let permitTriage: LeadTriage['permit'] = undefined;
   if (location && location.trim().length >= 3) {
     try {
-      const jurisdiction = resolveJurisdiction({
-        raw: location,
-        city: location,
-        state: 'MI',
-        formattedAddress: location,
-        isValid: true,
-      });
-      const req = evaluatePermitRequirement(jurisdiction.authorityId, {
-        trade: 'roofing',
-        scope: 'replacement',
-        estimatedCost: estimate?.max || 8500,
-      });
-      permitTriage = {
-        required: req.decision === 'required',
-        authorityName: jurisdiction.authorityName,
-        estimatedFee: req.estimatedGovernmentFee?.estimatedTotal ?? null,
+      const stateMatch = location.match(/\b([A-Z]{2})\b/);
+      const parsedState = stateMatch ? stateMatch[1] : undefined;
+      
+      const tradeMap: Record<string, any> = {
+        electrician: 'electrical',
+        plumber: 'plumbing',
+        hvac: 'mechanical',
+        roofer: 'roofing',
+        roofing: 'roofing',
       };
+      const rawTrade = (siteContent.trade || '').toLowerCase();
+      const mappedTrade = tradeMap[rawTrade] || 'general';
+
+      if (parsedState) {
+        const jurisdiction = resolveJurisdiction({
+          raw: location,
+          city: location,
+          state: parsedState,
+          formattedAddress: location,
+          isValid: true,
+        });
+        
+        if (jurisdiction) {
+          const req = evaluatePermitRequirement(jurisdiction.authorityId, {
+            trade: mappedTrade,
+            scope: 'replacement', // Fallback for now, could be improved with AI classification
+            estimatedCost: estimate?.max || 8500,
+          });
+          permitTriage = {
+            required: req.decision === 'required',
+            authorityName: jurisdiction.authorityName,
+            estimatedFee: req.estimatedGovernmentFee?.estimatedTotal ?? null,
+          };
+        }
+      }
     } catch {
       // quiet fallback
     }
@@ -318,17 +391,20 @@ export async function POST(request: NextRequest) {
   // duplicate card on the board.
   if (normalizedPhone || email) {
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: recent } = await admin
-      .from('leads')
-      .select('*')
-      .eq('account_id', site.account_id)
-      .in('status', ['new', 'contacted', 'quoted'])
-      .gte('created_at', cutoff)
-      .order('created_at', { ascending: false })
-      .limit(25);
-    const duplicate = (recent ?? []).find((lead) =>
-      (normalizedPhone && lead.phone && normalizeUsPhone(lead.phone) === normalizedPhone) ||
-      (email && lead.email === email));
+    const checks: PromiseLike<Lead | undefined>[] = [];
+    if (normalizedPhone) {
+      checks.push(
+        admin.from('leads').select('*').eq('account_id', site.account_id).eq('normalized_phone', normalizedPhone).in('status', ['new', 'contacted', 'quoted']).gte('created_at', cutoff).order('created_at', { ascending: false }).limit(1).then(({ data }) => (data?.[0] as Lead | undefined))
+      );
+    }
+    if (email) {
+      checks.push(
+        admin.from('leads').select('*').eq('account_id', site.account_id).eq('email', email).in('status', ['new', 'contacted', 'quoted']).gte('created_at', cutoff).order('created_at', { ascending: false }).limit(1).then(({ data }) => (data?.[0] as Lead | undefined))
+      );
+    }
+    
+    const results = await Promise.all(checks);
+    const duplicate = results.find(Boolean);
     if (duplicate) {
       const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const mergedMessage = `${duplicate.message || ''}\n\n— Repeat request (${stamp}): ${message || '(no new details)'}`.trim().slice(0, 6000);
@@ -414,6 +490,14 @@ export async function POST(request: NextRequest) {
     if (normalizedPhone) {
       try {
         await ensureSmsConsentBaseline(site.account_id, normalizedPhone, 'portal_link_request');
+        await recordCustomerSmsConsentEvidence({
+          accountId: site.account_id,
+          phone: normalizedPhone,
+          scope: 'customer',
+          source: 'web_form_intake',
+          sourcePage: request.headers.get('referer') || '/contact',
+          disclosureVersion: 'intake_v1_2026',
+        });
       } catch (consentErr) {
         console.warn('SMS baseline consent registration skipped:', consentErr);
       }

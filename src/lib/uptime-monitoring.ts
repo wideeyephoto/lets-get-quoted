@@ -119,16 +119,45 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
   // 4. Two-Way Carrier SMS Gateway
   const smsSummary = smsProviderSummary();
   const hasSmsConfig = Boolean(smsSummary.active);
+  let smsStatus: SubsystemStatus = hasSmsConfig ? 'configured' : 'degraded';
+  let smsDetail = hasSmsConfig
+    ? `${smsSummary.active === 'signalwire' ? 'SignalWire' : 'Twilio'} carrier integration configured (${smsSummary.senderMode})`
+    : 'No SMS carrier credentials configured';
+  let smsLatency: number | null = null;
+
+  if (hasSmsConfig && typeof client?.from === 'function') {
+    try {
+      const { data: latestProbe } = await client
+        .from('sms_canary_probes')
+        .select('status, confirmed_at, latency_ms, error_message, dispatched_at')
+        .order('dispatched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestProbe) {
+        const probeAgeMs = Date.now() - new Date(latestProbe.dispatched_at).getTime();
+        if (latestProbe.status === 'confirmed' && probeAgeMs < 2 * 60 * 60 * 1000) {
+          smsStatus = 'operational';
+          smsLatency = latestProbe.latency_ms ?? null;
+          smsDetail = `Active reachability canary verified (${smsLatency !== null ? `${smsLatency}ms delivery latency` : 'confirmed'})`;
+        } else if (latestProbe.status === 'failed' || latestProbe.status === 'timeout') {
+          smsStatus = 'degraded';
+          smsDetail = `Canary reachability failed: ${latestProbe.error_message || 'status callback timeout'}`;
+        }
+      }
+    } catch {
+      // Table may not exist or query failed in isolated tests
+    }
+  }
+
   subsystems.push({
     id: 'sms-gateway',
     name: 'Two-Way SMS & Dedicated Phone Gateway',
     category: 'communications',
-    status: hasSmsConfig ? 'configured' : 'degraded',
-    latencyMs: null,
+    status: smsStatus,
+    latencyMs: smsLatency,
     lastCheckedAt: testedAt,
-    detail: hasSmsConfig
-      ? `${smsSummary.active === 'signalwire' ? 'SignalWire' : 'Twilio'} carrier integration configured (${smsSummary.senderMode})`
-      : 'No SMS carrier credentials configured',
+    detail: smsDetail,
     consequenceIfDown: 'Lead text-backs, quote reminders, and two-way dispatch conversations stall.',
   });
 

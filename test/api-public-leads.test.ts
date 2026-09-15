@@ -168,7 +168,14 @@ describe('Public Leads API Route', () => {
           return { select: () => ({ eq: () => ({ eq: () => ({ limit: () => ({ then: (cb: any) => cb({ data: [] }) }) }) }) }) };
         }
         if (table === 'leads') {
-          return { select: () => ({ eq: () => ({ in: () => ({ gte: () => ({ order: () => ({ limit: () => Promise.resolve({ data: [] }) }) }) }) }) }) };
+          const query: any = {};
+          query.eq = vi.fn(() => query);
+          query.in = vi.fn(() => query);
+          query.gte = vi.fn(() => query);
+          query.order = vi.fn(() => query);
+          query.limit = vi.fn(() => Promise.resolve({ data: [] }));
+          query.then = (cb: any) => Promise.resolve({ data: [] }).then(cb);
+          return { select: () => query };
         }
         return { select: vi.fn() };
       }),

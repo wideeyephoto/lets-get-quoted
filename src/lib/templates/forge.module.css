@@ -1,0 +1,73 @@
+
+.forge {
+  --c-bg: #10100f; --c-surface: #1a1a17; --c-ink: #f3f0e7; --c-muted: var(--c-muted); --c-line: var(--c-line); --c-control-line: #5b6676; --c-deep: #ebe7dc; --c-on-deep: #151514; --c-on-photo: #f3f0e7;
+  --forge-ambient: radial-gradient(ellipse at 50% -10%, rgba(240, 180, 41, 0.22), transparent 50%), radial-gradient(circle at 80% 90%, rgba(234, 88, 12, 0.12), transparent 40%), linear-gradient(180deg, #0d0f14 0%, #151922 55%, #0a0c10 100%);
+  --forge-sheen: linear-gradient(180deg, rgba(240, 180, 41, 0.15) 0%, transparent 100%);
+  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-forge-body), Arial, sans-serif; --theme-radius: 2px;
+}
+.forge[data-mode='light'] {
+  --c-bg: #ebe7dc; --c-ink: #151514; --c-muted: #68645b; --c-line: #c9c3b5; --c-control-line: #88847d; --c-deep: #17140f; --c-on-deep: #f3f0e7;
+  --forge-ambient: radial-gradient(circle at 75% 0%, rgba(240, 180, 41, 0.08), transparent 40%), radial-gradient(circle at 15% 30%, rgba(234, 88, 12, 0.05), transparent 35%), linear-gradient(180deg, #fdfbf7 0%, #ebe7dc 50%, #dfd9cb 100%);
+}
+.forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
+.forge .extraSection { padding: clamp(5rem, 10vw, 9rem) 5vw; border-top: 1px solid var(--c-line); }
+.forge .extraSectionHeader h2 { text-transform: uppercase; letter-spacing: -.01em; line-height: .95; }
+.forge .serviceCard { border-radius: 2px; border-color: var(--c-line); background: color-mix(in srgb, currentColor 5%, transparent); }
+.forge .serviceCard:hover { border-color: var(--theme-accent); }
+.forge .serviceCard h3 { font-family: var(--theme-display); font-size: 1.35rem; text-transform: uppercase; letter-spacing: -.005em; }
+.forge .serviceIcon { border-radius: 0; background: var(--theme-accent); color: var(--theme-on-accent, #111); }
+.forge .processNum { border-radius: 0; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-family: var(--font-mono); font-size: 1rem; }
+.forge .processStep h3 { font-family: var(--theme-display); font-size: 1.3rem; text-transform: uppercase; }
+.forge .statItem { padding: 1.6rem 1.5rem; border: 1px solid var(--c-line); }
+.forge .statValue { color: var(--theme-accent); }
+.forge .statLabel { font-family: var(--font-mono); font-weight: 500; letter-spacing: .12em; }
+.forge .faqItem { border-radius: 0; border-color: var(--c-line); }
+.forge .testimonialCard { border-radius: 0; border-color: var(--c-line); }
+.forge .showcaseGrid figure { border-radius: 0; }
+.forge .serviceAreaChip { border-radius: 0; }
+.forge .heroQuickForm {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--c-deep) 96%, #ffffff 4%);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--c-on-deep) 16%, transparent);
+  box-shadow: 0 24px 50px -20px rgba(0,0,0,.7);
+}
+.forge .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); text-transform: uppercase; letter-spacing: .02em; }
+.forge .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); font-family: var(--font-mono); font-size: .7rem; }
+.forge .heroQuickForm input, .forge .heroQuickForm select, .forge .heroQuickForm textarea {
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 4px;
+}
+.forge .heroQuickForm input::placeholder, .forge .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.forge .heroQuickForm input:focus, .forge .heroQuickForm select:focus, .forge .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
+}
+.forge .heroQuickForm .heroFormChip {
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  border-radius: 4px;
+}
+.forge .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-family: var(--font-mono); font-weight: 800; }
+.forge .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.forge .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 60%, rgba(255, 255, 255, 0.4));
+  color: #f8fafc;
+}
+.forge .heroQuickForm .heroFormPhotoRow .heroFormPhotoButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-accent) 20%, rgba(255, 255, 255, 0.1));
+  border-color: var(--theme-accent);
+}
+.forge .heroQuickForm .heroFormPhotoChip {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.forge .heroQuickForm .heroFormPhotoChip button { color: rgba(255, 255, 255, 0.75); }

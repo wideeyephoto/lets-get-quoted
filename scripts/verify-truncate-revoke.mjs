@@ -44,7 +44,7 @@ try {
 }
 
 const SWEEP = readFileSync(
-  join(REPO, 'migrations', '20260819170000_revoke_truncate_from_browser_roles.sql'), 'utf8',
+  join(REPO, 'migrations', '20260820004313_revoke_truncate_from_browser_roles.sql'), 'utf8',
 ).replace(/\r\n/g, '\n');
 
 const R = [];

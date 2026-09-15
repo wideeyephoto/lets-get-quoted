@@ -22,6 +22,7 @@ import {
 import { processSmsInboundActionReceipt } from '@/lib/sms-inbound-action-worker';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { normalizeUsPhone } from '@/lib/phone';
+import { reaffirmSmsConsent } from '@/lib/sms';
 import { handleWeatherRescheduleInboundReply } from '@/lib/weather-inbound';
 import { handleWaitlistInboundReply } from '@/lib/waitlist-inbound';
 
@@ -359,7 +360,15 @@ export async function POST(request: Request) {
       requestUrl: request.url,
     });
 
-    // Check if this inbound text is a reply to an active cancellation waitlist offer
+    // Non-keyword inbound replies reaffirm consent for an opted-in contact
+    if (ingress.accountId && inbound.fromNumber && (!inbound.keyword || inbound.keyword === 'other')) {
+      try {
+        await reaffirmSmsConsent(ingress.accountId, inbound.fromNumber);
+      } catch (e) {
+        console.error('Failed to reaffirm SMS consent on inbound reply:', e);
+      }
+    }
+
     if (
       !inbound.providerHandledKeyword &&
       (!inbound.keyword || inbound.keyword === 'other') &&

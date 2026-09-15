@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { send } = vi.hoisted(() => ({ send: vi.fn() }));
 vi.mock('resend', () => ({ Resend: class { emails = { send }; } }));
+vi.mock('@/lib/auth', () => ({ createAdminClient: () => ({
+  from: () => ({ select: () => ({ eq: () => ({ in: async () => ({ data: [], error: null }) }) }) }),
+}) }));
+
 vi.mock('@/lib/email-brand', async (importOriginal) => ({
   ...await importOriginal<typeof import('@/lib/email-brand')>(),
   loadEmailBrand: async () => ({ businessName: 'Sample Plumbing', accent: '#0284c7', theme: 'spotlight', logoUrl: null, phone: null, siteUrl: null, replyTo: null }),

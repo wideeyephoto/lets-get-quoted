@@ -1,0 +1,356 @@
+[
+  {
+    "slug": "first-30-minutes",
+    "oldUrl": "/help/articles/first-30-minutes",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/first-30-minutes"
+  },
+  {
+    "slug": "navigate-the-dashboard",
+    "oldUrl": "/help/articles/navigate-the-dashboard",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/navigate-the-dashboard"
+  },
+  {
+    "slug": "understand-dashboard-priorities",
+    "oldUrl": "/help/articles/understand-dashboard-priorities",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/understand-dashboard-priorities"
+  },
+  {
+    "slug": "business-profile-and-locations",
+    "oldUrl": "/help/articles/business-profile-and-locations",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/business-profile-and-locations"
+  },
+  {
+    "slug": "roles-permissions-and-feature-readiness",
+    "oldUrl": "/help/articles/roles-permissions-and-feature-readiness",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/roles-permissions-and-feature-readiness"
+  },
+  {
+    "slug": "ai-contractor-copilot-and-companions",
+    "oldUrl": "/help/articles/ai-contractor-copilot-and-companions",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/ai-contractor-copilot-and-companions"
+  },
+  {
+    "slug": "manage-the-lead-inbox",
+    "oldUrl": "/help/articles/manage-the-lead-inbox",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/manage-the-lead-inbox"
+  },
+  {
+    "slug": "qualify-and-contact-a-lead",
+    "oldUrl": "/help/articles/qualify-and-contact-a-lead",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/qualify-and-contact-a-lead"
+  },
+  {
+    "slug": "schedule-estimate-and-start-date-options",
+    "oldUrl": "/help/articles/schedule-estimate-and-start-date-options",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/schedule-estimate-and-start-date-options"
+  },
+  {
+    "slug": "build-and-send-a-quote",
+    "oldUrl": "/help/articles/build-and-send-a-quote",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/build-and-send-a-quote"
+  },
+  {
+    "slug": "understand-the-customer-approval-flow",
+    "oldUrl": "/help/articles/understand-the-customer-approval-flow",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/understand-the-customer-approval-flow"
+  },
+  {
+    "slug": "manage-the-job-workspace",
+    "oldUrl": "/help/articles/manage-the-job-workspace",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/manage-the-job-workspace"
+  },
+  {
+    "slug": "schedule-work-from-the-queue",
+    "oldUrl": "/help/articles/schedule-work-from-the-queue",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/schedule-work-from-the-queue"
+  },
+  {
+    "slug": "plan-a-day-and-dispatch-crew",
+    "oldUrl": "/help/articles/plan-a-day-and-dispatch-crew",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/plan-a-day-and-dispatch-crew"
+  },
+  {
+    "slug": "document-work-and-change-orders",
+    "oldUrl": "/help/articles/document-work-and-change-orders",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/document-work-and-change-orders"
+  },
+  {
+    "slug": "manage-recurring-jobs",
+    "oldUrl": "/help/articles/manage-recurring-jobs",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/manage-recurring-jobs"
+  },
+  {
+    "slug": "insurance-claims-and-restoration-packets",
+    "oldUrl": "/help/articles/insurance-claims-and-restoration-packets",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/insurance-claims-and-restoration-packets"
+  },
+  {
+    "slug": "manage-client-records",
+    "oldUrl": "/help/articles/manage-client-records",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/manage-client-records"
+  },
+  {
+    "slug": "work-the-customer-text-inbox",
+    "oldUrl": "/help/articles/work-the-customer-text-inbox",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/work-the-customer-text-inbox"
+  },
+  {
+    "slug": "set-up-business-texting",
+    "oldUrl": "/help/articles/set-up-business-texting",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/set-up-business-texting"
+  },
+  {
+    "slug": "turn-on-the-customer-portal",
+    "oldUrl": "/help/articles/turn-on-the-customer-portal",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/turn-on-the-customer-portal"
+  },
+  {
+    "slug": "set-up-your-own-text-alerts",
+    "oldUrl": "/help/articles/set-up-your-own-text-alerts",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/set-up-your-own-text-alerts"
+  },
+  {
+    "slug": "manage-crew-and-field-access",
+    "oldUrl": "/help/articles/manage-crew-and-field-access",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/manage-crew-and-field-access"
+  },
+  {
+    "slug": "run-the-field-workflow",
+    "oldUrl": "/help/articles/run-the-field-workflow",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/run-the-field-workflow"
+  },
+  {
+    "slug": "review-timecards-and-pay",
+    "oldUrl": "/help/articles/review-timecards-and-pay",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/review-timecards-and-pay"
+  },
+  {
+    "slug": "manage-subcontractor-coverage",
+    "oldUrl": "/help/articles/manage-subcontractor-coverage",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/manage-subcontractor-coverage"
+  },
+  {
+    "slug": "install-the-field-app-and-work-without-signal",
+    "oldUrl": "/help/articles/install-the-field-app-and-work-without-signal",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/install-the-field-app-and-work-without-signal"
+  },
+  {
+    "slug": "material-inventory-and-distributor-pricing",
+    "oldUrl": "/help/articles/material-inventory-and-distributor-pricing",
+    "newCategory": "Getting set up",
+    "newUrl": "/help/material-inventory-and-distributor-pricing"
+  },
+  {
+    "slug": "connect-stripe-and-get-paid",
+    "oldUrl": "/help/articles/connect-stripe-and-get-paid",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/connect-stripe-and-get-paid"
+  },
+  {
+    "slug": "create-and-send-an-invoice",
+    "oldUrl": "/help/articles/create-and-send-an-invoice",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/create-and-send-an-invoice"
+  },
+  {
+    "slug": "request-deposits-and-stage-payments",
+    "oldUrl": "/help/articles/request-deposits-and-stage-payments",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/request-deposits-and-stage-payments"
+  },
+  {
+    "slug": "read-cash-flow-and-forecasts",
+    "oldUrl": "/help/articles/read-cash-flow-and-forecasts",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/read-cash-flow-and-forecasts"
+  },
+  {
+    "slug": "read-reports-and-profitability",
+    "oldUrl": "/help/articles/read-reports-and-profitability",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/read-reports-and-profitability"
+  },
+  {
+    "slug": "manage-refunds-and-payment-problems",
+    "oldUrl": "/help/articles/manage-refunds-and-payment-problems",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/manage-refunds-and-payment-problems"
+  },
+  {
+    "slug": "manage-job-expenses-and-receipt-ocr",
+    "oldUrl": "/help/articles/manage-job-expenses-and-receipt-ocr",
+    "newCategory": "Getting paid",
+    "newUrl": "/help/manage-job-expenses-and-receipt-ocr"
+  },
+  {
+    "slug": "configure-automations-safely",
+    "oldUrl": "/help/articles/configure-automations-safely",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/configure-automations-safely"
+  },
+  {
+    "slug": "configure-appointment-and-arrival-messages",
+    "oldUrl": "/help/articles/configure-appointment-and-arrival-messages",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/configure-appointment-and-arrival-messages"
+  },
+  {
+    "slug": "request-and-manage-reviews",
+    "oldUrl": "/help/articles/request-and-manage-reviews",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/request-and-manage-reviews"
+  },
+  {
+    "slug": "run-rebooking-and-customer-follow-up",
+    "oldUrl": "/help/articles/run-rebooking-and-customer-follow-up",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/run-rebooking-and-customer-follow-up"
+  },
+  {
+    "slug": "run-marketing-campaigns",
+    "oldUrl": "/help/articles/run-marketing-campaigns",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/run-marketing-campaigns"
+  },
+  {
+    "slug": "customize-email-and-blog-content",
+    "oldUrl": "/help/articles/customize-email-and-blog-content",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/customize-email-and-blog-content"
+  },
+  {
+    "slug": "manage-your-marketing-list-and-opt-outs",
+    "oldUrl": "/help/articles/manage-your-marketing-list-and-opt-outs",
+    "newCategory": "Intake and quoting",
+    "newUrl": "/help/manage-your-marketing-list-and-opt-outs"
+  },
+  {
+    "slug": "build-and-publish-your-website",
+    "oldUrl": "/help/articles/build-and-publish-your-website",
+    "newCategory": "Your website",
+    "newUrl": "/help/build-and-publish-your-website"
+  },
+  {
+    "slug": "configure-smart-intake",
+    "oldUrl": "/help/articles/configure-smart-intake",
+    "newCategory": "Your website",
+    "newUrl": "/help/configure-smart-intake"
+  },
+  {
+    "slug": "configure-online-booking",
+    "oldUrl": "/help/articles/configure-online-booking",
+    "newCategory": "Your website",
+    "newUrl": "/help/configure-online-booking"
+  },
+  {
+    "slug": "configure-quick-stops",
+    "oldUrl": "/help/articles/configure-quick-stops",
+    "newCategory": "Your website",
+    "newUrl": "/help/configure-quick-stops"
+  },
+  {
+    "slug": "configure-ai-receptionist",
+    "oldUrl": "/help/articles/configure-ai-receptionist",
+    "newCategory": "Your website",
+    "newUrl": "/help/configure-ai-receptionist"
+  },
+  {
+    "slug": "configure-text-to-job-and-field-intake",
+    "oldUrl": "/help/articles/configure-text-to-job-and-field-intake",
+    "newCategory": "Your website",
+    "newUrl": "/help/configure-text-to-job-and-field-intake"
+  },
+  {
+    "slug": "voice-call-recordings-and-missed-call-sms",
+    "oldUrl": "/help/articles/voice-call-recordings-and-missed-call-sms",
+    "newCategory": "Your website",
+    "newUrl": "/help/voice-call-recordings-and-missed-call-sms"
+  },
+  {
+    "slug": "custom-forms-and-inspection-checklists",
+    "oldUrl": "/help/articles/custom-forms-and-inspection-checklists",
+    "newCategory": "Your website",
+    "newUrl": "/help/custom-forms-and-inspection-checklists"
+  },
+  {
+    "slug": "manage-office-access-and-security",
+    "oldUrl": "/help/articles/manage-office-access-and-security",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/manage-office-access-and-security"
+  },
+  {
+    "slug": "manage-plan-usage-and-credits",
+    "oldUrl": "/help/articles/manage-plan-usage-and-credits",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/manage-plan-usage-and-credits"
+  },
+  {
+    "slug": "import-existing-business-data",
+    "oldUrl": "/help/articles/import-existing-business-data",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/import-existing-business-data"
+  },
+  {
+    "slug": "manage-your-price-book",
+    "oldUrl": "/help/articles/manage-your-price-book",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/manage-your-price-book"
+  },
+  {
+    "slug": "export-data-and-connect-apps",
+    "oldUrl": "/help/articles/export-data-and-connect-apps",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/export-data-and-connect-apps"
+  },
+  {
+    "slug": "cancel-your-plan-or-delete-your-account",
+    "oldUrl": "/help/articles/cancel-your-plan-or-delete-your-account",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/cancel-your-plan-or-delete-your-account"
+  },
+  {
+    "slug": "developer-api-and-webhooks",
+    "oldUrl": "/help/articles/developer-api-and-webhooks",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/developer-api-and-webhooks"
+  },
+  {
+    "slug": "restore-deleted-records-and-audit-logs",
+    "oldUrl": "/help/articles/restore-deleted-records-and-audit-logs",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/restore-deleted-records-and-audit-logs"
+  },
+  {
+    "slug": "find-help-and-contact-support",
+    "oldUrl": "/help/articles/find-help-and-contact-support",
+    "newCategory": "Billing and account",
+    "newUrl": "/help/find-help-and-contact-support"
+  }
+]

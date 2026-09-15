@@ -17,12 +17,12 @@ export default function CashPreview({
 
   return (
     <section className="panel workspace-section-card cash-preview-panel">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">Cash Preview</p>
           <h2>14-day cash outlook</h2>
         </div>
-        <Link href={href} style={{ fontSize: '0.84rem', color: 'var(--accent)', textDecoration: 'none' }}>
+        <Link href={href} style={{ fontSize: '0.84rem', color: 'var(--accent)', textDecoration: 'none', marginLeft: 'auto', alignSelf: 'flex-start' }}>
           Open full cash flow &rarr;
         </Link>
       </div>

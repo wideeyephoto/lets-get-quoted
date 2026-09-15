@@ -3,7 +3,7 @@
 // cannot: missing functions, constraints, roles, or migration prerequisites.
 
 import { randomUUID } from 'node:crypto';
-import { readFileSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 import { syncBuiltinESMExports } from 'node:module';
@@ -112,12 +112,12 @@ const requiredFunctions = [
   'record_sms_shared_notice_reply',
   'sms_recipient_keyword_opted_out',
   'sms_account_recipient_opted_out',
+  'apply_sms_carrier_opt_out_receipt',
 ];
 
-const dbDir = join(process.cwd(), '.pg17-messaging-schema-check');
-if (existsSync(dbDir)) {
-  try { rmSync(dbDir, { recursive: true, force: true }); } catch { /* ignore */ }
-}
+// A unique cluster prevents a delayed Windows shutdown from colliding with
+// the next run or deleting files still owned by the previous local test.
+const dbDir = join(os.tmpdir(), `lgq-messaging-schema-${randomUUID()}`);
 
 const pg = new EmbeddedPostgres({
   databaseDir: dbDir,
@@ -149,34 +149,15 @@ try {
   await client.query(prelude);
   await client.query(readFileSync(join(process.cwd(), 'schema.sql'), 'utf8'));
   check('schema.sql executes top-to-bottom in a fresh PostgreSQL 17 database', true);
-  // Reapply the current Campaign-wide suppression, dispatch sender registration,
-  // purpose boundary, and registry callback quarantine so this harness checks
-  // the final production definitions.
+  // schema.sql already contains every forward migration in order. Replaying
+  // older function replacements here downgrades the final definitions and
+  // breaks later shape patches. Verify only the newest migration's replay;
+  // individual migration harnesses cover their own historical starting states.
   await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906120000_sms_campaign_wide_stop.sql'),
+    join(process.cwd(), 'migrations/20260914145820_sms_carrier_opt_out_projection.sql'),
     'utf8',
   ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906121036_register_signalwire_dispatch_sender.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906130000_sms_campaign_purpose_boundary.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260906131500_messaging_registry_callback_fail_closed.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260908173107_sms_dispatch_help_account_binding.sql'),
-    'utf8',
-  ));
-  await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260908175833_subcontractor_sms_projection_service_grant.sql'),
-    'utf8',
-  ));
-  check('Campaign STOP, dispatch sender, purpose boundary, callback quarantine, HELP binding, and projection grant reapply', true);
+  check('latest carrier opt-out migration reapplies over the canonical schema', true);
 
   const tables = await client.query(
     `select tablename from pg_catalog.pg_tables
@@ -1516,6 +1497,67 @@ try {
       && followupSecurity?.settlement_force_rls === true
       && followupSecurity?.scope_force_rls === true,
     JSON.stringify(followupSecurity));
+  // Exercise the real status ingress, receipt trigger, and suppression reader
+  // together under the complete schema's constraints and RLS definitions.
+  const carrierEventId = randomUUID();
+  await client.query(`insert into public.sms_events(
+    id,account_id,event_type,phone_number,status,provider,provider_id,body,context,
+    sender_number_id,send_started_at,provider_accepted_at
+  ) values($1,$2,'carrier_opt_out_test','+12485550221','sent','signalwire',
+    'carrier-opt-out-canonical','Test','customer',$3,clock_timestamp(),clock_timestamp())`,
+  [carrierEventId,accountId,senderId]);
+  const ingestCarrier = () => client.query(`select * from public.apply_sms_delivery_status_webhook(
+    'signalwire','carrier-opt-out-canonical','undelivered','21610',
+    'carrier-opt-out-canonical:undelivered:21610',$1,'application/json',
+    'https://example.test/api/sms/status')`,['d'.repeat(64)]);
+  const carrierIngress = (await ingestCarrier()).rows[0];
+  const carrierState = (await client.query(`select e.status,r.carrier_opt_out_disposition,
+    public.sms_recipient_keyword_opted_out(e.sender_number_id,e.phone_number) as stopped
+    from public.sms_events e join public.sms_webhook_receipts r on r.sms_event_id=e.id
+    where e.id=$1`,[carrierEventId])).rows[0];
+  check('real status ingress atomically records failure and carrier opt-out',
+    carrierIngress.sms_event_id===carrierEventId && carrierState.status==='failed'
+      && carrierState.carrier_opt_out_disposition==='applied' && carrierState.stopped===true,
+    JSON.stringify(carrierState));
+  await client.query(`update public.sms_sender_keyword_preferences
+    set status='opted_in',source='inbound_start',opted_out_at=null,updated_at=clock_timestamp()
+    where sender_number_id=$1 and phone_number='+12485550221'`,[senderId]);
+  await ingestCarrier();
+  const afterReplay = (await client.query(`select
+    public.sms_recipient_keyword_opted_out($1,'+12485550221') as stopped,
+    (select count(*)::int from public.sms_webhook_receipts where sms_event_id=$2) as receipts`,
+  [senderId,carrierEventId])).rows[0];
+  check('real duplicate ingress preserves START and a single immutable receipt',
+    afterReplay.stopped===false && afterReplay.receipts===1,JSON.stringify(afterReplay));
+
+  const historicalCarrierEvent = randomUUID();
+  await client.query(`insert into public.sms_events(
+    id,account_id,event_type,phone_number,status,provider,body,context,sender_number_id,
+    error_reason,indeterminate_at
+  ) values($1,$2,'carrier_review_test','+12485550222','indeterminate','signalwire',
+    'Test','customer',$3,'sms_provider_result_unknown',clock_timestamp())`,
+  [historicalCarrierEvent,accountId,senderId]);
+  await client.query(`insert into public.sms_delivery_tasks(sms_event_id,task_state,indeterminate_at,request_started_at)
+    values($1,'indeterminate',clock_timestamp(),clock_timestamp())`,[historicalCarrierEvent]);
+  const historicalIngress = (await client.query(`select * from public.apply_sms_delivery_status_webhook(
+    'signalwire','carrier-opt-out-historical','undelivered','21610',
+    'carrier-opt-out-historical:undelivered:21610',$1,'application/json',
+    'https://example.test/api/sms/status')`,['e'.repeat(64)])).rows[0];
+  const historicalReview = (await client.query('select id from public.sms_operator_review_items where webhook_receipt_id=$1',
+    [historicalIngress.webhook_receipt_id])).rows[0];
+  const historicalRecoveryCode = await rejectionCode(client,
+    'select public.reconcile_sms_unmatched_status($1,$2,$3,$4)',
+    [historicalReview.id,historicalCarrierEvent,'Matched exact provider evidence.','operator@example.com']);
+  const recoveredHistorical = (await client.query(`select e.status,e.provider_id,r.review_state,r.reason,w.sms_event_id,
+    public.sms_recipient_keyword_opted_out(e.sender_number_id,e.phone_number) as stopped
+    from public.sms_events e cross join public.sms_webhook_receipts w
+    join public.sms_operator_review_items r on r.webhook_receipt_id=w.id where e.id=$1 and w.id=$2`,
+    [historicalCarrierEvent,historicalIngress.webhook_receipt_id])).rows[0];
+  check('historical recovery refuses unknown consent scope without losing its original review',
+    historicalRecoveryCode==='55000' && recoveredHistorical.status==='indeterminate'
+      && recoveredHistorical.provider_id===null && recoveredHistorical.sms_event_id===null
+      && recoveredHistorical.review_state==='open' && recoveredHistorical.reason==='unmatched_status'
+      && recoveredHistorical.stopped===false,JSON.stringify(recoveredHistorical));
 } catch (error) {
   check('fresh schema harness ran to completion', false,
     error instanceof Error

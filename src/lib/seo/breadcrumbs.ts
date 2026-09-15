@@ -27,7 +27,7 @@ export type Crumb = {
   path: string;
 };
 
-export function breadcrumbJsonLd(trail: Crumb[]) {
+export function breadcrumbJsonLd(trail: Crumb[], origin = ORIGIN) {
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',

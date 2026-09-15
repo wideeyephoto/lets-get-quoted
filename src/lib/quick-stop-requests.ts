@@ -43,6 +43,8 @@ export type QuickStopRequest = {
   contractor_note: string | null;
   payment_id: string | null;
   refund_cents: number;
+  refund_due_cents?: number | null;
+  refund_state?: 'none' | 'pending' | 'processing' | 'retry' | 'completed' | 'review';
   response_deadline_at: string | null;
   offer_sent_at: string | null;
   payment_deadline_at: string | null;

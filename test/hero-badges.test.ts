@@ -15,7 +15,13 @@ const read = (...parts: string[]) =>
   readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
 const THEMES_CSS = read('src', 'lib', 'templates', 'themes.module.css');
-const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx');
+const TABS_CODE = [
+  'BuilderBusinessTab.tsx',
+  'BuilderDesignTab.tsx',
+  'BuilderPageTab.tsx',
+  'BuilderPublishTab.tsx',
+].map(f => read('src', 'app', 'dashboard', 'sites', 'tabs', f)).join('\n');
+const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx') + '\n' + TABS_CODE;
 
 describe('Hero badge presets and offerings', () => {
   it('includes classic and high-converting trust presets', () => {

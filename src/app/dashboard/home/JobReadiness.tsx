@@ -18,12 +18,12 @@ export default function JobReadiness({
 
   return (
     <section className="panel workspace-section-card readiness-panel">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">Readiness</p>
           <h2>Job readiness check</h2>
         </div>
-        <span style={{ fontSize: '0.84rem', color: blockedJobs.length === 0 ? 'var(--good, #10b981)' : 'var(--warn, #f59e0b)' }}>
+        <span style={{ fontSize: '0.84rem', color: blockedJobs.length === 0 ? 'var(--good, #10b981)' : 'var(--warn, #f59e0b)', textAlign: 'right', marginLeft: 'auto', alignSelf: 'flex-start' }}>
           {fullyReadyCount} of {upcomingJobsCount} jobs ready
         </span>
       </div>

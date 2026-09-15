@@ -30,6 +30,7 @@ vi.mock('@/lib/permit-intel/credentials-vault', () => ({
 
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
+import { listContractorCredentials } from '@/lib/permit-intel/credentials-vault';
 import { POST } from '../src/app/api/permits/coi/route';
 
 describe('Municipal Certificate of Insurance API Route - POST /api/permits/coi', () => {
@@ -125,4 +126,98 @@ describe('Municipal Certificate of Insurance API Route - POST /api/permits/coi',
     const html = await res.text();
     expect(html).toContain('ACORD 25');
   });
+
+  it('returns 409 Conflict with missingFields when insurance credentials are absent', async () => {
+    vi.mocked(createSupabaseServerClient).mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: mockUserId } } }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { business_name: 'Apex Roofing LLC', insurance_carrier: null, insurance_policy_number: null },
+        }),
+      }),
+    } as any);
+
+    vi.mocked(getCurrentMembership).mockResolvedValue({
+      accountId: mockAccountId,
+      role: 'owner',
+    } as any);
+
+    vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set(['jobs.read']));
+    vi.mocked(listContractorCredentials).mockResolvedValue([]);
+
+    const req = new Request('http://localhost/api/permits/coi', {
+      method: 'POST',
+      body: JSON.stringify({
+        municipality: {
+          authorityName: 'City of Royal Oak',
+          city: 'Royal Oak',
+          state: 'MI',
+        },
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toContain('Cannot generate Certificate of Insurance: missing required coverage data');
+    expect(json.missingFields).toEqual(
+      expect.arrayContaining([
+        'generalLiabilityCarrier',
+        'generalLiabilityPolicyNumber',
+        'workersCompCarrier',
+        'workersCompPolicyNumber',
+      ]),
+    );
+  });
+
+  it('returns 409 Conflict when only liability is present but workers comp is missing', async () => {
+    vi.mocked(createSupabaseServerClient).mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: mockUserId } } }),
+      },
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { business_name: 'Apex Roofing LLC' },
+        }),
+      }),
+    } as any);
+
+    vi.mocked(getCurrentMembership).mockResolvedValue({
+      accountId: mockAccountId,
+      role: 'owner',
+    } as any);
+
+    vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set(['jobs.read']));
+    vi.mocked(listContractorCredentials).mockResolvedValue([
+      {
+        credentialType: 'liability_insurance',
+        insuranceCarrier: 'Travelers Property Casualty',
+        policyNumber: 'TRV-8849201',
+      } as any,
+    ]);
+
+    const req = new Request('http://localhost/api/permits/coi', {
+      method: 'POST',
+      body: JSON.stringify({
+        municipality: {
+          authorityName: 'City of Royal Oak',
+          city: 'Royal Oak',
+          state: 'MI',
+        },
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toContain('Cannot generate Certificate of Insurance: missing required coverage data');
+    expect(json.missingFields).toEqual(['workersCompCarrier', 'workersCompPolicyNumber']);
+  });
 });
+

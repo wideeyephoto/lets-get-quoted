@@ -305,7 +305,9 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
   });
 
   it('ensures WebsiteBuilder exposes complete quote form customization pickers', () => {
-    const builderCode = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf-8');
+    const tabFiles = ['BuilderBusinessTab.tsx', 'BuilderDesignTab.tsx', 'BuilderPageTab.tsx', 'BuilderPublishTab.tsx'];
+    const tabsCode = tabFiles.map((f) => readFileSync(join(process.cwd(), 'src/app/dashboard/sites/tabs', f), 'utf-8')).join('\n');
+    const builderCode = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf-8') + '\n' + tabsCode;
     expect(builderCode).toContain('QUOTE_FORM_STYLES');
     expect(builderCode).toContain('QUOTE_FORM_FIELD_BGS');
     expect(builderCode).toContain('QUOTE_FORM_RADII');

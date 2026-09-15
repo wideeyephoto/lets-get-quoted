@@ -109,6 +109,8 @@ describe('messaging registry callback fail-closed migration', () => {
     );
     expect(SYNC).toContain(migrationPath);
     expect(PARITY).toContain(migrationPath);
-    expect(VERIFIER).toContain(migrationPath);
+    // The canonical verifier executes schema.sql in migration order. Replaying
+    // this older patch over later function replacements would downgrade it.
+    expect(VERIFIER).toContain("readFileSync(join(process.cwd(), 'schema.sql'), 'utf8')");
   });
 });

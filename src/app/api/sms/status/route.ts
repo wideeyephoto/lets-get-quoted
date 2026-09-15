@@ -9,6 +9,7 @@ import {
   type ParsedStatusWebhook,
 } from '@/lib/sms-webhook-ingress';
 import { logWebhookFailure } from '@/lib/webhook-failures';
+import { confirmSmsCanaryCallback } from '@/lib/sms-canary';
 
 export const runtime = 'nodejs';
 
@@ -71,7 +72,26 @@ export async function POST(request: Request) {
       requestUrl: request.url,
     });
 
+    if (!ingressResult.smsEventId && status.providerEventId) {
+      await confirmSmsCanaryCallback(admin, status.providerEventId, status.providerStatus).catch((err) => {
+        console.error('Failed to confirm SMS canary callback:', err);
+      });
+    }
+
     if (ingressResult.smsEventId) {
+      if (status.providerErrorCode === '21610'
+          && ['failed', 'undelivered'].includes(status.providerStatus)) {
+        // The receipt transaction projects this already. Retry the idempotent
+        // RPC for pre-migration receipts and duplicate HTTP attempts; never
+        // rewrite account consent from a later callback's payload or clock.
+        const { data, error } = await admin.rpc('apply_sms_carrier_opt_out_receipt', {
+          p_receipt_id: ingressResult.receiptId,
+        });
+        if (error || !['applied', 'ignored_newer_preference', 'review_unbound_sender'].includes(data)) {
+          throw new Error(`SMS carrier opt-out projection unavailable (${error?.code || 'invalid_result'}).`);
+        }
+      }
+
       // Retry this even for duplicate receipts: ingress may have committed before
       // a previous history write failed. The RPC deduplicates by canonical event
       // and appends to the current database value, without stale triage snapshots.
@@ -79,6 +99,7 @@ export async function POST(request: Request) {
         p_sms_event_id: ingressResult.smsEventId,
       });
       if (error) throw new Error(`SMS lead history unavailable (${error.code || 'unknown'}).`);
+
     }
   } catch (error) {
     console.error('SMS status webhook handler threw:', error);

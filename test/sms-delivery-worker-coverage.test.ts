@@ -20,7 +20,8 @@ vi.mock('@/lib/quote-followup-delivery', () => ({
   quoteFollowupDeliveryEligibility: vi.fn(),
 }));
 
-vi.mock('@/lib/sms-provider', () => ({
+vi.mock('@/lib/sms-provider', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/sms-provider')>(),
   sendProviderMessage: vi.fn(),
   SmsBillingRefusalError: class SmsBillingRefusalError extends Error {},
   SmsProviderRejectedError: class SmsProviderRejectedError extends Error {
@@ -37,9 +38,9 @@ vi.mock('@/lib/sms-provider', () => ({
 describe('sms-delivery-worker coverage', () => {
   describe('runSmsDeliveryBatch validation', () => {
     it('throws if batchSize is invalid', async () => {
-      await expect(runSmsDeliveryBatch(0)).rejects.toThrow('batch size must be between 1 and 25');
-      await expect(runSmsDeliveryBatch(26)).rejects.toThrow('batch size must be between 1 and 25');
-      await expect(runSmsDeliveryBatch(1.5)).rejects.toThrow('batch size must be between 1 and 25');
+      await expect(runSmsDeliveryBatch(0)).rejects.toThrow('batch size must be between 1 and 75');
+      await expect(runSmsDeliveryBatch(76)).rejects.toThrow('batch size must be between 1 and 75');
+      await expect(runSmsDeliveryBatch(1.5)).rejects.toThrow('batch size must be between 1 and 75');
     });
   });
 
@@ -95,7 +96,7 @@ describe('sms-delivery-worker coverage', () => {
 
     it('throws if claimBatch size is invalid', async () => {
       const store = new SupabaseSmsDeliveryStore(getAdmin(vi.fn()));
-      await expect(store.claimBatch(0)).rejects.toThrow('batch size must be between 1 and 25');
+      await expect(store.claimBatch(0)).rejects.toThrow('batch size must be between 1 and 75');
     });
 
     it('throws if claim batch is not an array', async () => {
@@ -149,9 +150,11 @@ describe('sms-delivery-worker coverage', () => {
           billingCategory: 'customer_message',
           eventId: 'evt',
           attemptNumber: 1,
+          claimToken: 'tok',
         } as any,
         'signalwire',
         '+15556667777',
+        undefined,
         beforeRequest
       );
 

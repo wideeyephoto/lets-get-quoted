@@ -294,7 +294,7 @@ function extractOutputText(payload: unknown): string {
 // anything — the caller applies the result to local state and the usual
 // Save button persists it.
 export async function generateSiteTextAction(
-  options?: { trade?: string; companyName?: string; serviceArea?: string; zip?: string },
+  options?: { trade?: string; companyName?: string; serviceArea?: string; zip?: string; language?: string },
 ): Promise<GeneratedSiteText> {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
 
@@ -354,7 +354,9 @@ export async function generateSiteTextAction(
   // back to a generic mark via normalizeIcon.
   const serviceIconKeys = Object.keys(SERVICE_ICON_GLYPHS).join(', ');
 
+  const languageInstruction = options?.language === 'es' ? 'Write ALL generated text, headings, and copy entirely in Spanish. ' : '';
   const instructions =
+    languageInstruction +
     "You write short example marketing copy for a local home-services contractor's website. " +
     (tradeInput
       ? `The business is a ${tradeInput} — write every part of the site specifically for that trade. `
@@ -781,7 +783,7 @@ export async function listCompletedJobReviewsAction(): Promise<CompletedJobRevie
  */
 export async function regenerateSectionCopyAction(
   section: 'hero' | 'services' | 'faqs' | 'testimonials',
-  options: { companyName?: string; trade?: string; serviceArea?: string; zip?: string } = {},
+  options: { companyName?: string; trade?: string; serviceArea?: string; zip?: string; language?: string } = {},
 ): Promise<{ ok: true; data: Record<string, unknown> } | { ok: false; message: string }> {
   const { accountId } = await requireOfficeContext('sites.write');
   const apiKey = process.env.OPENAI_API_KEY;
@@ -792,6 +794,7 @@ export async function regenerateSectionCopyAction(
   const location = options.serviceArea || options.zip || '';
 
   const instructions = [
+    options.language === 'es' ? 'Write ALL content entirely in Spanish.' : '',
     `You write high-converting, professional website copy for a local ${trade} business named "${companyName}".`,
     location ? `They serve the ${location} area.` : '',
     `Generate content ONLY for the "${section}" section.`,
@@ -827,7 +830,7 @@ export async function regenerateSectionCopyAction(
  * Generates local SEO metadata and geo-targeted keywords.
  */
 export async function optimizeSiteSeoAction(
-  options: { companyName?: string; trade?: string; serviceArea?: string; zip?: string } = {},
+  options: { companyName?: string; trade?: string; serviceArea?: string; zip?: string; language?: string } = {},
 ): Promise<{ ok: true; seo: { title: string; description: string; keywords: string[] } } | { ok: false; message: string }> {
   const { accountId } = await requireOfficeContext('sites.write');
   const apiKey = process.env.OPENAI_API_KEY;
@@ -838,6 +841,7 @@ export async function optimizeSiteSeoAction(
   const location = options.serviceArea || options.zip || '';
 
   const instructions = [
+    options.language === 'es' ? 'Write ALL SEO content entirely in Spanish.' : '',
     `You are an expert in Local SEO for home services contractors.`,
     `Optimize SEO title, meta description, and top high-intent search keywords for "${companyName}", a ${trade} serving ${location || 'their local area'}.`,
     'Return STRICT JSON only:',

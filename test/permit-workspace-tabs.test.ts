@@ -29,7 +29,7 @@ describe('Permit Workspace - Tab & Service Integration', () => {
     expect(dto.authority.id).toBe('mi-royal-oak');
     expect(dto.authority.name).toBe('City of Royal Oak');
     expect(dto.authority.portalAction).toBeDefined();
-    expect(dto.authority.portalAction?.url).toContain('accessmygov.com');
+    expect(dto.authority.portalAction?.url).toContain('bsaonline.com');
     expect(dto.authority.portalAction?.requiresContractorPin).toBe(true);
     expect(dto.codes.length).toBeGreaterThan(0);
     expect(dto.localAmendments.length).toBeGreaterThan(0);

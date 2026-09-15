@@ -32,7 +32,7 @@ function renderLegalBody(body: string): ReactNode[] {
 export default function SiteLegalPage({ site, title, body }: { site: Site; title: string; body: string }) {
   const themeStyle = { '--theme-accent': site.accent_override || '#2563eb' } as CSSProperties;
   return (
-    <main className={styles.legalShell} style={themeStyle}>
+    <main id="main-content" className={styles.legalShell} style={themeStyle}>
       <div className={styles.legalDoc}>
         <nav className={styles.blogCrumb} aria-label="Breadcrumb">
           <a href="/">{site.company_name || 'Home'}</a>

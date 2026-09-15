@@ -153,5 +153,39 @@ describe('AI Permit Autofill Engine', () => {
       expect(app.requiredInspections.length).toBeGreaterThan(0);
       expect(app.applicableCitations.length).toBeGreaterThan(0);
     });
+
+    it('does not synthesize or default any Tier-A credentials or parcel numbers when input is missing', () => {
+      const app = autofillPermitWithAI({
+        propertyAddress: '1500 N Main St, Royal Oak, MI 48067',
+        trade: 'roofing',
+      });
+
+      // Assert no invented literals
+      expect(app.projectInfo.parcelId.value).toBe('');
+      expect(app.projectInfo.subdivision.value).toBe('');
+      expect(app.ownerInfo.name.value).toBe('');
+      expect(app.ownerInfo.phone.value).toBe('');
+      expect(app.ownerInfo.email.value).toBe('');
+      expect(app.contractorInfo.businessName.value).toBe('');
+      expect(app.contractorInfo.contactName.value).toBe('');
+      expect(app.contractorInfo.phone.value).toBe('');
+      expect(app.contractorInfo.email.value).toBe('');
+      expect(app.contractorInfo.stateLicense.value).toBe('');
+      expect(app.contractorInfo.liabilityInsurance.value).toBe('');
+      expect(app.contractorInfo.workersComp.value).toBe('');
+      expect(app.contractorInfo.tradeSpecificLicense.value).toBeNull();
+
+      // Specifically assert retired literals do not appear anywhere in stringified output
+      const jsonStr = JSON.stringify(app);
+      expect(jsonStr).not.toContain('2101234567');
+      expect(jsonStr).not.toContain('25-14-302-019');
+      expect(jsonStr).not.toContain('Oak Ridge Estates');
+      expect(jsonStr).not.toContain('TRV-8849201');
+      expect(jsonStr).not.toContain('WC-9940122');
+      expect(jsonStr).not.toContain('ME-778291');
+      expect(jsonStr).not.toContain('MP-662910');
+      expect(jsonStr).not.toContain('owner@example.com');
+      expect(jsonStr).not.toContain('permits@contractor.com');
+    });
   });
 });

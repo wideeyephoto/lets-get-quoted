@@ -36,6 +36,10 @@ import { quoteFollowupEmailPreview } from './quote-followups';
 import { rebookInviteEmailContent } from './rebook-message';
 import { resolveHomeownerFinancing } from './bnpl-financing';
 import { sendWithDomainFallback } from './email-domain-fallback';
+import { createAdminClient } from '@/lib/auth';
+import { sendDocumentEmail, type DocumentEmailReceipt } from './document-email-sends';
+import { assertEmailSendAllowed } from './email-send-policy';
+import { resendTagValue } from './resend-tags';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -66,7 +70,10 @@ const resend = {
     send: (...args: Parameters<Resend['emails']['send']>) => {
       if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
       const client = resendClient;
-      return sendWithDomainFallback((payload, options) => client.emails.send(payload, options), ...args);
+      return sendWithDomainFallback(async (payload, options) => {
+        if (resendTagValue(payload.tags, 'account_id')) await assertEmailSendAllowed(createAdminClient(), payload);
+        return client.emails.send(payload, options);
+      }, ...args);
     },
   },
 };
@@ -160,17 +167,17 @@ export interface SendInvoiceEmailInput {
   invoice: Invoice;
   items: InvoiceItem[];
   businessName: string;
-  accountId?: string;
+  accountId: string;
+  jobRevision: string | undefined;
   clientName: string;
   jobRef: string;
   recipientEmail: string;
   origin: string;
 }
 
-export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<void> {
+export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<DocumentEmailReceipt> {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured; invoice email skipped');
-    return;
+    throw new Error('Email provider is not configured.');
   }
 
   try {
@@ -233,7 +240,11 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
       console.error('Invoice PDF generation failed; sending email without attachment:', pdfErr);
     }
 
-    const result = await resend.emails.send({
+    if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+    const receipt = await sendDocumentEmail(createAdminClient(), resendClient, {
+      accountId: input.accountId, jobId: input.invoice.job_id, jobRevision: input.jobRevision,
+      invoiceId: input.invoice.id, invoiceRevision: input.invoice.document_email_revision,
+    }, {
       from: contractorFrom(brand),
       to: input.recipientEmail,
       subject: `Invoice ${input.invoice.ref} from ${input.businessName}`,
@@ -251,12 +262,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
       tags: defaultTags('invoice', brand, input.accountId),
     });
 
-    if (result.error) {
-      console.error('Failed to send invoice email:', result.error);
-      throw new Error(result.error.message);
-    }
-
-    console.log(`Invoice email sent: ${input.invoice.ref}`);
+    return receipt;
   } catch (err) {
     console.error('Invoice email error:', err);
     throw err;
@@ -273,7 +279,9 @@ export {
 // Client-facing quote email — the fallback channel when a lead has an email but
 // no textable mobile, so the quote still reaches them instead of silently
 // stalling. Throws on provider rejection so the caller can flag delivery failed.
-export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Promise<void> {
+export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput & {
+  accountId: string; jobId: string; jobRevision: string | undefined;
+}): Promise<DocumentEmailReceipt> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -295,7 +303,10 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
   const brand = await brandFor(input);
   const html = renderClientQuoteEmailHtml({ ...input, brand, financingAvailable });
 
-  const result = await resend.emails.send({
+  if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+  return sendDocumentEmail(createAdminClient(), resendClient, {
+    accountId: input.accountId, jobId: input.jobId, jobRevision: input.jobRevision,
+  }, {
     from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
@@ -303,12 +314,6 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     reply_to: replyAddress(brand),
     tags: defaultTags('client_quote', brand, input.accountId),
   });
-
-  if (result.error) {
-    console.error('Failed to send client quote email:', result.error);
-    throw new Error(result.error.message);
-  }
-  console.log(`Client quote email sent: ${input.jobRef}`);
 }
 
 /**

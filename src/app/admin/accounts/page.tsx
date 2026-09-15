@@ -15,6 +15,7 @@ import {
 } from '@/lib/admin-account-filters';
 import { isDateRange } from '@/lib/command-center-logic';
 import { staffCan } from '@/lib/staff';
+import { batchGetAccountMargins, type AccountMarginSummary } from '@/lib/admin-margin';
 import { resendOnboardingFromListAction } from './actions';
 import styles from '../admin.module.css';
 
@@ -40,6 +41,37 @@ const DONE: Record<string, string> = {
 const ERRORS: Record<string, string> = {
   no_owner: 'That account has no owner email on file, so there is nobody to send a link to.',
 };
+
+function marginPill(margin?: AccountMarginSummary) {
+  if (!margin) return <span className={styles.muted}>—</span>;
+  if (margin.isUnprofitable) {
+    return (
+      <>
+        <span className={`${styles.pill} ${styles.bad}`}>
+          -${Math.abs(margin.netMarginDollars).toFixed(2)}
+        </span>
+        <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '.2rem' }}>
+          COGS ${margin.totalCogsDollars.toFixed(2)} vs Rev ${margin.feeRevenueDollars.toFixed(2)}
+        </div>
+      </>
+    );
+  }
+  if (margin.feeRevenueDollars === 0 && margin.totalCogsDollars === 0) {
+    return <span className={styles.muted}>$0.00</span>;
+  }
+  return (
+    <>
+      <span className={`${styles.pill} ${styles.good}`}>
+        +${margin.netMarginDollars.toFixed(2)}
+      </span>
+      {margin.marginPct !== null ? (
+        <div className={styles.muted} style={{ fontSize: '.72rem', marginTop: '.2rem' }}>
+          {margin.marginPct}% margin
+        </div>
+      ) : null}
+    </>
+  );
+}
 
 function connectPill(row: { connect_onboarded: boolean | null; connect_disabled_at: string | null }) {
   if (row.connect_disabled_at) return <span className={`${styles.pill} ${styles.bad}`}>Payouts paused</span>;
@@ -122,7 +154,10 @@ export default async function AdminAccountsPage({
   // Shown as a column because it is how staff identify an account when a
   // customer writes in, and because a search that matches on something
   // invisible looks broken — you would have no way to see WHY a row matched.
-  const ownerEmails = await ownerEmailsForAccounts(ctx.admin, rows.map((r) => r.id), () => { ownerEmailsAvailable = false; });
+  const [ownerEmails, margins] = await Promise.all([
+    ownerEmailsForAccounts(ctx.admin, rows.map((r) => r.id), () => { ownerEmailsAvailable = false; }),
+    batchGetAccountMargins(ctx.admin, rows.map((r) => r.id), '30d', now),
+  ]);
 
   const canResend = staffCan(ctx.staff, 'account.support');
   const showStalled = filter === 'not_onboarded' || filter === 'connect_incomplete';
@@ -246,6 +281,7 @@ export default async function AdminAccountsPage({
                   <th>Owner</th>
                   <th>#</th>
                   <th>Plan</th>
+                  <th>30d Margin</th>
                   <th>Payouts</th>
                   <th>Status</th>
                   {showStalled ? <th>What is missing</th> : null}
@@ -267,6 +303,7 @@ export default async function AdminAccountsPage({
                     </td>
                     <td className={styles.muted}>{r.account_number ?? '—'}</td>
                     <td>{effectivePlanCell(r)}</td>
+                    <td>{marginPill(margins.get(r.id))}</td>
                     <td>{connectPill(r)}</td>
                     <td>
                       {r.suspended_at ? (

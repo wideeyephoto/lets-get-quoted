@@ -21,7 +21,7 @@ vi.mock('@/lib/permit-intel', async (importOriginal) => {
       authorityName: 'City of Royal Oak',
       agencyName: 'Community Development Department',
       permitNumber: '2026-RO-8492',
-      verificationUrl: 'https://accessmygov.com/?uid=1349',
+      verificationUrl: 'https://bsaonline.com/?uid=1652',
       milestones: [],
       headline: 'Permit Officially Issued',
       description: 'Active permit on file',

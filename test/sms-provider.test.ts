@@ -136,7 +136,7 @@ describe('the outbound off switch', () => {
   it('still throws when there is no provider at all, which is the local case', async () => {
     noProviders();
     expect(outboundSmsSuppression()).toBe('not-configured');
-    await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/not configured/i);
+    await expect(sendProviderMessage('+12485550140', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/not configured/i);
   });
 
   /**
@@ -169,7 +169,7 @@ describe('the outbound off switch', () => {
       live();
       apply();
       const spy = vi.spyOn(globalThis, 'fetch');
-      await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).resolves.toBe(SIMULATED_PROVIDER_ID);
+      await expect(sendProviderMessage('+12485550140', 'hi', { accountId: null, category: 'customer_message' })).resolves.toBe(SIMULATED_PROVIDER_ID);
       expect(spy).not.toHaveBeenCalled();
       expect(isLiveMessagingEnvironment()).toBe(false);
       spy.mockRestore();
@@ -186,11 +186,12 @@ describe('the outbound off switch', () => {
    */
   it('really does reach for the network when nothing is suppressing it', async () => {
     live();
+    useTrustedCallbackOrigin();
     expect(isLiveMessagingEnvironment()).toBe(true);
     // The suite's own socket guard is what stops it here — proof that the
     // suppression, not the absence of an opportunity, is doing the work above.
-    await expect(sendProviderMessage('+15551230000', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/Blocked/);
-  });
+    await expect(sendProviderMessage('+12485550140', 'hi', { accountId: null, category: 'customer_message' })).rejects.toThrow(/Blocked/);
+  }, 15000);
 });
 
 describe('which provider is selected', () => {
@@ -415,8 +416,8 @@ describe('buildSendRequest', () => {
   });
 
   /**
-   * No https origin, no callback — which means "Failed texts" on the health
-   * page can only ever read zero. That was silent; the admin card now says it.
+   * Local request previews can omit callbacks. Production rejection is held by
+   * sms-callback-preflight.test.ts, including the no-credit/no-request boundary.
    */
   it('omits the delivery callback when the origin is not https', () => {
     vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3010');

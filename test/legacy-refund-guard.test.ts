@@ -342,7 +342,8 @@ const transientRefundDbError = { code: '08006', message: 'temporary database fai
 describe('legacy refund charge-model boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.createRefund.mockResolvedValue({ id: 're_legacy_guard' });
+    mocks.admin = { rpc: vi.fn().mockResolvedValue({ data: null, error: null }) };
+    mocks.createRefund.mockResolvedValue({ id: 're_legacy_guard', status: 'succeeded', amount: 2500 });
     mocks.getStripeClient.mockReturnValue({
       refunds: { create: mocks.createRefund },
       webhooks: { constructEvent: () => mocks.event },
@@ -444,6 +445,66 @@ describe('legacy refund charge-model boundary', () => {
     expect(update).not.toHaveBeenCalled();
     expect(mocks.createPaymentFeedEvent).not.toHaveBeenCalled();
     expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+  });
+
+  it('refuses a refund reserved by automatic recovery before contacting Stripe', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: { message: 'refund recovery pending' } });
+    mocks.admin = { rpc };
+    const { client, updates } = paymentClient({ ...legacyPayment, charge_model: 'destination' });
+    await expect(refundPayment(client, 'acct_workspace', 'pay_legacy_guard', 25))
+      .rejects.toThrow('refund recovery pending');
+    expect(rpc).toHaveBeenCalledWith('begin_quick_stop_manual_refund', {
+      p_account_id: 'acct_workspace', p_payment_id: 'pay_legacy_guard', p_target_cents: 2500,
+      p_expected_refunded_cents: 0,
+    });
+    expect(mocks.getStripeClient).not.toHaveBeenCalled();
+    expect(updates).toEqual([]);
+  });
+
+  it('finishes a reserved manual refund only after recording the provider result', async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: 'manual-token', error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
+    mocks.admin = { rpc };
+    const { client, updates } = paymentClient({ ...legacyPayment, charge_model: 'destination' });
+    await expect(refundPayment(client, 'acct_workspace', 'pay_legacy_guard', 25))
+      .resolves.toMatchObject({ refundedTotal: 25 });
+    expect(updates).toHaveLength(1);
+    expect(rpc).toHaveBeenLastCalledWith('finish_quick_stop_manual_refund', {
+      p_account_id: 'acct_workspace', p_payment_id: 'pay_legacy_guard',
+      p_token: 'manual-token', p_succeeded: true,
+    });
+  });
+
+  it('retains an uncertain manual refund reservation when the provider request fails', async () => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: 'manual-token', error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
+    mocks.admin = { rpc };
+    mocks.createRefund.mockRejectedValueOnce(new Error('provider timeout'));
+    const { client, updates } = paymentClient({ ...legacyPayment, charge_model: 'destination' });
+    await expect(refundPayment(client, 'acct_workspace', 'pay_legacy_guard', 25))
+      .rejects.toThrow('provider timeout');
+    expect(updates).toEqual([]);
+    expect(rpc).toHaveBeenLastCalledWith('finish_quick_stop_manual_refund', {
+      p_account_id: 'acct_workspace', p_payment_id: 'pay_legacy_guard',
+      p_token: 'manual-token', p_succeeded: false,
+    });
+  });
+
+  it.each(['pending', 'requires_action', 'failed', 'canceled'])('does not record a %s manual refund as issued', async (status) => {
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: 'manual-token', error: null })
+      .mockResolvedValueOnce({ data: true, error: null });
+    mocks.admin = { rpc };
+    mocks.createRefund.mockResolvedValueOnce({ id: 're_pending', amount: 2500, status });
+    const { client, updates } = paymentClient({ ...legacyPayment, charge_model: 'destination' });
+    await expect(refundPayment(client, 'acct_workspace', 'pay_legacy_guard', 25)).rejects.toThrow('provider reconciliation');
+    expect(updates).toEqual([]);
+    expect(mocks.sendPaymentSmsEvent).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenLastCalledWith('finish_quick_stop_manual_refund', {
+      p_account_id: 'acct_workspace', p_payment_id: 'pay_legacy_guard', p_token: 'manual-token', p_succeeded: false,
+    });
   });
 
   it('keeps explicit destination charge.refunded reconciliation on the legacy path', async () => {

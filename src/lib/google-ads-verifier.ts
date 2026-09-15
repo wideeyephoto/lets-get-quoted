@@ -1,4 +1,6 @@
 
+import { ingestDataManagerConversion, usesDataManager } from './google-data-manager';
+
 // A hung upstream otherwise holds the whole serverless invocation open.
 const OUTBOUND_TIMEOUT_MS = 10_000;
 /**
@@ -29,6 +31,7 @@ export type VerifierOptions = {
   customerId?: string;
   clientId?: string;
   clientSecret?: string;
+  /** @deprecated Ignored. API access comes from the OAuth Cloud project. */
   developerToken?: string;
   refreshToken?: string;
   mccCustomerId?: string;
@@ -66,6 +69,8 @@ export type OfflineConversionReport = {
   mode: 'dry-run' | 'live';
   servingCustomerId?: string | null;
   allowlisted: boolean;
+  validationOnly?: boolean;
+  conversionRecorded?: boolean;
   requiresDataManagerApi: boolean;
   steps: StepResult[];
   success: boolean;
@@ -81,7 +86,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
   const clientId = options.clientId || process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET;
-  const developerToken = options.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const refreshToken = options.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN;
   const mccCustomerId = (options.mccCustomerId || process.env.GOOGLE_ADS_MCC_CUSTOMER_ID || '').replace(/-/g, '').trim();
   const explicitCustomerId = (options.customerId || process.env.GOOGLE_ADS_CLIENT_CUSTOMER_ID || '').replace(/-/g, '').trim();
@@ -114,11 +118,10 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     return report;
   }
 
-  if (!clientId || !clientSecret || !refreshToken || !developerToken) {
+  if (!clientId || !clientSecret || !refreshToken) {
     const missing: string[] = [];
     if (!clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
     if (!clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
-    if (!developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
     if (!refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
 
     const err = `Missing required credentials for live verification: ${missing.join(', ')}.`;
@@ -158,7 +161,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
 
     const baseHeaders: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
       'Content-Type': 'application/json',
     };
     if (mccCustomerId) {
@@ -171,7 +173,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        'developer-token': developerToken,
       },
     });
 
@@ -217,6 +218,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
       }),
     });
 
+    if (!searchRes.ok) throw new Error(`Customer account query failed with HTTP ${searchRes.status}`);
     let customerInfo = { currency: 'USD', timeZone: 'America/New_York', testAccount: false };
     if (searchRes.ok) {
       const searchData = await searchRes.json();
@@ -279,7 +281,7 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
     );
 
     // If missing and createConversionAction is requested, create it
-    if (!wonJobAction && options.createConversionAction !== false) {
+    if (!wonJobAction && options.createConversionAction === true) {
       try {
         const createConvRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/conversionActions:mutate`, {
           signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
@@ -380,77 +382,57 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
       note: 'Successfully created Campaign Budget on Google Ads API v25 (HTTP 200)',
     });
 
-    // Step 5: Create Campaign with PAUSED status
-    const campaignName = `Prelaunch Verification Campaign - ${Date.now()}`;
-    const campRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
-      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
-      method: 'POST',
-      headers: baseHeaders,
-      body: JSON.stringify({
-        operations: [
-          {
-            create: {
-              name: campaignName,
-              status: 'PAUSED',
-              advertisingChannelType: 'SEARCH',
-              campaignBudget: budgetResourceName,
-              networkSettings: {
-                targetGoogleSearch: true,
-                targetSearchNetwork: true,
-                targetContentNetwork: false,
-                targetPartnerSearchNetwork: false,
+    let campResourceName: string | undefined;
+    try {
+      // Step 5: Create Campaign with PAUSED status
+      const campaignName = `Prelaunch Verification Campaign - ${Date.now()}`;
+      const campRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({
+          operations: [
+            {
+              create: {
+                name: campaignName,
+                status: 'PAUSED',
+                advertisingChannelType: 'SEARCH',
+                campaignBudget: budgetResourceName,
+                networkSettings: {
+                  targetGoogleSearch: true,
+                  targetSearchNetwork: true,
+                  targetContentNetwork: false,
+                  targetPartnerSearchNetwork: false,
+                },
+                maximizeConversions: {},
+                containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
               },
-              maximizeConversions: {},
-              containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
             },
-          },
-        ],
-      }),
-    });
+          ],
+        }),
+      });
 
-    if (!campRes.ok) {
-      const errText = await campRes.text();
-      throw new Error(`campaigns:mutate create failed with HTTP ${campRes.status}: ${errText}`);
-    }
+      if (!campRes.ok) {
+        const errText = await campRes.text();
+        throw new Error(`campaigns:mutate create failed with HTTP ${campRes.status}: ${errText}`);
+      }
 
-    const campData = await campRes.json();
-    const campResourceName = campData.results?.[0]?.resourceName;
-    const campaignId = campResourceName?.split('/')?.pop() || '';
+      const campData = await campRes.json();
+      campResourceName = campData.results?.[0]?.resourceName;
+      if (!campResourceName) throw new Error('Campaign mutation returned no resourceName');
+      const campaignId = campResourceName?.split('/')?.pop() || '';
 
-    report.steps.push({
-      step: 5,
-      name: 'Paused Campaign Creation',
-      status: 'PASS',
-      resourceName: campResourceName,
-      campaignId,
-      note: 'Successfully created PAUSED campaign on Google Ads API v25 (HTTP 200)',
-    });
+      report.steps.push({
+        step: 5,
+        name: 'Paused Campaign Creation',
+        status: 'PASS',
+        resourceName: campResourceName,
+        campaignId,
+        note: 'Successfully created PAUSED campaign on Google Ads API v25 (HTTP 200)',
+      });
 
-    // Step 6: Status Toggle and Teardown
-    const toggleRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
-      signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
-      method: 'POST',
-      headers: baseHeaders,
-      body: JSON.stringify({
-        operations: [
-          {
-            updateMask: 'status',
-            update: {
-              resourceName: campResourceName,
-              status: 'PAUSED',
-            },
-          },
-        ],
-      }),
-    });
-
-    if (!toggleRes.ok) {
-      const errText = await toggleRes.text();
-      throw new Error(`campaigns:mutate status toggle failed with HTTP ${toggleRes.status}: ${errText}`);
-    }
-
-    if (options.cleanup !== false) {
-      await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
+      // Step 6: Status Toggle and Teardown
+      const toggleRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
         signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
         method: 'POST',
         headers: baseHeaders,
@@ -460,19 +442,46 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
               updateMask: 'status',
               update: {
                 resourceName: campResourceName,
-                status: 'REMOVED',
+                status: 'PAUSED',
               },
             },
           ],
         }),
       });
+
+      if (!toggleRes.ok) {
+        const errText = await toggleRes.text();
+        throw new Error(`campaigns:mutate status toggle failed with HTTP ${toggleRes.status}: ${errText}`);
+      }
+
+    } finally {
+      if (options.cleanup !== false) {
+        const cleanupErrors: string[] = [];
+        if (campResourceName) {
+          try {
+            const removeRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`, {
+              signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS), method: 'POST', headers: baseHeaders,
+              body: JSON.stringify({ operations: [{ remove: campResourceName }] }),
+            });
+            if (!removeRes.ok) cleanupErrors.push(`Campaign removal HTTP ${removeRes.status}`);
+          } catch { cleanupErrors.push('Campaign removal request failed'); }
+        }
+        try {
+          const removeBudgetRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaignBudgets:mutate`, {
+            signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS), method: 'POST', headers: baseHeaders,
+            body: JSON.stringify({ operations: [{ remove: budgetResourceName }] }),
+          });
+          if (!removeBudgetRes.ok) cleanupErrors.push(`Budget removal HTTP ${removeBudgetRes.status}`);
+        } catch { cleanupErrors.push('Budget removal request failed'); }
+        if (cleanupErrors.length) throw new Error(`Test resource cleanup failed: ${cleanupErrors.join('; ')}`);
+      }
     }
 
     report.steps.push({
       step: 6,
       name: 'Campaign Status Toggle & Teardown',
       status: 'PASS',
-      note: 'Verified status toggle write-path and cleanly tore down test campaign with status=REMOVED (HTTP 200)',
+      note: options.cleanup === false ? 'Verified PAUSED status update; cleanup explicitly disabled.' : 'Verified PAUSED status update and successful campaign and budget removal responses.',
     });
 
     report.success = true;
@@ -490,15 +499,20 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
  * whether the token is allowlisted or blocked by the June 15, 2026 cutoff.
  */
 export async function runOfflineConversionVerification(options: VerifierOptions = {}): Promise<OfflineConversionReport> {
+  if (usesDataManager()) {
+    const result = options.dryRun
+      ? { success: true, stage: 'validation', message: 'Simulated Data Manager validation; no conversion recorded.' }
+      : await ingestDataManagerConversion({ clientCustomerId: options.customerId, conversionActionName: options.conversionActionId || process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB || '', gclid: 'validation_only_synthetic_click', conversionValueDollars: 1 }, true);
+    return { timestamp: new Date().toISOString(), apiVersion: 'data-manager-v1', mode: options.dryRun ? 'dry-run' : 'live', allowlisted: false, validationOnly: true, conversionRecorded: false, requiresDataManagerApi: true, success: result.success, error: result.success ? null : result.message, steps: [{ step: 1, name: 'Data Manager conversion validation', status: result.success ? 'PASS' : 'FAIL', note: result.message }] };
+  }
   const dryRun = Boolean(options.dryRun);
 
   const clientId = options.clientId || process.env.GOOGLE_ADS_CLIENT_ID;
   const clientSecret = options.clientSecret || process.env.GOOGLE_ADS_CLIENT_SECRET;
-  const developerToken = options.developerToken || process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   const refreshToken = options.refreshToken || process.env.GOOGLE_ADS_REFRESH_TOKEN;
   const mccCustomerId = (options.mccCustomerId || process.env.GOOGLE_ADS_MCC_CUSTOMER_ID || '').replace(/-/g, '').trim();
   const explicitCustomerId = (options.customerId || process.env.GOOGLE_ADS_CLIENT_CUSTOMER_ID || '').replace(/-/g, '').trim();
-  const conversionActionId = options.conversionActionId || '123456789';
+  const conversionActionId = options.conversionActionId || process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB;
 
   const report: OfflineConversionReport = {
     timestamp: new Date().toISOString(),
@@ -506,6 +520,8 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
     mode: dryRun ? 'dry-run' : 'live',
     servingCustomerId: maskId(explicitCustomerId),
     allowlisted: false,
+    validationOnly: true,
+    conversionRecorded: false,
     requiresDataManagerApi: false,
     steps: [],
     success: false,
@@ -523,11 +539,10 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
     return report;
   }
 
-  if (!clientId || !clientSecret || !refreshToken || !developerToken) {
+  if (!clientId || !clientSecret || !refreshToken) {
     const missing: string[] = [];
     if (!clientId) missing.push('GOOGLE_ADS_CLIENT_ID');
     if (!clientSecret) missing.push('GOOGLE_ADS_CLIENT_SECRET');
-    if (!developerToken) missing.push('GOOGLE_ADS_DEVELOPER_TOKEN');
     if (!refreshToken) missing.push('GOOGLE_ADS_REFRESH_TOKEN');
 
     const err = `Missing required credentials for live verification: ${missing.join(', ')}.`;
@@ -538,6 +553,11 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
   if (!explicitCustomerId) {
     const err = 'Target client customer ID required (GOOGLE_ADS_CLIENT_CUSTOMER_ID or --customer-id).';
     report.error = err;
+    return report;
+  }
+
+  if (!conversionActionId || !/^\d+$/.test(conversionActionId)) {
+    report.error = 'A real numeric conversion action ID is required (GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB or conversionActionId).';
     return report;
   }
 
@@ -572,7 +592,6 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
 
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
       'Content-Type': 'application/json',
     };
     if (mccCustomerId) {
@@ -592,6 +611,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
         },
       ],
       partialFailure: true,
+      validateOnly: true,
     };
 
     report.steps.push({
@@ -623,7 +643,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
       if (resText.includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE')) {
         report.requiresDataManagerApi = true;
         report.allowlisted = false;
-        const msg = 'DEVELOPER TOKEN RESTRICTION CONFIRMED: Developer token is NOT allowlisted for ConversionUploadService. Google restricted this endpoint after June 15, 2026. Must migrate to Google Data Manager API.';
+        const msg = 'CONVERSION UPLOAD RESTRICTION CONFIRMED: This integration is NOT allowlisted for ConversionUploadService. Google restricted this endpoint after June 15, 2026. Must migrate to Google Data Manager API.';
         report.error = msg;
         report.steps.push({
           step: 3,
@@ -634,12 +654,12 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
         return report;
       }
 
-      if (resText.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
-        const msg = 'DEVELOPER TOKEN UNAPPROVED: Token is restricted to Test Account Access and cannot operate on production advertiser accounts. Requires Explorer or Basic Access approval in API Center.';
+      if (resText.includes('CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION') || resText.includes('DEVELOPER_TOKEN_NOT_APPROVED')) {
+        const msg = 'CLOUD PROJECT UNAPPROVED: The OAuth Cloud project cannot access production advertiser accounts. Review its access level on the Google Ads API Overview page in Google Cloud Console.';
         report.error = msg;
         report.steps.push({
           step: 3,
-          name: 'Developer Token Status',
+          name: 'Cloud Project Access Status',
           status: 'BLOCKED',
           note: msg,
         });
@@ -649,14 +669,19 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
       throw new Error(`uploadClickConversions failed with HTTP ${uploadRes.status}: ${resText}`);
     }
 
+    if (resJson.partialFailureError) {
+      report.requiresDataManagerApi = JSON.stringify(resJson.partialFailureError).includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE') || String(resJson.partialFailureError.message).includes('Data Manager API');
+      report.error = `Conversion validation failed: ${resJson.partialFailureError.message || 'partial failure'}`;
+      report.steps.push({ step: 3, name: 'Conversion validation', status: 'FAIL', note: report.error! });
+      return report;
+    }
     report.allowlisted = true;
     report.success = true;
-    const partialErr = resJson.partialFailureError ? resJson.partialFailureError.message : 'None';
     report.steps.push({
       step: 3,
-      name: 'uploadClickConversions Endpoint Reachability',
+      name: 'uploadClickConversions Validation',
       status: 'PASS',
-      note: `HTTP 200 received! ConversionUploadService is active and allowlisted on this developer token. (Partial failure on synthetic data: ${partialErr})`,
+      note: 'HTTP 200 with no partial failures using the configured conversion action and validateOnly=true. No conversion was recorded; real-click attribution is not tested.',
     });
 
     return report;

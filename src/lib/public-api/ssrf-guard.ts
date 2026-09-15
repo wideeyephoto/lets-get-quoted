@@ -117,6 +117,25 @@ export function isPrivateOrRestrictedIpv6(ip: string): boolean {
     return true;
   }
 
+  // Uncompressed IPv4-mapped: 0:0:0:0:0:ffff:XXXX:XXXX — canonicalize to
+  // ::ffff: and re-check so the hex-form decoder above handles it.
+  const uncompressedMapped = clean.match(
+    /^0{1,4}(?::0{1,4}){4}:ffff:([0-9a-f]{1,4}:[0-9a-f]{1,4})$/,
+  );
+  if (uncompressedMapped) {
+    return isPrivateOrRestrictedIpv6(`::ffff:${uncompressedMapped[1]}`);
+  }
+
+  // IPv4-compatible (deprecated, ::XXXX:XXXX without ffff) — e.g. ::7f00:1 is
+  // 127.0.0.1. These are routed to the embedded IPv4 host by the kernel.
+  const compatMatch = clean.match(/^::([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (compatMatch) {
+    const high = Number.parseInt(compatMatch[1]!, 16);
+    const low = Number.parseInt(compatMatch[2]!, 16);
+    const dotted = `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
+    return isPrivateOrRestrictedIpv4(dotted);
+  }
+
   return false;
 }
 

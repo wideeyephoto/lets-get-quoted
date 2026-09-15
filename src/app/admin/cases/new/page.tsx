@@ -81,10 +81,10 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
 
       <section className={styles.panel}>
         <form action={createCaseAction} className={styles.formStack}>
-          <label htmlFor="case-subject">Subject</label>
+          <label htmlFor="case-subject" className={styles.formLabel}>Subject</label>
           <input id="case-subject" className={styles.input} name="subject" required placeholder="What's this case about?" autoFocus />
 
-          <label htmlFor="case-account">Account (optional)</label>
+          <label htmlFor="case-account" className={styles.formLabel}>Account (optional)</label>
           <select id="case-account" className={styles.input} name="account_id" defaultValue={invalidAccountRequested ? '' : (targetAccountId ?? '')}>
             <option value="">General platform case</option>
             {accounts.map((account) => (
@@ -92,10 +92,10 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
             ))}
           </select>
 
-          <label htmlFor="case-body">Initial internal note (optional)</label>
+          <label htmlFor="case-body" className={styles.formLabel}>Initial internal note (optional)</label>
           <textarea id="case-body" className={styles.input} name="body" rows={5} placeholder="Context, investigation already done, and the next useful step" />
 
-          <label htmlFor="case-priority">Priority</label>
+          <label htmlFor="case-priority" className={styles.formLabel}>Priority</label>
           <select id="case-priority" className={styles.input} name="priority" defaultValue="normal">
             <option value="low">Low</option>
             <option value="normal">Normal</option>
@@ -103,7 +103,7 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
             <option value="urgent">Urgent</option>
           </select>
 
-          <label htmlFor="case-assignee">Assign to</label>
+          <label htmlFor="case-assignee" className={styles.formLabel}>Assign to</label>
           <select id="case-assignee" className={styles.input} name="assigned_to" defaultValue={ctx.adminEmail}>
             <option value="">Unassigned</option>
             {staff.filter((person) => person.active).map((person) => (
@@ -111,7 +111,7 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
             ))}
           </select>
 
-          <label htmlFor="case-sla">SLA due (UTC)</label>
+          <label htmlFor="case-sla" className={styles.formLabel}>SLA due (UTC)</label>
           <input id="case-sla" className={styles.input} name="sla_due_at" type="datetime-local" />
           <p className={styles.fieldHint}>Leave blank to use the priority default: urgent 4h, high 24h, normal 3 days, low 5 days.</p>
 
