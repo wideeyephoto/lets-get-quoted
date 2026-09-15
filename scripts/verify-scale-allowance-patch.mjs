@@ -41,7 +41,7 @@ try {
 }
 
 const PATCH = readFileSync(
-  join(REPO, 'migrations', '20260820100000_scale_gets_the_allowance_it_is_sold.sql'), 'utf8',
+  join(REPO, 'migrations', '20260820125456_scale_gets_the_allowance_it_is_sold.sql'), 'utf8',
 ).replace(/\r\n/g, '\n');
 
 const R = [];

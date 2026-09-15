@@ -64,8 +64,8 @@ try {
     );
     grant select,insert,update on all tables in schema public to service_role;
   `);
-  await q(readFileSync(join(repo, 'migrations/20260914132825_quick_stop_atomic_sweep.sql'), 'utf8'));
-  await q(readFileSync(join(repo, 'migrations/20260914133059_quick_stop_lifecycle_guard.sql'), 'utf8'));
+  await q(readFileSync(join(repo, 'migrations/20260914145752_quick_stop_atomic_sweep.sql'), 'utf8'));
+  await q(readFileSync(join(repo, 'migrations/20260914145757_quick_stop_lifecycle_guard.sql'), 'utf8'));
   await q('insert into public.accounts values ($1,\'UTC\'),($2,\'America/Los_Angeles\')', [account, otherAccount]);
   const sweep = (limit = 50, scope = account) => q('select * from public.sweep_quick_stop_requests($1,$2)', [scope, limit]);
   const reset = () => q('truncate public.extra_stop_events,public.extra_stop_requests,public.payments,public.jobs');

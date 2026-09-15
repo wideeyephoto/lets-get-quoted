@@ -36,7 +36,7 @@ try {
     create table public.accounts(id uuid primary key,extra_stop_locked_until timestamptz,extra_stop_lock_reason text);
     create table public.extra_stop_requests(id uuid primary key,account_id uuid not null,status text,no_show_confirmed_at timestamptz);
     grant select,insert,update on all tables in schema public to service_role;`);
-  await q(readFileSync(join(repo,'migrations/20260914134359_quick_stop_no_show_lock.sql'),'utf8'));
+  await q(readFileSync(join(repo,'migrations/20260914145814_quick_stop_no_show_lock.sql'),'utf8'));
   await q('insert into public.accounts(id) values($1),($2)',[account,otherAccount]);
   const reset=async()=>{ await q('truncate public.quick_stop_no_show_enforcements,public.extra_stop_requests'); await q('update public.accounts set extra_stop_locked_until=null,extra_stop_lock_reason=null'); };
   const seed=(n,at,status='no_show_confirmed',connection=client)=>connection.query('insert into public.extra_stop_requests values($1,$2,$3,$4)',[id(n),account,status,at]);

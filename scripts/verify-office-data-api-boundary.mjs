@@ -19,8 +19,8 @@ const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'postgres', passwo
   persistent: true, onLog: () => {}, onError: () => {}, postgresFlags: ['-h', '127.0.0.1'] });
 const schema = readFileSync(join(root, 'schema.sql'), 'utf8');
 const source = file => readFileSync(join(root, 'migrations', file), 'utf8');
-const repair = source('20260911154456_repair_office_job_write_boundary.sql');
-const reads = source('20260911154457_enforce_office_job_read_boundary.sql');
+const repair = source('20260911155729_repair_office_job_write_boundary.sql');
+const reads = source('20260911162539_enforce_office_job_read_boundary.sql');
 const broken = source('20260911000000_office_data_api_security.sql');
 const section = (text, start, end) => { const a = text.indexOf(start), b = text.indexOf(end, a); assert(a >= 0 && b > a, `Missing SQL anchors ${start}`); return text.slice(a,b); };
 const fn = name => { const r = new RegExp(`create or replace function (?:public\\.)?${name}\\([\\s\\S]*?as (\\$[\\w]*\\$)[\\s\\S]*?\\1;`, 'i'); const found = schema.match(r); assert(found, `Missing actual schema function ${name}`); return found[0]; };
@@ -95,7 +95,7 @@ try {
   await q(reads); await q(reads);
   // Reproduce the actual migration order: the session view predates the
   // document revision column. Service-role reads saw it; session saves did not.
-  const ledger = source('20260914135714_document_email_send_ledger.sql');
+  const ledger = source('20260914145825_document_email_send_ledger.sql');
   await q(ledger.match(/alter table public\.jobs add column document_email_revision[^;]+;/)[0]);
   await q(section(ledger,'create function public.bump_job_email_revision()', 'create function public.bump_invoice_email_revision()'));
   const originalRevision = (await q('select document_email_revision from jobs where id=$1',[jobA])).rows[0].document_email_revision;
@@ -104,7 +104,7 @@ try {
     assert.equal(saved.document_email_revision, undefined);
   });
   pass('pre-repair session save reproduces the missing document revision');
-  const revisionRepair = source('20260914165500_job_access_email_revision.sql');
+  const revisionRepair = source('20260914165553_job_access_email_revision.sql');
   await q(revisionRepair); await q(revisionRepair);
   await actor('authenticated',owner,async()=> {
     const saved = (await q("update job_access set scope=scope where id=$1 returning *",[jobA])).rows[0];

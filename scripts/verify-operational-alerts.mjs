@@ -26,7 +26,7 @@ try {
     create table business_effects(kind text primary key, count int); insert into business_effects values('charges',1),('credits',1),('messages',1);
     grant usage on schema public to service_role,anon,authenticated;
     grant select on webhook_failures,billing_events,sms_delivery_tasks,sms_events,payments,cron_runs to service_role;`);
-  await db.query(readFileSync(join(root, 'migrations/20260909133220_operational_alert_delivery.sql'), 'utf8'));
+  await db.query(readFileSync(join(root, 'migrations/20260909135739_operational_alert_delivery.sql'), 'utf8'));
   passed('migration applies');
   for (const role of ['anon', 'authenticated']) {
     await db.query(`set role ${role}`);
@@ -97,7 +97,7 @@ try {
     alter table document_email_sends enable row level security;
     grant select on billing_event_operational_classifications,workspace_overage_settlements,workspace_overage_accruals,
       contractor_lifecycle_sends,document_email_sends to service_role;`);
-  const recoveryMigration = readFileSync(join(root,'migrations/20260914142641_email_send_recovery_monitoring.sql'),'utf8');
+  const recoveryMigration = readFileSync(join(root,'migrations/20260914145838_email_send_recovery_monitoring.sql'),'utf8');
   assert.ok(readFileSync(join(root,'schema.sql'),'utf8').replace(/\r\n/g,'\n').includes(recoveryMigration.replace(/\r\n/g,'\n').trim()));
   await db.query(recoveryMigration);
   for (const role of ['anon','authenticated']) {

@@ -81,8 +81,8 @@ try {
     grant select on webhook_failures, sms_delivery_tasks, sms_events, payments, cron_runs to service_role;
   `);
 
-  // Apply prerequisite migration 20260909133220_operational_alert_delivery.sql
-  await db.query(readFileSync(join(root, 'migrations/20260909133220_operational_alert_delivery.sql'), 'utf8'));
+  // Apply prerequisite migration 20260909135739_operational_alert_delivery.sql
+  await db.query(readFileSync(join(root, 'migrations/20260909135739_operational_alert_delivery.sql'), 'utf8'));
   passed('prerequisite operational_alert_delivery migration applies');
 
   const evidence = JSON.parse(readFileSync(join(root, 'docs/evidence/billing-rehearsal-noise-investigation-2026-09-09.json'), 'utf8'));
@@ -94,8 +94,8 @@ try {
   await db.query(readFileSync(join(root, 'migrations/20260909130000_ignore_test_mode_subscription_rehearsals.sql'), 'utf8'));
   passed('actual production projection constraints and immutable-event guard installed');
 
-  // Apply new migration 20260909160000_billing_event_operational_reviews.sql
-  await db.query(readFileSync(join(root, 'migrations/20260909160000_billing_event_operational_reviews.sql'), 'utf8'));
+  // Apply new migration 20260909182123_billing_event_operational_reviews.sql
+  await db.query(readFileSync(join(root, 'migrations/20260909182123_billing_event_operational_reviews.sql'), 'utf8'));
   passed('billing_event_operational_reviews migration applies cleanly');
 
   // Check RLS & privileges on operational reviews

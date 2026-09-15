@@ -23,8 +23,8 @@ try {
     create function public.office_can(uuid,text) returns boolean language sql as 'select false';
     grant usage on schema public to anon,authenticated,service_role;`);
   await db.query(readFileSync(join(root, 'migrations/20260907180000_email_sending_domains.sql'), 'utf8'));
-  await db.query(readFileSync(join(root, 'migrations/20260909210950_email_sending_domain_account_limit.sql'), 'utf8'));
-  await db.query(readFileSync(join(root, 'migrations/20260910120000_email_domain_failure_notices.sql'), 'utf8'));
+  await db.query(readFileSync(join(root, 'migrations/20260909212825_email_sending_domain_account_limit.sql'), 'utf8'));
+  await db.query(readFileSync(join(root, 'migrations/20260910122730_email_domain_failure_notices.sql'), 'utf8'));
   await db.query('grant select,insert,update,delete on accounts,email_sending_domains to service_role');
   passed('actual migrations apply to PostgreSQL 17');
 

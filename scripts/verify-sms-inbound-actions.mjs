@@ -622,7 +622,7 @@ try {
   const definitionBeforeHelpFix = one(await client.query(
     `select pg_get_functiondef('public.ingest_sms_inbound_webhook(text,text,text,text,text,text,text,text,text,text[],text)'::regprocedure) as body`,
   )).body;
-  const helpMigration = readFileSync('migrations/20260908173107_sms_dispatch_help_account_binding.sql', 'utf8');
+  const helpMigration = readFileSync('migrations/20260908173701_sms_dispatch_help_account_binding.sql', 'utf8');
   await client.query(helpMigration);
   await client.query(helpMigration);
   const definitionAfterHelpFix = one(await client.query(
