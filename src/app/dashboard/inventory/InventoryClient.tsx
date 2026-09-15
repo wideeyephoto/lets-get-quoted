@@ -74,7 +74,7 @@ import {
   isToolOverdue,
   generateDepreciationScheduleCsv,
 } from '@/lib/inventory-tracker';
-import { formatUsd, formatUsdExact } from '@/lib/money-format';
+import { formatUsdExact } from '@/lib/money-format';
 import { validateToolPhotoFile } from '@/lib/tool-photo-validation';
 import {
   saveToolAction,
@@ -94,7 +94,7 @@ import {
   autofillToolFromStoreAction,
   searchStoreCatalogAction,
   seedStarterInventoryAction,
-  seedInitialInventoryAction,
+
   uploadToolPhotoAction,
   applyVanKitTemplateAction,
   transferToolAction,
@@ -241,8 +241,9 @@ export default function InventoryClient({
   initialPayload,
   crewMembers = [],
   activeJobs = [],
-  canWrite = true,
-  canCustody = true,
+  initialRestockOrders = [],
+  canWrite = false,
+  canCustody = false,
 }: InventoryClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -3028,7 +3029,7 @@ export default function InventoryClient({
                 <button
                   type="button"
                   className={styles.btnPrimary}
-                  onClick={() => setPoModalOpen(true)}
+                  onClick={() => setShowPoModal(true)}
                 >
                   <ShoppingBag size={16} />
                   <span>New Draft</span>
@@ -3076,7 +3077,7 @@ export default function InventoryClient({
                                   });
                                   window.location.reload();
                                 } catch(e: any) {
-                                  setToast({ message: e.message || 'Error', type: 'error' });
+                                  showToast(e.message || 'Error', 'error');
                                 }
                               }}
                             >

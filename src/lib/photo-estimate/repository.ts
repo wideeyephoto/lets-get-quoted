@@ -139,3 +139,61 @@ export async function createPhotoEstimateRun(
   };
 }
 
+
+export async function createPhotoEstimateReview(
+  supabase: any,
+  estimateId: string,
+  revision: number,
+  reviewerId: string,
+  reviewedFindings: any[],
+  dismissedFindings: any[],
+  confirmedQuantities: any[],
+  serviceSnapshots: any[],
+  calculatedLines: any[]
+) {
+  const { data, error } = await supabase
+    .from('photo_estimate_reviews')
+    .insert({
+      estimate_id: estimateId,
+      revision,
+      reviewer_id: reviewerId,
+      reviewed_findings: reviewedFindings,
+      dismissed_findings: dismissedFindings,
+      confirmed_quantities: confirmedQuantities,
+      service_snapshots: serviceSnapshots,
+      calculated_lines: calculatedLines,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(Failed to create photo estimate review: );
+  }
+  return data;
+}
+
+export async function createPhotoEstimateQuoteLink(
+  supabase: any,
+  estimateId: string,
+  reviewRevision: number,
+  jobId: string,
+  stableQuoteItemId: string,
+  sourceLineId: string
+) {
+  const { data, error } = await supabase
+    .from('photo_estimate_quote_links')
+    .insert({
+      estimate_id: estimateId,
+      review_revision: reviewRevision,
+      job_id: jobId,
+      stable_quote_item_id: stableQuoteItemId,
+      source_line_id: sourceLineId,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(Failed to create photo estimate quote link: );
+  }
+  return data;
+}

@@ -13,7 +13,6 @@ import type {
   VanKitTemplate,
   RestockOrder,
   RestockOrderLine,
-  RestockReceipt,
   RestockOrderStatus,
 } from '@/lib/inventory-tracker';
 import {
@@ -891,7 +890,7 @@ export async function adjustStockQuantity(
 ): Promise<VanStockItem> {
   const p_quantity = -delta; // RPC subtracts p_quantity, so negative delta means add
 
-  const { data, error } = await supabase.rpc('inventory_transfer_stock', {
+  const { error } = await supabase.rpc('inventory_transfer_stock', {
     p_account_id: accountId,
     p_source_item_id: stockId,
     p_quantity: p_quantity,
@@ -1400,7 +1399,7 @@ export async function saveRestockOrder(
 ): Promise<RestockOrder> {
   const orderId = order.id || crypto.randomUUID();
   
-  const { data: savedOrder, error: orderErr } = await supabase
+  const { error: orderErr } = await supabase
     .from('inventory_restock_orders')
     .upsert({
       id: orderId,

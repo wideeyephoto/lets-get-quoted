@@ -97,3 +97,97 @@ export async function analyzePhotoDefectsAction(
     };
   }
 }
+export interface ApplyPhotoDefectsParams {
+  jobId: string;
+  estimateId: string;
+  items: Array<{
+    name: string;
+    cost: number;
+    suggestedServiceId?: string;
+    quantity?: number;
+    defectName: string;
+    recommendedRepair: string;
+    severity: string;
+  }>;
+  priceBook: Array<{ id: string; name: string; unitPrice: number; unit: string }>;
+}
+
+export async function applyPhotoDefectsAction(params: ApplyPhotoDefectsParams) {
+  const { supabase, accountId, userId } = await requireOfficeContext('jobs.write');
+  const { createPhotoEstimateReview, createPhotoEstimateQuoteLink } = await import('@/lib/photo-estimate/repository');
+  
+  const reviewedFindings = params.items.map(item => ({
+    defectName: item.defectName,
+    recommendedRepair: item.recommendedRepair,
+    severity: item.severity
+  }));
+  
+  const confirmedQuantities = params.items.map(item => ({
+    serviceId: item.suggestedServiceId,
+    quantity: item.quantity || 1
+  }));
+  
+  const serviceSnapshots = params.items
+    .filter(item => item.suggestedServiceId)
+    .map(item => {
+      const pbItem = params.priceBook.find(pb => pb.id === item.suggestedServiceId);
+      return {
+        id: item.suggestedServiceId,
+        rate: pbItem?.unitPrice || 0,
+        name: pbItem?.name || item.name,
+        unit: pbItem?.unit || 'each'
+      };
+    });
+    
+  const calculatedLines = params.items.map(item => ({
+    name: item.name,
+    cost: item.cost,
+    source_service_id: item.suggestedServiceId
+  }));
+  
+  // We need to fetch the current review revision from photo_estimates to increment it,
+  // or just use 1 for now if this is the first apply.
+  const { data: estimate } = await supabase
+    .from('photo_estimates')
+    .select('current_review_revision')
+    .eq('id', params.estimateId)
+    .single();
+    
+  const nextRevision = (estimate?.current_review_revision || 0) + 1;
+  
+  await supabase
+    .from('photo_estimates')
+    .update({ current_review_revision: nextRevision })
+    .eq('id', params.estimateId);
+    
+  await createPhotoEstimateReview(
+    supabase,
+    params.estimateId,
+    nextRevision,
+    userId,
+    reviewedFindings,
+    [], // dismissed_findings
+    confirmedQuantities,
+    serviceSnapshots,
+    calculatedLines
+  );
+  
+  // For each applied line, create a quote link. We will generate stable IDs.
+  const linesWithStableIds = params.items.map(item => ({
+    ...item,
+    stable_quote_item_id: crypto.randomUUID()
+  }));
+  
+  for (const line of linesWithStableIds) {
+    await createPhotoEstimateQuoteLink(
+      supabase,
+      params.estimateId,
+      nextRevision,
+      params.jobId,
+      line.stable_quote_item_id,
+      line.suggestedServiceId || 'manual'
+    );
+  }
+  
+  return { ok: true, lines: linesWithStableIds };
+}
