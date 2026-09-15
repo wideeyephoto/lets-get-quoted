@@ -599,7 +599,7 @@ export default function AssetDetailModal({
                 <div style={{ padding: '0.75rem', background: '#161c28', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Acquisition Cost</span>
                   <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#ffffff', fontFamily: 'monospace', marginTop: '0.2rem' }}>
-                    {asset.purchasePrice ? formatUsdExact(asset.purchasePrice) : 'Not recorded'}
+                    {asset.purchasePrice !== null && asset.purchasePrice !== undefined ? formatUsdExact(asset.purchasePrice) : 'Cost not entered'}
                   </div>
                 </div>
 

@@ -29,6 +29,7 @@ export type ToolAsset = {
   brand: string;
   modelNumber?: string | null;
   serialNumber?: string | null;
+  retailerSku?: string | null;
   assetTag: string;
   purchasePrice?: number | null;
   purchaseDate?: string | null;
@@ -96,6 +97,8 @@ export type FleetVehicle = {
   nextServiceDueMileage?: number | null;
   inspectionExpiresAt?: string | null;
   insuranceExpiresAt?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
   notes?: string | null;
 };
 

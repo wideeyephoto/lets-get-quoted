@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
@@ -620,15 +620,17 @@ export default function QuoteBuilder({
                 {reviewing ? 'Checking…' : 'Check before sending'}
               </button>
             ) : null}
-            <button
-              type="button"
-              className="quote-tool"
-              onClick={() => setPhotoModalOpen(true)}
-              title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
-            >
-              <span aria-hidden="true">📸</span>
-              AI Photo Estimate
-            </button>
+            {process.env.NEXT_PUBLIC_ENABLE_PHOTO_ESTIMATE === 'true' && (
+              <button
+                type="button"
+                className="quote-tool"
+                onClick={() => setPhotoModalOpen(true)}
+                title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
+              >
+                <span aria-hidden="true">📸</span>
+                AI Photo Estimate
+              </button>
+            )}
           </div>
           {printHref ? (
             <a href={printHref} className="quote-print">

@@ -214,7 +214,7 @@ export async function transferToolAction(params: {
 }
 
 export async function saveVehicleAction(
-  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string },
+  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string; locationName?: string | null },
 ): Promise<FleetVehicle> {
   const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
   const sanitized = {
@@ -230,6 +230,7 @@ export async function saveVehicleAction(
     purchaseDate: vehicle.purchaseDate ? sanitizeString(vehicle.purchaseDate, 20) : null,
     primaryDriverId: vehicle.primaryDriverId ? sanitizeString(vehicle.primaryDriverId, 100) : null,
     primaryDriverName: vehicle.primaryDriverName ? sanitizeString(vehicle.primaryDriverName, 100) : null,
+    locationName: vehicle.locationName ? sanitizeString(vehicle.locationName, 100) : null,
     notes: vehicle.notes ? sanitizeString(vehicle.notes, 2000) : null,
     inspectionExpiresAt: vehicle.inspectionExpiresAt ? sanitizeString(vehicle.inspectionExpiresAt, 20) : null,
     insuranceExpiresAt: vehicle.insuranceExpiresAt ? sanitizeString(vehicle.insuranceExpiresAt, 20) : null,

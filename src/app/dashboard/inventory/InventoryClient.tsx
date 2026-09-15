@@ -46,6 +46,7 @@ import {
   Clock,
   Slash,
   Eye,
+  ChevronRight,
 } from 'lucide-react';
 import {
   type ToolAsset,
@@ -409,6 +410,9 @@ export default function InventoryClient({
   const totalToolValue = tools.reduce((sum, t) => sum + (t.purchasePrice || 0), 0);
   const totalVehicleValue = vehicles.reduce((sum, v) => sum + (v.purchasePrice || 0), 0);
   const totalEquipmentValue = totalToolValue + totalVehicleValue;
+  const toolsMissingCost = tools.filter(t => t.purchasePrice === null || t.purchasePrice === undefined).length;
+  const vehiclesMissingCost = vehicles.filter(v => v.purchasePrice === null || v.purchasePrice === undefined).length;
+  const totalAssetsMissingCost = toolsMissingCost + vehiclesMissingCost;
   const totalDepreciatedToolValue = tools.reduce(
     (sum, t) =>
       sum +
@@ -427,6 +431,23 @@ export default function InventoryClient({
 
   const totalStockValue = stock.reduce((sum, s) => sum + s.quantityOnHand * s.unitCost, 0);
   const checkedOutToolsCount = tools.filter((t) => t.status === 'checked_out').length;
+
+  const todayStr = getTodayDateString();
+  const overdueTools = tools.filter((t) => isToolOverdue(t, todayStr));
+  const vehiclesWithIssues = vehicles.map(v => ({ v, audit: auditVehicleMaintenance(v, todayStr) })).filter(x => x.audit.statusTone !== 'success');
+
+  const attentionOverdue: { id: string; type: string; title: string; subtitle: string; action: string }[] = [
+    ...overdueTools.map(t => ({ id: t.id, type: 'tool_overdue', title: t.name, subtitle: `Assigned to ${t.assignedCrewName || 'Unknown'}`, action: 'Review' })),
+    ...vehiclesWithIssues.filter(x => x.audit.statusTone === 'danger').map(x => ({ id: x.v.id, type: 'vehicle_danger', title: x.v.name, subtitle: x.audit.summaryAlert || '', action: 'View Vehicle' }))
+  ];
+  const attentionDueSoon: { id: string; type: string; title: string; subtitle: string; action: string }[] = [
+    ...vehiclesWithIssues.filter(x => x.audit.statusTone === 'warn').map(x => ({ id: x.v.id, type: 'vehicle_warn', title: x.v.name, subtitle: x.audit.summaryAlert || '', action: 'Schedule' }))
+  ];
+  const attentionLowStock: { id: string; type: string; title: string; subtitle: string; action: string }[] = lowStockResult.lowStockItems.map(s => ({
+    id: s.id, type: 'low_stock', title: s.name, subtitle: `${s.quantityOnHand} on hand (min ${s.minThreshold})`, action: 'Restock'
+  }));
+
+  const hasAttentionItems = attentionOverdue.length > 0 || attentionDueSoon.length > 0 || attentionLowStock.length > 0;
 
   // Categorized & unified locations (auto-syncs active registered fleet vehicles into location pool)
   const facilityLocations = Array.from(
@@ -506,7 +527,8 @@ export default function InventoryClient({
         category: res.category,
         modelNumber: res.modelNumber,
         assetTag: prev.tool?.assetTag || res.assetTagSuggestion,
-        serialNumber: res.sku || prev.tool?.serialNumber || null,
+        retailerSku: res.sku || prev.tool?.retailerSku || null,
+        serialNumber: prev.tool?.serialNumber || null,
         purchasePrice: res.purchasePrice,
         purchaseDate: res.purchaseDate,
         depreciationSchedule: res.depreciationSchedule,
@@ -820,6 +842,7 @@ export default function InventoryClient({
       nextServiceDueMileage: fd.get('nextServiceDueMileage') ? Number(fd.get('nextServiceDueMileage')) : null,
       inspectionExpiresAt: (fd.get('inspectionExpiresAt') as string) || null,
       insuranceExpiresAt: (fd.get('insuranceExpiresAt') as string) || null,
+      locationName: (fd.get('locationName') as string) || 'Main Shop & Warehouse',
       notes: (fd.get('notes') as string)?.trim() || null,
     };
 
@@ -1362,7 +1385,7 @@ export default function InventoryClient({
           title="View all equipment & asset tax basis"
         >
           <div className={styles.kpiHeader}>
-            <span className={styles.kpiLabel}>Fleet Asset Basis</span>
+            <span className={styles.kpiLabel}>Known Fleet Asset Basis</span>
             <div className={styles.kpiIconWrap}>
               <Wrench size={16} />
             </div>
@@ -1371,6 +1394,11 @@ export default function InventoryClient({
           <div className={`${styles.kpiNote} ${styles.kpiNoteGood}`}>
             <DollarSign size={13} /> Tax Book Basis: {formatUsdExact(totalDepreciatedBookValue)}
           </div>
+          {totalAssetsMissingCost > 0 && (
+            <div className={`${styles.kpiNote} ${styles.kpiNoteWarn}`} style={{ marginTop: '4px' }}>
+              <AlertTriangle size={13} /> {totalAssetsMissingCost} asset{totalAssetsMissingCost === 1 ? '' : 's'} missing cost
+            </div>
+          )}
         </div>
 
         <div
@@ -1487,6 +1515,94 @@ export default function InventoryClient({
           </div>
         </div>
       </div>
+
+      {/* Needs Attention Section */}
+      {hasAttentionItems ? (
+        <div className={styles.attentionSection}>
+          <div className={styles.attentionHeader}>
+            <AlertTriangle size={18} style={{ color: 'var(--inv-status-warn-text, #fbbf24)' }} />
+            <h3>Needs Attention</h3>
+          </div>
+          <div className={styles.attentionGrid}>
+            {attentionOverdue.map(item => (
+              <div key={item.id} className={styles.attentionCard}>
+                <div className={styles.attentionCardTop}>
+                  <div className={styles.attentionCardIcon} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                    <AlertCircle size={16} />
+                  </div>
+                  <div className={styles.attentionCardContent}>
+                    <div className={styles.attentionCardTitle}>{item.title}</div>
+                    <div className={styles.attentionCardSub}>{item.subtitle}</div>
+                  </div>
+                </div>
+                <button
+                  className={styles.attentionActionBtn}
+                  onClick={() => {
+                    if (item.type === 'tool_overdue') {
+                      const t = tools.find(x => x.id === item.id);
+                      if (t) setDetailModal({ open: true, asset: t, type: 'tool' });
+                    } else if (item.type === 'vehicle_danger') {
+                      const v = vehicles.find(x => x.id === item.id);
+                      if (v) setDetailModal({ open: true, asset: v, type: 'vehicle' });
+                    }
+                  }}
+                >
+                  {item.action} <ChevronRight size={14} />
+                </button>
+              </div>
+            ))}
+            {attentionDueSoon.map(item => (
+              <div key={item.id} className={styles.attentionCard}>
+                <div className={styles.attentionCardTop}>
+                  <div className={styles.attentionCardIcon} style={{ background: 'rgba(251,191,36,0.1)', color: '#fbbf24' }}>
+                    <Wrench size={16} />
+                  </div>
+                  <div className={styles.attentionCardContent}>
+                    <div className={styles.attentionCardTitle}>{item.title}</div>
+                    <div className={styles.attentionCardSub}>{item.subtitle}</div>
+                  </div>
+                </div>
+                <button
+                  className={styles.attentionActionBtn}
+                  onClick={() => {
+                    const v = vehicles.find(x => x.id === item.id);
+                    if (v) setDetailModal({ open: true, asset: v, type: 'vehicle' });
+                  }}
+                >
+                  {item.action} <ChevronRight size={14} />
+                </button>
+              </div>
+            ))}
+            {attentionLowStock.map(item => (
+              <div key={item.id} className={styles.attentionCard}>
+                <div className={styles.attentionCardTop}>
+                  <div className={styles.attentionCardIcon} style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8' }}>
+                    <Boxes size={16} />
+                  </div>
+                  <div className={styles.attentionCardContent}>
+                    <div className={styles.attentionCardTitle}>{item.title}</div>
+                    <div className={styles.attentionCardSub}>{item.subtitle}</div>
+                  </div>
+                </div>
+                <button
+                  className={styles.attentionActionBtn}
+                  onClick={() => {
+                    handleTabChange('stock');
+                    setShowPoModal(true);
+                  }}
+                >
+                  {item.action} <ChevronRight size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className={styles.attentionClearState}>
+          <ShieldCheck size={20} style={{ color: '#34d399' }} />
+          <span>All clear. No overdue tools, expired inspections, or low stock.</span>
+        </div>
+      )}
 
       {/* Segmented Navigation Tabs */}
       <div className={styles.tabNavWrapper}>
@@ -1781,9 +1897,13 @@ export default function InventoryClient({
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--inv-tag-orange-text, #ffb580)', fontWeight: 600 }}>
                                 <User size={13} /> {tool.assignedCrewName || 'Assigned Tech'}
                               </div>
-                              {tool.expectedReturnDate && (
+                              {tool.expectedReturnDate ? (
                                 <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-muted, #cbd5e1)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <Clock size={11} /> Due: {tool.expectedReturnDate}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-muted, #cbd5e1)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  <Clock size={11} /> Return date not set
                                 </span>
                               )}
                               <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -1818,7 +1938,7 @@ export default function InventoryClient({
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                             <span style={{ fontSize: '0.85rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
-                              Cost: <strong>{tool.purchasePrice ? formatUsdExact(tool.purchasePrice) : 'N/A'}</strong>
+                              Cost: <strong>{tool.purchasePrice !== null && tool.purchasePrice !== undefined ? formatUsdExact(tool.purchasePrice) : 'Cost not entered'}</strong>
                             </span>
                             <span style={{ fontSize: '0.82rem', color: 'var(--inv-status-good-text, #34d399)', fontWeight: 700 }}>
                               Basis: {formatUsdExact(depr.currentBookValue)}
@@ -2002,13 +2122,22 @@ export default function InventoryClient({
                               {tool.locationName || 'Main Shop & Warehouse'}
                             </span>
                           </div>
-                          {tool.expectedReturnDate && (
+                          {tool.expectedReturnDate ? (
                             <div className={styles.custodyRow} style={{ color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
                               <span className={styles.custodyLabel}>
                                 <Clock size={14} /> Expected Return:
                               </span>
                               <span style={{ fontWeight: 700, color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-primary, #ffffff)' }}>
                                 {tool.expectedReturnDate} {isOverdue && '(OVERDUE)'}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className={styles.custodyRow} style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
+                              <span className={styles.custodyLabel}>
+                                <Clock size={14} /> Expected Return:
+                              </span>
+                              <span style={{ fontWeight: 600, color: 'var(--inv-text-primary, #ffffff)' }}>
+                                Return date not set
                               </span>
                             </div>
                           )}
@@ -2068,7 +2197,7 @@ export default function InventoryClient({
                           <span style={{ color: 'var(--inv-text-muted)' }}>
                             Cost Basis:{' '}
                             <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
-                              {tool.purchasePrice ? formatUsdExact(tool.purchasePrice) : 'N/A'}
+                              {tool.purchasePrice !== null && tool.purchasePrice !== undefined ? formatUsdExact(tool.purchasePrice) : 'Cost not entered'}
                             </strong>
                             {tool.purchaseDate && (
                               <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', marginLeft: '0.35rem' }}>
@@ -2364,7 +2493,7 @@ export default function InventoryClient({
                           <span style={{ color: 'var(--inv-text-muted)' }}>
                             Cost Basis:{' '}
                             <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
-                              {v.purchasePrice ? formatUsdExact(v.purchasePrice) : 'N/A'}
+                              {v.purchasePrice !== null && v.purchasePrice !== undefined ? formatUsdExact(v.purchasePrice) : 'Cost not entered'}
                             </strong>
                             {v.purchaseDate && (
                               <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', marginLeft: '0.35rem' }}>
@@ -3797,15 +3926,34 @@ export default function InventoryClient({
             </div>
           </div>
 
-          <div className={styles.formField}>
-            <label className={styles.fieldLabel}>Primary Driver Name</label>
-            <input
-              type="text"
-              name="primaryDriverName"
-              defaultValue={vehicleModal.vehicle?.primaryDriverName || ''}
-              placeholder="e.g. Carlos Ramirez"
-              className={styles.fieldInput}
-            />
+          <div className={styles.formGrid2Col}>
+            <div className={styles.formField}>
+              <label className={styles.fieldLabel}>Primary Driver Name</label>
+              <input
+                type="text"
+                name="primaryDriverName"
+                defaultValue={vehicleModal.vehicle?.primaryDriverName || ''}
+                placeholder="e.g. Carlos Ramirez"
+                className={styles.fieldInput}
+              />
+            </div>
+            <div className={styles.formField}>
+              <label className={styles.fieldLabel}>Base Location</label>
+              <select
+                aria-label="Base location"
+                name="locationName"
+                defaultValue={vehicleModal.vehicle?.locationName || availableLocationNames[0]}
+                className={styles.fieldSelect}
+              >
+                <optgroup label="Shop & Facilities">
+                  {facilityLocations.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
           </div>
 
           <div className={styles.formGrid2Col}>

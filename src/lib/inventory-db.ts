@@ -81,15 +81,15 @@ export const DEFAULT_LOCATIONS: InventoryLocation[] = [
   },
   {
     id: 'loc-2',
-    name: 'Van #1 (Lead Tech)',
+    name: 'Service Truck 1 (Jake)',
     type: 'vehicle',
-    code: 'VAN-01',
+    code: 'TRK-01',
     address: 'Mobile Fleet Unit',
     isActive: true,
   },
   {
     id: 'loc-3',
-    name: 'Van #2 (Install Crew)',
+    name: 'Install Van 2 (Dave)',
     type: 'vehicle',
     code: 'VAN-02',
     address: 'Mobile Fleet Unit',
@@ -213,7 +213,7 @@ export async function seedInitialInventory(
     purchase_date: t.purchaseDate ?? null,
     depreciation_schedule: t.depreciationSchedule ?? null,
     status: t.status,
-    location_name: t.status === 'available' ? 'Main Shop & Warehouse' : 'Van #1 (Lead Tech)',
+    location_name: t.status === 'available' ? 'Main Shop & Warehouse' : 'Service Truck 1 (Jake)',
     assigned_crew_name: t.assignedCrewName ?? null,
     assigned_job_label: t.assignedJobLabel ?? null,
     checked_out_at: t.checkedOutAt ?? null,
@@ -383,6 +383,7 @@ export async function saveTool(
     asset_tag: tool.assetTag !== undefined ? tool.assetTag.trim() : String(existing?.asset_tag ?? '').trim(),
     model_number: tool.modelNumber !== undefined ? (tool.modelNumber?.trim() || null) : (existing?.model_number as string ?? null),
     serial_number: tool.serialNumber !== undefined ? (tool.serialNumber?.trim() || null) : (existing?.serial_number as string ?? null),
+    retailer_sku: tool.retailerSku !== undefined ? (tool.retailerSku?.trim() || null) : (existing?.retailer_sku as string ?? null),
     purchase_price: tool.purchasePrice !== undefined
       ? (tool.purchasePrice !== null ? Number(tool.purchasePrice) : null)
       : (existing?.purchase_price !== null && existing?.purchase_price !== undefined ? Number(existing.purchase_price) : null),
@@ -651,7 +652,7 @@ export async function deleteTool(
 export async function saveVehicle(
   supabase: SupabaseClient,
   accountId: string,
-  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string },
+  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string; locationId?: string | null; locationName?: string | null },
 ): Promise<FleetVehicle> {
   const isUpdate = Boolean(vehicle.id && !vehicle.id.startsWith('temp-'));
   let existing: Record<string, unknown> | null = null;
@@ -711,6 +712,8 @@ export async function saveVehicle(
       : (existing?.next_service_due_mileage ? Number(existing.next_service_due_mileage) : null),
     inspection_expires_at: vehicle.inspectionExpiresAt !== undefined ? (vehicle.inspectionExpiresAt || null) : (existing?.inspection_expires_at as string ?? null),
     insurance_expires_at: vehicle.insuranceExpiresAt !== undefined ? (vehicle.insuranceExpiresAt || null) : (existing?.insurance_expires_at as string ?? null),
+    location_id: vehicle.locationId !== undefined ? (vehicle.locationId || null) : (existing?.location_id as string ?? null),
+    location_name: vehicle.locationName !== undefined ? (vehicle.locationName || null) : (existing?.location_name as string ?? null),
     notes: notesToSave,
     updated_at: new Date().toISOString(),
   };
@@ -1187,6 +1190,7 @@ function mapToolRow(row: Record<string, unknown>): ToolAsset {
     brand: String(row.brand ?? ''),
     modelNumber: row.model_number ? String(row.model_number) : null,
     serialNumber: sn,
+    retailerSku: row.retailer_sku ? String(row.retailer_sku) : null,
     assetTag: tag,
     purchasePrice,
     purchaseDate,
@@ -1251,6 +1255,8 @@ function mapVehicleRow(row: Record<string, unknown>): FleetVehicle {
         : null,
     inspectionExpiresAt: row.inspection_expires_at ? String(row.inspection_expires_at) : null,
     insuranceExpiresAt: row.insurance_expires_at ? String(row.insurance_expires_at) : null,
+    locationId: row.location_id ? String(row.location_id) : null,
+    locationName: row.location_name ? String(row.location_name) : null,
     notes: cleanNotes,
   };
 }
@@ -1267,7 +1273,7 @@ function mapStockRow(row: Record<string, unknown>): VanStockItem {
     unitCost: Number(row.unit_cost ?? 0),
     preferredSupplier: String(row.preferred_supplier ?? ''),
     reorderQty: Number(row.reorder_qty ?? 0),
-    location: String(row.location_name ?? 'Main Shop'),
+    location: String(row.location_name ?? 'Main Shop & Warehouse'),
     locationId: row.location_id ? String(row.location_id) : null,
     notes: row.notes ? String(row.notes) : null,
   };

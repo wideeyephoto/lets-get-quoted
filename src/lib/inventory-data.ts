@@ -177,7 +177,7 @@ export const DEFAULT_VAN_STOCK: VanStockItem[] = [
     unitCost: 4.85,
     preferredSupplier: 'Ferguson Plumbing Supply',
     reorderQty: 25,
-    location: 'Van 1 & Van 2',
+    location: 'Service Truck 1 (Jake)',
   },
   {
     id: 'stock-2',
@@ -190,7 +190,7 @@ export const DEFAULT_VAN_STOCK: VanStockItem[] = [
     unitCost: 12.40,
     preferredSupplier: 'Ferguson Plumbing Supply',
     reorderQty: 12,
-    location: 'Van 1',
+    location: 'Service Truck 1 (Jake)',
   },
   {
     id: 'stock-3',
@@ -203,7 +203,7 @@ export const DEFAULT_VAN_STOCK: VanStockItem[] = [
     unitCost: 220.00,
     preferredSupplier: 'Johnstone Supply',
     reorderQty: 4,
-    location: 'Shop Cage',
+    location: 'Secured Storage Cage #1',
   },
   {
     id: 'stock-4',
@@ -216,7 +216,7 @@ export const DEFAULT_VAN_STOCK: VanStockItem[] = [
     unitCost: 9.75,
     preferredSupplier: 'Graybar Electric',
     reorderQty: 10,
-    location: 'Van 2',
+    location: 'Install Van 2 (Dave)',
   },
   {
     id: 'stock-5',
@@ -229,7 +229,7 @@ export const DEFAULT_VAN_STOCK: VanStockItem[] = [
     unitCost: 14.50,
     preferredSupplier: 'Home Depot Pro',
     reorderQty: 6,
-    location: 'All Trucks',
+    location: 'Main Shop & Warehouse',
   },
 ];
 
