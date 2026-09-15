@@ -197,8 +197,8 @@
       "schedule": "12,27,42,57 * * * *"
     },
     {
-      "path": "/api/cron/ops-metrics-snapshot",
-      "schedule": "0 6 * * *"
+      "path": "/api/cron/subsystem-prober",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
