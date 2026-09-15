@@ -1,0 +1,36 @@
+---
+title: "Connect custom tools with the Developer API and Webhooks"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Billing and account"
+---
+
+# Purpose
+Generate scoped REST API tokens, subscribe to real-time webhook event feeds, and import OpenAPI 3.1 definitions.
+
+# Steps
+## Create and manage scoped API tokens
+1. Go to Settings → Developer API & Webhooks.
+2. Click "Generate New Token", enter a descriptive label (e.g. "Zapier Lead Sync"), and select required role scopes (leads:read, leads:write, webhooks:manage, events:read).
+3. Copy your secret token (format: lgq_live_...) immediately upon generation. For security, secret tokens are hashed and never shown again.
+4. Pass tokens in external HTTP requests using standard authorization headers: Authorization: Bearer lgq_live_...
+
+## Set up real-time Webhook subscriptions
+- Event Feeds: Subscribe to live events including lead.created, quote.signed, invoice.paid, and job.completed.
+- HTTPS & SSRF Protection: Webhook destinations must use secure HTTPS URLs; localhost and private intranet IP addresses are rejected by edge guards.
+- HMAC SHA-256 Verification: Every outgoing webhook delivery includes an x-lgq-signature header calculated using your unique endpoint signing secret and a timestamp to prevent replay attacks.
+
+## Explore OpenAPI 3.1 schema and dead-letter retry
+Access the interactive OpenAPI 3.1 JSON definition at /api/v1/openapi.json to import into Postman, Insomnia, or custom SDK generators. If your endpoint is temporarily down, the system retries with exponential backoff and provides a manual 1-click retry button in the Webhook Deliveries audit table.
+
+
+
+# Done State
+You will safely automate external CRMs, Zapier, Make, and internal servers with verified HMAC webhooks and scoped API keys.
+
+# Common Failure
+**Webhook deliveries fail with 5xx status or timeout.**
+Ensure your server responds with a 2xx HTTP status within 10 seconds. Check endpoint SSL certificates and click "Retry Delivery" in the deliveries table.
+
+**API returns 401 Unauthorized.**
+Verify the token has not been revoked and that the Authorization: Bearer header is formatted correctly without extra quotes.

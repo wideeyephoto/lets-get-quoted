@@ -1,0 +1,34 @@
+---
+title: "Build and send a professional quote"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Intake and quoting"
+---
+
+# Purpose
+Assemble line items, configure deposits, attach photos, and understand the destructive nature of quote edits.
+
+# Steps
+## Build the estimate with price book items
+1. Click "New Quote" from the Quotes page or convert an existing lead.
+2. Select items from your Price Book or type custom scope descriptions, quantities, and rates.
+3. Configure optional upgrade line items for customer selection.
+4. Set deposit requirements (percentage or flat dollar amount) if upfront payment is required.
+
+## Stripe Connect requirement for sending quotes
+Stripe Connect must be connected before you can send quotes to customers—even for zero-deposit estimates. This ensures reliable payment rails for subsequent milestone and final payments.
+
+## Understand the destructive effect of "Edit & Resend Quote"
+IMPORTANT: If a quote has already been sent, clicking "Edit & Resend" is destructive. It immediately voids the customer’s existing approval link and permanently deletes any draft jobs, logged costs, draft invoices, or schedule requests attached to that quote version. Once edited, you must resend the new quote link to the client.
+
+
+
+# Done State
+You will deliver beautiful interactive estimates that homeowners can approve and deposit from any device.
+
+# Common Failure
+**Quote send button is disabled.**
+Ensure Stripe Connect is fully onboarded in Settings → Payments and that all line items have non-negative prices.
+
+**Customer opened an old quote link after an edit.**
+The old link is invalidated upon edit. Ensure the customer clicks the newest link sent after re-publishing.
