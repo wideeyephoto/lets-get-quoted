@@ -27,13 +27,13 @@ export default function TodaySchedule({
 
   return (
     <section className="panel workspace-section-card today-schedule-panel">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">Operations · Today</p>
           <h2>Today&apos;s schedule</h2>
         </div>
         {items.length > 0 ? (
-          <div style={{ textAlign: 'right' }}>
+          <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
             <span style={{ fontSize: '0.82rem', color: 'var(--muted)', display: 'block' }}>
               Today&apos;s work value (not revenue)
             </span>

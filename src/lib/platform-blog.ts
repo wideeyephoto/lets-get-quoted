@@ -1,11 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-admin';
-
-export interface PlatformBlogAuthor {
-  name: string;
-  role: string;
-  avatarUrl?: string;
-  bio?: string;
-}
+import { DEFAULT_AUTHOR, type PlatformBlogAuthor } from './platform-blog-author';
+export { DEFAULT_AUTHOR, type PlatformBlogAuthor } from './platform-blog-author';
 
 export type PlatformBlogBlock =
   | { type: 'p'; text: string }
@@ -54,13 +49,6 @@ export const BLOG_CATEGORIES = [
 ] as const;
 
 export type BlogCategory = (typeof BLOG_CATEGORIES)[number];
-
-export const DEFAULT_AUTHOR: PlatformBlogAuthor = {
-  name: 'Brett',
-  role: "Founder, Let's Get Quoted",
-  avatarUrl: '/apple-icon.png',
-  bio: 'Building modern business tools for independent trade contractors without monthly subscription bloat.',
-};
 
 /**
  * High-impact Wave 1 editorial articles pre-loaded for the public blog.
@@ -949,11 +937,19 @@ export const SEED_BLOG_POSTS: PlatformBlogPost[] = [
   },
 ];
 
+import { DRAFT_BLOG_POSTS } from './platform-blog-drafts';
+export { DRAFT_BLOG_POSTS };
+
+export const ALL_INITIAL_BLOG_POSTS: PlatformBlogPost[] = [
+  ...SEED_BLOG_POSTS,
+  ...DRAFT_BLOG_POSTS,
+];
+
 // In-memory store for runtime post modifications in environments without DB tables
 const memoryPostStore = new Map<string, PlatformBlogPost>();
 
-// Initialize memory store with seed posts
-for (const post of SEED_BLOG_POSTS) {
+// Initialize memory store with seed posts and planned drafts
+for (const post of ALL_INITIAL_BLOG_POSTS) {
   memoryPostStore.set(post.id, { ...post });
 }
 

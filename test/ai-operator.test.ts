@@ -884,6 +884,29 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((approvedResult.executionResult as { success: boolean }).success).toBe(false);
     expect((approvedResult.executionResult as { error: string }).error).toMatch(/no sender/i);
   });
+
+  it('refuses obsolete inspection approvals because inspection is not recovery', async () => {
+    const action = createHitlAction({
+      category: 'sre_platform',
+      title: 'Inspect Webhook Failure: ai_voice (provider_status)',
+      description: 'Webhook wh-1 failed',
+      actionType: 'sre.inspect_webhook_failure',
+      payload: { failureId: 'wh-1', source: 'ai_voice', error: 'Missing header' },
+    });
+
+    const approvedResult = await executeHitlDecision(
+      action.id,
+      'approved',
+      'staff@letsgetquoted.com',
+      'Confirmed invalid ping',
+      ctx,
+    );
+
+    expect(approvedResult.success).toBe(false);
+    expect(approvedResult.error).toContain('inspection alone cannot resolve it');
+    expect(approvedResult.action?.status).toBe('pending');
+    expect(approvedResult.executionResult).toBeUndefined();
+  });
 });
 
 // A percentage without a denominator is not a rate. The briefing used to report a

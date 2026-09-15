@@ -1,6 +1,6 @@
 'use server';
 
-import { requireOfficeContext } from '@/lib/auth/office-context';
+import { requireOfficeContext } from '@/lib/auth';
 import { createLienHelpCase, updateLienHelpCase } from '@/lib/lien-help-data';
 import { revalidatePath } from 'next/cache';
 
@@ -13,10 +13,10 @@ export async function startLienHelpAction(formData: FormData) {
     await createLienHelpCase(supabase, accountId, jobId);
     
     revalidatePath(`/dashboard/jobs/${jobId}/lien-help`);
-    return { success: true };
+    
   } catch (err: any) {
     console.error('startLienHelpAction failed:', err);
-    return { success: false, error: err.message };
+    
   }
 }
 
@@ -31,9 +31,9 @@ export async function advanceLienHelpLifecycleAction(formData: FormData) {
     await updateLienHelpCase(supabase, accountId, caseId, { lifecycle });
     
     revalidatePath(`/dashboard/jobs/${jobId}/lien-help`);
-    return { success: true };
+    
   } catch (err: any) {
     console.error('advanceLienHelpLifecycleAction failed:', err);
-    return { success: false, error: err.message };
+    
   }
 }

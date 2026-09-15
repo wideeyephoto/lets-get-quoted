@@ -1,9 +1,7 @@
 /* Admin Manual Stylesheet */
 
 .container {
-  max-width: 1160px;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 2rem;

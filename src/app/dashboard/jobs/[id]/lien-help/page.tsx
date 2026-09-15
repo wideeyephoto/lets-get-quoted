@@ -1,6 +1,6 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { requireOfficeContext } from '@/lib/auth/office-context';
+import { requireOfficeContext } from '@/lib/auth';
 import { getLienHelpCase } from '@/lib/lien-help-data';
 import { startLienHelpAction, advanceLienHelpLifecycleAction } from './actions';
 import Link from 'next/link';
@@ -23,7 +23,7 @@ export default async function LienHelpPage({ params }: { params: { id: string } 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href={/dashboard/jobs/\} className="text-blue-600 hover:underline">
+        <Link href={`/dashboard/jobs/${job.id}`} className="text-blue-600 hover:underline">
           &larr; Back to Job {job.ref || 'Details'}
         </Link>
       </div>

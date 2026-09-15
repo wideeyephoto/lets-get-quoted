@@ -573,4 +573,16 @@ describe('when the receptionist is meant to pick up', () => {
     // The configured hand-off wins over the general forwarding number.
     expect(result.plan.transferTo).toBe('+15550001111');
   });
+
+  it('sanitizes anonymous or non-NANP caller numbers (+10000000000) to null', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', ACTIVE);
+    const anonCall = { providerCallId: CALL, toNumber: TO, fromNumber: '+10000000000' };
+    const result = await planInboundCall(admin, anonCall, options);
+    expect(result.plan.kind).toBe('ai_agent');
+    expect(admitVoiceCall).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ callerNumber: null, callerKind: 'customer' }),
+      expect.anything(),
+    );
+  });
 });

@@ -1,4 +1,6 @@
 
+import { ingestDataManagerConversion, usesDataManager } from './google-data-manager';
+
 // A hung upstream otherwise holds the whole serverless invocation open.
 const OUTBOUND_TIMEOUT_MS = 10_000;
 /**
@@ -497,6 +499,12 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
  * whether the token is allowlisted or blocked by the June 15, 2026 cutoff.
  */
 export async function runOfflineConversionVerification(options: VerifierOptions = {}): Promise<OfflineConversionReport> {
+  if (usesDataManager()) {
+    const result = options.dryRun
+      ? { success: true, stage: 'validation', message: 'Simulated Data Manager validation; no conversion recorded.' }
+      : await ingestDataManagerConversion({ clientCustomerId: options.customerId, conversionActionName: options.conversionActionId || process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB || '', gclid: 'validation_only_synthetic_click', conversionValueDollars: 1 }, true);
+    return { timestamp: new Date().toISOString(), apiVersion: 'data-manager-v1', mode: options.dryRun ? 'dry-run' : 'live', allowlisted: false, validationOnly: true, conversionRecorded: false, requiresDataManagerApi: true, success: result.success, error: result.success ? null : result.message, steps: [{ step: 1, name: 'Data Manager conversion validation', status: result.success ? 'PASS' : 'FAIL', note: result.message }] };
+  }
   const dryRun = Boolean(options.dryRun);
 
   const clientId = options.clientId || process.env.GOOGLE_ADS_CLIENT_ID;
@@ -662,6 +670,7 @@ export async function runOfflineConversionVerification(options: VerifierOptions 
     }
 
     if (resJson.partialFailureError) {
+      report.requiresDataManagerApi = JSON.stringify(resJson.partialFailureError).includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE') || String(resJson.partialFailureError.message).includes('Data Manager API');
       report.error = `Conversion validation failed: ${resJson.partialFailureError.message || 'partial failure'}`;
       report.steps.push({ step: 3, name: 'Conversion validation', status: 'FAIL', note: report.error! });
       return report;

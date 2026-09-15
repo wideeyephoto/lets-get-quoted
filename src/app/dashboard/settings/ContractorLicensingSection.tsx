@@ -102,13 +102,13 @@ export default function ContractorLicensingSection({
           <strong>Credentials &amp; Municipal PINs Vault</strong>
           <p className="cert-summary-facts">
             {loading ? (
-              'Checking vault records…'
+              'Checking vault records...'
             ) : (
               [
                 stateLicenses.length > 0 ? `${stateLicenses.length} trade ${stateLicenses.length === 1 ? 'license' : 'licenses'}` : 'No state licenses yet',
                 municipalPins.length > 0 ? `${municipalPins.length} municipal ${municipalPins.length === 1 ? 'PIN' : 'PINs'}` : null,
                 insuranceCreds.length > 0 ? 'Insurance linked' : null,
-              ].filter(Boolean).join(' · ')
+              ].filter(Boolean).join(' • ')
             )}
           </p>
           <p className="cert-summary-state">
@@ -166,7 +166,8 @@ export default function ContractorLicensingSection({
                     {isSynced && (
                       <span
                         style={{
-                          fontSize: '0.7rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
                           padding: '0.15rem 0.45rem',
                           borderRadius: '4px',
                           background: 'rgba(56, 189, 248, 0.15)',
@@ -174,15 +175,15 @@ export default function ContractorLicensingSection({
                           border: '1px solid rgba(56, 189, 248, 0.3)',
                         }}
                       >
-                        ? Synced with Account
+                        ✓ Synced with Account
                       </span>
                     )}
                   </div>
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--muted, #94a3b8)' }}>
-                    <strong>{cred.issuingAuthority}</strong> · {cred.credentialType.replace('_', ' ').toUpperCase()}
-                    {cred.licenseNumber ? ` · #${cred.licenseNumber}` : ''}
-                    {cred.contractorPin ? ` · PIN: ${cred.contractorPin}` : ''}
-                    {cred.expiresAt ? ` · Exp: ${cred.expiresAt}` : ''}
+                    <strong>{cred.issuingAuthority}</strong> • {cred.credentialType.replace('_', ' ').toUpperCase()}
+                    {cred.licenseNumber ? ` • #${cred.licenseNumber}` : ''}
+                    {cred.contractorPin ? ` • PIN: ${cred.contractorPin}` : ''}
+                    {cred.expiresAt ? ` • Exp: ${cred.expiresAt}` : ''}
                   </p>
                 </div>
               </div>
@@ -197,11 +198,11 @@ export default function ContractorLicensingSection({
           onClick={() => setIsVaultOpen(true)}
           className="btn secondary"
         >
-          ?? Manage Credentials &amp; Municipal PINs Vault
+          🔐 Manage Credentials &amp; Municipal PINs Vault
         </button>
       </div>
 
-      <div style={{ borderTop: '1px solid var(--line, #334155)', paddingTop: '1.5rem' }}>
+      <div id="contractor-compliance" style={{ borderTop: '1px solid var(--line, #334155)', paddingTop: '1.5rem' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text, #f8fafc)', marginBottom: '0.4rem' }}>
           Contractor Compliance &amp; Tax Identifiers
         </h3>
@@ -282,7 +283,7 @@ export default function ContractorLicensingSection({
               disabled={complianceSaving}
               className="btn primary"
             >
-              {complianceSaving ? 'Saving…' : 'Save Compliance Settings'}
+              {complianceSaving ? 'Saving...' : 'Save Compliance Settings'}
             </button>
           </div>
         </form>

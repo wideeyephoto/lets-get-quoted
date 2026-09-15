@@ -20,6 +20,31 @@ function forwardTimeout(seconds: number): number {
   return Number.isFinite(seconds) ? Math.max(5, Math.min(60, Math.floor(seconds))) : 20;
 }
 
+/**
+ * SignalWire AI microphone sensitivity threshold (energy_level).
+ * SignalWire's default is 52 (dB, 0-100 scale). Ambient vehicle/jobsite/office noise
+ * trips speech detection prematurely at 52; raising to 62 provides solid noise immunity
+ * while keeping normal conversational speech clear and responsive.
+ */
+export const DEFAULT_VOICE_ENERGY_LEVEL = 62;
+
+export function voiceEnergyLevel(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_ENERGY_LEVEL);
+  return Number.isFinite(custom) && custom >= 0 && custom <= 100 ? custom : DEFAULT_VOICE_ENERGY_LEVEL;
+}
+
+/**
+ * Minimum words required to interrupt/barge the AI agent while speaking.
+ * Default SignalWire is 1; setting to 2 prevents brief background sounds, coughs,
+ * or breathing from cutting the agent off mid-sentence.
+ */
+export const DEFAULT_VOICE_BARGE_MIN_WORDS = 2;
+
+export function voiceBargeMinWords(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_BARGE_MIN_WORDS);
+  return Number.isSafeInteger(custom) && custom >= 1 && custom <= 99 ? custom : DEFAULT_VOICE_BARGE_MIN_WORDS;
+}
+
 /** A completed bridge must not fall through into an unanswered-call recording. */
 function failedTransferVoicemail(message: string, recordingStatusUrl?: string) {
   return {
@@ -854,6 +879,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
+            energy_level: voiceEnergyLevel(),
+            barge_min_words: voiceBargeMinWords(),
             end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
             enable_turn_detection: true,
             turn_detection_timeout: 250,
@@ -879,6 +906,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'When speaking, repeating, confirming, or reading back any phone number to the caller, always speak it as a standard 10-digit number starting directly with the area code (e.g. 810-304-2061); never include "+1", "plus one", or a leading "1". '
               + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '

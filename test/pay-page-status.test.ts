@@ -367,7 +367,7 @@ describe('a partial refund is not invisible', () => {
 
 describe('a priority visit fee is not called a deposit', () => {
   const QUICK_STOP_PAYMENTS = readFileSync(
-    join(process.cwd(), 'migrations/20260914132439_quick_stop_atomic_offer.sql'), 'utf8');
+    join(process.cwd(), 'migrations/20260914145745_quick_stop_atomic_offer.sql'), 'utf8');
   const PAYMENTS_LIB2 = readFileSync(join(process.cwd(), 'src/lib/payments.ts'), 'utf8');
 
   it('is stored as a deposit, which is why the label was wrong', () => {

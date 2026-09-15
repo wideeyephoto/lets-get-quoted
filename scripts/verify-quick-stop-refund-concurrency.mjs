@@ -73,11 +73,11 @@ try {
   const probe = await connect();
   await observer.query(baseSchema);
   for (const migration of [
-    '20260914132411_quick_stop_refund_recovery.sql',
-    '20260914132439_quick_stop_atomic_offer.sql',
-    '20260914132825_quick_stop_atomic_sweep.sql',
-    '20260914133059_quick_stop_lifecycle_guard.sql',
-    '20260914134359_quick_stop_no_show_lock.sql',
+    '20260914145738_quick_stop_refund_recovery.sql',
+    '20260914145745_quick_stop_atomic_offer.sql',
+    '20260914145752_quick_stop_atomic_sweep.sql',
+    '20260914145757_quick_stop_lifecycle_guard.sql',
+    '20260914145814_quick_stop_no_show_lock.sql',
   ]) await observer.query(readFileSync(`migrations/${migration}`, 'utf8'));
   const firstPid = one(await first.query('select pg_backend_pid() pid')).pid;
   const secondPid = one(await second.query('select pg_backend_pid() pid')).pid;

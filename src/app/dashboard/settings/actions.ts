@@ -2,7 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext, requireOwnerContext } from '@/lib/auth';
+import { isSupportedLocale, LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE, type Locale } from '@/lib/i18n';
 import { updateSite } from '@/lib/sites';
 import {
   DEFAULT_PORTAL_NAV_LABEL,
@@ -1390,8 +1392,22 @@ export async function removeContractorLogoAction() {
   return { ok: true };
 }
 
+export async function updateLanguagePreferenceAction(locale: unknown) {
+  await requireOfficeContext('settings.write');
+  if (!isSupportedLocale(locale)) {
+    throw new Error('Unsupported language');
+  }
 
+  (await cookies()).set(LOCALE_COOKIE, locale, {
+    path: '/',
+    maxAge: LOCALE_COOKIE_MAX_AGE,
+    sameSite: 'lax',
+  });
 
+  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard/settings');
+  return { ok: true, locale };
+}
 
 /**
  * Updates contractor tax and compliance identity fields on the account.
@@ -1416,7 +1432,7 @@ export async function updateContractorComplianceAction(formData: FormData) {
     const trimmedFein = rawFein.trim();
     if (!trimmedFein) {
       patch.fein = null;
-    } else if (!trimmedFein.includes(' ')) {
+    } else if (!trimmedFein.includes('•')) {
       const cleaned = trimmedFein.replace(/[^\d]/g, '');
       if (cleaned.length !== 9) {
         throw new Error('FEIN must be a 9-digit Federal Employer Identification Number (XX-XXXXXXX).');

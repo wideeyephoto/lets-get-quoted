@@ -8,6 +8,7 @@ import {
   registerPermitDocument,
   updatePermitCase,
 } from '@/lib/permit-intel';
+import { safeSignaturePath } from '@/lib/signature';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,22 @@ export async function POST(
       return NextResponse.json({ error: 'Job not found.' }, { status: 404 });
     }
 
+    const appData = await compilePermitApplication(
+      supabase,
+      membership.accountId,
+      params.id,
+    );
+
+    if (appData?.readiness && !appData.readiness.complete) {
+      return NextResponse.json(
+        {
+          error: 'Cannot save incomplete permit application draft: required attested fields are missing.',
+          missingFields: appData.readiness.missing,
+        },
+        { status: 409 },
+      );
+    }
+
     const payload = await request.json();
     const addressSafe = (job.address || params.id).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
     const fileName = `Permit-Application-${addressSafe}.html`;
@@ -140,11 +157,15 @@ export async function POST(
       },
     );
 
+    const sigPath = safeSignaturePath(payload?.signaturePath || payload?.data?.certification?.applicantSignaturePath);
     await updatePermitCase(
       supabase,
       membership.accountId,
       params.id,
-      { applicationStatus: 'ready_for_review' },
+      {
+        applicationStatus: 'ready_for_review',
+        ...(sigPath ? { notes: 'Signed by contractor (finger/touch signature)' } : {}),
+      },
       user.email || 'Office',
     );
 

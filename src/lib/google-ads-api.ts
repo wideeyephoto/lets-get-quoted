@@ -8,6 +8,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { ingestDataManagerConversion, usesDataManager } from './google-data-manager';
 import { generateResponsiveSearchAd, generateTradeKeywords } from './google-ads-generator';
 import {
   detectWeatherSurgeOpportunity,
@@ -840,6 +841,8 @@ export type OfflineConversionParams = {
 };
 
 export type OfflineConversionResult = {
+  requestId?: string;
+  transport?: 'data-manager' | 'google-ads';
   success: boolean;
   gclid?: string;
   gbraid?: string;
@@ -858,6 +861,10 @@ export type OfflineConversionResult = {
 export async function uploadOfflineConversion(
   params: OfflineConversionParams
 ): Promise<OfflineConversionResult> {
+  if (usesDataManager()) {
+    const result = await ingestDataManagerConversion(params);
+    return { ...result, transport: 'data-manager', gclid: params.gclid, gbraid: params.gbraid, wbraid: params.wbraid, conversionValueDollars: params.conversionValueDollars ?? 0, uploadedAt: new Date().toISOString() };
+  }
   const {
     gclid,
     gbraid,

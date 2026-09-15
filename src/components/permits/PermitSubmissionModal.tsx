@@ -22,11 +22,30 @@ export function PermitSubmissionModal({
 }: PermitSubmissionModalProps) {
   const [authorized, setAuthorized] = useState<boolean>(false);
   const [agreedLegal, setAgreedLegal] = useState<boolean>(false);
-  const [contactName, setContactName] = useState<string>('Master Licensee / Officer');
-  const [licenseNumber, setLicenseNumber] = useState<string>('2101234567');
+  const [contactName, setContactName] = useState<string>('');
+  const [licenseNumber, setLicenseNumber] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<PermitSubmissionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    fetch('/api/contractor/credentials')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!isMounted || !json?.credentials || !Array.isArray(json.credentials)) return;
+        const lic = json.credentials.find((c: any) => c.credentialType === 'state_license' || c.licenseNumber);
+        if (lic) {
+          if (lic.holderName) setContactName((prev) => prev || lic.holderName);
+          if (lic.licenseNumber) setLicenseNumber((prev) => prev || lic.licenseNumber);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

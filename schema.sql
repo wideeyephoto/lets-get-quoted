@@ -379,6 +379,11 @@ alter table accounts add column if not exists extra_stop_required_photos integer
 -- Require the AI eligibility check to pass before Extra Stop is offered.
 alter table accounts add column if not exists extra_stop_require_ai_approval boolean not null default true;
 
+-- Contractor compliance & tax identification fields for municipal permit applications.
+alter table accounts add column if not exists fein text;
+alter table accounts add column if not exists state_employer_number text;
+alter table accounts add column if not exists license_type text;
+
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
 -- This IS the Owner/Crew split, enforced in data instead of UI.
@@ -638,6 +643,101 @@ create index if not exists jobs_client_id_idx on jobs (client_id);
 
 -- Set when a client texts "C" back to an appointment reminder to confirm.
 alter table jobs add column if not exists appointment_confirmed_at timestamptz;
+
+-- Permanent parcel number / tax ID for municipal permit applications and property identification.
+alter table jobs add column if not exists parcel_number text;
+
+-- ----------------------------------------------------------------------------
+-- CONTRACTOR_CREDENTIALS — vault for trade licenses, municipal PINs & insurance
+-- ----------------------------------------------------------------------------
+create table if not exists public.contractor_credentials (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  credential_type text not null,
+  trade_discipline text not null default 'building',
+  license_number text,
+  issuing_authority text not null,
+  authority_id text,
+  contractor_pin text,
+  holder_name text not null,
+  policy_number text,
+  insurance_carrier text,
+  coverage_amount numeric(12, 2),
+  expires_at date,
+  status text not null default 'active',
+  document_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_contractor_credentials_account on public.contractor_credentials(account_id);
+create index if not exists idx_contractor_credentials_discipline on public.contractor_credentials(account_id, trade_discipline);
+create index if not exists idx_contractor_credentials_authority on public.contractor_credentials(account_id, authority_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_CASES — municipal permit case tracking per job
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_cases (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  authority_id text,
+  requirement_verdict text not null default 'verify',
+  application_status text not null default 'not_started',
+  external_permit_number text,
+  estimated_fee numeric(10,2),
+  actual_fee numeric(10,2),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint job_permit_cases_account_job_unique unique (account_id, job_id)
+);
+create index if not exists idx_job_permit_cases_account_job on public.job_permit_cases (account_id, job_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_DOCUMENTS — permit application drafts, COIs, affidavits, and issued permits
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_documents (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete cascade,
+  document_type text not null,
+  file_name text not null,
+  file_size_bytes bigint not null default 0,
+  mime_type text not null default 'application/pdf',
+  storage_path text not null,
+  sha256_hash text,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_job_permit_documents_account_job on public.job_permit_documents (account_id, job_id);
+create index if not exists idx_job_permit_documents_case on public.job_permit_documents (permit_case_id);
+
+-- ----------------------------------------------------------------------------
+-- JOB_PERMIT_INSPECTIONS — municipal inspection milestones per permit
+-- ----------------------------------------------------------------------------
+create table if not exists public.job_permit_inspections (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete set null,
+  inspection_type text not null,
+  title text not null,
+  status text not null default 'required',
+  requested_date date,
+  scheduled_date date,
+  completed_date date,
+  inspector_name text,
+  inspector_phone text,
+  notes text,
+  failure_reasons text[],
+  reinspection_fee numeric(10, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_job_permit_inspections_job on public.job_permit_inspections(account_id, job_id);
+create index if not exists idx_job_permit_inspections_status on public.job_permit_inspections(status);
 
 -- ----------------------------------------------------------------------------
 -- JOB_TASKS  — per-job checklist / punch list. Owner sets the list; crew tick
@@ -4025,6 +4125,197 @@ alter table leads add column if not exists referral_settled_at timestamptz;
 -- for the same reason: the insert already names the column, so capture needs no
 -- migration. This is the money-shaped half, which cannot be derived.
 alter table extra_stop_requests add column if not exists referral_settled_at timestamptz;
+
+-- ============================================================================
+-- PERMIT INTELLIGENCE, JURISDICTIONS & CREDENTIALS VAULT
+-- Mirrors migrations 20260826150000, 20260826160000, 20260826170000, 20260826180000
+-- ============================================================================
+
+create table if not exists public.permit_authorities (
+  id text primary key,
+  name text not null,
+  agency_name text not null,
+  state text not null,
+  county text not null,
+  city_or_township text,
+  portal_url text,
+  phone text,
+  office_hours text,
+  provider_type text not null default 'generic' check (provider_type in ('bsa_accessmygov', 'accela', 'opengov', 'municipality_native', 'generic')),
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_authority_coverage (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text not null references public.permit_authorities(id) on delete cascade,
+  discipline text not null check (discipline in ('building', 'electrical', 'mechanical', 'plumbing')),
+  enforcing_agency text not null,
+  level text not null check (level in ('municipality', 'township', 'county', 'state')),
+  effective_from date not null default '2020-01-01',
+  effective_to date,
+  source_url text,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create index if not exists idx_permit_authority_coverage_auth_disc
+  on public.permit_authority_coverage (authority_id, discipline);
+
+create table if not exists public.permit_sources (
+  id text primary key,
+  publisher text not null,
+  url text not null,
+  retrieval_date date not null default current_date,
+  content_hash text,
+  licensing_class text not null default 'advisory_summary',
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_code_adoptions (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text not null references public.permit_authorities(id) on delete cascade,
+  code_family text not null,
+  edition_year text not null,
+  effective_from date not null default '2016-02-08',
+  effective_to date,
+  governing_body text not null,
+  is_current boolean not null default true,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_code_amendments (
+  id uuid primary key default gen_random_uuid(),
+  adoption_id uuid references public.permit_code_adoptions(id) on delete cascade,
+  authority_id text references public.permit_authorities(id) on delete cascade,
+  section_ref text not null,
+  title text not null,
+  summary text not null,
+  amendment_type text not null default 'standard_model' check (amendment_type in ('standard_model', 'state_amendment', 'local_ordinance')),
+  citation_url text,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.permit_requirement_rules (
+  id uuid primary key default gen_random_uuid(),
+  authority_id text references public.permit_authorities(id) on delete cascade,
+  trade text not null,
+  scope text not null,
+  decision text not null check (decision in ('required', 'not_required', 'verify')),
+  base_fee numeric(10,2),
+  effective_from date not null default '2020-01-01',
+  effective_to date,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create table if not exists public.job_permit_cases (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  authority_id text references public.permit_authorities(id) on delete set null,
+  requirement_verdict text not null default 'verify' check (requirement_verdict in ('required', 'not_required', 'verify')),
+  application_status text not null default 'not_started' check (
+    application_status in (
+      'not_started', 'draft', 'ready_for_review', 'authorized', 'submitting',
+      'submitted', 'in_review', 'corrections_required', 'approved', 'issued',
+      'rejected', 'withdrawn', 'inspection_scheduled', 'inspection_passed',
+      'inspection_failed', 'closed'
+    )
+  ),
+  external_permit_number text,
+  estimated_fee numeric(10,2),
+  actual_fee numeric(10,2),
+  notes text,
+  created_at timestamptz not null default pg_catalog.now(),
+  updated_at timestamptz not null default pg_catalog.now(),
+  constraint job_permit_cases_account_job_unique unique (account_id, job_id)
+);
+
+create index if not exists idx_job_permit_cases_account_job
+  on public.job_permit_cases (account_id, job_id);
+
+create table if not exists public.job_permit_documents (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete cascade,
+  document_type text not null check (
+    document_type in (
+      'application_draft', 'site_plan', 'contractor_license', 'insurance_coi',
+      'homeowner_affidavit', 'permit_issued_pdf', 'inspection_report', 'receipt', 'other'
+    )
+  ),
+  file_name text not null,
+  file_size_bytes bigint not null default 0,
+  mime_type text not null default 'application/pdf',
+  storage_path text not null,
+  sha256_hash text,
+  uploaded_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default pg_catalog.now()
+);
+
+create index if not exists idx_job_permit_documents_account_job
+  on public.job_permit_documents (account_id, job_id);
+create index if not exists idx_job_permit_documents_case
+  on public.job_permit_documents (permit_case_id);
+
+create table if not exists public.job_permit_inspections (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  job_id uuid not null references public.jobs(id) on delete cascade,
+  permit_case_id uuid references public.job_permit_cases(id) on delete set null,
+  inspection_type text not null,
+  title text not null,
+  status text not null default 'required',
+  requested_date date,
+  scheduled_date date,
+  completed_date date,
+  inspector_name text,
+  inspector_phone text,
+  notes text,
+  failure_reasons text[],
+  reinspection_fee numeric(10, 2),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_job_permit_inspections_job on public.job_permit_inspections(account_id, job_id);
+create index if not exists idx_job_permit_inspections_status on public.job_permit_inspections(status);
+
+create table if not exists public.contractor_credentials (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  credential_type text not null,
+  trade_discipline text not null default 'building',
+  license_number text,
+  issuing_authority text not null,
+  authority_id text,
+  contractor_pin text,
+  holder_name text not null,
+  policy_number text,
+  insurance_carrier text,
+  coverage_amount numeric(12, 2),
+  expires_at date,
+  status text not null default 'active',
+  document_url text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_contractor_credentials_account on public.contractor_credentials(account_id);
+create index if not exists idx_contractor_credentials_discipline on public.contractor_credentials(account_id, trade_discipline);
+create index if not exists idx_contractor_credentials_authority on public.contractor_credentials(account_id, authority_id);
+
+alter table public.permit_authorities enable row level security;
+alter table public.permit_authority_coverage enable row level security;
+alter table public.permit_sources enable row level security;
+alter table public.permit_code_adoptions enable row level security;
+alter table public.permit_code_amendments enable row level security;
+alter table public.permit_requirement_rules enable row level security;
+alter table public.job_permit_cases enable row level security;
+alter table public.job_permit_documents enable row level security;
+alter table public.job_permit_inspections enable row level security;
+alter table public.contractor_credentials enable row level security;
 
 -- BEGIN GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 -- Generated by scripts/sync-messaging-schema.mjs. Do not edit this block by hand.
@@ -39197,6 +39488,658 @@ begin
   end if;
 end;
 $grants$;
+
+-- ============================================================================
+-- SOFT DELETION, RECOVERY & IMMUTABLE TENANT AUDIT LEDGER (Hardened against F1)
+-- ============================================================================
+
+create table if not exists public.tenant_audit_events (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null,
+  entity_type text not null,
+  entity_id text not null,
+  action text not null,
+  actor jsonb not null default '{}'::jsonb,
+  source text not null default 'web'
+    check (source in ('web', 'staff', 'integration', 'cron', 'migration', 'api')),
+  request_id text,
+  delete_operation_id uuid,
+  reason text,
+  changed_fields text[] default '{}'::text[],
+  before_state jsonb,
+  after_state jsonb,
+  occurred_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists tenant_audit_events_account_occurred_idx
+  on public.tenant_audit_events (account_id, occurred_at desc);
+
+create index if not exists tenant_audit_events_account_entity_idx
+  on public.tenant_audit_events (account_id, entity_type, entity_id);
+
+create index if not exists tenant_audit_events_account_action_idx
+  on public.tenant_audit_events (account_id, action);
+
+create index if not exists tenant_audit_events_delete_op_idx
+  on public.tenant_audit_events (delete_operation_id)
+  where delete_operation_id is not null;
+
+create or replace function public.enforce_tenant_audit_immutable()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+begin
+  raise exception 'tenant_audit_events is immutable and cannot be updated, deleted, or truncated';
+end;
+$$;
+
+drop trigger if exists trg_tenant_audit_events_immutable on public.tenant_audit_events;
+create trigger trg_tenant_audit_events_immutable
+  before update or delete on public.tenant_audit_events
+  for each row execute function public.enforce_tenant_audit_immutable();
+
+alter table public.tenant_audit_events enable row level security;
+
+drop policy if exists "tenant_audit_events_select_member" on public.tenant_audit_events;
+create policy "tenant_audit_events_select_member"
+  on public.tenant_audit_events
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.memberships m
+      where m.account_id = public.tenant_audit_events.account_id
+        and m.user_id = auth.uid()
+        and m.deactivated_at is null
+    )
+  );
+
+revoke insert, update, delete, truncate on table public.tenant_audit_events from public, anon, authenticated;
+grant select on table public.tenant_audit_events to authenticated;
+grant all on table public.tenant_audit_events to service_role;
+
+create table if not exists public.recoverable_deletions (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid not null,
+  entity_type text not null,
+  entity_id text not null,
+  display_snapshot jsonb not null default '{}'::jsonb,
+  cascade_manifest jsonb not null default '[]'::jsonb,
+  storage_manifest jsonb not null default '[]'::jsonb,
+  deleted_at timestamptz not null default clock_timestamp(),
+  purge_eligible_at timestamptz not null default (clock_timestamp() + interval '30 days'),
+  deleted_by_user_id uuid,
+  deleted_by_role text,
+  deletion_reason text,
+  status text not null default 'trashed'
+    check (status in ('trashed', 'restoring', 'restored', 'purged')),
+  restored_at timestamptz,
+  restored_by_user_id uuid,
+  purge_locked boolean not null default false,
+  legal_hold boolean not null default false,
+  created_at timestamptz not null default clock_timestamp(),
+  updated_at timestamptz not null default clock_timestamp()
+);
+
+create index if not exists recoverable_deletions_account_status_idx
+  on public.recoverable_deletions (account_id, status, deleted_at desc);
+
+create index if not exists recoverable_deletions_account_entity_idx
+  on public.recoverable_deletions (account_id, entity_type, entity_id);
+
+create index if not exists recoverable_deletions_purge_queue_idx
+  on public.recoverable_deletions (status, purge_eligible_at)
+  where status = 'trashed' and legal_hold = false and purge_locked = false;
+
+alter table public.recoverable_deletions enable row level security;
+
+drop policy if exists "recoverable_deletions_select_member" on public.recoverable_deletions;
+create policy "recoverable_deletions_select_member"
+  on public.recoverable_deletions
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.memberships m
+      where m.account_id = public.recoverable_deletions.account_id
+        and m.user_id = auth.uid()
+        and m.deactivated_at is null
+    )
+  );
+
+revoke insert, update, delete, truncate on table public.recoverable_deletions from public, anon, authenticated;
+grant select on table public.recoverable_deletions to authenticated;
+grant all on table public.recoverable_deletions to service_role;
+
+-- Aggregate root lifecycle fields
+alter table public.leads
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists leads_account_active_idx
+  on public.leads (account_id, created_at desc)
+  where deleted_at is null;
+
+alter table public.crew
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists crew_account_active_idx
+  on public.crew (account_id, name)
+  where deleted_at is null;
+
+alter table public.services
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists services_account_active_idx
+  on public.services (account_id, name)
+  where deleted_at is null;
+
+alter table public.jobs
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists jobs_account_active_idx
+  on public.jobs (account_id, created_at desc)
+  where deleted_at is null;
+
+alter table public.account_attachments
+  add column if not exists deleted_at timestamptz default null,
+  add column if not exists purge_after timestamptz default null,
+  add column if not exists deleted_by_user_id uuid default null,
+  add column if not exists deletion_reason text default null,
+  add column if not exists delete_operation_id uuid default null;
+
+create index if not exists account_attachments_account_active_idx
+  on public.account_attachments (account_id, created_at desc)
+  where deleted_at is null;
+
+-- 1. soft_delete_entity_atomic — service_role only (F1 hardened)
+create or replace function public.soft_delete_entity_atomic(
+  p_account_id uuid,
+  p_entity_type text,
+  p_entity_id text,
+  p_actor jsonb default '{}'::jsonb,
+  p_reason text default null,
+  p_source text default 'web',
+  p_request_id text default null,
+  p_grace_days integer default 30
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_now timestamptz := clock_timestamp();
+  v_purge_at timestamptz := v_now + (p_grace_days || ' days')::interval;
+  v_op_id uuid := gen_random_uuid();
+  v_user_id uuid;
+  v_user_role text;
+  v_display jsonb := '{}'::jsonb;
+  v_cascade jsonb := '[]'::jsonb;
+  v_storage jsonb := '[]'::jsonb;
+  v_before jsonb;
+  v_found boolean := false;
+begin
+  if p_actor ? 'user_id' and p_actor->>'user_id' ~ '^[0-9a-fA-F-]{36}$' then
+    v_user_id := (p_actor->>'user_id')::uuid;
+  end if;
+  v_user_role := coalesce(p_actor->>'role', 'authenticated');
+
+  if p_entity_type = 'lead' then
+    select to_jsonb(l.*) into v_before
+      from public.leads l
+     where l.account_id = p_account_id and l.id = p_entity_id::uuid and l.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'lead_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'name', 'Untitled Lead'),
+      'subtitle', coalesce(v_before->>'phone', v_before->>'email', 'No contact'),
+      'badge', v_before->>'status',
+      'details', jsonb_build_object('source', v_before->>'source', 'created_at', v_before->>'created_at')
+    );
+
+    update public.leads
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'crew' then
+    select to_jsonb(c.*) into v_before
+      from public.crew c
+     where c.account_id = p_account_id and c.id = p_entity_id::uuid and c.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'crew_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'name', 'Crew Member'),
+      'subtitle', coalesce(v_before->>'phone', v_before->>'role', 'Technician'),
+      'badge', case when (v_before->>'active')::boolean then 'Active' else 'Inactive' end,
+      'details', jsonb_build_object('role', v_before->>'role', 'created_at', v_before->>'created_at')
+    );
+
+    if v_before->>'photo_path' is not null and length(v_before->>'photo_path') > 0 then
+      v_storage := jsonb_build_array(jsonb_build_object(
+        'bucket', 'crew-photos',
+        'path', v_before->>'photo_path',
+        'quarantined', true
+      ));
+    end if;
+
+    update public.crew
+       set deleted_at = v_now,
+           active = false,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'service' then
+    select to_jsonb(s.*) into v_before
+      from public.services s
+     where s.account_id = p_account_id and s.id = p_entity_id::uuid and s.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'service_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'name', 'Untitled Service'),
+      'subtitle', case when (v_before->>'price')::numeric > 0 then ('$' || (v_before->>'price')) else 'Custom Price' end,
+      'badge', case when coalesce((v_before->>'is_active')::boolean, true) then 'Active' else 'Disabled' end,
+      'details', jsonb_build_object('category', v_before->>'category')
+    );
+
+    update public.services
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'job' then
+    select to_jsonb(j.*) into v_before
+      from public.jobs j
+     where j.account_id = p_account_id and j.id = p_entity_id::uuid and j.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'job_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'title', 'Job #' || left(p_entity_id, 8)),
+      'subtitle', coalesce(v_before->>'client_name', v_before->>'address', 'No client info'),
+      'badge', v_before->>'status',
+      'details', jsonb_build_object('total', v_before->>'total', 'created_at', v_before->>'created_at')
+    );
+
+    update public.jobs
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'attachment' then
+    select to_jsonb(a.*) into v_before
+      from public.account_attachments a
+     where a.account_id = p_account_id and a.id = p_entity_id::uuid and a.deleted_at is null;
+
+    if v_before is null then
+      return jsonb_build_object('success', false, 'error', 'attachment_not_found_or_already_deleted');
+    end if;
+
+    v_display := jsonb_build_object(
+      'title', coalesce(v_before->>'filename', 'Attachment'),
+      'subtitle', coalesce(v_before->>'bucket', 'Storage file'),
+      'badge', v_before->>'content_type',
+      'details', jsonb_build_object('file_size', v_before->>'file_size')
+    );
+
+    if v_before->>'storage_path' is not null then
+      v_storage := jsonb_build_array(jsonb_build_object(
+        'bucket', coalesce(v_before->>'bucket', 'account-attachments'),
+        'path', v_before->>'storage_path',
+        'quarantined', true
+      ));
+    end if;
+
+    update public.account_attachments
+       set deleted_at = v_now,
+           purge_after = v_purge_at,
+           deleted_by_user_id = v_user_id,
+           deletion_reason = p_reason,
+           delete_operation_id = v_op_id
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  else
+    return jsonb_build_object('success', false, 'error', 'unsupported_entity_type');
+  end if;
+
+  insert into public.recoverable_deletions (
+    id,
+    account_id,
+    entity_type,
+    entity_id,
+    display_snapshot,
+    cascade_manifest,
+    storage_manifest,
+    deleted_at,
+    purge_eligible_at,
+    deleted_by_user_id,
+    deleted_by_role,
+    deletion_reason,
+    status
+  ) values (
+    v_op_id,
+    p_account_id,
+    p_entity_type,
+    p_entity_id,
+    v_display,
+    v_cascade,
+    v_storage,
+    v_now,
+    v_purge_at,
+    v_user_id,
+    v_user_role,
+    p_reason,
+    'trashed'
+  );
+
+  perform public.record_tenant_audit_event_atomic(
+    p_account_id => p_account_id,
+    p_entity_type => p_entity_type,
+    p_entity_id => p_entity_id,
+    p_action => p_entity_type || '.soft_deleted',
+    p_actor => p_actor,
+    p_source => p_source,
+    p_request_id => p_request_id,
+    p_delete_operation_id => v_op_id,
+    p_reason => p_reason,
+    p_changed_fields => array['deleted_at', 'purge_after', 'deleted_by_user_id', 'deletion_reason', 'delete_operation_id'],
+    p_before_state => v_before,
+    p_after_state => jsonb_build_object('deleted_at', v_now, 'purge_after', v_purge_at, 'status', 'trashed')
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'operation_id', v_op_id,
+    'entity_type', p_entity_type,
+    'entity_id', p_entity_id,
+    'deleted_at', v_now,
+    'purge_eligible_at', v_purge_at
+  );
+end;
+$$;
+
+revoke execute on function public.soft_delete_entity_atomic(
+  uuid, text, text, jsonb, text, text, text, integer
+) from public, anon, authenticated;
+grant execute on function public.soft_delete_entity_atomic(
+  uuid, text, text, jsonb, text, text, text, integer
+) to service_role;
+
+-- 2. restore_entity_atomic — service_role only (F1 hardened)
+create or replace function public.restore_entity_atomic(
+  p_account_id uuid,
+  p_entity_type text,
+  p_entity_id text,
+  p_actor jsonb default '{}'::jsonb,
+  p_source text default 'web',
+  p_request_id text default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_now timestamptz := clock_timestamp();
+  v_user_id uuid;
+  v_deletion_record public.recoverable_deletions%rowtype;
+  v_before jsonb;
+begin
+  if p_actor ? 'user_id' and p_actor->>'user_id' ~ '^[0-9a-fA-F-]{36}$' then
+    v_user_id := (p_actor->>'user_id')::uuid;
+  end if;
+
+  select * into v_deletion_record
+    from public.recoverable_deletions
+   where account_id = p_account_id
+     and entity_type = p_entity_type
+     and entity_id = p_entity_id
+     and status = 'trashed'
+   order by deleted_at desc
+   limit 1;
+
+  if v_deletion_record.id is null then
+    return jsonb_build_object('success', false, 'error', 'no_active_trash_record_found');
+  end if;
+
+  if p_entity_type = 'lead' then
+    select to_jsonb(l.*) into v_before
+      from public.leads l
+     where l.account_id = p_account_id and l.id = p_entity_id::uuid;
+
+    update public.leads
+       set deleted_at = null,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null,
+           status = 'archived'
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'crew' then
+    select to_jsonb(c.*) into v_before
+      from public.crew c
+     where c.account_id = p_account_id and c.id = p_entity_id::uuid;
+
+    update public.crew
+       set deleted_at = null,
+           active = false,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'service' then
+    select to_jsonb(s.*) into v_before
+      from public.services s
+     where s.account_id = p_account_id and s.id = p_entity_id::uuid;
+
+    update public.services
+       set deleted_at = null,
+           is_active = false,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'job' then
+    select to_jsonb(j.*) into v_before
+      from public.jobs j
+     where j.account_id = p_account_id and j.id = p_entity_id::uuid;
+
+    update public.jobs
+       set deleted_at = null,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  elsif p_entity_type = 'attachment' then
+    select to_jsonb(a.*) into v_before
+      from public.account_attachments a
+     where a.account_id = p_account_id and a.id = p_entity_id::uuid;
+
+    update public.account_attachments
+       set deleted_at = null,
+           purge_after = null,
+           deleted_by_user_id = null,
+           deletion_reason = null,
+           delete_operation_id = null
+     where account_id = p_account_id and id = p_entity_id::uuid;
+
+  else
+    return jsonb_build_object('success', false, 'error', 'unsupported_entity_type');
+  end if;
+
+  update public.recoverable_deletions
+     set status = 'restored',
+         restored_at = v_now,
+         restored_by_user_id = v_user_id,
+         updated_at = v_now
+   where id = v_deletion_record.id;
+
+  perform public.record_tenant_audit_event_atomic(
+    p_account_id => p_account_id,
+    p_entity_type => p_entity_type,
+    p_entity_id => p_entity_id,
+    p_action => p_entity_type || '.restored',
+    p_actor => p_actor,
+    p_source => p_source,
+    p_request_id => p_request_id,
+    p_delete_operation_id => v_deletion_record.id,
+    p_reason => 'Manual restoration from trash bin',
+    p_changed_fields => array['deleted_at', 'purge_after', 'status'],
+    p_before_state => v_before,
+    p_after_state => jsonb_build_object('deleted_at', null, 'status', 'restored')
+  );
+
+  return jsonb_build_object(
+    'success', true,
+    'entity_type', p_entity_type,
+    'entity_id', p_entity_id,
+    'restored_at', v_now,
+    'status', 'restored'
+  );
+end;
+$$;
+
+revoke execute on function public.restore_entity_atomic(
+  uuid, text, text, jsonb, text, text
+) from public, anon, authenticated;
+grant execute on function public.restore_entity_atomic(
+  uuid, text, text, jsonb, text, text
+) to service_role;
+
+-- 3. record_tenant_audit_event_atomic — keep authenticated, add is_member guard (F1 hardened)
+create or replace function public.record_tenant_audit_event_atomic(
+  p_account_id uuid,
+  p_entity_type text,
+  p_entity_id text,
+  p_action text,
+  p_actor jsonb default '{}'::jsonb,
+  p_source text default 'web'::text,
+  p_request_id text default null::text,
+  p_delete_operation_id uuid default null::uuid,
+  p_reason text default null::text,
+  p_changed_fields text[] default '{}'::text[],
+  p_before_state jsonb default null::jsonb,
+  p_after_state jsonb default null::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_event_id uuid;
+begin
+  -- F1 guard: a session (authenticated) caller can only write audit events for
+  -- an account they belong to. anon has no EXECUTE; service_role skips the check.
+  if auth.role() = 'authenticated' and not public.is_member(p_account_id) then
+    raise exception 'record_tenant_audit_event_forbidden'
+      using errcode = '42501';
+  end if;
+
+  insert into public.tenant_audit_events (
+    account_id,
+    entity_type,
+    entity_id,
+    action,
+    actor,
+    source,
+    request_id,
+    delete_operation_id,
+    reason,
+    changed_fields,
+    before_state,
+    after_state,
+    occurred_at
+  ) values (
+    p_account_id,
+    p_entity_type,
+    p_entity_id,
+    p_action,
+    coalesce(p_actor, '{}'::jsonb),
+    coalesce(p_source, 'web'),
+    p_request_id,
+    p_delete_operation_id,
+    p_reason,
+    coalesce(p_changed_fields, '{}'::text[]),
+    p_before_state,
+    p_after_state,
+    clock_timestamp()
+  )
+  returning id into v_event_id;
+
+  return v_event_id;
+end;
+$$;
+
+revoke execute on function public.record_tenant_audit_event_atomic(
+  uuid, text, text, text, jsonb, text, text, uuid, text, text[], jsonb, jsonb
+) from public, anon;
+grant execute on function public.record_tenant_audit_event_atomic(
+  uuid, text, text, text, jsonb, text, text, uuid, text, text[], jsonb, jsonb
+) to authenticated, service_role;
+
+
+-- END SOFT DELETION, RECOVERY & IMMUTABLE TENANT AUDIT LEDGER
+
+-- Permit FK Indexes
+CREATE INDEX IF NOT EXISTS idx_job_permit_cases_job ON public.job_permit_cases(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_cases_authority ON public.job_permit_cases(authority_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_documents_job ON public.job_permit_documents(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_documents_uploader ON public.job_permit_documents(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_job ON public.job_permit_inspections(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_permit_inspections_case ON public.job_permit_inspections(permit_case_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_adoptions_authority ON public.permit_code_adoptions(authority_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_amendments_adoption ON public.permit_code_amendments(adoption_id);
+CREATE INDEX IF NOT EXISTS idx_permit_code_amendments_authority ON public.permit_code_amendments(authority_id);
+CREATE INDEX IF NOT EXISTS idx_permit_requirement_rules_authority ON public.permit_requirement_rules(authority_id);
 
 -- Quick Stop hardening: 2026-09-14
 

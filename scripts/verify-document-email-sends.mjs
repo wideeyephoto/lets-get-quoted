@@ -35,7 +35,7 @@ try {
       description text default 'Work',amount numeric default 100,sort_order int default 0);
     create table email_suppression(account_id uuid,email text,reason text);
     grant all on accounts,jobs,invoices,invoice_items,email_suppression to service_role;`);
-  const migration = readFileSync(join(root, 'migrations/20260914135714_document_email_send_ledger.sql'), 'utf8');
+  const migration = readFileSync(join(root, 'migrations/20260914145825_document_email_send_ledger.sql'), 'utf8');
   assert.ok(readFileSync(join(root, 'schema.sql'), 'utf8').replace(/\r\n/g, '\n').includes(migration.replace(/\r\n/g, '\n').trim()));
   await db.query(migration); passed('actual migration and fresh schema agree and apply');
   const signatures = ['claim_document_email_send(uuid,uuid,uuid,uuid,uuid,jsonb,text)',

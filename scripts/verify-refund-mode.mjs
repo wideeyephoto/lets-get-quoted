@@ -44,7 +44,7 @@ try {
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
 const REFUNDS = m('20260816050000_direct_charge_refund_operations.sql');
-const PATCH = m('20260819270000_refund_mode_after_partial.sql');
+const PATCH = m('20260820114208_refund_mode_after_partial.sql');
 
 /** Lift one dollar-quoted function verbatim out of its migration. */
 function liftFunction(source, name) {

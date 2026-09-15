@@ -233,6 +233,7 @@ import {
   updateNavBrandingAction,
   uploadContractorLogoAction,
   removeContractorLogoAction,
+  updateContractorComplianceAction,
 } from '@/app/dashboard/settings/actions';
 
 function createMockSupabase(initialData: Record<string, any> = {}) {
@@ -1104,5 +1105,32 @@ describe('Dashboard Settings Server Actions (Phase A)', () => {
 
     await removeContractorLogoAction();
     expect(mockDb.from).toHaveBeenCalledWith('sites');
+  });
+
+  it('updateContractorComplianceAction updates compliance identity with FEIN validation', async () => {
+    const mockDb = createMockSupabase();
+    mocks.requireOfficeContext.mockResolvedValue({ supabase: mockDb, accountId });
+
+    // Valid 9-digit FEIN with and without hyphen
+    const validForm = new FormData();
+    validForm.append('license_type', 'Residential Builder');
+    validForm.append('state_employer_number', 'UIA-987654');
+    validForm.append('fein', '123456789');
+
+    const res = await updateContractorComplianceAction(validForm);
+    expect(res).toEqual({ ok: true });
+    expect(mockDb.from).toHaveBeenCalledWith('accounts');
+
+    // Invalid FEIN format throws
+    const invalidForm = new FormData();
+    invalidForm.append('fein', '123-bad');
+    await expect(updateContractorComplianceAction(invalidForm)).rejects.toThrow('9-digit Federal Employer Identification Number');
+
+    // Masked FEIN untouched
+    const maskedForm = new FormData();
+    maskedForm.append('license_type', 'Master Electrician');
+    maskedForm.append('fein', '••-•••6789');
+    const maskedRes = await updateContractorComplianceAction(maskedForm);
+    expect(maskedRes).toEqual({ ok: true });
   });
 });

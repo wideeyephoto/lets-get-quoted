@@ -42,11 +42,11 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
-const SETTLEMENT = m('20260819260000_overage_settlement.sql');
-const IDEMPOTENCY = m('20260819290000_overage_accrual_idempotency.sql');
-const SETTLED_GUARD = m('20260819300000_release_respects_settled_period.sql');
-const OVERLAP = m('20260819310000_cap_counts_overlapping_periods.sql');
-const SETTLE = m('20260820120000_settle_a_voice_overage_for_what_was_used.sql');
+const SETTLEMENT = m('20260820074457_overage_settlement.sql');
+const IDEMPOTENCY = m('20260820120240_overage_accrual_idempotency.sql');
+const SETTLED_GUARD = m('20260820120250_release_respects_settled_period.sql');
+const OVERLAP = m('20260820120304_cap_counts_overlapping_periods.sql');
+const SETTLE = m('20260820125518_settle_a_voice_overage_for_what_was_used.sql');
 const TOCTOU = m('20260912000000_authorize_usage_overage_toctou.sql');
 
 const R = [];

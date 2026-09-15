@@ -42,7 +42,7 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
-const RECONCILE = m('20260819280000_refund_reconciliation.sql');
+const RECONCILE = m('20260820120229_refund_reconciliation.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });

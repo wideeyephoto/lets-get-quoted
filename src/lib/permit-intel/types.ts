@@ -205,3 +205,12 @@ export type PermitWorkspaceDto = {
     canSubmitOnline: boolean;
   };
 };
+
+export type AttestedField<T = string> =
+  | { status: 'provided'; value: T; sourceId: string }
+  | { status: 'missing'; label: string };
+
+export type PermitReadiness = {
+  complete: boolean;
+  missing: string[];
+};
