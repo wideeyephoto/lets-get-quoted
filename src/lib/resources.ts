@@ -579,7 +579,7 @@ export const ARTICLES: Article[] = [
     slug: 'clean-energy-rebates-permit-intel-guide',
     title: 'Clean energy rebates & permit intel: Win quotes in 2026',
     excerpt:
-      'Homeowners want utility rebates, clean energy incentives, and zero permit surprises. Here is how leading contractors present transparent rebate deductions on quotes.',
+      'Homeowners want utility rebates, clean energy incentives, and zero permit surprises. See how top contractors present transparent rebate deductions on quotes.',
     category: 'Pricing & profit',
     readMinutes: 6,
     datePublished: '2026-08-26',
