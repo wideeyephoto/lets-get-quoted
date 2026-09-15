@@ -195,7 +195,7 @@ export const CANADA_CODE_REGISTRY: Record<string, CanadianProvinceProfile> = {
     provinceName: 'Newfoundland and Labrador',
     country: 'CA',
     licensingBoard: 'Digital Government and Service NL (Engineering and Inspection Services)',
-    licensingUrl: 'https://www.gov.nl.ca/dgsnl',
+    licensingUrl: 'https://www.gov.nl.ca/gs',
     codes: {
       building: { name: 'Newfoundland and Labrador Building Standards (2020 NBC)', edition: '2024', model: 'NLBC' },
       electrical: { name: 'Newfoundland and Labrador Electrical Regulations (CSA C22.1 / NL Power)', edition: '2024', model: 'CEC' },

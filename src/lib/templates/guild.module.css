@@ -1,0 +1,43 @@
+
+.guild[data-mode='dark'] .proofStars, .guild[data-mode='dark'] .proofChip > span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
+.guild .desktopCtaQuote { color: #fff; }
+.guild {
+  --c-bg: #fff; --c-surface: #fbf9f4; --c-ink: #2a251e; --c-muted: #6b6357; --c-line: #e8e2d5; --c-deep: #1b1713; --c-on-deep: #fff;
+  --guild-ambient: radial-gradient(circle at 80% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 10% 40%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 40%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
+  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-guild-body), system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; --theme-radius: 12px;
+}
+.guild[data-mode='dark'] {
+  --c-bg: #1c221d; --c-surface: #232a24; --c-ink: #f1ede2; --c-muted: #bdc4b9; --c-line: #454e46; --c-deep: #222922; --c-on-deep: #f1ede2;
+  --guild-ambient: radial-gradient(circle at 30% 0%, rgba(176, 71, 47, 0.18), transparent 45%), radial-gradient(circle at 80% 30%, rgba(217, 119, 6, 0.1), transparent 35%), linear-gradient(180deg, #0e1219 0%, #151a24 50%, #0a0d13 100%);
+}
+.guild[data-mode='dark'] .guildHeader, .guild[data-mode='dark'] .guildIntro, .guild[data-mode='dark'] .guildServices article, .guild[data-mode='dark'] .guildFooter { border-color: #454e46; }
+.guild[data-mode='dark'] .guildBrand small, .guild[data-mode='dark'] .guildIntro > p, .guild[data-mode='dark'] .guildServices p { color: #bdc4b9; }
+.guild .kicker { font-family: var(--theme-display); font-style: italic; font-weight: 400; font-size: 1rem; letter-spacing: 0; text-transform: none; color: var(--theme-accent); }
+.guild[data-mode='dark'] .guildQuote:hover, .guild[data-mode='dark'] .textLink:hover { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
+.guild .heroQuickForm {
+  border-radius: 12px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  border: 1px solid var(--c-line);
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.6);
+}
+.guild[data-mode='dark'] .heroQuickForm {
+  box-shadow: 0 24px 50px -22px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.guild .extraSection { padding: clamp(5rem, 9vw, 8rem) 6vw; border-top: 1px solid var(--c-line); }
+.guild[data-mode='dark'] .extraSection { border-top-color: #454e46; }
+.guild .extraSectionHeader h2 { font-weight: 500; line-height: 1.02; letter-spacing: -.015em; }
+.guild .serviceCard { border-radius: 12px; border-color: var(--c-line); background: color-mix(in srgb, currentColor 4%, transparent); }
+.guild[data-mode='dark'] .serviceCard { border-color: #454e46; }
+.guild .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 45%, transparent); }
+.guild .serviceCard h3 { font-family: var(--theme-display); font-size: 1.45rem; font-weight: 500; }
+.guild .serviceIcon { border-radius: 999px; }
+.guild .processNum { border-radius: 999px; background: transparent; border: 1px solid var(--theme-accent); font-family: var(--theme-display); font-style: italic; font-weight: 400; font-size: 1.3rem; }
+.guild .processStep h3 { font-family: var(--theme-display); font-size: 1.35rem; font-weight: 500; }
+.guild .statItem { padding: 1.5rem 1.4rem; border: 1px solid var(--c-line); border-radius: 12px; }
+.guild[data-mode='dark'] .statItem { border-color: #454e46; }
+.guild .statValue { font-weight: 500; }
+.guild .statLabel { font-weight: 600; letter-spacing: .08em; }
+.guild .faqItem, .guild .testimonialCard, .guild .showcaseGrid figure { border-radius: 12px; }
+.guild .faqItem, .guild .testimonialCard { border-color: var(--c-line); }
+.guild[data-mode='dark'] .faqItem, .guild[data-mode='dark'] .testimonialCard { border-color: #454e46; }

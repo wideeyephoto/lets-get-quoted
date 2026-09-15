@@ -72,7 +72,7 @@ try {
   await q(`grant usage on schema public to service_role;
     grant select on usage_reservations to service_role;
     grant select, insert, update on voice_call_admissions, voice_calls to service_role;`);
-  await q(read('20260908160159_voice_measurement_duration_and_absorbed_usage.sql'));
+  await q(read('20260908202621_voice_measurement_duration_and_absorbed_usage.sql'));
   check('migration applies over the real ledger, admission, and call-history definitions');
   const finalizeSql = 'select finalize_voice_call_admission_v2($1,$2,$3,$4,$5,$6,$7,$8,$9) as ok';
   const historySql = `insert into voice_calls(account_id,provider,provider_call_id,billed_minutes,measured_minutes,absorbed_minutes,absorption_reason)

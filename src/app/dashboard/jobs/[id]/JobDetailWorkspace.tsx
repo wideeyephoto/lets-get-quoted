@@ -1,10 +1,11 @@
-'use client';
+﻿'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { JobDetailLayout } from '@/lib/dashboard-views';
 import { setJobDetailLayoutAction } from '@/app/dashboard/view-actions';
 import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
+import PhotoDefectEstimatorModal from '../PhotoDefectEstimatorModal';
 
 export type JobDetailTab = 'overview' | 'financials' | 'execution' | 'permits' | 'selections' | 'settings';
 
@@ -56,6 +57,7 @@ export default function JobDetailWorkspace({
   const [activeTab, setActiveTab] = useState<JobDetailTab>(
     paramTab && validTabs.includes(paramTab) ? paramTab : initialTab
   );
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
 
   const handleTabChange = (tab: JobDetailTab) => {
     setActiveTab(tab);
@@ -110,12 +112,24 @@ export default function JobDetailWorkspace({
           </button>
         </div>
 
-        <VoiceCaptureButton
-          targetType="job"
-          targetId={_jobId}
-          contextTitle="Job Details"
-          label="🎙️ Voice Job Update"
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="job-layout-toggle-btn"
+            onClick={() => setPhotoModalOpen(true)}
+            title="Inspect damage photos with AI vision to detect defects, labor hours, and quote line items"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', height: 'auto', padding: '0.4rem 0.75rem', fontSize: '0.8125rem' }}
+          >
+            <span aria-hidden="true">📸</span>
+            <span>AI Photo Estimate</span>
+          </button>
+          <VoiceCaptureButton
+            targetType="job"
+            targetId={_jobId}
+            contextTitle="Job Details"
+            label="🎙️ Voice Job Update"
+          />
+        </div>
       </div>
 
       {layout === 'tabs' ? (

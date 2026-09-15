@@ -46,7 +46,7 @@ try {
       return v_outcome;
     end; $stub$;
   `);
-  await db.exec(await readFile(new URL('../migrations/20260906105714_voice_dispatch_latency.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../migrations/20260906111632_voice_dispatch_latency.sql', import.meta.url), 'utf8'));
   await db.query(`insert into jobs(id,account_id,ref,client_name,client_phone,address,scope,status)
     values($1,$2,'J-DEMO-1071','Rosa Holbrook',$3,'42 Maple Street','Replace water heater','in_progress')`, [job,account,phone]);
   await db.query(`insert into jobs(id,account_id,ref,client_name,client_phone,address,status)

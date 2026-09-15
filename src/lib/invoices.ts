@@ -6,6 +6,7 @@ import { CONNECT_CHARGE_COLUMNS } from '@/lib/stripe';
 export type InvoiceStatus = 'draft' | 'sent' | 'signed' | 'paid' | 'void';
 
 export type Invoice = {
+  document_email_revision?: string;
   id: string;
   account_id: string;
   job_id: string;
@@ -43,7 +44,13 @@ export function computeInvoiceTotals(
 ): InvoiceTotals {
   const safeDiscount = Number.isFinite(discountPercent) ? Math.min(100, Math.max(0, discountPercent)) : 0;
   const safeTax = Number.isFinite(taxRate) ? Math.max(0, taxRate) : 0;
-  const subtotal = round2(items.reduce((sum, item) => sum + Number(item.amount), 0));
+  
+  let subtotalCents = 0;
+  for (const item of items) {
+    subtotalCents += Math.round(Number(item.amount) * 100);
+  }
+  
+  const subtotal = round2(subtotalCents / 100);
   const discountAmount = round2(subtotal * (safeDiscount / 100));
   const taxable = round2(subtotal - discountAmount);
   const taxAmount = round2(taxable * (safeTax / 100));
@@ -423,20 +430,28 @@ export async function updateInvoiceStatus(
   accountId: string,
   jobId: string,
   invoiceId: string,
-  status: InvoiceStatus
+  status: InvoiceStatus,
+  expectedEmailRevision?: string,
 ): Promise<void> {
   const existing = await getInvoiceWithItems(supabase, accountId, invoiceId, jobId);
   if (!existing) {
     throw new Error('Invoice not found for this job.');
   }
 
-  const { error } = await supabase
+  const query = supabase
     .from('invoices')
     .update({ status })
     .eq('account_id', accountId)
     .eq('job_id', existing.invoice.job_id)
     .eq('id', invoiceId);
 
+  if (expectedEmailRevision) {
+    const { data, error } = await query.eq('document_email_revision', expectedEmailRevision).select('id').maybeSingle();
+    if (error) throw error;
+    if (!data) throw new Error('The invoice changed during sending. Reload it to review the latest version.');
+    return;
+  }
+  const { error } = await query;
   if (error) {
     throw error;
   }

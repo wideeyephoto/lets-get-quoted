@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-09-11T16:56:45.348Z",
+  "project": "mfuvvtrkipkigwqqtcal",
+  "method": "Independent read-only Supabase SQL query after final rehearsal cleanup",
+  "fixtures": [
+    {
+      "marker": "tenant-office-browser-2026-09-11-395a11fb",
+      "jobs": 0,
+      "clients": 0,
+      "suspended_workspaces": 2,
+      "active_memberships": 0,
+      "sessions": 0,
+      "grants": 0
+    },
+    {
+      "marker": "tenant-office-browser-2026-09-11-5ee2855a",
+      "jobs": 0,
+      "clients": 0,
+      "suspended_workspaces": 2,
+      "active_memberships": 0,
+      "sessions": 0,
+      "grants": 0
+    },
+    {
+      "marker": "tenant-office-browser-2026-09-11-8e50da20",
+      "jobs": 0,
+      "clients": 0,
+      "suspended_workspaces": 2,
+      "active_memberships": 0,
+      "sessions": 0,
+      "grants": 0
+    }
+  ]
+}

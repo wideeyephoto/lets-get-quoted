@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireOfficeContext } from '@/lib/auth';
 import { loadVoiceWorkspaceQueue } from '@/lib/voice/call-workspace';
+import { unstable_rethrow } from 'next/navigation';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -91,6 +92,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    // A guard denies by calling redirect(), which throws. Without this the
+    // denial is swallowed and reported as a 500 carrying NEXT_REDIRECT.
+    unstable_rethrow(error);
     console.error('Voice export error:', error);
     return NextResponse.json({ error: 'Export failed' }, { status: 500 });
   }

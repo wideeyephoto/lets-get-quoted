@@ -7,7 +7,13 @@ const read = (...parts: string[]) =>
 
 const PAGE_CODE = read('src', 'app', 'dashboard', 'sites', 'page.tsx');
 const ACTIONS_CODE = read('src', 'app', 'dashboard', 'sites', 'actions.ts');
-const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx');
+const TABS_CODE = [
+  'BuilderBusinessTab.tsx',
+  'BuilderDesignTab.tsx',
+  'BuilderPageTab.tsx',
+  'BuilderPublishTab.tsx',
+].map(f => read('src', 'app', 'dashboard', 'sites', 'tabs', f)).join('\n');
+const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx') + '\n' + TABS_CODE;
 const MODAL_CODE = read('src', 'app', 'dashboard', 'sites', 'AiLogoCreatorModal.tsx');
 const CSS_CODE = read('src', 'app', 'dashboard', 'sites', 'SiteEditor.module.css');
 const PROMPT_CODE = read('src', 'lib', 'logo-image-prompt.ts');
@@ -139,7 +145,7 @@ describe('Website Builder AI Credits Display', () => {
   it('supports background AI logo generation and notifications in WebsiteBuilder.tsx', () => {
     expect(BUILDER_CODE).toContain('pendingAiLogo');
     expect(BUILDER_CODE).toContain('getAiLogosAction');
-    expect(BUILDER_CODE).toContain('AI Art Director is building your logo');
+    expect(BUILDER_CODE).toContain('AI Art Director is generating your logo');
     expect(BUILDER_CODE).toContain('AI Art Director is generating your logo in the background');
     expect(BUILDER_CODE).toContain('savedLogos={aiLogos}');
     expect(BUILDER_CODE).toContain('pendingGeneration={pendingAiLogo}');

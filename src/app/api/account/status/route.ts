@@ -15,6 +15,7 @@ import { loadTextToJobStatus } from '@/lib/field-intake-leads';
 import { resolveServerNavDecision } from '@/lib/nav-server';
 import { isNavPersonaEnabled } from '@/lib/nav-visibility';
 import { NAV_VISIBILITY_COOKIE, type NavVisibilityDecision } from '@/lib/nav-visibility-client';
+import { getNavigationPreferences, getEligibleNavIds } from '@/lib/navigation/preferences-server';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -219,14 +220,20 @@ export async function GET() {
   const lowCreditAlert = (typeof textCredits === 'number' && textCredits <= 15)
     || (Boolean(balanceRows && balanceRows.length > 0) && aiCredits <= 5);
 
+  let capabilities: ReadonlySet<string> = new Set<string>();
+  try {
+    capabilities = await loadHeldCapabilities(
+      membership.role as 'owner' | 'office' | 'crew' | null,
+      membership.accountId,
+      user.id,
+    );
+  } catch (err) {
+    console.error('Failed to load capabilities:', err);
+  }
+
   let nav: NavVisibilityDecision | null = null;
   if (isNavPersonaEnabled()) {
     try {
-      const capabilities = await loadHeldCapabilities(
-        membership.role as 'owner' | 'office' | 'crew' | null,
-        membership.accountId,
-        user.id,
-      );
       nav = await resolveServerNavDecision(admin, membership.accountId, membership.role, capabilities);
     } catch (err) {
       console.error('Failed to resolve nav in /api/account/status:', err);
@@ -259,8 +266,54 @@ export async function GET() {
   const workspacesList = activeWorkspaces.length > 0 ? activeWorkspaces : fallbackWorkspaces;
   const hasMultipleWorkspaces = workspacesList.length > 1;
 
+  const { preferences, revision, exists: prefsExist } = await getNavigationPreferences(admin, membership.accountId, user.id);
+  
+  // Legacy migration
+  let actualPrefs = preferences;
+  if (!prefsExist && nav && nav.promoted && nav.promoted.length > 0) {
+    const legacyFavIds = nav.promoted
+      .map(href => {
+        // Map legacy hrefs to item IDs
+        if (href.startsWith('/dashboard/leads')) return 'leads';
+        if (href.startsWith('/dashboard/messages')) return 'messages';
+        if (href.startsWith('/dashboard/jobs')) return 'jobs';
+        if (href.startsWith('/dashboard/schedule')) return 'schedule';
+        if (href.startsWith('/dashboard/crew')) return 'crew';
+        if (href.startsWith('/dashboard/clients')) return 'clients';
+        if (href.startsWith('/dashboard/inventory')) return 'inventory';
+        if (href.startsWith('/dashboard/claims')) return 'claims';
+        if (href.startsWith('/dashboard/payments')) return 'payments';
+        if (href.startsWith('/dashboard/recurring')) return 'recurring';
+        if (href.startsWith('/dashboard/sites')) return 'sites';
+        if (href.startsWith('/dashboard/automations')) return 'automations';
+        if (href.startsWith('/dashboard/marketing')) return 'marketing';
+        if (href.startsWith('/dashboard/reviews')) return 'reviews';
+        if (href.startsWith('/dashboard/reports')) return 'reports';
+        if (href.startsWith('/dashboard/payroll')) return 'payroll';
+        return null;
+      })
+      .filter(Boolean) as string[];
+      
+    if (legacyFavIds.length > 0) {
+      if (actualPrefs) {
+        actualPrefs.favoriteIds = legacyFavIds;
+        actualPrefs.selectedView = 'favorites';
+      } else {
+        actualPrefs = {
+          selectedView: 'favorites',
+          favoriteIds: legacyFavIds,
+          customLayout: null
+        };
+      }
+    }
+  }
+
+  const eligibleNavIds = getEligibleNavIds(membership.role === 'owner', capabilities as ReadonlySet<string>);
+
   const response = NextResponse.json({
     loggedIn: true,
+    userId: user.id,
+    accountId: membership.accountId,
     onboarded: account?.connect_onboarded ?? false,
     sitePublished,
     siteUrl,
@@ -297,6 +350,10 @@ export async function GET() {
         ? ('on' as const)
         : ('paused' as const),
     nav,
+    navPreferences: actualPrefs,
+    navRevision: revision,
+    navPrefsExist: prefsExist,
+    eligibleNavIds,
   });
 
   if (nav) {

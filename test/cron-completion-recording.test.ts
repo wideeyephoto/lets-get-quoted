@@ -1,10 +1,9 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { NextResponse } from 'next/server';
 
 // Mock dependencies before importing the module under test.
 const mocks = vi.hoisted(() => ({
   insert: vi.fn(),
-  update: vi.fn(),
+  upsert: vi.fn(),
   deleteFn: vi.fn(),
   select: vi.fn(),
   eq: vi.fn(),
@@ -24,7 +23,6 @@ function makeChain(overrides: Record<string, unknown> = {}) {
 }
 
 const insertChain = makeChain();
-const updateChain = makeChain();
 const deleteChain = makeChain();
 
 vi.mock('@/lib/auth', () => ({
@@ -33,7 +31,7 @@ vi.mock('@/lib/auth', () => ({
       if (table !== 'cron_runs') throw new Error(`Unexpected table: ${table}`);
       return {
         insert: vi.fn(() => { mocks.insert(); return insertChain; }),
-        update: vi.fn(() => { mocks.update(); return updateChain; }),
+        upsert: mocks.upsert,
         delete: vi.fn(() => { mocks.deleteFn(); return deleteChain; }),
         select: vi.fn(() => insertChain),
         eq: vi.fn(() => insertChain),
@@ -59,8 +57,8 @@ beforeEach(() => {
   vi.stubEnv('CRON_SECRET', 'test-secret-123');
   // Default: startRun succeeds with a valid ID.
   mocks.maybeSingle.mockResolvedValue({ data: { id: 'run-uuid-001' }, error: null });
-  // Default: update succeeds.
-  (updateChain.eq as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
+  // Default: completion upsert succeeds.
+  mocks.upsert.mockResolvedValue({ data: null, error: null });
   // Default: delete succeeds.
   (deleteChain.lt as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
 });
@@ -76,14 +74,14 @@ describe('cron completion recording', () => {
     const response = await handler(makeRequest('test-secret-123'));
     expect(response.status).toBe(200);
     expect(mocks.insert).toHaveBeenCalledTimes(1);
-    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.upsert).toHaveBeenCalledTimes(1);
   });
 
   it('records ok=false when the worker throws', async () => {
     const handler = cronRoute('test-job', async () => { throw new Error('worker exploded'); });
     const response = await handler(makeRequest('test-secret-123'));
     expect(response.status).toBe(500);
-    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.upsert).toHaveBeenCalledTimes(1);
     const body = await response.json();
     expect(body.error).toContain('test-job');
   });
@@ -92,7 +90,7 @@ describe('cron completion recording', () => {
     const handler = cronRoute('test-job', async () => ({ failures: 3, processed: 7 }));
     const response = await handler(makeRequest('test-secret-123'));
     expect(response.status).toBe(500);
-    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.upsert).toHaveBeenCalledTimes(1);
   });
 
   it('returns 401 without recording when auth fails', async () => {
@@ -101,11 +99,11 @@ describe('cron completion recording', () => {
     expect(response.status).toBe(401);
     // No database writes should occur for unauthenticated requests.
     expect(mocks.insert).not.toHaveBeenCalled();
-    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
   });
 
   it('still completes the worker when startRun DB insert fails', async () => {
-    // startRun returns error -> runId is null.
+    // An insert error preserves the locally generated invocation identity.
     mocks.maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'insert failed' } });
     const workerFn = vi.fn(async () => ({ processed: 1 }));
     const handler = cronRoute('test-job', workerFn);
@@ -113,14 +111,14 @@ describe('cron completion recording', () => {
     // Worker still runs and returns success.
     expect(response.status).toBe(200);
     expect(workerFn).toHaveBeenCalledTimes(1);
-    // finishRun is a no-op because runId is null, so no update call.
-    expect(mocks.update).not.toHaveBeenCalled();
+    // Completion can create the missing row without replaying the worker.
+    expect(mocks.upsert).toHaveBeenCalledTimes(1);
   });
 
   describe('finishRun DB error handling (the main fix)', () => {
-    it('logs an error when the update returns a Supabase error object', async () => {
-      // The update succeeds at the network level but returns a DB error.
-      (updateChain.eq as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    it('logs an error when the completion upsert returns a Supabase error object', async () => {
+      // The request succeeds at the network level but returns a DB error.
+      mocks.upsert.mockResolvedValueOnce({
         data: null,
         error: { message: 'connection reset during write' },
       });
@@ -135,8 +133,8 @@ describe('cron completion recording', () => {
       );
     });
 
-    it('logs an error when the update throws a network exception', async () => {
-      (updateChain.eq as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('ECONNREFUSED'));
+    it('logs an error when the completion upsert throws a network exception', async () => {
+      mocks.upsert.mockRejectedValueOnce(new Error('ECONNREFUSED'));
       const handler = cronRoute('test-job', async () => ({ processed: 1 }));
       const response = await handler(makeRequest('test-secret-123'));
       expect(response.status).toBe(200);
@@ -144,7 +142,7 @@ describe('cron completion recording', () => {
     });
 
     it('logs an error when finish-after-throw encounters a DB error', async () => {
-      (updateChain.eq as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      mocks.upsert.mockResolvedValueOnce({
         data: null,
         error: { message: 'constraint violation on cron_runs' },
       });

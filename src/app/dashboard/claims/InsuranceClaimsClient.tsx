@@ -1107,7 +1107,7 @@ export default function InsuranceClaimsClient({
           </button>
           <button
             type="button"
-            className={styles.btnSecondary}
+            className={styles.btnNewClaim}
             onClick={() => clearScope(false)}
             title="Reset form and start new claim"
           >
@@ -2158,42 +2158,73 @@ export default function InsuranceClaimsClient({
                 <h3 className={styles.cardTitle}>
                   <ShieldCheck size={16} /> Feasibility Assessment Results
                 </h3>
-                <span className={styles.tradeBadge}>
-                  Score: {feasibility.feasibilityScore}/100 ({feasibility.probability.toUpperCase()})
+                <span className={`${styles.probBadge} ${
+                  feasibility.probability === 'high'
+                    ? styles.probBadgeHigh
+                    : feasibility.probability === 'moderate'
+                    ? styles.probBadgeModerate
+                    : styles.probBadgeLow
+                }`}>
+                  {feasibility.probability.toUpperCase()} PROBABILITY
                 </span>
               </div>
 
-              <div className={styles.formField}>
-                <span className={styles.fieldLabel}>Actionable Recommendation</span>
-                {feasibility.recommendation === 'file_claim' && (
-                  <span style={{ color: 'var(--good, #3dd68c)', fontWeight: 700 }}>
-                    Proceed with insurance claim filing. Damage scope safely exceeds deductible.
-                  </span>
-                )}
-                {feasibility.recommendation === 'inspection_first' && (
-                  <span style={{ color: 'var(--warn, #fdb022)', fontWeight: 700 }}>
-                    Perform physical damage photo inspection before filing claim.
-                  </span>
-                )}
-                {feasibility.recommendation === 'out_of_pocket_maintenance' && (
-                  <span style={{ color: 'var(--danger, #f87171)', fontWeight: 700 }}>
-                    Quote as out-of-pocket maintenance (likely excluded wear-and-tear).
-                  </span>
-                )}
+              {/* Score Hero */}
+              <div className={styles.scoreHero}>
+                <div className={styles.scoreValueWrap}>
+                  <span className={styles.scoreNumber}>{feasibility.feasibilityScore}</span>
+                  <span className={styles.scoreMax}>/ 100 Viability Score</span>
+                </div>
+                <div className={styles.damageRangeBox}>
+                  <span className={styles.fieldLabel}>Estimated Scope Range</span>
+                  <p className={styles.damageRangeText}>
+                    {formatMoneyExact(feasibility.estimatedDamageRange.min)} – {formatMoneyExact(feasibility.estimatedDamageRange.max)}
+                  </p>
+                </div>
               </div>
 
-              <div className={styles.formField}>
-                <span className={styles.fieldLabel}>Estimated Scope Range</span>
-                <p style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, margin: 0, fontSize: '1.05rem', color: 'var(--text)' }}>
-                  {formatMoneyExact(feasibility.estimatedDamageRange.min)} – {formatMoneyExact(feasibility.estimatedDamageRange.max)}
+              {/* Actionable Recommendation Box */}
+              <div className={`${styles.recommendationBox} ${
+                feasibility.recommendation === 'file_claim'
+                  ? styles.recFileClaim
+                  : feasibility.recommendation === 'inspection_first'
+                  ? styles.recInspection
+                  : styles.recOutOfPocket
+              }`}>
+                <div className={styles.recHeader}>
+                  {feasibility.recommendation === 'file_claim' && <CheckCircle2 size={18} />}
+                  {feasibility.recommendation === 'inspection_first' && <AlertTriangle size={18} />}
+                  {feasibility.recommendation === 'out_of_pocket_maintenance' && <Info size={18} />}
+                  <span>Actionable Recommendation</span>
+                </div>
+                <p className={styles.recText}>
+                  {feasibility.recommendation === 'file_claim' &&
+                    'Proceed with insurance claim filing. Physical damage scope safely exceeds homeowner deductible.'}
+                  {feasibility.recommendation === 'inspection_first' &&
+                    'Perform physical damage photo inspection before filing claim. Scope and deductible are close.'}
+                  {feasibility.recommendation === 'out_of_pocket_maintenance' &&
+                    'Quote as out-of-pocket maintenance (likely excluded wear-and-tear or gradual deterioration).'}
                 </p>
               </div>
 
               {/* Contractor Brief */}
               {feasibility.contractorBrief && (
-                <div className={styles.formField}>
-                  <span className={styles.fieldLabel}>Contractor Technical Brief</span>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text)' }}>
+                <div className={styles.feasibilitySection}>
+                  <div className={styles.feasibilitySectionHeader}>
+                    <span className={styles.fieldLabel}>Contractor Technical Brief</span>
+                    <button
+                      type="button"
+                      className={styles.btnGhost}
+                      onClick={() => {
+                        navigator.clipboard.writeText(feasibility.contractorBrief || '');
+                        pushToast('Copied contractor brief');
+                      }}
+                      title="Copy brief"
+                    >
+                      <Copy size={12} /> Copy Brief
+                    </button>
+                  </div>
+                  <p className={styles.feasibilityText}>
                     {feasibility.contractorBrief}
                   </p>
                 </div>
@@ -2201,9 +2232,22 @@ export default function InsuranceClaimsClient({
 
               {/* Homeowner Summary */}
               {feasibility.homeownerSummary && (
-                <div className={styles.formField}>
-                  <span className={styles.fieldLabel}>Homeowner Plain-English Summary</span>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}>
+                <div className={styles.feasibilitySection}>
+                  <div className={styles.feasibilitySectionHeader}>
+                    <span className={styles.fieldLabel}>Homeowner Plain-English Summary</span>
+                    <button
+                      type="button"
+                      className={styles.btnGhost}
+                      onClick={() => {
+                        navigator.clipboard.writeText(feasibility.homeownerSummary || '');
+                        pushToast('Copied homeowner summary');
+                      }}
+                      title="Copy summary"
+                    >
+                      <Copy size={12} /> Copy Summary
+                    </button>
+                  </div>
+                  <p className={styles.feasibilityTextMuted}>
                     {feasibility.homeownerSummary}
                   </p>
                 </div>
@@ -2236,42 +2280,62 @@ export default function InsuranceClaimsClient({
             {/* UPPA Rules Callout */}
             <div className={styles.uppaNotice}>
               <div className={styles.uppaHeader}>
-                <AlertTriangle size={15} color="var(--warn, #fdb022)" />
-                <strong>UPPA Compliance Safeguards for Contractors</strong>
+                <AlertTriangle size={16} color="var(--warn, #fdb022)" />
+                <span>UPPA Compliance Safeguards for Contractors</span>
+                <span className={styles.uppaBadge}>Mandatory Safeguards</span>
               </div>
               <ul className={styles.uppaList}>
                 {UPPA_COMPLIANCE_RULES.map((r, i) => (
-                  <li key={i}>
-                    <strong>{r.rule}</strong> — {r.guideline}
+                  <li key={i} className={styles.uppaCard}>
+                    <div className={styles.uppaCardNumber}>0{i + 1}</div>
+                    <div className={styles.uppaCardContent}>
+                      <strong className={styles.uppaRule}>{r.rule}</strong>
+                      <span className={styles.uppaGuideline}>{r.guideline}</span>
+                    </div>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* Interactive FAQs */}
-            <h3 style={{ fontSize: '0.96rem', fontWeight: 600, margin: '1.25rem 0 0.5rem', color: 'var(--text)' }}>
+            <h3 style={{ fontSize: '0.98rem', fontWeight: 700, margin: '1.25rem 0 0.35rem', color: 'var(--text)' }}>
               Frequently Asked Homeowner Claim Questions
             </h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
+              Select a question below to review the UPPA-compliant explanation to provide to your client:
+            </p>
             <div className={styles.faqList}>
-              {HOMEOWNER_CLAIM_FAQS.map((faq, index) => (
-                <div key={index} className={styles.faqItem}>
-                  <button
-                    type="button"
-                    className={styles.faqQuestion}
-                    onClick={() => setCopilotAnswer(faq.detailedExplanation)}
-                  >
-                    <span>{faq.question}</span>
-                    <span className={styles.codeBadge}>{faq.shortAnswer}</span>
-                  </button>
-                </div>
-              ))}
+              {HOMEOWNER_CLAIM_FAQS.map((faq, index) => {
+                const isSelected = copilotAnswer === faq.detailedExplanation;
+                return (
+                  <div key={index} className={styles.faqItem}>
+                    <button
+                      type="button"
+                      className={`${styles.faqCard} ${isSelected ? styles.faqCardActive : ''}`}
+                      onClick={() => setCopilotAnswer(faq.detailedExplanation)}
+                      aria-pressed={isSelected}
+                    >
+                      <div className={styles.faqCardTop}>
+                        <span className={styles.faqCategory}>{faq.category}</span>
+                        <span className={styles.faqActionHint}>
+                          {isSelected ? '✓ Active Explanation' : 'Click to explain →'}
+                        </span>
+                      </div>
+                      <h4 className={styles.faqQuestionText}>{faq.question}</h4>
+                      <p className={styles.faqShortAnswer}>{faq.shortAnswer}</p>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Custom Question Form */}
-            <form onSubmit={handleAskCopilot} style={{ marginTop: '1.5rem' }}>
+            <form onSubmit={handleAskCopilot} className={styles.copilotFormBox}>
               <div className={styles.formField}>
-                <label htmlFor="custom-question-input" className={styles.fieldLabel}>Ask Custom Question</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label htmlFor="custom-question-input" className={styles.fieldLabel}>
+                  Ask Custom Claim Question
+                </label>
+                <div className={styles.copilotInputRow}>
                   <input
                     id="custom-question-input"
                     type="text"
@@ -2282,10 +2346,16 @@ export default function InsuranceClaimsClient({
                   />
                   <button
                     type="submit"
-                    className={styles.btnPrimary}
+                    className={styles.copilotSubmitBtn}
                     disabled={isAskingCopilot || !customQuestion.trim()}
                   >
-                    {isAskingCopilot ? <Loader2 size={14} className={styles.spinner} aria-label="Answering question" /> : 'Ask'}
+                    {isAskingCopilot ? (
+                      <Loader2 size={14} className={styles.spinner} aria-label="Answering question" />
+                    ) : (
+                      <>
+                        <Sparkles size={14} /> Ask Co-Pilot
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -2293,11 +2363,25 @@ export default function InsuranceClaimsClient({
 
             {/* Answer Display */}
             {copilotAnswer && (
-              <div className={styles.card} style={{ marginTop: '1rem', background: 'rgba(var(--tint), 0.02)' }}>
-                <h4 style={{ margin: '0 0 0.5rem', fontWeight: 700, fontSize: '0.92rem', color: 'var(--text)' }}>
-                  Co-Pilot Response (UPPA Compliant)
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+              <div className={styles.copilotAnswerCard}>
+                <div className={styles.copilotAnswerHeader}>
+                  <h4 className={styles.copilotAnswerTitle}>
+                    <Sparkles size={16} color="var(--accent, #ff7a21)" />
+                    Co-Pilot Response (UPPA Compliant)
+                  </h4>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    onClick={() => {
+                      navigator.clipboard.writeText(copilotAnswer);
+                      pushToast('Copied Co-Pilot response to clipboard');
+                    }}
+                    title="Copy response to clipboard"
+                  >
+                    <Copy size={13} /> Copy Response
+                  </button>
+                </div>
+                <p className={styles.copilotAnswerBody}>
                   {copilotAnswer}
                 </p>
               </div>

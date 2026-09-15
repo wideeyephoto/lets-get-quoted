@@ -50,6 +50,10 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
     const open = (hash: string) => {
       const ownerId = resolveTabForHash(tabs, hash);
       if (!ownerId) {
+        if (hash === 'voice-assistant' || hash === 'ai-receptionist' || hash === 'voice-calls' || hash === 'receptionist') {
+          router.replace('/dashboard/voice-calls?view=settings');
+          return;
+        }
         // AUTOMATIONS LEFT, AND ITS LINKS DID NOT.
         //
         // Eleven section ids used to resolve to a tab on this page, and links to

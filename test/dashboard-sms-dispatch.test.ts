@@ -24,7 +24,7 @@ describe('Dashboard SMS Dispatch Formatting', () => {
       body: 'Can our tech come by tomorrow at 2 PM?',
     });
 
-    expect(text).toBe('Apex Roofing: Can our tech come by tomorrow at 2 PM?');
+    expect(text).toBe('Apex Roofing: Can our tech come by tomorrow at 2 PM? Reply STOP to opt out.');
   });
 
   it('avoids duplicating business name if already present in private text', () => {
@@ -33,7 +33,7 @@ describe('Dashboard SMS Dispatch Formatting', () => {
       body: 'Hi, this is Dan from Apex Roofing checking in!',
     });
 
-    expect(text).toBe('Hi, this is Dan from Apex Roofing checking in!');
+    expect(text).toBe('Hi, this is Dan from Apex Roofing checking in! Reply STOP to opt out.');
   });
 
   it('composes without duplicating business name when passing body through inboxReplyText', async () => {

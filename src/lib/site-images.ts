@@ -9,6 +9,8 @@ export type SiteImage = {
   storagePath?: string;
   // Visible overlay title on gallery tiles (e.g. the service being advertised).
   caption?: string;
+  width?: number;
+  height?: number;
 };
 
 export const STOCK_SITE_IMAGES: SiteImage[] = [

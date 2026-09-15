@@ -11,9 +11,17 @@ import { loadPortal } from '@/lib/client-portal-data';
 import { generateReferralCode, buildReferralShareText } from '@/lib/referrals';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { PortalMessageForm } from './PortalMessageForm';
+import { PortalMessageThread } from './PortalMessageThread';
 import MailIcon from '@/components/MailIcon';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { customerTogglePlanAction } from './actions';
+import { PortalTracker } from './PortalTracker';
+import { ReferralButtons } from './ReferralButtons';
+import { DocumentLink } from './DocumentLink';
+import { DocumentVault } from './DocumentVault';
+import { InViewTracker } from './InViewTracker';
+import { PassportEditor } from './PassportEditor';
+
 
 export const dynamic = 'force-dynamic';
 // Never indexed. A live portal link in a search result is somebody's home
@@ -78,6 +86,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
 
   return (
     <>
+      <PortalTracker />
       <ContractorBrandBar brand={brand} context="Customer Portal" />
       <main className="wide-shell workspace-shell payment-shell portal-home">
         {/* Hero & Account Overview */}
@@ -92,6 +101,51 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                   }.`}
             </p>
 
+            {/* Needs Action Queue */}
+            {portal.actionQueue && portal.actionQueue.length > 0 && (
+              <div className="portal-action-queue" style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>
+                <div style={{ background: 'var(--ink-amber-1)', border: '1px solid var(--ink-amber-3)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--ink-amber-7)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span aria-hidden="true">⚠️</span>
+                    <span>Needs your attention</span>
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {portal.actionQueue.map((action) => (
+                      <Link
+                        key={action.id}
+                        href={action.url}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.75rem',
+                          background: 'white',
+                          borderRadius: '8px',
+                          textDecoration: 'none',
+                          color: 'var(--ink-base)',
+                          border: '1px solid var(--ink-amber-2)',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        <div>
+                          <strong style={{ display: 'block', fontSize: '0.95rem' }}>
+                            {action.kind === 'change_order' && 'Change Order: '}
+                            {action.kind === 'selection' && 'Selection: '}
+                            {action.kind === 'form' && 'Form: '}
+                            {action.title}
+                          </strong>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--ink-subtle)' }}>
+                            For {action.jobRef}
+                          </span>
+                        </div>
+                        <span style={{ color: 'var(--ink-amber-5)', fontWeight: 600, fontSize: '0.9rem' }}>Review &rarr;</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quick Metrics Bar */}
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginTop: '0.9rem', marginBottom: '0.9rem' }}>
               {portal.outstanding > 0 ? (
@@ -100,20 +154,29 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                     Balance due{openInvoices.length > 1 ? ` · ${openInvoices.length} invoices` : ''}
                   </span>
                   <strong className="payment-amount" style={{ fontSize: '1.25rem' }}>{formatMoney(portal.outstanding)}</strong>
+                  {openInvoices.length > 1 && (
+                    <form action={async () => {
+                      'use server';
+                      const { payPortalOutstandingAction } = await import('./actions');
+                      await payPortalOutstandingAction(params.token);
+                    }}>
+                      <button type="submit" style={{ marginTop: '0.5rem', background: 'var(--ink-link, var(--accent))', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Pay All Open Invoices</button>
+                    </form>
+                  )}
                 </div>
               ) : null}
 
               {pendingQuotes.length > 0 ? (
-                <div style={{ background: 'rgba(255, 179, 122, 0.15)', border: '1px solid var(--ink-amber-3, #f59e0b)', padding: '0.55rem 0.9rem', borderRadius: '10px', display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quotes to Review</span>
-                  <strong style={{ fontSize: '1.15rem', color: '#92400e' }}>{pendingQuotes.length} pending</strong>
+                <div style={{ background: 'rgba(255, 179, 122, 0.15)', border: '1px solid var(--ink-amber-3)', padding: '0.55rem 0.9rem', borderRadius: '10px', display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-amber-5)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quotes to Review</span>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--ink-amber-7)' }}>{pendingQuotes.length} pending</strong>
                 </div>
               ) : null}
 
               {activePlans.length > 0 ? (
-                <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', padding: '0.55rem 0.9rem', borderRadius: '10px', display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Service Plans</span>
-                  <strong style={{ fontSize: '1.15rem', color: '#065f46' }}>{activePlans.length} active</strong>
+                <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid var(--ink-green-5)', padding: '0.55rem 0.9rem', borderRadius: '10px', display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-green-7)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active Service Plans</span>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--ink-green-8)' }}>{activePlans.length} active</strong>
                 </div>
               ) : null}
             </div>
@@ -144,41 +207,36 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
 
         {/* VIP Service-Club Membership Card */}
         {portal.membership ? (
-          <section className="panel workspace-section-card" style={{ borderLeft: `4px solid ${portal.membership.badgeColor || '#38bdf8'}` }}>
+          <section className="panel workspace-section-card" style={{ borderLeft: `4px solid ${portal.membership.badgeColor || 'var(--ink-sky-4)'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.6rem' }}>
               <div>
-                <span style={{ display: 'inline-block', background: portal.membership.badgeColor || '#38bdf8', color: '#0f172a', fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.2rem 0.6rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
+                <span style={{ display: 'inline-block', background: portal.membership.badgeColor || 'var(--ink-sky-4)', color: 'var(--foreground)', fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '0.2rem 0.6rem', borderRadius: '4px', marginBottom: '0.3rem' }}>
                   VIP Club Member
                 </span>
                 <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800 }}>{portal.membership.tierName}</h2>
-                <p style={{ margin: '0.2rem 0 0', color: 'var(--mute-t50, #64748b)', fontSize: '0.88rem' }}>
+                <p style={{ margin: '0.2rem 0 0', color: 'var(--mute-t50)', fontSize: '0.88rem' }}>
                   Your active club status includes exclusive member rates, priority queue, and seasonal tune-ups.
                 </p>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--mute-t50, #64748b)', fontWeight: 600 }}>ESTIMATED ANNUAL VALUE</span>
-                <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>
-                  +${portal.membership.annualSavingsEstimate}/yr
-                </p>
-              </div>
+              
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.7rem', marginTop: '1rem' }}>
-              <div style={{ padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'var(--surface-subtle, #f8fafc)', border: '1px solid var(--edge-t12, #e2e8f0)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0369a1', display: 'block' }}>REPAIR DISCOUNT</span>
-                <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{portal.membership.discountPercentage}% Off All Work</strong>
+              <div style={{ padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'var(--surface-subtle)', border: '1px solid var(--edge-t12)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-sky-6)', display: 'block' }}>REPAIR DISCOUNT</span>
+                <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>{portal.membership.discountPercentage}% Off All Work</strong>
               </div>
 
-              <div style={{ padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'var(--surface-subtle, #f8fafc)', border: '1px solid var(--edge-t12, #e2e8f0)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0369a1', display: 'block' }}>INCLUDED TUNE-UPS</span>
-                <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>
+              <div style={{ padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'var(--surface-subtle)', border: '1px solid var(--edge-t12)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-sky-6)', display: 'block' }}>INCLUDED TUNE-UPS</span>
+                <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>
                   {portal.membership.tuneupsRemainingThisYear} of {portal.membership.includedTuneupsPerYear} remaining
                 </strong>
               </div>
 
-              <div style={{ padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'var(--surface-subtle, #f8fafc)', border: '1px solid var(--edge-t12, #e2e8f0)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0369a1', display: 'block' }}>DISPATCH &amp; WARRANTY</span>
-                <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>
+              <div style={{ padding: '0.75rem 0.9rem', borderRadius: '8px', background: 'var(--surface-subtle)', border: '1px solid var(--edge-t12)' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-sky-6)', display: 'block' }}>DISPATCH &amp; WARRANTY</span>
+                <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>
                   {portal.membership.emergencyFeeWaived ? 'Waived Dispatch' : 'Priority Queue'} · {portal.membership.warrantyMultiplier}x Warranty
                 </strong>
               </div>
@@ -240,33 +298,33 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                   style={{
                     padding: '1.1rem',
                     borderRadius: '12px',
-                    border: '1px solid var(--edge-t16, #cbd5e1)',
-                    background: quote.approved ? 'var(--surface-color, #ffffff)' : 'rgba(var(--tint, 59, 130, 246), 0.04)',
+                    border: '1px solid var(--edge-t16)',
+                    background: quote.approved ? 'var(--surface-color, var(--bg-2))' : 'rgba(var(--tint, 59, 130, 246), 0.04)',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.8rem', flexWrap: 'wrap' }}>
                     <div>
                       <strong style={{ fontSize: '1.05rem' }}>{quote.scope || quote.ref}</strong>
-                      <span style={{ marginLeft: '0.5rem', fontSize: '0.78rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: quote.approved ? '#dcfce7' : '#fef3c7', color: quote.approved ? '#166534' : '#92400e', fontWeight: 600 }}>
+                      <span style={{ marginLeft: '0.5rem', fontSize: '0.78rem', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--surface-subtle)', color: quote.approved ? 'var(--good)' : 'var(--warn)', fontWeight: 600 }}>
                         {quote.statusLabel}
                       </span>
                     </div>
                     <strong style={{ fontSize: '1.15rem' }}>{formatMoney(quote.quotedAmount)}</strong>
                   </div>
 
-                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: 'var(--mute-t50, #64748b)' }}>
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem', color: 'var(--mute-t50)' }}>
                     {quote.ref} {quote.address ? ` · ${quote.address}` : ''} {quote.scheduledFor ? ` · Scheduled ${formatDay(quote.scheduledFor)}` : ` · Created ${formatDay(quote.createdAt)}`}
                   </p>
 
                   {quote.depositAmount && !quote.approved ? (
-                    <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(255, 179, 122, 0.15)', fontSize: '0.84rem', color: '#92400e' }}>
+                    <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.75rem', borderRadius: '8px', background: 'rgba(255, 179, 122, 0.15)', fontSize: '0.84rem', color: 'var(--ink-amber-7)' }}>
                       ⚡ <strong>Deposit Required:</strong> {formatMoney(quote.depositAmount)} ({quote.depositPercent}% to lock in schedule).
                     </div>
                   ) : null}
 
                   {quote.items.length > 0 ? (
-                    <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--edge-t12, #e2e8f0)', paddingTop: '0.6rem' }}>
-                      <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--mute-t50, #64748b)', margin: '0 0 0.4rem' }}>
+                    <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--edge-t12)', paddingTop: '0.6rem' }}>
+                      <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--mute-t50)', margin: '0 0 0.4rem' }}>
                         Itemized Scope Breakdown ({quote.items.length} line items)
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -276,12 +334,12 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                               {item.kind === 'addon' ? '➕ ' : item.kind === 'subscription' ? '🔄 ' : '✓ '}
                               {item.label}
                               {item.recommended ? (
-                                <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
+                                <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', background: 'var(--surface-subtle)', color: 'var(--ink-sky-6)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 600 }}>
                                   Recommended
                                 </span>
                               ) : null}
                               {item.kind === 'addon' && !item.selected ? (
-                                <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: '#94a3b8' }}>
+                                <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: 'var(--mute-t50)' }}>
                                   (Optional)
                                 </span>
                               ) : null}
@@ -331,14 +389,14 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                   style={{
                     padding: '1rem 1.1rem',
                     borderRadius: '12px',
-                    border: '1px solid var(--edge-t16, #cbd5e1)',
-                    background: plan.status === 'active' ? 'rgba(16, 185, 129, 0.05)' : 'var(--surface-color, #ffffff)',
+                    border: '1px solid var(--edge-t16)',
+                    background: plan.status === 'active' ? 'rgba(16, 185, 129, 0.05)' : 'var(--surface-color, var(--bg-2))',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
                     <div>
                       <strong style={{ fontSize: '1.02rem' }}>{plan.title}</strong>
-                      <span style={{ marginLeft: '0.5rem', fontSize: '0.76rem', padding: '0.15rem 0.45rem', borderRadius: '6px', background: plan.status === 'active' ? '#dcfce7' : '#f1f5f9', color: plan.status === 'active' ? '#166534' : '#475569', fontWeight: 600 }}>
+                      <span style={{ marginLeft: '0.5rem', fontSize: '0.76rem', padding: '0.15rem 0.45rem', borderRadius: '6px', background: 'var(--surface-subtle)', color: plan.status === 'active' ? 'var(--good)' : 'var(--mute-t50)', fontWeight: 600 }}>
                         {plan.statusLabel}
                       </span>
                     </div>
@@ -353,7 +411,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                     </p>
                   ) : null}
 
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--mute-t50, #64748b)' }}>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.82rem', color: 'var(--mute-t50)' }}>
                     {plan.nextRunDate ? <span>📅 Next service: <strong>{formatDay(plan.nextRunDate)}</strong></span> : null}
                     {plan.paymentMethodSummary ? <span>💳 Auto-pay: <strong>{plan.paymentMethodSummary}</strong></span> : plan.autoCharge ? <span>💳 Auto-charge enabled</span> : null}
                     {plan.remainingCycles !== null ? <span>🔄 {plan.remainingCycles} visits remaining</span> : null}
@@ -402,82 +460,18 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         ) : null}
 
         {/* Durable Property & Equipment Passport */}
-        {portal.propertyPassports && portal.propertyPassports.length > 0 ? (
-          <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">Durable Home Passport</p>
-              <h2>Mechanical systems &amp; property records</h2>
-            </div>
-
-            {portal.propertyPassports.map((passport) => (
-              <div key={passport.id} style={{ marginTop: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem', padding: '0.75rem 1rem', background: 'var(--surface-subtle, #f8fafc)', borderRadius: '8px', border: '1px solid var(--edge-t12, #e2e8f0)', marginBottom: '0.85rem' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Passport ID: {passport.passportCode}
-                    </span>
-                    <strong style={{ display: 'block', fontSize: '1rem', color: '#0f172a' }}>{passport.address}</strong>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Home Health:</span>
-                    <span style={{ padding: '0.2rem 0.55rem', borderRadius: '6px', background: passport.healthScore.score >= 80 ? '#ecfdf5' : '#fffbeb', color: passport.healthScore.score >= 80 ? '#065f46' : '#b45309', fontWeight: 800, fontSize: '0.85rem', border: '1px solid currentColor' }}>
-                      {passport.healthScore.grade} ({passport.healthScore.score}/100)
-                    </span>
-                  </div>
-                </div>
-
-                {passport.equipment.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
-                    {passport.equipment.map((eq) => (
-                      <div key={eq.id} style={{ padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--edge-t16, #cbd5e1)', background: 'var(--surface-color, #fff)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.4rem' }}>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.4rem', marginBottom: '0.2rem' }}>
-                            <strong style={{ fontSize: '0.92rem', color: '#0f172a' }}>{eq.name}</strong>
-                            <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
-                              {eq.condition}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4 }}>
-                            {eq.brand ? <div>Brand: <strong>{eq.brand}</strong></div> : null}
-                            {eq.modelNumber ? <div>Model: {eq.modelNumber}</div> : null}
-                            {eq.serialNumber ? <div>Serial: {eq.serialNumber}</div> : null}
-                            {eq.specs?.filterSize ? (
-                              <div style={{ color: '#0369a1', fontWeight: 600, marginTop: '0.2rem' }}>
-                                🔍 Filter Spec: {eq.specs.filterSize}
-                              </div>
-                            ) : null}
-                            <div style={{ marginTop: '0.2rem', fontSize: '0.75rem' }}>
-                              Installed {eq.installedOn} (approx. {eq.estimatedAgeYears} yrs old)
-                            </div>
-                          </div>
-                        </div>
-
-                        {brand.phone ? (
-                          <div style={{ marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid #f1f5f9' }}>
-                            <a
-                              href={`sms:${brand.phone.replace(/[^0-9+]/g, '')}?&body=${encodeURIComponent(`Hi ${portal.businessName}, I would like to schedule service/filter replacement for my ${eq.name} at ${passport.address}.`)}`}
-                              className="btn secondary"
-                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem', width: '100%', textAlign: 'center' }}
-                            >
-                              🔧 Request Unit Service
-                            </a>
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Passport record active. Installed equipment details will appear as work is completed.</p>
-                )}
-              </div>
-            ))}
-          </section>
-        ) : null}
+        <PassportEditor
+          passports={portal.propertyPassports}
+          token={params.token}
+          businessName={portal.businessName}
+          brandPhone={brand.phone}
+        />
 
         {/* 4. Active & Past Work History */}
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Work history</p>
+            <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'work_history' }} />
+              <p className="eyebrow">Work history</p>
             <h2>Everything we&apos;ve done</h2>
           </div>
           {portal.jobs.length === 0 ? (
@@ -502,72 +496,13 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
         </section>
 
         {/* 5. Document & Media Vault */}
-        {portal.documents.length > 0 ? (
-          <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading compact-heading">
-              <p className="eyebrow">Document & Media Vault</p>
-              <h2>Project records, proof & certificates</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem', marginTop: '0.8rem' }}>
-              {portal.documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  style={{
-                    padding: '0.85rem 1rem',
-                    borderRadius: '10px',
-                    border: '1px solid var(--edge-t16, #cbd5e1)',
-                    background: 'var(--surface-color, #ffffff)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '0.5rem',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                      <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--mute-t50, #64748b)', fontWeight: 600 }}>
-                        {doc.kindLabel}
-                      </span>
-                      {doc.badge ? (
-                        <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#f1f5f9', color: '#334155', fontWeight: 600 }}>
-                          {doc.badge}
-                        </span>
-                      ) : null}
-                    </div>
-                    <strong style={{ fontSize: '0.88rem', display: 'block', lineHeight: 1.35 }}>
-                      {doc.title}
-                    </strong>
-                    {doc.jobScope || doc.jobRef ? (
-                      <span style={{ fontSize: '0.78rem', color: 'var(--mute-t50, #64748b)' }}>
-                        {doc.jobScope || doc.jobRef}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.78rem' }}>
-                    <span style={{ color: 'var(--mute-t50, #64748b)' }}>{formatDay(doc.createdAt)}</span>
-                    {doc.url ? (
-                      <a
-                        href={doc.url}
-                        target={doc.url.startsWith('http') ? '_blank' : undefined}
-                        rel="noreferrer"
-                        className="btn secondary"
-                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem' }}
-                      >
-                        📄 View
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        <DocumentVault documents={portal.documents} jobs={portal.jobs} />
 
         {/* 6. Conversation & Direct Message Center */}
         <section id="portal-message-section" className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Communication Center</p>
+            <InViewTracker payload={{ step: 'portal_section_viewed', sectionName: 'messages' }} />
+              <p className="eyebrow">Communication Center</p>
             <h2>Messages with {portal.businessName}</h2>
           </div>
 
@@ -581,11 +516,11 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                     maxWidth: '85%',
                     padding: '0.65rem 0.85rem',
                     borderRadius: '12px',
-                    background: msg.direction === 'inbound' ? 'var(--primary-color, #2563eb)' : 'var(--surface-subtle, #f1f5f9)',
-                    color: msg.direction === 'inbound' ? '#ffffff' : 'inherit',
+                    background: msg.direction === 'inbound' ? 'var(--primary-color, var(--accent))' : 'var(--surface-subtle)',
+                    color: msg.direction === 'inbound' ? 'var(--on-active, white)' : 'inherit',
                     fontSize: '0.88rem',
                     lineHeight: 1.45,
-                    border: msg.direction === 'inbound' ? 'none' : '1px solid var(--edge-t12, #e2e8f0)',
+                    border: msg.direction === 'inbound' ? 'none' : '1px solid var(--edge-t12)',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.8rem', fontSize: '0.72rem', opacity: 0.85, marginBottom: '0.2rem' }}>
@@ -609,7 +544,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
             <p className="empty-state" style={{ margin: '0.5rem 0 1rem' }}>No message history yet. Write to {portal.businessName} below anytime.</p>
           )}
 
-          <div style={{ borderTop: '1px solid var(--edge-t12, #e2e8f0)', paddingTop: '0.75rem' }}>
+          <div style={{ borderTop: '1px solid var(--edge-t12)', paddingTop: '0.75rem' }}>
             <p style={{ fontSize: '0.85rem', fontWeight: 600, margin: '0 0 0.25rem' }}>
               Ask a question or request service
             </p>
@@ -720,23 +655,10 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
             Give a neighbor <strong>$50 off</strong> their first service with {portal.businessName}, and receive a <strong>$50 credit</strong> on your next project when they book!
           </p>
           <div className="referral-code-box" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.9rem', background: 'var(--surface-subtle, rgba(0,0,0,0.03))', borderRadius: '8px', border: '1px solid var(--border-color, rgba(0,0,0,0.08))', marginBottom: '0.9rem' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>Your Promo Code:</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted, var(--mute-t50))' }}>Your Promo Code:</span>
             <code style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '0.05em' }}>{referralCode}</code>
           </div>
-          <div className="actions workspace-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <a
-              className="btn primary"
-              href={`sms:?&body=${encodeURIComponent(shareText)}`}
-            >
-              💬 Text to a neighbor
-            </a>
-            <a
-              className="btn secondary"
-              href={`mailto:?subject=${encodeURIComponent(`$50 off with ${portal.businessName}`)}&body=${encodeURIComponent(shareText)}`}
-            >
-              <MailIcon /> Email link
-            </a>
-          </div>
+          <ReferralButtons shareText={shareText} businessName={portal.businessName} />
         </section>
 
         <p className="portal-foot">

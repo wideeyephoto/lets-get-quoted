@@ -737,7 +737,7 @@ try {
   } catch (error) { projectionPermissionCode = sqlState(error); }
   await control.query('reset role');
   check('service-role offer linking reproduces missing projector privilege', projectionPermissionCode === '42501');
-  const projectionGrant = readFileSync('migrations/20260908175833_subcontractor_sms_projection_service_grant.sql', 'utf8');
+  const projectionGrant = readFileSync('migrations/20260908201549_subcontractor_sms_projection_service_grant.sql', 'utf8');
   await control.query(projectionGrant);
   await control.query(projectionGrant);
   await control.query('set role service_role');

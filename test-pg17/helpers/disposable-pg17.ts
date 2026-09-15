@@ -1,4 +1,15 @@
 import { Client } from 'pg';
+import os from 'node:os';
+import { syncBuiltinESMExports } from 'node:module';
+
+try {
+  os.userInfo();
+} catch (error: any) {
+  if (error && typeof error === 'object' && error.code === 'ERR_SYSTEM_ERROR') {
+    os.userInfo = () => ({ uid: -1, gid: -1, username: process.env.USERNAME || 'windows-user', homedir: process.env.USERPROFILE || '', shell: null } as any);
+    syncBuiltinESMExports();
+  }
+}
 
 const DATABASE_URL_VARIABLE = 'LGQ_PG17_DATABASE_URL';
 const DESTRUCTIVE_SENTINEL_VARIABLE = 'LGQ_PG17_DESTRUCTIVE_TEST';
@@ -337,6 +348,7 @@ async function assertFreshDisposableDatabase(client: Client): Promise<void> {
 }
 
 let activeEmbeddedPg: any = null;
+let activeEmbeddedPgDir: string | null = null;
 
 export async function openDisposablePg17Clients(): Promise<DisposablePg17Clients> {
   // All URL/sentinel checks run before Client construction and before any
@@ -358,9 +370,11 @@ export async function openDisposablePg17Clients(): Promise<DisposablePg17Clients
     process.env.PATH = `${bin}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}`;
     
     const dbName = `lgq_payment_preview_${randomBytes(4).toString('hex')}`;
+    const dbDir = join(process.cwd(), '.pg17-disposable-' + randomBytes(4).toString('hex'));
+    activeEmbeddedPgDir = dbDir;
     
     activeEmbeddedPg = new EmbeddedPostgres({
-      databaseDir: join(process.cwd(), '.pg17-disposable-' + randomBytes(4).toString('hex')),
+      databaseDir: dbDir,
       user: 'postgres', password: 'postgres', port: 54362, persistent: false,
     });
     
@@ -376,17 +390,13 @@ export async function openDisposablePg17Clients(): Promise<DisposablePg17Clients
     await bootstrap.query(`comment on database ${dbName} is '${DATABASE_COMMENT_MARKER}'`);
     await bootstrap.end();
     
-    // We mock the schema migrations table so assertMigrationHistory passes.
-    // In a real environment, the runner will apply migrations. Here we just bypass the checks.
-    // However, if the tests rely on the full schema, we must load schema.sql.
-    // The instructions say "similar to how scripts/verify-messaging-schema.mjs does it".
     const { readFileSync } = await import('node:fs');
     const initClient = new Client({
       connectionString: `postgresql://postgres:postgres@127.0.0.1:54362/${dbName}`,
     });
     await initClient.connect();
     
-    // Create the roles and extensions
+    // Create the roles, schemas, and extensions
     await initClient.query(`
       do $roles$
       begin
@@ -398,29 +408,86 @@ export async function openDisposablePg17Clients(): Promise<DisposablePg17Clients
       create schema if not exists extensions;
       create extension if not exists pgcrypto with schema extensions;
       create schema if not exists auth;
-      create table if not exists auth.users (id uuid primary key default pg_catalog.gen_random_uuid());
+      create table if not exists auth.users (
+        id uuid primary key default pg_catalog.gen_random_uuid(),
+        instance_id uuid,
+        aud text,
+        role text,
+        email text,
+        phone text
+      );
+      create table if not exists auth.sessions (
+        id uuid primary key default pg_catalog.gen_random_uuid(),
+        user_id uuid references auth.users(id) on delete cascade,
+        factor_id uuid,
+        aal text,
+        not_after timestamptz
+      );
+      create table if not exists auth.mfa_factors (
+        id uuid primary key default pg_catalog.gen_random_uuid(),
+        user_id uuid references auth.users(id) on delete cascade,
+        factor_type text,
+        status text
+      );
+      create or replace function auth.uid() returns uuid language sql stable
+      as $$ select nullif(pg_catalog.current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+      create schema if not exists storage;
+      create table if not exists storage.buckets (
+        id text primary key,
+        name text not null,
+        public boolean not null default false
+      );
+      grant usage on schema public to anon, authenticated, service_role;
+      alter default privileges in schema public
+        grant all on tables to anon, authenticated, service_role;
+      alter default privileges in schema public
+        grant all on sequences to anon, authenticated, service_role;
+      alter default privileges in schema public
+        grant all on functions to anon, authenticated, service_role;
     `);
     
-    try {
-      await initClient.query(readFileSync(join(process.cwd(), 'schema.sql'), 'utf8'));
-    } catch (e) {
-      // ignore schema loading errors as they are out of scope for this fallback
+    await initClient.query(
+      readFileSync(join(process.cwd(), 'schema.sql'), 'utf8').replace(/\r\n/g, '\n'),
+    );
+
+    const directCheckoutMigrations = [
+      '20260815221412_stripe_merchant_readiness_scope.sql',
+      '20260815222631_direct_payment_readiness_gate.sql',
+      '20260815224559_direct_checkout_operation_orchestration.sql',
+      '20260815231620_stripe_event_inbox.sql',
+      '20260816041255_stripe_billing_subscription_checkout_operations.sql',
+      '20260816050000_direct_charge_refund_operations.sql',
+      '20260816054500_base_plan_recurring_consent_evidence.sql',
+      '20260816060000_stripe_billing_subscription_event_projection.sql',
+      '20260816073000_one_off_direct_payment_preparation.sql',
+      '20260816080000_stripe_connected_payment_event_projection.sql',
+      '20260816084500_direct_payment_settlement_sms_inbox_mirror.sql',
+      '20260816090000_stripe_connected_payment_projection_worker.sql',
+      '20260816094500_stripe_connected_checkout_expiration_projection.sql',
+      '20260816161844_direct_checkout_generation_recovery.sql',
+      '20260816194056_direct_checkout_late_success_reconciliation.sql',
+      '20260816213000_direct_checkout_late_success_operator_resolution.sql',
+      '20260818120000_catalog_version_2026_08_18_preview.sql',
+      '20260818230000_late_success_manual_disposition_applied_check.sql',
+      '20260818234500_late_success_settle_reports_moved_evidence.sql',
+    ];
+
+    for (const mig of directCheckoutMigrations) {
+      const sql = readFileSync(join(process.cwd(), 'migrations', mig), 'utf8').replace(/\r\n/g, '\n');
+      await initClient.query(sql);
     }
 
-    // Create the schema_migrations table so the assert passes
+    // Create the schema_migrations table and record migrations so assertMigrationHistory passes
     await initClient.query(`
       create schema if not exists supabase_migrations;
       create table if not exists supabase_migrations.schema_migrations (version text not null, name text);
     `);
     
     for (const names of REQUIRED_MIGRATION_NAMES) {
-      await initClient.query(`insert into supabase_migrations.schema_migrations (version, name) values ('fake', $1)`, [names[0]]);
-    }
-    
-    for (const proc of REQUIRED_REGPROCEDURES) {
-      // Mock the functions if they don't exist so the assert passes
-      const sig = proc.replace('public.', '');
-      await initClient.query(`create or replace function public.${sig.split('(')[0]}(${sig.split('(')[1]} returns void language sql as $$ $$;`);
+      await initClient.query(
+        `insert into supabase_migrations.schema_migrations (version, name) values ('20260816', $1)`,
+        [names[0]],
+      );
     }
 
     await initClient.end();
@@ -440,6 +507,7 @@ export async function openDisposablePg17Clients(): Promise<DisposablePg17Clients
     
     await assertServerIdentity(clients.control, dbName);
     await assertMigrationHistory(clients.control);
+    await assertFreshDisposableDatabase(clients.control);
     
     process.stderr.write(
       `Disposable PG17 ephemeral target ${dbName} passed its empty-ledger guard.\n`
@@ -491,6 +559,17 @@ export async function closeDisposablePg17Clients(
       // ignore
     }
     activeEmbeddedPg = null;
+  }
+  if (activeEmbeddedPgDir) {
+    try {
+      const { rmSync, existsSync } = await import('node:fs');
+      if (existsSync(activeEmbeddedPgDir)) {
+        rmSync(activeEmbeddedPgDir, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
+    activeEmbeddedPgDir = null;
   }
 }
 

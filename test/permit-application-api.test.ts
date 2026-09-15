@@ -23,6 +23,7 @@ vi.mock('@/lib/permit-intel', async (importOriginal) => {
       property: { ownerName: 'Homeowner', streetAddress: '211 S Williams St', city: 'Royal Oak', state: 'MI', zip: '48067' },
       workScope: { trade: 'Roofing', detailedDescription: 'Tear off & Replace', estimatedCost: 8500 },
       certification: { signatureDate: '2026-08-26', section23aNotice: 'Legal notice' },
+      readiness: { complete: true, missing: [] },
     }),
     generatePermitApplicationHtml: vi.fn().mockReturnValue('<html><body>Application</body></html>'),
     registerPermitDocument: vi.fn().mockResolvedValue({
@@ -126,5 +127,45 @@ describe('Permit Application API Route - GET & POST /api/jobs/:id/permits/applic
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.document.documentType).toBe('application_draft');
+  });
+
+  it('rejects saving application draft with 409 when attested credentials are missing', async () => {
+    vi.mocked(createSupabaseServerClient).mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: mockUserId, email: 'owner@test.com' } } }),
+      },
+    } as any);
+
+    vi.mocked(getCurrentMembership).mockResolvedValue({
+      accountId: mockAccountId,
+      role: 'owner',
+    });
+
+    vi.mocked(loadHeldCapabilities).mockResolvedValue(new Set());
+    vi.mocked(getJob).mockResolvedValue({
+      id: validJobId,
+      account_id: mockAccountId,
+      address: '211 S Williams St, Royal Oak, MI',
+    } as any);
+
+    const { compilePermitApplication } = await import('@/lib/permit-intel');
+    vi.mocked(compilePermitApplication).mockResolvedValueOnce({
+      authority: { name: 'City of Royal Oak' },
+      readiness: { complete: false, missing: ['licenseNumber', 'insuranceCarrier'] },
+    } as any);
+
+    const res = await POST(
+      new Request('http://localhost/api/jobs/foo/permits/application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html: '<html><body>Application</body></html>' }),
+      }),
+      { params: Promise.resolve({ id: validJobId }) },
+    );
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toContain('required attested fields are missing');
+    expect(body.missingFields).toEqual(['licenseNumber', 'insuranceCarrier']);
   });
 });

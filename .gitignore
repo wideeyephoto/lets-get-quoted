@@ -55,6 +55,8 @@ scripts/tmp-*.mjs
 
 # Generated video/screen capture recording artifacts
 artifacts/
+coverage/
 test-results/
 .audit-tmp/
 supabase/.temp/
+.pg17-*

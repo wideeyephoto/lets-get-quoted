@@ -34,12 +34,12 @@ export default function CapacityPanel({
 
   return (
     <section className="panel workspace-section-card">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">What&apos;s next</p>
           <h2>Next 7 days</h2>
         </div>
-        <span style={{ fontSize: '0.84rem', color: 'var(--muted)' }}>
+        <span style={{ fontSize: '0.84rem', color: 'var(--muted)', textAlign: 'right', marginLeft: 'auto', alignSelf: 'flex-start' }}>
           {workingDaysWithJobs} of {workingDaysTotal} days scheduled
         </span>
       </div>

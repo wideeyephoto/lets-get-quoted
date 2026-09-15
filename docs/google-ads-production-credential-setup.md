@@ -2,17 +2,26 @@
 
 Date started: 2026-09-01
 
-Current status: complete. All five values are stored as Vercel Production secrets, their names and Production scope were verified without revealing values, and the redeployment completed with Ready status. The exact five-input application configuration predicate is satisfied. OAuth refresh and Google Ads API v25 read access were also verified successfully.
+Historical setup status (2026-09-01): complete. All five original values were stored as Vercel Production secrets and OAuth refresh and Google Ads API v25 read access were verified successfully.
 
-Purpose: provision the five server-side Google Ads credentials required by the production application without storing credential values, OAuth tokens, or customer IDs in the repository.
+Purpose: document the server-side Google Ads configuration without storing credential values or OAuth tokens in the repository.
 
-## Required Vercel Production variables
+## Required Vercel Production variables (updated 2026-09-14)
 
 - `GOOGLE_ADS_CLIENT_ID`
 - `GOOGLE_ADS_CLIENT_SECRET`
-- `GOOGLE_ADS_DEVELOPER_TOKEN`
 - `GOOGLE_ADS_REFRESH_TOKEN`
 - `GOOGLE_ADS_MCC_CUSTOMER_ID`
+
+Google Ads API access now belongs to the Cloud project that owns the OAuth client. The application uses direct REST requests, so no Google Ads client-library upgrade is required. It no longer reads or sends a developer token. Deprecated configuration fields and CLI arguments are accepted but ignored for compatibility.
+
+The serving advertiser ID (`GOOGLE_ADS_CLIENT_CUSTOMER_ID`, or an explicit per-call advertiser ID) is also required for campaign operations. OAuth credentials, account permissions, and the manager/advertiser distinction are unchanged.
+
+Cloud Console review on 2026-09-14 confirmed Explorer access for LETSGETQUOTED: 2,880 production operations/day and 15,000 test operations/day. The organization mailbox is already a project Owner and is eligible for future mandatory API notices. No IAM grants were changed.
+
+Manage access and upgrade applications in Google Cloud Console → Google Ads API Overview. The September 2026 announcement expects future API releases to reject developer-token headers in the first half of 2027. See [Google's migration guide](https://developers.google.com/google-ads/api/docs/api-policy/developer-token).
+
+The records below describe the original token-based setup and historical verification; they are not current setup instructions.
 
 ## Confirmed starting state
 
@@ -72,7 +81,7 @@ Verification completed 2026-09-01 against READY Production release `97761d26`:
 
 Consent currently defaults `ad_storage`, `ad_user_data`, `ad_personalization`, and `analytics_storage` to `denied`; no consent-update path is implemented. The verified event therefore uses Google's privacy-limited Consent Mode behavior and must not be described as full cookie-based attribution.
 
-## Security notes
+## Historical security notes (before the September 2026 migration)
 
 - Secrets and customer IDs are handled only in authenticated provider surfaces and encrypted Vercel configuration.
 - No secret value is printed to command output, committed, or retained in a temporary repository file.

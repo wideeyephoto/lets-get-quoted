@@ -59,7 +59,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Customization state
   const [selectedColorId, setSelectedColorId] = useState<string>(() => currentProduct.availableColors[0].id);
-  const [selectedCardTemplate, setSelectedCardTemplate] = useState<BusinessCardTemplateId>('executive');
+  const [selectedCardTemplate, setSelectedCardTemplate] = useState<BusinessCardTemplateId>('traditional');
   const [selectedCardFinish, setSelectedCardFinish] = useState<CardFinishId>('velvet_matte');
   const [selectedNotepadTemplate, setSelectedNotepadTemplate] = useState<string>('work_order');
   const [selectedTierQty, setSelectedTierQty] = useState<number>(() => currentProduct.pricingTiers[0].quantity);
@@ -238,7 +238,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setPrimaryColor(initialData.primaryColor || '#0f172a');
     setAccentColor(initialData.accentColor);
     setSecondaryColor(initialData.secondaryColor);
-    setSelectedCardTemplate('executive');
+    setSelectedCardTemplate('traditional');
     setSelectedCardFinish('velvet_matte');
     setSelectedNotepadTemplate('work_order');
     if (typeof window !== 'undefined') {

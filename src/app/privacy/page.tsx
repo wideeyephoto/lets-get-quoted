@@ -113,7 +113,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Payment Processing:</strong> Stripe, Inc. (PCI-DSS Level 1 certified payments, deposits, and merchant payouts under Stripe Connect).</li>
             <li><strong>Telephony &amp; Voice Communications:</strong> SignalWire, Inc. (carrier 10DLC messaging, programmable SIP, and real-time voice dispatching).</li>
             <li><strong>Accounting Integrations:</strong> Intuit Inc. (bi-directional QuickBooks sync for customers, invoices, and payments, where authorized by contractor).</li>
-            <li><strong>Artificial Intelligence Inference Platforms:</strong> Google LLC (Google Gemini API) and OpenAI, LLC. All AI inference is conducted exclusively through paid enterprise API tiers with strict zero-data-retention and non-training guarantees (verified: Google Cloud Billing active on Gemini API project; customer data, prompts, job notes, photos, and voice transcripts are never used to train public foundation models).</li>
+            <li><strong>Artificial Intelligence Inference Platforms:</strong> Google LLC (Google Gemini API) and OpenAI, LLC. Customer data, prompts, job notes, photos, and voice transcripts are not used to train public foundation models.</li>
             <li><strong>Transactional Email Delivery:</strong> Resend, Inc. (DKIM/SPF-signed transactional and notification emails).</li>
             <li><strong>Property Intelligence:</strong> RentCast, Inc. (address-level structural and valuation baselines for estimating).</li>
             <li><strong>Mapping &amp; Geocoding:</strong> Google Maps Platform (server-side geocoding and browser mapping with referrer restrictions).</li>

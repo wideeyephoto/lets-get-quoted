@@ -1,5 +1,15 @@
 import 'server-only';
 
+export function sanitizeWorkerError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg
+    .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]')
+    .replace(/\b(?:sk_live_|sk_test_|rk_live_|rk_test_|pk_live_|pk_test_|cus_|pi_|ch_|sub_|evt_|acct_|re_|task\/)[a-zA-Z0-9_-]+\b/g, '[ID]')
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ig, '[UUID]')
+    .replace(/private(@|\b|-)/ig, '[PRIVATE]');
+}
+
+
 import {
   runPaidPlanMonthlyAllowanceResetBatch,
   type RunPaidPlanMonthlyAllowanceResetBatchResult,
@@ -379,7 +389,7 @@ ConnectedPaymentProjectionCronSummary
       STRIPE_CONNECTED_PAYMENT_PROJECTION_BATCH_SIZE,
     );
     return summarizeConnectedPaymentProjectionBatch(result);
-  } catch {
+  } catch (err) {
     // Initialization/configuration exceptions are reduced to one count. Never
     // let a provider, payment, event, or database error string reach cron_runs.
     return summarizeConnectedPaymentProjectionBatch({
@@ -509,7 +519,7 @@ export async function runTopUpProjectionCronBatch(): Promise<TopUpProjectionCron
   try {
     const result = await runTopUpProjectionBatch(STRIPE_TOP_UP_PROJECTION_BATCH_SIZE);
     return summarizeTopUpProjectionBatch(result);
-  } catch {
+  } catch (err) {
     // Initialization/configuration exceptions are reduced to one count. Never
     // let a provider, workspace, event, or database error string reach cron_runs.
     return summarizeTopUpProjectionBatch({
@@ -645,7 +655,7 @@ DirectPaymentSettlementCronSummary
       result,
       DIRECT_PAYMENT_SETTLEMENT_BATCH_SIZE,
     );
-  } catch {
+  } catch (err) {
     // Never let exception text reach the cron response or cron_runs. Worker/RPC
     // failures are monitored as one count-only logical failure instead.
     return summarizeDirectPaymentSettlementBatch(
@@ -726,7 +736,7 @@ LegacyQuickStopLateRefundCronSummary
       result,
       LEGACY_QUICK_STOP_LATE_REFUND_BATCH_SIZE,
     );
-  } catch {
+  } catch (err) {
     // Stripe configuration, claim, and persistence exceptions are reduced to a
     // single count so neither cron_runs nor the HTTP response receives IDs or
     // provider/database details.

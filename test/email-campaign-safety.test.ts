@@ -35,6 +35,64 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
 
 describe('Lifecycle send boundaries', () => {
+  it('concurrent welcome and scheduled sweep share one durable intent', async () => {
+    mocks.admin = emailCampaignAdmin(tables());
+    await Promise.all([
+      sendContractorWelcomeEmail({ accountId: account.id, businessName: account.business_name, ownerEmail: owner.email }),
+      runContractorLifecycleSweep(mocks.admin),
+    ]);
+    expect(mocks.send).toHaveBeenCalledOnce();
+    expect(mocks.record).toHaveBeenCalledOnce();
+  });
+
+  it('reports owner lookup failure instead of quietly skipping every account', async () => {
+    await expect(runContractorLifecycleSweep(emailCampaignAdmin(tables(), { owners: 'unavailable' }) as any)).rejects.toThrow('Lifecycle owner emails unavailable');
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
+  it('reports account lookup failure instead of a successful empty sweep', async () => {
+    await expect(runContractorLifecycleSweep(emailCampaignAdmin(tables(), { accounts: 'unavailable' }) as any)).rejects.toThrow('Lifecycle accounts unavailable');
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
+  it('dry-run reports the next welcome recipient and subject without sending or advancing history', async () => {
+    const source = tables();
+    const snapshot = structuredClone(source);
+    const admin = emailCampaignAdmin(source);
+    const first = await runContractorLifecycleSweep(admin as any, { dryRun: true });
+    const second = await runContractorLifecycleSweep(admin as any, { dryRun: true });
+    expect(first).toEqual(second);
+    expect(first.errors).toBe(0);
+    expect(first.sent).toBe(0);
+    expect(first.planned).toBe(1);
+    expect(first.dryRun).toBe(true);
+    expect(first.details).toEqual([expect.objectContaining({
+      accountId: account.id, stepId: 'welcome_day0', status: 'planned',
+      note: expect.stringContaining(`to ${owner.email}`),
+    })]);
+    expect(first.details[0].note).toContain('[DRY-RUN] Subject:');
+    expect(source).toEqual(snapshot);
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(mocks.record).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the lifecycle suppression response might be truncated', async () => {
+    const email_suppression = Array.from({ length: 1000 }, (_, i) => ({ account_id: account.id, email: `other${i}@example.com` }));
+    await expect(runContractorLifecycleSweep(emailCampaignAdmin(tables({ email_suppression })) as any)).rejects.toThrow('suppression list unavailable or truncated');
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it('does not send payment setup nudges once the account has completed setup', async () => {
+    const result = await runContractorLifecycleSweep(emailCampaignAdmin(tables({
+      accounts: [{ ...account, connect_onboarded: true, created_at: aged(4) }],
+      account_events: [event('welcome_day0', 4)],
+    })) as any, { dryRun: true });
+    expect(result.details.every(detail => detail.stepId !== 'nudge_incomplete_stripe')).toBe(true);
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
   it('targets the owner instead of the customer reply address and includes text + unsubscribe headers', async () => {
     const admin = emailCampaignAdmin(tables());
     await runContractorLifecycleSweep(admin as any);
@@ -46,7 +104,7 @@ describe('Lifecycle send boundaries', () => {
     expect(options.headers['Idempotency-Key']).toBe('contractor-lifecycle/account-one/welcome_day0');
   });
 
-  it.each(['account_events', 'jobs', 'email_suppression'])('sends nothing when %s cannot be checked', async (table) => {
+  it.each(['account_events', 'contractor_lifecycle_sends', 'jobs', 'email_suppression'])('sends nothing when %s cannot be checked', async (table) => {
     await expect(runContractorLifecycleSweep(emailCampaignAdmin(tables(), { [table]: 'unavailable' }) as any)).rejects.toThrow();
     expect(mocks.send).not.toHaveBeenCalled();
   });
@@ -73,12 +131,12 @@ describe('Lifecycle send boundaries', () => {
     expect(mocks.send).not.toHaveBeenCalled();
   });
 
-  it('welcome retry uses the same provider key as the sweep', async () => {
+  it('the sweep sees the durable welcome even when its activity-feed write is lost', async () => {
     mocks.admin = emailCampaignAdmin(tables());
     await sendContractorWelcomeEmail({ accountId: account.id, ownerEmail: owner.email });
-    const immediateKey = mocks.send.mock.calls[0][1].headers['Idempotency-Key'];
+    expect(mocks.send.mock.calls[0][1].headers['Idempotency-Key']).toBe('contractor-lifecycle/account-one/welcome_day0');
     await runContractorLifecycleSweep(mocks.admin);
-    expect(mocks.send.mock.calls[1][1].headers['Idempotency-Key']).toBe(immediateKey);
+    expect(mocks.send).toHaveBeenCalledOnce();
   });
 
   it('does not resend a recorded welcome', async () => {
@@ -90,6 +148,12 @@ describe('Lifecycle send boundaries', () => {
 });
 
 describe('Approved activation batches', () => {
+  it('fails closed when the batch suppression response might be truncated', async () => {
+    const email_suppression = Array.from({ length: 1000 }, (_, i) => ({ account_id: account.id, email: `other${i}@example.com` }));
+    await expect(sendActivationNudgeBatch(emailCampaignAdmin(tables({ email_suppression })) as any, { recipients: [recipient] })).rejects.toThrow('suppression list unavailable or truncated');
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
   it('deduplicates repeated accounts and sends the same keyed message the sweep uses', async () => {
     const result = await sendActivationNudgeBatch(emailCampaignAdmin(tables()) as any, { recipients: [recipient, recipient] });
     expect(result).toMatchObject({ sent: 1, skipped: 1 });

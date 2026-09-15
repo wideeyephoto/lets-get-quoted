@@ -43,8 +43,8 @@ try {
 }
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
-const SETTLEMENT = m('20260819260000_overage_settlement.sql');
-const REAPER_MIGRATION = m('20260909210000_overage_settlement_reaper_and_starvation.sql');
+const SETTLEMENT = m('20260820074457_overage_settlement.sql');
+const REAPER_MIGRATION = m('20260909224107_overage_settlement_reaper_and_starvation.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });

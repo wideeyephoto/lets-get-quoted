@@ -84,15 +84,15 @@ export async function getCustomerPermitSummary(
   // Resolve verification link
   let verificationUrl: string | null = null;
   if (jurisdiction.authorityId === 'mi-royal-oak') {
-    verificationUrl = 'https://www.accessmygov.com/?uid=1349';
+    verificationUrl = 'https://bsaonline.com/?uid=1652';
   } else if (jurisdiction.authorityId === 'mi-detroit') {
     verificationUrl = 'https://detroitmi.gov/departments/buildings-safety-engineering-and-environmental-department';
   } else if (jurisdiction.authorityId === 'mi-grand-rapids') {
     verificationUrl = 'https://aca-prod.accela.com/GRANDRAPIDS/Default.aspx';
   } else if (jurisdiction.authorityId === 'mi-ann-arbor') {
-    verificationUrl = 'https://annarbormi.portal.opengov.com';
+    verificationUrl = 'https://stream.a2gov.org';
   } else {
-    verificationUrl = 'https://www.michigan.gov/lara/bureau-list/bcc';
+    verificationUrl = jurisdiction.sourceUrl || 'https://www.michigan.gov/lara/bureau-list/bcc';
   }
 
   if (requirement.decision === 'not_required' && appStatus === 'not_started') {

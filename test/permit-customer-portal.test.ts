@@ -56,7 +56,7 @@ describe('Customer Portal & Homeowner Permit Status Sanitization', () => {
     expect(summary.permitNumber).toBe('2026-RO-8492');
     expect(summary.stage).toBe('issued');
     expect(summary.statusBadge).toBe('Permit Issued');
-    expect(summary.verificationUrl).toContain('accessmygov.com');
+    expect(summary.verificationUrl).toContain('bsaonline.com');
     expect(summary.milestones.length).toBeGreaterThan(0);
 
     // Strict privacy checks: ensure no internal leakages

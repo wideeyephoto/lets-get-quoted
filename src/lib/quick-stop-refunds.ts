@@ -1,9 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { refundPayment } from '@/lib/payments';
+import { processQuickStopRefunds } from '@/lib/quick-stop-refund-recovery';
+import { loadQuickStopTimeZone, quickStopWindowEndMs, quickStopNoShowEligibility } from '@/lib/quick-stop-time';
 import { getQuickStopRequest, logQuickStopEvent, type QuickStopRequest } from '@/lib/quick-stop-requests';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { sendQuickStopStatusSms } from '@/lib/sms';
-import { centsToDollars, quickStopNoShowLock } from '@/lib/quick-stop';
+import { centsToDollars, type QuickStopStatus } from '@/lib/quick-stop';
 import { logAdminAction, systemActor, type AuditActor } from '@/lib/admin';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
@@ -53,14 +54,29 @@ export async function loadRefundTiers(admin: SupabaseClient, accountId: string):
 }
 
 // How much of a CUSTOMER-initiated cancellation is refundable, by timeline.
-export function computeCustomerRefundPercent(req: QuickStopRequest, now = Date.now(), tiers: RefundTiers = QUICK_STOP_REFUND_TIERS): number {
+//
+// `timeZone` IS NOT OPTIONAL, and that is the point. `arrival_date` is a bare
+// date and `arrival_end` a bare time — wall clock in the CONTRACTOR's zone. A
+// default here reads them in whatever zone the caller forgot to think about: on
+// a UTC host a 3 PM window for an America/New_York account ends at 15:00Z
+// instead of 19:00Z, handing out the contractorMissedWindow tier — a 100% refund
+// — four hours (seven, on the west coast) before the window had actually run
+// out. It leads the signature so it cannot be defaulted and cannot be skipped
+// past: every call site becomes a compile error rather than a quiet wrong answer.
+export function computeCustomerRefundPercent(
+  req: QuickStopRequest,
+  timeZone: string,
+  now = Date.now(),
+  tiers: RefundTiers = QUICK_STOP_REFUND_TIERS,
+): number {
   const t = tiers;
   if (!req.paid_at) return 100; // nothing captured yet — full (no-op) refund
   if (now - new Date(req.paid_at).getTime() <= t.withinGraceMinutes * 60_000) return t.grace;
   // Contractor blew the arrival window without arriving → full refund.
   if (req.arrival_date && req.arrival_end && !req.arrived_at) {
-    const endMs = new Date(`${req.arrival_date}T${req.arrival_end}`).getTime();
-    if (Number.isFinite(endMs) && now > endMs) return t.contractorMissedWindow;
+    const endMs = quickStopWindowEndMs(req, timeZone);
+    if (endMs === null) throw new Error('The Quick Stop arrival window or time zone is invalid.');
+    if (now > endMs) return t.contractorMissedWindow;
   }
   // Check arrival BEFORE en-route: a tech can mark "arrived" straight from
   // confirmed (skipping en_route), and an arrived visit is always the 0% tier.
@@ -71,11 +87,38 @@ export function computeCustomerRefundPercent(req: QuickStopRequest, now = Date.n
 
 export type CancellationKind = 'customer_cancel' | 'contractor_cancel' | 'no_show';
 
-// One place to resolve a cancellation / no-show: compute the refund %, issue the
-// Stripe refund (cents-safe), set the terminal status + refund_cents, archive the
-// placeholder job, log it, and notify both parties. Idempotent via a
-// compare-and-set on the current status. No lockouts/credits (deferred, per the
-// agreed Phase-1 scope) — a verified no-show is refund + record + notify.
+/**
+ * WHICH STATUSES EACH RESOLUTION MAY ACT ON.
+ *
+ * A MIRROR, NOT THE GATE. cancel_quick_stop_request enforces these same three
+ * allowlists inside the cancellation transaction, and that is the copy that is
+ * authoritative — it holds the row lock, so it is the only one that can be right
+ * under concurrency. This exists for two reasons the SQL cannot serve: it fails a
+ * bad request fast with a sentence naming the status, instead of a round trip
+ * ending in a raw `raise exception`; and it lets the guard be pinned against
+ * QUICK_STOP_TRANSITIONS by a test, so the table and the rule that implements it
+ * cannot drift apart unnoticed. Keep it in step with the migration.
+ *
+ * The admin console's resolve dropdown is the one caller that guards nothing of
+ * its own, which is how staff could aim a no-show at a request that had been
+ * declined, had expired unpaid, or was already refunded — no money moved, but the
+ * escalating account lock fired regardless, and its third tier is 3650 days.
+ *
+ * `completed` belongs under no_show and the closed statuses do not: the sweep
+ * auto-completes on an ASSUMPTION — the window elapsed and nobody reported
+ * anything — not on proof of arrival, so staff must still be able to record a
+ * no-show against one. A request that never reached `confirmed` never became a
+ * visit, so it cannot have been missed.
+ */
+export const RESOLVABLE_FROM: Record<CancellationKind, QuickStopStatus[]> = {
+  customer_cancel: ['awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'],
+  contractor_cancel: ['contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived'],
+  no_show: ['confirmed', 'en_route', 'completed', 'disputed', 'no_show_reported'],
+};
+
+// Atomically cancel the booking and preserve its refund obligation, then attempt
+// the durable refund and notify both parties. Verified contractor no-shows apply
+// the documented escalating lock inside the cancellation transaction.
 export async function resolveQuickStopCancellation(
   admin: SupabaseClient,
   accountId: string,
@@ -85,100 +128,82 @@ export async function resolveQuickStopCancellation(
   // the customer's own cancel link — but the admin console is a person, and
   // recording their enforcement action as 'system' hid it from every review
   // that reads the audit log by staff member or by permission.
-  opts: { kind: CancellationKind; reason?: string | null; actor?: AuditActor },
-): Promise<{ pct: number; refundCents: number }> {
+  opts: { kind: CancellationKind; reason?: string | null; actor?: AuditActor; requireReportingWindow?: boolean },
+): Promise<{ pct: number; refundCents: number; refundPending: boolean }> {
   const req = await getQuickStopRequest(admin, accountId, requestId);
   if (!req) throw new Error('Request not found.');
 
-  const tiers = await loadRefundTiers(admin, accountId);
-  const refundPct =
-    opts.kind === 'no_show'
-      ? tiers.noShow
-      : opts.kind === 'contractor_cancel'
-        ? tiers.contractorCancel
-        : computeCustomerRefundPercent(req, Date.now(), tiers);
-
-  // Compute the intended refund up front, but DON'T move money yet.
-  const intendedRefundCents =
-    req.paid_at && req.payment_id && req.fee_cents && refundPct > 0 ? Math.round((req.fee_cents * refundPct) / 100) : 0;
-
-  const nowIso = new Date().toISOString();
   const status = opts.kind === 'no_show' ? 'no_show_confirmed' : opts.kind === 'contractor_cancel' ? 'contractor_canceled' : 'customer_canceled';
-  const patch: Record<string, unknown> = { status, refund_cents: intendedRefundCents, cancel_reason: opts.reason ?? null, updated_at: nowIso };
-  if (opts.kind === 'no_show') {
-    patch.no_show_confirmed_at = nowIso;
-    patch.no_show_reported_at = req.no_show_reported_at ?? nowIso;
-  } else {
-    patch.canceled_at = nowIso;
+  if (req.status === status) {
+    return { pct: 0, refundCents: req.refund_cents ?? 0, refundPending: Boolean(req.refund_due_cents && req.refund_state !== 'completed') };
+  }
+  if (!RESOLVABLE_FROM[opts.kind].includes(req.status as QuickStopStatus)) {
+    throw new Error('This Quick Stop cannot be resolved from its current state.');
+  }
+  const timeZone = await loadQuickStopTimeZone(admin, accountId);
+  if (!timeZone) throw new Error('The account time zone could not be verified.');
+  if (opts.kind === 'no_show' && opts.requireReportingWindow && quickStopNoShowEligibility(req, timeZone) !== 'eligible') {
+    throw new Error('This Quick Stop cannot be reported as a no-show at this time.');
+  }
+  const tiers = await loadRefundTiers(admin, accountId);
+  const refundPct = opts.kind === 'no_show' ? tiers.noShow : opts.kind === 'contractor_cancel'
+    ? tiers.contractorCancel : computeCustomerRefundPercent(req, timeZone, Date.now(), tiers);
+  // Booking transition, evidence checks, calendar archival, and refund intent
+  // commit together. An application crash cannot lose the financial obligation.
+  const { data: claimed, error: claimError } = await admin.rpc('cancel_quick_stop_request', {
+    p_account_id: accountId, p_request_id: requestId, p_expected_status: req.status,
+    p_kind: opts.kind, p_refund_pct: refundPct, p_reason: opts.reason ?? null,
+    p_require_reporting_window: opts.requireReportingWindow ?? false,
+  });
+  if (claimError) throw new Error(claimError.message);
+  if (!claimed) {
+    const current = await getQuickStopRequest(admin, accountId, requestId);
+    if (current?.status !== status) throw new Error('The Quick Stop changed before the cancellation was applied. Refresh and try again.');
+    return { pct: refundPct, refundCents: current.refund_cents ?? 0,
+      refundPending: (current.refund_due_cents ?? 0) > (current.refund_cents ?? 0) };
   }
 
-  // Claim the terminal transition FIRST — only the winner moves money, so two
-  // concurrent resolutions (customer-cancel racing admin-resolve, or a double
-  // submit) can't both issue a refund.
-  const { data: claimed } = await admin
-    .from('extra_stop_requests')
-    .update(patch)
-    .eq('account_id', accountId)
-    .eq('id', requestId)
-    .eq('status', req.status)
-    .select('id')
-    .maybeSingle();
-  if (!claimed) return { pct: refundPct, refundCents: intendedRefundCents }; // already resolved by a concurrent path
-
-  // Winner issues the refund (refundPayment is itself idempotency-keyed). On
-  // failure, correct the recorded amount back to 0 so the row never claims money
-  // that didn't move — the contractor can retry from the payment.
-  let refundCents = intendedRefundCents;
-  if (intendedRefundCents > 0 && req.payment_id) {
-    try {
-      await refundPayment(admin, accountId, req.payment_id, centsToDollars(intendedRefundCents));
-    } catch (error) {
-      console.error('Quick Stop refund failed:', error instanceof Error ? error.message : error);
-      refundCents = 0;
-      await admin.from('extra_stop_requests').update({ refund_cents: 0 }).eq('id', requestId).eq('account_id', accountId);
+  // SQL has already applied enforcement atomically and saved its immutable
+  // outcome. Only the winning cancellation writes this actor-attributed audit;
+  // retries cannot extend a lock or replace a stronger manual suspension.
+  if (opts.kind === 'no_show') {
+    const { data: enforcement, error: enforcementError } = await admin
+      .from('quick_stop_no_show_enforcements')
+      .select('result')
+      .eq('account_id', accountId)
+      .eq('request_id', requestId)
+      .maybeSingle();
+    if (enforcementError || !enforcement?.result) {
+      console.error('Quick Stop enforcement audit result unavailable:', enforcementError?.message ?? 'missing result');
+    } else {
+      const lock = enforcement.result as { tier: number; untilIso: string | null; reason: string | null; priorNoShows: number; changed: boolean };
+      if (lock.changed) await logAdminAction(admin, opts.actor ?? systemActor(), {
+        action: 'extra_stop_auto_lock', accountId, targetType: 'account', targetId: accountId,
+        meta: { tier: lock.tier, until: lock.untilIso, reason: lock.reason, requestId, priorNoShows: lock.priorNoShows },
+      });
     }
   }
 
-  // No-show escalation: auto-lock Quick Stop on a verified no-show, escalating by
-  // how many the account has had recently (10-day → 30-day → disabled pending
-  // review). Staff can clear it from the admin console.
-  //
-  // This writes the same two columns as lockQuickStopAction, which the console
-  // gates on account.enforce — so when a staff member drove it, the audit row
-  // has to name them. Attributed to `opts.actor` when there is one, and to the
-  // system only when the system really did it.
-  if (opts.kind === 'no_show') {
-    const { data: priors } = await admin
-      .from('extra_stop_requests')
-      .select('no_show_confirmed_at')
-      .eq('account_id', accountId)
-      .eq('status', 'no_show_confirmed')
-      .neq('id', requestId)
-      .not('no_show_confirmed_at', 'is', null);
-    const priorDates = (priors ?? [])
-      .map((r) => new Date(String((r as { no_show_confirmed_at: string }).no_show_confirmed_at)))
-      .filter((d) => !Number.isNaN(d.getTime()));
-    const lock = quickStopNoShowLock(priorDates);
-    await admin.from('accounts').update({ extra_stop_locked_until: lock.untilIso, extra_stop_lock_reason: lock.reason }).eq('id', accountId);
-    await logAdminAction(admin, opts.actor ?? systemActor(), {
-      action: 'extra_stop_auto_lock',
-      accountId,
-      targetType: 'account',
-      targetId: accountId,
-      meta: { tier: lock.tier, until: lock.untilIso, reason: lock.reason, requestId, priorNoShows: priorDates.length },
-    });
+  try {
+    await processQuickStopRefunds(admin, 1, accountId, requestId);
+  } catch (error) {
+    console.error('Quick Stop refund queued for recovery:', error instanceof Error ? error.message : error);
   }
-
-  // Drop the placeholder / appointment from the active calendar.
-  if (req.job_id) {
-    await admin.from('jobs').update({ status: 'archived' }).eq('id', req.job_id).eq('account_id', accountId);
-  }
+  const refreshed = await getQuickStopRequest(admin, accountId, requestId);
+  const refundCents = refreshed?.refund_cents ?? req.refund_cents ?? 0;
+  // A failed refresh is uncertainty, not proof that no refund is owed.
+  const intendedCents = req.payment_id ? Math.round((req.fee_cents ?? 0) * (req.paid_at ? refundPct : 100) / 100) : 0;
+  const refundPending = (refreshed?.refund_due_cents ?? intendedCents) > refundCents;
 
   const actor = opts.kind === 'contractor_cancel' ? 'contractor' : 'customer';
-  await logQuickStopEvent(admin, accountId, requestId, { actor, from: req.status, to: status, meta: { pct: refundPct, refundCents, reason: opts.reason ?? null } });
+  await logQuickStopEvent(admin, accountId, requestId, { actor, from: req.status, to: status, meta: { pct: refundPct, refundCents, refundPending, reason: opts.reason ?? null } });
 
   // Notify. Customer gets a refund text; owner gets an email trail.
-  const refundLabel = refundCents > 0 ? `A refund of $${centsToDollars(refundCents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} has been issued.` : 'No charge was refunded.';
+  const refundLabel = refundPending
+    ? !req.paid_at && !(refreshed?.paid_at)
+      ? 'Any payment that completes for this canceled visit will be refunded.'
+      : 'Your refund is pending. We are tracking it and will confirm when it has been issued.'
+    : refundCents > 0 ? `A refund of $${centsToDollars(refundCents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} has been issued.` : 'No charge was refunded.';
   if (req.client_phone) {
     const message =
       opts.kind === 'no_show'
@@ -216,5 +241,5 @@ export async function resolveQuickStopCancellation(
     console.error('Quick Stop cancel owner email failed:', error instanceof Error ? error.message : error);
   }
 
-  return { pct: refundPct, refundCents };
+  return { pct: refundPct, refundCents, refundPending };
 }

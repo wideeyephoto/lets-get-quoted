@@ -16,17 +16,23 @@ export function isOptimizableHost(src: string): boolean {
 }
 
 type SafeImageProps = {
+  className?: string;
+  loading?: "lazy" | "eager";
+  decoding?: "async" | "auto" | "sync";
+  draggable?: boolean;
+  'data-edit'?: string;
+  'data-parallax'?: string;
   src: string;
   alt: string;
-  width: number;
-  height: number;
+  width?: number | null;
+  height?: number | null;
   sizes?: string;
 };
 
-export default function SafeImage({ src, alt, width, height, sizes }: SafeImageProps) {
-  if (isOptimizableHost(src)) {
-    return <Image src={src} alt={alt} width={width} height={height} sizes={sizes} />;
+export default function SafeImage({ src, alt, width, height, sizes, className, loading, decoding, draggable, ...rest }: SafeImageProps) {
+  if (isOptimizableHost(src) && width && height) {
+    return <Image className={className} src={src} alt={alt} width={width} height={height} sizes={sizes} loading={loading} decoding={decoding} draggable={draggable} {...rest} />;
   }
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} loading="lazy" decoding="async" />;
+  return <img className={className} src={src} alt={alt} width={width || undefined} height={height || undefined} loading={loading || "lazy"} decoding={decoding || "async"} draggable={draggable} {...rest} />;
 }

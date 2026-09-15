@@ -1,13 +1,14 @@
-import { Resend, type CreateEmailOptions } from 'resend';
+import { Resend } from 'resend';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { renderPlatformEmail, renderPlatformEmailText } from '@/emails/platform';
 import { buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
 import { recordAccountEvent } from '@/lib/account-events';
-import { ownerEmailsForAccounts } from '@/lib/admin-accounts';
+import { ownerEmailsForAccounts } from '@/lib/account-owner-emails';
 import { interpolateTokens, type PlatformCampaignRecipient } from '@/lib/admin-campaign-types';
 import { APP_ORIGIN } from '@/lib/app-origin';
+import { loadLifecycleSendHistory, sendLifecycleMessage } from '@/lib/contractor-lifecycle-sends';
 
 let resendClient: Resend | null = null;
 function getResendClient(): Resend | null {
@@ -44,16 +45,6 @@ function lifecycleCtaUrl(step: ContractorLifecycleStep): string {
 
 function lifecycleText(step: ContractorLifecycleStep, recipient: PlatformCampaignRecipient): string {
   return renderPlatformEmailText({ ...step, ctaUrl: lifecycleCtaUrl(step) }, recipient);
-}
-
-// This repository's Resend SDK predates send({ idempotencyKey }). Its public
-// request method lets us set the HTTP header without changing the shared SDK.
-function sendLifecycleMessage(resend: Resend, message: CreateEmailOptions, key: string) {
-  return resend.fetchRequest<{ id: string }>('/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${resend.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': key },
-    body: JSON.stringify(message),
-  });
 }
 
 /**
@@ -96,11 +87,10 @@ export async function sendContractorWelcomeEmail(input: {
 
     if (suppressionError) return { ok: false, error: 'suppression_lookup_failed' };
 
-    const { data: history, error: historyError } = await admin.from('account_events')
-      .select('id').eq('account_id', input.accountId)
-      .eq('kind', 'contractor_lifecycle_email_sent').contains('meta', { step_id: 'welcome_day0' }).limit(1);
-    if (historyError) return { ok: false, error: 'history_lookup_failed' };
-    if (history?.length) return { ok: false, error: 'already_sent' };
+    const history = await loadLifecycleSendHistory(admin, [input.accountId]);
+    if (history.some(event => (event.meta as { step_id?: string } | null)?.step_id === 'welcome_day0')) {
+      return { ok: false, error: 'already_sent' };
+    }
 
     if (suppression) {
       console.info(`[contractor-lifecycle] Email ${targetEmail} suppressed; skipping welcome email.`);
@@ -131,7 +121,7 @@ export async function sendContractorWelcomeEmail(input: {
 
     const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
 
-    const sendRes = await sendLifecycleMessage(resend, {
+    const sendRes = await sendLifecycleMessage(admin, resend, {
       from: fromAddress,
       to: recipient.email,
       reply_to: welcomeStep.replyTo,
@@ -144,7 +134,9 @@ export async function sendContractorWelcomeEmail(input: {
         { name: 'step', value: 'welcome_day0' },
         { name: 'account_id', value: input.accountId.replace(/[^a-zA-Z0-9_-]/g, '_') },
       ],
-    }, `contractor-lifecycle/${input.accountId}/welcome_day0`);
+    }, input.accountId, 'welcome_day0');
+
+    if (sendRes.skipped) return { ok: false, error: sendRes.skipped };
 
     if (sendRes.error || !sendRes.data?.id) {
       console.error('[contractor-lifecycle] Failed to send welcome email:', sendRes.error);
@@ -180,21 +172,25 @@ export async function runContractorLifecycleSweep(
 ): Promise<{
   checked: number;
   sent: number;
+  planned: number;
+  dryRun: boolean;
   skipped: number;
   errors: number;
-  details: Array<{ accountId: string; stepId: string; status: 'sent' | 'skipped' | 'error'; note?: string }>;
+  details: Array<{ accountId: string; stepId: string; status: 'sent' | 'planned' | 'skipped' | 'error'; note?: string }>;
 }> {
   const admin = adminClient ?? createAdminClient();
   const isDryRun = options?.dryRun ?? false;
   const result = {
     checked: 0,
     sent: 0,
+    planned: 0,
+    dryRun: isDryRun,
     skipped: 0,
     errors: 0,
-    details: [] as Array<{ accountId: string; stepId: string; status: 'sent' | 'skipped' | 'error'; note?: string }>,
+    details: [] as Array<{ accountId: string; stepId: string; status: 'sent' | 'planned' | 'skipped' | 'error'; note?: string }>,
   };
 
-  const resend = getResendClient();
+  const resend = isDryRun ? null : getResendClient();
   if (!resend && !isDryRun) {
     console.warn('[contractor-lifecycle-sweep] No Resend API key; sweep skipped.');
     return result;
@@ -213,8 +209,7 @@ export async function runContractorLifecycleSweep(
     .limit(500);
 
   if (accountsErr || !accounts) {
-    console.error('[contractor-lifecycle-sweep] Failed to fetch accounts:', accountsErr);
-    return result;
+    throw new Error('Lifecycle accounts unavailable; no emails sent.');
   }
 
   result.checked = accounts.length;
@@ -223,18 +218,12 @@ export async function runContractorLifecycleSweep(
   const accountIds = accounts.map((a) => a.id);
 
   // Load owner login emails
-  const ownerEmailMap = await ownerEmailsForAccounts(admin, accountIds);
+  const ownerEmailMap = await ownerEmailsForAccounts(admin, accountIds, () => {
+    throw new Error('Lifecycle owner emails unavailable; no emails sent.');
+  });
 
   // Load existing lifecycle sent history from account_events
-  const { data: sentEvents, error: historyError } = await admin
-    .from('account_events')
-    .select('account_id, meta')
-    .in('account_id', accountIds)
-    .eq('kind', 'contractor_lifecycle_email_sent');
-
-  if (historyError || (sentEvents?.length ?? 0) >= 1000) {
-    throw new Error('Lifecycle history unavailable or truncated; no emails sent.');
-  }
+  const sentEvents = await loadLifecycleSendHistory(admin, accountIds);
 
   const sentStepMap = new Map<string, Set<string>>();
   for (const ev of sentEvents ?? []) {
@@ -275,6 +264,9 @@ export async function runContractorLifecycleSweep(
   if (suppressionError) {
     console.error('Failed to load email suppression list for contractor lifecycle sweep (failing closed):', suppressionError.message);
     throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+  }
+  if (!suppressions || suppressions.length >= 1000) {
+    throw new Error('Lifecycle suppression list unavailable or truncated; no emails sent.');
   }
 
   const suppressedSet = new Set<string>();
@@ -365,11 +357,11 @@ export async function runContractorLifecycleSweep(
       const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
 
       if (isDryRun) {
-        result.sent++;
+        result.planned++;
         result.details.push({
           accountId: account.id,
           stepId: stepToSend.id,
-          status: 'sent',
+          status: 'planned',
           note: `[DRY-RUN] Subject: "${subject}" to ${recipient.email}`,
         });
         continue;
@@ -380,7 +372,7 @@ export async function runContractorLifecycleSweep(
         continue;
       }
 
-      const sendRes = await sendLifecycleMessage(resend, {
+      const sendRes = await sendLifecycleMessage(admin, resend, {
         from: fromAddress,
         to: recipient.email,
         reply_to: stepToSend.replyTo,
@@ -393,7 +385,13 @@ export async function runContractorLifecycleSweep(
           { name: 'step', value: stepToSend.id },
           { name: 'account_id', value: account.id.replace(/[^a-zA-Z0-9_-]/g, '_') },
         ],
-      }, `contractor-lifecycle/${account.id}/${stepToSend.id}`);
+      }, account.id, stepToSend.id);
+
+      if (sendRes.skipped) {
+        result.skipped++;
+        result.details.push({ accountId: account.id, stepId: stepToSend.id, status: 'skipped', note: sendRes.skipped });
+        continue;
+      }
 
       if (sendRes.error || !sendRes.data?.id) {
         result.errors++;
@@ -449,13 +447,14 @@ export interface ActivationNudgeBatchRecipient {
 
 export interface ActivationNudgeBatchResult {
   sent: number;
+  planned: number;
   skipped: number;
   errors: number;
   dryRun: boolean;
   details: Array<{
     accountId: string;
     stepId: string;
-    status: 'sent' | 'skipped' | 'error';
+    status: 'sent' | 'planned' | 'skipped' | 'error';
     note?: string;
   }>;
 }
@@ -483,6 +482,7 @@ export async function sendActivationNudgeBatch(
 
   const result: ActivationNudgeBatchResult = {
     sent: 0,
+    planned: 0,
     skipped: 0,
     errors: 0,
     dryRun: isDryRun,
@@ -505,6 +505,9 @@ export async function sendActivationNudgeBatch(
     console.error('[activation-nudges] Failed to check suppression list:', suppressionError.message);
     throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
   }
+  if (!suppressions || suppressions.length >= 1000) {
+    throw new Error('Activation suppression list unavailable or truncated; no nudges sent.');
+  }
 
   const suppressedSet = new Set<string>();
   for (const s of suppressions ?? []) {
@@ -514,15 +517,7 @@ export async function sendActivationNudgeBatch(
   }
 
   // 2. Re-check already-sent ledger
-  const { data: sentEvents, error: eventsError } = await admin
-    .from('account_events')
-    .select('account_id, meta')
-    .in('account_id', accountIds)
-    .eq('kind', 'contractor_lifecycle_email_sent');
-
-  if (eventsError || (sentEvents?.length ?? 0) >= 1000) {
-    throw new Error('Lifecycle history unavailable or truncated; no nudges sent.');
-  }
+  const sentEvents = await loadLifecycleSendHistory(admin, accountIds);
 
   const alreadySentMap = new Map<string, Set<string>>();
   for (const ev of sentEvents ?? []) {
@@ -629,11 +624,11 @@ export async function sendActivationNudgeBatch(
       const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
 
       if (isDryRun) {
-        result.sent++;
+        result.planned++;
         result.details.push({
           accountId: r.accountId,
           stepId: step.id,
-          status: 'sent',
+          status: 'planned',
           note: `[DRY-RUN] Subject: "${subject}" to ${cleanEmail}`,
         });
         continue;
@@ -650,7 +645,7 @@ export async function sendActivationNudgeBatch(
         continue;
       }
 
-      const sendRes = await sendLifecycleMessage(resend, {
+      const sendRes = await sendLifecycleMessage(admin, resend, {
         from: fromAddress,
         to: cleanEmail,
         reply_to: step.replyTo,
@@ -663,7 +658,13 @@ export async function sendActivationNudgeBatch(
           { name: 'step', value: step.id },
           { name: 'account_id', value: r.accountId.replace(/[^a-zA-Z0-9_-]/g, '_') },
         ],
-      }, `contractor-lifecycle/${r.accountId}/${step.id}`);
+      }, r.accountId, step.id);
+
+      if (sendRes.skipped) {
+        result.skipped++;
+        result.details.push({ accountId: r.accountId, stepId, status: 'skipped', note: sendRes.skipped });
+        continue;
+      }
 
       if (sendRes.error || !sendRes.data?.id) {
         result.errors++;

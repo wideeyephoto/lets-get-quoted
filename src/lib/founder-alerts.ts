@@ -301,3 +301,78 @@ export async function sendOperationalEmergencyAlert(
   }
 }
 
+export type FounderFeatureRequestInput = {
+  feature: string;
+  contact?: string | null;
+  userAgent?: string | null;
+  ip?: string | null;
+};
+
+/**
+ * Dispatch an instant email alert to the founder when a visitor submits a
+ * feature request from the public founder page.
+ */
+export async function sendFounderFeatureRequestAlert(
+  input: FounderFeatureRequestInput,
+): Promise<{ dispatched: boolean; recipient: string; providerId?: string }> {
+  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+  const resend = getResend();
+
+  if (!resend || !process.env.RESEND_API_KEY) {
+    console.info('[founder-alerts] Feature request received (Resend key not configured):', {
+      feature: input.feature,
+      contact: input.contact,
+    });
+    return { dispatched: false, recipient };
+  }
+
+  try {
+    const timestamp = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+    const snippet = input.feature.slice(0, 60);
+
+    const bodyHtml = `
+      <div style="padding:16px 20px;background:#0f172a;border-radius:12px;border:1px solid #334155;margin:0 0 16px;">
+        <p style="font-family:${FONT_STACK};font-size:16px;line-height:1.6;color:#f8fafc;font-weight:600;margin:0 0 12px;white-space:pre-wrap;">“${escapeHtml(input.feature)}”</p>
+        ${input.contact ? `<p style="font-family:${FONT_STACK};font-size:13px;color:#94a3b8;margin:0;"><strong>Contact:</strong> ${escapeHtml(input.contact)}</p>` : '<p style="font-family:${FONT_STACK};font-size:12px;color:#64748b;margin:0;">Anonymous visitor</p>'}
+        <p style="font-family:${FONT_STACK};font-size:11px;color:#64748b;margin:10px 0 0;">Received: ${timestamp}</p>
+      </div>
+    `;
+
+    const result = await resend.emails.send({
+      from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <system@letsgetquoted.com>",
+      to: recipient,
+      subject: `💡 Feature Request from Founder Page: ${snippet}`,
+      html: renderBrandedEmail({
+        brand: {
+          businessName: "Let's Get Quoted",
+          accent: '#ff7137',
+          theme: 'spotlight',
+          logoUrl: null,
+          phone: null,
+          siteUrl: APP_ORIGIN,
+          replyTo: input.contact && input.contact.includes('@') ? input.contact : null,
+        },
+        preheader: `New feature request from founder page: ${snippet}`,
+        eyebrow: 'Public Founder Page Idea',
+        heading: 'New Feature Request',
+        bodyHtml,
+        cta: {
+          label: 'Open Platform Dashboard',
+          url: `${APP_ORIGIN}/admin`,
+        },
+        footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">Submitted directly via letsgetquoted.com/founder</p>`,
+      }),
+    });
+
+    if (result.error || !result.data?.id) {
+      console.error('[founder-alerts] Feature request email rejected by provider:', result.error);
+      return { dispatched: false, recipient };
+    }
+    return { dispatched: true, recipient, providerId: result.data.id };
+  } catch (err) {
+    console.error('[founder-alerts] Failed to send feature request email:', err);
+    return { dispatched: false, recipient };
+  }
+}
+
+

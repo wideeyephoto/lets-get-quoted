@@ -19,6 +19,7 @@ import type {
   WaitlistOffer,
   WaitlistStatus,
 } from '@/lib/cancellation-waitlist';
+import { ilikeAcross } from '@/lib/postgrest-filter';
 
 export async function addWaitlistEntryAction(input: CreateWaitlistInput) {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
@@ -145,7 +146,7 @@ export async function searchExistingContactsAction(query: string): Promise<Exist
     .from('clients')
     .select('id, name, phone, email, address, notes')
     .eq('account_id', accountId)
-    .or(`name.ilike.%${term}%,phone.ilike.%${term}%,address.ilike.%${term}%`)
+    .or(ilikeAcross(['name', 'phone', 'address'], term))
     .limit(6);
 
   if (clientErr) {
@@ -157,7 +158,7 @@ export async function searchExistingContactsAction(query: string): Promise<Exist
     .from('leads')
     .select('id, name, phone, email, address, service_name, notes, lat, lng, client_id')
     .eq('account_id', accountId)
-    .or(`name.ilike.%${term}%,phone.ilike.%${term}%,address.ilike.%${term}%`)
+    .or(ilikeAcross(['name', 'phone', 'address'], term))
     .limit(6);
 
   if (leadErr) {
