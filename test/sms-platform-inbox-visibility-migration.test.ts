@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationName = '20260903172223_owner_shared_field_command_routing.sql';
+const migrationName = '20260903202613_owner_shared_field_command_routing.sql';
 const migration = readFileSync(
   new URL(`../migrations/${migrationName}`, import.meta.url),
   'utf8',

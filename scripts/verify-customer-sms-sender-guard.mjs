@@ -47,7 +47,7 @@ try {
   const start = source.indexOf('create or replace function public.stage_sms_delivery(');
   assert(start >= 0);
   await db.exec(source.slice(start, source.indexOf('$$;', start) + 3));
-  const migration = readFileSync(new URL('../migrations/20260908204510_customer_sms_registered_sender_guard.sql', import.meta.url), 'utf8');
+  const migration = readFileSync(new URL('../migrations/20260908204739_customer_sms_registered_sender_guard.sql', import.meta.url), 'utf8');
   await db.exec(migration);
   await db.exec(migration);
   await test('matching registered sender is ready after repeated migration', async () => assert.equal(await ready(), true));

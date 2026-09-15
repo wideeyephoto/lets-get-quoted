@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { QUICK_STOP_ACTIVE_STATUSES, QUICK_STOP_TERMINAL_STATUSES, QUICK_STOP_STATUSES,
+  QUICK_STOP_CLOSED_STATUSES, QUICK_STOP_OFFERABLE_STATUSES, QUICK_STOP_DAY_OCCUPYING_STATUSES,
   QUICK_STOP_TRANSITIONS, getQuickStopTransitionSources } from '@/lib/quick-stop';
 
 const mocks = vi.hoisted(() => ({ request: vi.fn(), processRefunds: vi.fn(), queueRefund: vi.fn(), sms: vi.fn(), email: vi.fn(), audit: vi.fn(), ownerEmail: vi.fn() }));
@@ -9,7 +12,7 @@ vi.mock('@/lib/sms', () => ({ sendQuickStopStatusSms: mocks.sms, sendQuickStopCo
 vi.mock('@/lib/email', () => ({ getAccountOwnerEmail: mocks.ownerEmail, sendContractorAlertEmail: mocks.email }));
 vi.mock('@/lib/admin', () => ({ logAdminAction: mocks.audit, systemActor: () => ({ adminEmail: 'system' }) }));
 vi.mock('@/lib/auth', () => ({ createAdminClient: vi.fn() }));
-import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
+import { resolveQuickStopCancellation, RESOLVABLE_FROM } from '@/lib/quick-stop-refunds';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
 
 const request = { id: 'request', account_id: 'account', status: 'confirmed', job_id: 'job', payment_id: 'payment',
@@ -100,6 +103,56 @@ describe('late-payment reconciliation follows the closed booking outcome', () =>
       expect(mocks.queueRefund).not.toHaveBeenCalled(); expect(mocks.processRefunds).not.toHaveBeenCalled();
     });
 });
+describe('the guard lists stay in step with the table and the SQL', () => {
+  /**
+   * RESOLVABLE_FROM is a MIRROR of the three status allowlists inside
+   * cancel_quick_stop_request, which is the copy that actually decides — it holds
+   * the row lock. A mirror that drifts is worse than no mirror, because the fast
+   * TypeScript rejection and the transaction would disagree about the same
+   * request, so both directions are pinned here.
+   */
+  const cancelSql = readFileSync(
+    join(process.cwd(), 'migrations/20260914145738_quick_stop_refund_recovery.sql'), 'utf8',
+  );
+  const target = { customer_cancel: 'customer_canceled', contractor_cancel: 'contractor_canceled', no_show: 'no_show_confirmed' } as const;
+
+  it('only ever allows a resolution the transition table also allows', () => {
+    for (const [kind, froms] of Object.entries(RESOLVABLE_FROM)) {
+      for (const from of froms) {
+        expect(QUICK_STOP_TRANSITIONS[from], `${from} -> ${target[kind as keyof typeof target]}`)
+          .toContain(target[kind as keyof typeof target]);
+      }
+    }
+  });
+
+  it('names exactly the statuses the cancellation transaction accepts', () => {
+    // The migration spells each allowlist as `r.status not in (...)`; pull them
+    // back out and compare as sets, so an edit to either side fails here.
+    for (const [kind, froms] of Object.entries(RESOLVABLE_FROM)) {
+      const clause = new RegExp(`p_kind='${kind}' and r\.status not in \(([^)]*)\)`).exec(cancelSql);
+      expect(clause, `${kind} allowlist present in the migration`).not.toBeNull();
+      const sqlStatuses = [...clause![1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+      expect(sqlStatuses, kind).toEqual([...froms].sort());
+    }
+  });
+
+  it('every guard list is made of real statuses, and a day-occupying one is never closed', () => {
+    const known = new Set<string>(QUICK_STOP_STATUSES);
+    for (const list of [QUICK_STOP_CLOSED_STATUSES, QUICK_STOP_OFFERABLE_STATUSES, QUICK_STOP_DAY_OCCUPYING_STATUSES]) {
+      for (const status of list) expect(known.has(status), status).toBe(true);
+    }
+    // An offerable request can always still reach an offer...
+    for (const status of QUICK_STOP_OFFERABLE_STATUSES) {
+      expect(QUICK_STOP_TRANSITIONS[status]).toContain('contractor_offer_sent');
+    }
+    // ...and anything still holding a slot on the day cannot be closed.
+    const closed = new Set<string>(QUICK_STOP_CLOSED_STATUSES);
+    for (const status of QUICK_STOP_DAY_OCCUPYING_STATUSES) {
+      expect(closed.has(status), `${status} holds a slot, so it cannot be closed`).toBe(false);
+    }
+  });
+});
+
 describe('lifecycle vocabulary remains consistent', () => {
   it('contains only known statuses and has no duplicate transitions', () => {
     const known = new Set(QUICK_STOP_STATUSES);

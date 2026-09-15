@@ -54,20 +54,20 @@ describe('the missed-window refund tier respects the contractor’s zone', () =>
     ['America/Los_Angeles', 7],
   ])('does not pay contractorMissedWindow mid-window in %s (was %ih early)', (tz) => {
     // Still inside the window, so this is an ordinary customer cancellation.
-    expect(computeCustomerRefundPercent(req({}), MID_WINDOW, undefined, tz)).toBe(75);
-    expect(computeCustomerRefundPercent(req({ en_route_at: new Date(MID_WINDOW).toISOString() }), MID_WINDOW, undefined, tz)).toBe(25);
+    expect(computeCustomerRefundPercent(req({}), tz, MID_WINDOW)).toBe(75);
+    expect(computeCustomerRefundPercent(req({ en_route_at: new Date(MID_WINDOW).toISOString() }), tz, MID_WINDOW)).toBe(25);
   });
 
   it('still pays contractorMissedWindow once the zoned window really has passed', () => {
     const tz = 'America/New_York';
     const justAfter = zonedInstant(DAY, END, tz)!.getTime() + 60_000;
-    expect(computeCustomerRefundPercent(req({}), justAfter, undefined, tz)).toBe(100);
+    expect(computeCustomerRefundPercent(req({}), tz, justAfter)).toBe(100);
   });
 
   it('an arrival beats the window — a tech who showed up is never at fault', () => {
     const tz = 'America/New_York';
     const justAfter = zonedInstant(DAY, END, tz)!.getTime() + 60_000;
-    expect(computeCustomerRefundPercent(req({ arrived_at: new Date(justAfter).toISOString() }), justAfter, undefined, tz)).toBe(0);
+    expect(computeCustomerRefundPercent(req({ arrived_at: new Date(justAfter).toISOString() }), tz, justAfter)).toBe(0);
   });
 });
 
@@ -92,7 +92,7 @@ describe('auto-complete waits for the account-local window in SQL', () => {
         completed_at timestamptz, arrived_at timestamptz, updated_at timestamptz);
       create table extra_stop_events(account_id uuid, request_id uuid, actor text, from_status text, to_status text, meta jsonb);
     `);
-    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914132825_quick_stop_atomic_sweep.sql'), 'utf8'));
+    await db.exec(readFileSync(join(process.cwd(), 'migrations/20260914145752_quick_stop_atomic_sweep.sql'), 'utf8'));
     await db.query('insert into accounts values($1,$2)', [account, 'America/Los_Angeles']);
   }, 30_000);
   afterAll(async () => { await db?.close(); });

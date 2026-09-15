@@ -5,14 +5,14 @@ import { describe, expect, it } from 'vitest';
 const migration = readFileSync(
   join(
     process.cwd(),
-    'migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql',
+    'migrations/20260903203149_sms_enqueue_delivery_overload_cleanup.sql',
   ),
   'utf8',
 );
 const hardening = readFileSync(
   join(
     process.cwd(),
-    'migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql',
+    'migrations/20260903203757_sms_enqueue_delivery_replay_hardening.sql',
   ),
   'utf8',
 );

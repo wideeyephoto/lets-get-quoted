@@ -154,7 +154,7 @@ try {
   // breaks later shape patches. Verify only the newest migration's replay;
   // individual migration harnesses cover their own historical starting states.
   await client.query(readFileSync(
-    join(process.cwd(), 'migrations/20260914134735_sms_carrier_opt_out_projection.sql'),
+    join(process.cwd(), 'migrations/20260914145820_sms_carrier_opt_out_projection.sql'),
     'utf8',
   ));
   check('latest carrier opt-out migration reapplies over the canonical schema', true);

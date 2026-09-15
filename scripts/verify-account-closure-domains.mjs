@@ -43,9 +43,9 @@ try {
   await db.query(source('20260907180000_email_sending_domains.sql'));
   const legacyAccount = (await db.query('insert into accounts default values returning id')).rows[0].id;
   const legacy = (await db.query("insert into account_closure_jobs(closure_subject_id,account_id,requested_by_role,recoverable_until) values($1,$1,'admin',now()+interval '30 days') returning id", [legacyAccount])).rows[0].id;
-  await db.query(source('20260910133921_account_closure_domain_cleanup.sql'));
-  await db.query(source('20260910140253_account_closure_request_contract.sql'));
-  await db.query(source('20260910140758_account_closure_actor_type.sql'));
+  await db.query(source('20260910135949_account_closure_domain_cleanup.sql'));
+  await db.query(source('20260910140640_account_closure_request_contract.sql'));
+  await db.query(source('20260910140859_account_closure_actor_type.sql'));
   const state = async id => (await db.query('select * from account_closure_jobs where id=$1', [id])).rows[0];
   assert.equal((await state(legacy)).domain_cleanup_state, 'operator_review');
   passed('actual closure schema, grace RPCs and new migration apply; old unfinished jobs require review');

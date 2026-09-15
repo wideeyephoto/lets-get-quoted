@@ -104,7 +104,7 @@ try {
   const nextFunction = campaign.indexOf('create or replace function public.sms_account_recipient_opted_out');
   assert.ok(nextFunction > 0);
   await client.query(campaign.slice(0, nextFunction) + '\ncommit;');
-  const migration = readFileSync('migrations/20260914134735_sms_carrier_opt_out_projection.sql', 'utf8');
+  const migration = readFileSync('migrations/20260914145820_sms_carrier_opt_out_projection.sql', 'utf8');
   await client.query(migration);
   await client.query(migration);
   check('migration applies twice');

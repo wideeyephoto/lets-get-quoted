@@ -18,7 +18,7 @@ assert(!m.cleanedAt,'Prepare new fixtures; this audit was already cleaned up');
 const evidence={ startedAt:new Date().toISOString(), origin, project, fixtureMarker:m.marker,
   release:{commit:options['--commit'],deployment:options['--deployment'],workingTree:local},
   sourceHashes:Object.fromEntries(['src/lib/job-access-fetch.ts','src/lib/supabase.ts','src/lib/supabase-server.ts',
-    'migrations/20260911154456_repair_office_job_write_boundary.sql','migrations/20260911154457_enforce_office_job_read_boundary.sql']
+    'migrations/20260911155210_repair_office_job_write_boundary.sql','migrations/20260911155217_enforce_office_job_read_boundary.sql']
     .map(file=>[file,createHash('sha256').update(readFileSync(resolve(file))).digest('hex')])),
   method:'Chromium magic-link callback; Auth-issued session cookies and their access tokens; no mocked responses or SQL role impersonation',
   cases:[],grantTransitions:[],actors:Object.fromEntries(Object.entries(m.actors).map(([k,v])=>[k,v.id])) };

@@ -33,7 +33,7 @@ try {
     create function owner_emails_for_accounts(ids uuid[]) returns table(account_id uuid,email text)
       language sql set search_path='' as 'select account_id,email from public.owners where account_id=any(ids)';
     grant all on accounts,owners,account_events,email_suppression,jobs to service_role;`);
-  const migration = readFileSync(join(root, 'migrations/20260914133327_contractor_lifecycle_send_ledger.sql'), 'utf8');
+  const migration = readFileSync(join(root, 'migrations/20260914145808_contractor_lifecycle_send_ledger.sql'), 'utf8');
   const schema = readFileSync(join(root, 'schema.sql'), 'utf8').replace(/\r\n/g, '\n');
   assert.ok(schema.includes(migration.replace(/\r\n/g, '\n').trim()), 'fresh schema must include the exact migration');
   await db.query(migration);

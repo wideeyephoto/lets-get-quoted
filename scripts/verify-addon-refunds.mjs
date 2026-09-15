@@ -43,7 +43,7 @@ try {
   for (const name of ['grant_usage_credits','reserve_usage_credits','commit_usage_reservation','release_usage_reservation']) await q(fn(name));
   await q(fn('reserve_usage_credits', read('20260904160000_credits_never_expire.sql')));
   await q(read('20260818210000_workspace_purchased_capacity.sql'));
-  const voiceAllowance = read('20260819190000_voice_minute_allowance.sql');
+  const voiceAllowance = read('20260820004438_voice_minute_allowance.sql');
   const skuStart = voiceAllowance.indexOf('alter table public.workspace_purchased_capacity');
   const skuEnd = voiceAllowance.indexOf(';', voiceAllowance.indexOf('add constraint workspace_purchased_capacity_top_up_id_check', skuStart)) + 1;
   assert(skuStart > 0 && skuEnd > skuStart);
@@ -59,13 +59,13 @@ try {
   await q('grant select on workspace_entitlements,usage_credit_lots,billing_top_up_purchase_operations,workspace_purchased_capacity to service_role');
   // Production retained CRLF in the refund function while the older allowance
   // function uses LF. Exercise that mixed source history, and the reverse case.
-  const refundSql = read('20260908175533_addon_refund_reversal_and_future_credit_debt.sql');
+  const refundSql = read('20260909202241_addon_refund_reversal_and_future_credit_debt.sql');
   await q(process.argv.includes('--migration-crlf') ? refundSql : refundSql.replaceAll('\n', '\r\n'));
   await q(fn('voice_minute_lot_tail', voiceAllowance));
-  await q(fn('grant_voice_minute_allowance', read('20260820110000_voice_allowance_survives_a_moved_period.sql')));
-  const invoiceSql = read('20260909211000_paid_voice_invoice_allowance.sql');
+  await q(fn('grant_voice_minute_allowance', read('20260820125506_voice_allowance_survives_a_moved_period.sql')));
+  const invoiceSql = read('20260909214117_paid_voice_invoice_allowance.sql');
   await q(process.argv.includes('--migration-crlf') ? invoiceSql.replaceAll('\n', '\r\n') : invoiceSql);
-  await q(read('20260909233336_addon_refund_delivery_identity.sql'));
+  await q(read('20260909234440_addon_refund_delivery_identity.sql'));
   pass('invoice migration accepts independently stored LF and CRLF function sources');
   const account = '11111111-1111-4111-8111-111111111111';
   await q('insert into accounts values($1)', [account]);

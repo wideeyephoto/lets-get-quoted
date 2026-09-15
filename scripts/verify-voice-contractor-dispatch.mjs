@@ -410,12 +410,12 @@ try {
     `);
     for (const name of [
       '20260904080000_voice_lead_creation_without_step_up.sql',
-      '20260905173016_voice_staff_without_verification_codes.sql',
-      '20260906105714_voice_dispatch_latency.sql',
-      '20260908205505_voice_dispatch_contract_restore.sql',
-      '20260908205505_voice_dispatch_contract_restore.sql',
-      '20260909194635_voice_tool_call_deadline.sql',
-      '20260909194635_voice_tool_call_deadline.sql',
+      '20260905190506_voice_staff_without_verification_codes.sql',
+      '20260906111632_voice_dispatch_latency.sql',
+      '20260908205749_voice_dispatch_contract_restore.sql',
+      '20260908205749_voice_dispatch_contract_restore.sql',
+      '20260909195808_voice_tool_call_deadline.sql',
+      '20260909195808_voice_tool_call_deadline.sql',
     ]) await client.query(readFileSync(join(process.cwd(), 'migrations', name), 'utf8'));
     check('complete dispatch upgrade sequence and repeated repair apply', true);
   }
