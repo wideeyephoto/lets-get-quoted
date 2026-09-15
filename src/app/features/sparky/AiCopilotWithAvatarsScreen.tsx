@@ -7,10 +7,10 @@ import { TRADES } from '@/lib/trades';
 import { COMPANIONS, SPARKY_TRADE_OPTIONS } from '@/lib/ai-assistant/companions';
 
 const COMPANION_BADGE_MAP: Record<string, { bg: string; text: string; border: string }> = {
-  sparky: { bg: 'rgba(99, 102, 241, 0.18)', text: '#c7d2fe', border: 'rgba(99, 102, 241, 0.4)' },
-  diesel: { bg: 'rgba(245, 158, 11, 0.18)', text: '#fde68a', border: 'rgba(245, 158, 11, 0.4)' },
-  echo: { bg: 'rgba(14, 165, 233, 0.18)', text: '#bae6fd', border: 'rgba(14, 165, 233, 0.4)' },
-  assistant: { bg: 'rgba(59, 130, 246, 0.18)', text: '#bfdbfe', border: 'rgba(59, 130, 246, 0.4)' },
+  sparky: { bg: 'rgba(99, 102, 241, 0.25)', text: '#a5b4fc', border: 'rgba(99, 102, 241, 0.5)' },
+  diesel: { bg: 'rgba(245, 158, 11, 0.25)', text: '#fbbf24', border: 'rgba(245, 158, 11, 0.5)' },
+  echo: { bg: 'rgba(14, 165, 233, 0.25)', text: '#38bdf8', border: 'rgba(14, 165, 233, 0.5)' },
+  assistant: { bg: 'rgba(59, 130, 246, 0.25)', text: '#60a5fa', border: 'rgba(59, 130, 246, 0.5)' },
 };
 
 const FAQ = [
@@ -187,8 +187,8 @@ export default function AiCopilotWithAvatarsScreen({
               <div
                 key={companion.id}
                 style={{
-                  background: 'var(--bg-elevated, #0d1926)',
-                  border: '1px solid var(--line, rgba(255, 255, 255, 0.1))',
+                  background: '#0d1926',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
                   borderRadius: '14px',
                   padding: '1.5rem',
                   display: 'flex',
@@ -219,7 +219,7 @@ export default function AiCopilotWithAvatarsScreen({
                     />
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: 'var(--text, #f8fafc)' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc' }}>
                       {companion.name}
                     </h3>
                     <span
@@ -242,11 +242,11 @@ export default function AiCopilotWithAvatarsScreen({
                   </div>
                 </div>
 
-                <div style={{ fontSize: '0.85rem', color: 'var(--muted, #94a3b8)', fontWeight: 500 }}>
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500 }}>
                   {companion.role} · {companion.species}
                 </div>
 
-                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text, #e2e8f0)', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#e2e8f0', lineHeight: 1.5 }}>
                   {companion.tagline}
                 </p>
 
@@ -259,7 +259,7 @@ export default function AiCopilotWithAvatarsScreen({
                     border: '1px solid rgba(255, 255, 255, 0.08)',
                     fontSize: '0.82rem',
                     fontStyle: 'italic',
-                    color: 'var(--muted, #cbd5e1)',
+                    color: '#cbd5e1',
                   }}
                 >
                   &ldquo;{companion.introMessage.slice(0, 95)}...&rdquo;
@@ -281,11 +281,11 @@ export default function AiCopilotWithAvatarsScreen({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span style={{ fontSize: '1.25rem' }}>🎨</span>
-            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text, #f8fafc)' }}>
+            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#f8fafc' }}>
               Sparky Trade Outfits · Tailored for Your Trade
             </h3>
           </div>
-          <p style={{ color: 'var(--muted, #94a3b8)', fontSize: '0.9rem', margin: '0 0 1.25rem 0' }}>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: '0 0 1.25rem 0' }}>
             Dress your AI sidekick in certified trade attire with custom vocabulary and workflow focus:
           </p>
 
@@ -300,8 +300,8 @@ export default function AiCopilotWithAvatarsScreen({
               <div
                 key={trade.id}
                 style={{
-                  background: 'var(--bg-elevated, #0d1926)',
-                  border: '1px solid var(--line, rgba(255, 255, 255, 0.1))',
+                  background: '#0d1926',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
                   borderRadius: '10px',
                   padding: '12px 10px',
                   display: 'flex',
@@ -329,10 +329,10 @@ export default function AiCopilotWithAvatarsScreen({
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text, #f8fafc)' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#f8fafc' }}>
                   {trade.name}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--muted, #94a3b8)', fontWeight: 500 }}>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
                   {trade.emoji} Certified
                 </div>
               </div>

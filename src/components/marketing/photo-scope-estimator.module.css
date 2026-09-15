@@ -514,3 +514,28 @@
 :root[data-theme='light'] .totalVal {
   color: #047857;
 }
+
+.autoEstimatedBadge {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #50e3bd;
+}
+
+:root[data-theme='light'] .autoEstimatedBadge,
+:global(:root[data-theme='light']) .autoEstimatedBadge,
+:global(:root[data-theme='sunlight']) .autoEstimatedBadge {
+  color: #047857 !important;
+}
+
+.takeoffHeading {
+  font-size: 11px;
+  font-weight: 800;
+  color: #7da0b3;
+  text-transform: uppercase;
+}
+
+:root[data-theme='light'] .takeoffHeading,
+:global(:root[data-theme='light']) .takeoffHeading,
+:global(:root[data-theme='sunlight']) .takeoffHeading {
+  color: #475569 !important;
+}

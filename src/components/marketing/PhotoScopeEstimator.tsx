@@ -208,7 +208,7 @@ export default function PhotoScopeEstimator() {
         <div className={styles.materialsCol}>
           <div className={styles.materialsHead}>
             <h4 className={styles.materialsTitle}>Auto-Generated Scope &amp; Materials</h4>
-            <span style={{ fontSize: '11.5px', color: '#50e3bd', fontWeight: 800 }}>
+            <span className={styles.autoEstimatedBadge}>
               ✓ Auto-Estimated
             </span>
           </div>
@@ -220,7 +220,7 @@ export default function PhotoScopeEstimator() {
           </div>
 
           <div className={styles.materialList}>
-            <span style={{ fontSize: '11px', fontWeight: 800, color: '#7da0b3', textTransform: 'uppercase' }}>
+            <span className={styles.takeoffHeading}>
               Itemized Material Takeoff:
             </span>
             {scenario.materials.map((mat, idx) => (

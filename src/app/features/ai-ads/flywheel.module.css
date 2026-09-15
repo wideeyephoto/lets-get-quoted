@@ -421,3 +421,27 @@
   color: #10b981;
   font-weight: bold;
 }
+
+/* Multi-theme contrast overrides */
+:global(:root[data-theme='light']) .badge,
+:global(:root[data-theme='sunlight']) .badge {
+  color: #9a3412 !important;
+}
+
+:global(:root[data-theme]) .shieldTitle,
+:global(:root[data-theme='light']) .shieldTitle,
+:global(:root[data-theme='sunlight']) .shieldTitle {
+  color: #ffffff !important;
+}
+
+:global(:root[data-theme]) .shieldDesc,
+:global(:root[data-theme='light']) .shieldDesc,
+:global(:root[data-theme='sunlight']) .shieldDesc {
+  color: #94a3b8 !important;
+}
+
+:global(:root[data-theme]) .shieldFeatureItem,
+:global(:root[data-theme='light']) .shieldFeatureItem,
+:global(:root[data-theme='sunlight']) .shieldFeatureItem {
+  color: #cbd5e1 !important;
+}

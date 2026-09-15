@@ -46533,6 +46533,7 @@ button.plan-badge.warn.is-action:focus-visible {
   gap: 0.5rem;
   font-size: 0.95rem;
   font-weight: 750;
+  color: var(--text);
 }
 
 .extrastop-copy small {

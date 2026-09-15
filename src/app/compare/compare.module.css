@@ -826,12 +826,14 @@
   gap: 12px;
   font-size: 14px;
   line-height: 1.5;
+  color: var(--mkt-text);
 }
 
 .fitList li {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  color: var(--mkt-text);
 }
 
 .bulletComp {

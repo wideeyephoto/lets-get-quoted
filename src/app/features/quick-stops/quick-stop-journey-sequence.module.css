@@ -646,3 +646,61 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Theme isolation for simulator elements */
+:global(:root[data-theme='light']) .actorName,
+:global(:root[data-theme='sunlight']) .actorName,
+:global(:root[data-theme]) .actorName {
+  color: #f8fafc !important;
+}
+
+:global(:root[data-theme='light']) .actorRole,
+:global(:root[data-theme='sunlight']) .actorRole,
+:global(:root[data-theme]) .actorRole {
+  color: #94a3b8 !important;
+}
+
+:global(:root[data-theme='light']) .bubbleText,
+:global(:root[data-theme='sunlight']) .bubbleText,
+:global(:root[data-theme]) .bubbleText {
+  color: #f8fafc !important;
+}
+
+:global(:root[data-theme='light']) .messageTime,
+:global(:root[data-theme='sunlight']) .messageTime,
+:global(:root[data-theme]) .messageTime {
+  color: #94a3b8 !important;
+}
+
+:global(:root[data-theme='light']) .bubbleFooter,
+:global(:root[data-theme='sunlight']) .bubbleFooter,
+:global(:root[data-theme]) .bubbleFooter {
+  color: #94a3b8 !important;
+}
+
+:global(:root[data-theme='light']) .tabBtnActive,
+:global(:root[data-theme='sunlight']) .tabBtnActive,
+:global(:root[data-theme]) .tabBtnActive {
+  background: rgba(25, 214, 174, 0.18) !important;
+  color: #19d6ae !important;
+  border-color: #19d6ae !important;
+}
+
+:global(:root[data-theme='light']) .tabBtnActive span,
+:global(:root[data-theme='sunlight']) .tabBtnActive span,
+:global(:root[data-theme]) .tabBtnActive span {
+  color: #19d6ae !important;
+}
+
+:global(:root[data-theme='light']) .actionPill,
+:global(:root[data-theme='sunlight']) .actionPill,
+:global(:root[data-theme]) .actionPill {
+  background: #19d6ae !important;
+  color: #041017 !important;
+}
+
+:global(:root[data-theme='light']) .actionPill span,
+:global(:root[data-theme='sunlight']) .actionPill span,
+:global(:root[data-theme]) .actionPill span {
+  color: #041017 !important;
+}

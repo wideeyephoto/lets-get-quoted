@@ -345,7 +345,7 @@ export default function AIIntakePage() {
       <AiIntakeSandbox />
 
       {/* 4 DISTINCT QUOTE FORM STYLES & VISION INTEGRATION */}
-      <section className="section-block" style={{ margin: '48px 0', background: 'var(--bg-elevated)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--line)' }}>
+      <section className={`section-block ${styles.stylesSection}`}>
         <div>
           <p className="eyebrow">Custom Quote Form Appearance &amp; Photo Analysis</p>
           <h2>4 distinct styles tailored to your trade &amp; brand.</h2>

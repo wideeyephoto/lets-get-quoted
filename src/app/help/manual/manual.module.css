@@ -95,6 +95,7 @@
 .selectLabel select:focus-visible { outline: 2px solid var(--manual-teal); outline-offset: 2px; }
 .selectRow { display: flex; gap: 0.6rem; }
 .selectLabel { display: flex; align-items: center; gap: 0.5rem; color: var(--manual-muted); font-size: 0.73rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+:global(:root[data-theme]) .selectLabel { color: var(--manual-muted) !important; }
 .selectLabel select { min-width: 150px; padding: 0.55rem 2rem 0.55rem 0.75rem; }
 .resultSummary { margin: 1rem 0 2.5rem; color: var(--manual-muted); font-size: 0.78rem; }
 .resultSummary strong { color: var(--manual-text); }

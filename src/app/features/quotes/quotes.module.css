@@ -131,6 +131,27 @@
   }
 }
 
+:global(:root[data-theme='light']) :global(.section-block) .shotsHead h2,
+:global(:root[data-theme='light']) #screens-title {
+  color: #0f172a !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotsHead > p:last-child {
+  color: #334155 !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotTitle {
+  color: #f8fafc !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotBody {
+  color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotNote {
+  color: #cbd5e1 !important;
+}
+
 :global(:root[data-theme='light']) :global(.section-block) .shotStep,
 :global(:root[data-theme='sunlight']) :global(.section-block) .shotStep {
   color: #c2410c !important;
