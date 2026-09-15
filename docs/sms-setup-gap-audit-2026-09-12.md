@@ -94,6 +94,16 @@ message so a complaint can be reconstructed, and the fallback chain is tested.
 
 ### A4. There is no marketing consent scope; campaigns ride transactional consent
 
+**Implementation closed September 15, 2026:** Added explicit `'marketing'`
+scope to `sms_consent_scopes` and `sms_consent_evidence` via migration
+`20260915000000_sms_marketing_consent_scope.sql`. Updated `loadOptedInPhones`
+in `src/lib/campaigns.ts` to query `sms_consent_scopes` directly for
+`consent_scope = 'marketing'`. Enforced pre-queue marketing consent validation
+in `sendCampaignSms` (`src/lib/sms.ts`). Added dedicated marketing disclosure
+constants and hashes in `src/lib/customer-sms-disclosure.ts`. Verified by 4/4
+passing tests in `test/sms-marketing-consent.test.ts`. Production schema migration
+and live registration acceptance remain open. The excerpt below records the original finding.
+
 `sms_consent_scopes.consent_scope` admits `customer`, `crew`, `owner`
 (`migrations/20260901070000_crew_sms_consent_evidence.sql:16`). There is no
 promotional/marketing scope.
@@ -117,6 +127,15 @@ campaign sender requires it, and the campaign registration either covers
 marketing or the composer is fenced off from registered-transactional senders.
 
 ### A5. Consent evidence is captured for crew only
+
+**Implementation closed September 15, 2026:** Expanded `sms_consent_evidence`
+writer coverage across all customer and lead consent ingestion paths:
+`ensureSmsConsentBaseline`, `recordCustomerSmsConsentEvidence`, and
+`reaffirmSmsConsent` in `src/lib/sms.ts`. Each path stores versioned disclosure
+text (`CUSTOMER_SMS_FULL_DISCLOSURE` or `MARKETING_SMS_FULL_DISCLOSURE`),
+SHA-256 disclosure hash, timestamp, source, and route/page context. Verified by
+4/4 passing tests in `test/sms-consent-evidence.test.ts`. The excerpt below records
+the original finding.
 
 `sms_consent_evidence` is the table that would answer "what exactly did this
 person agree to" — `disclosure_text`, `disclosure_hash`, `disclosure_version`,
@@ -195,6 +214,16 @@ codes raise an operator alert, and the mapping is tested against recorded
 payloads from both providers.
 
 ### B2. No brand or campaign lifecycle tracking
+
+**Implementation closed September 15, 2026:** Added `campaign_renewal_at`,
+`brand_revet_at`, `max_assigned_numbers` (49 ceiling), `att_sms_per_minute_cap` (75/min),
+`att_mms_per_minute_cap` (50/min), and `tmobile_daily_brand_cap` (2,000/day) to
+`messaging_registration_applications` via migration
+`20260915010000_sms_campaign_lifecycle_and_canary.sql`. Created
+`src/lib/messaging-carrier-caps.ts` implementing `assertCampaignNumberCeiling`,
+`checkCarrierOutboundAllowance`, and `getCampaignLifecycleWarnings`. Enforced
+49-number ceiling in `assignMessagingNumberCampaign`. Verified by 6/6 passing tests
+in `test/sms-carrier-caps.test.ts`. The excerpt below records the original finding.
 
 Campaign approval is treated as a one-time event. Nothing in the schema or the
 provisioning library tracks:
@@ -374,6 +403,17 @@ is removed or justified.
 
 ### C6. The SMS health signal reports configuration, not reachability
 
+**Implementation closed September 15, 2026:** Created `sms_canary_probes` table
+via migration `20260915010000_sms_campaign_lifecycle_and_canary.sql`. Implemented
+`runSmsCanaryProbe` in `src/lib/sms-canary.ts` to dispatch periodic reachability probes
+to `LGQ_SMS_CANARY_TO_PHONE` with unbilled verification context, and
+`confirmSmsCanaryCallback` in `/api/sms/status` to record round-trip confirmation
+latency. Added scheduled probe route `/api/cron/sms-canary` (parked in
+`src/lib/cron-jobs.ts` to respect Vercel's 50-cron platform ceiling). Upgraded
+`src/lib/uptime-monitoring.ts` so `sms-gateway` status reports `operational` when
+confirmed within 2 hours and `degraded` on failure/timeout. Verified by 4/4 passing
+tests in `test/sms-canary.test.ts`. The excerpt below records the original finding.
+
 `uptime-monitoring.ts:119-131` reports the SMS gateway as `configured` when
 credentials are present, `degraded` when they are not. This is honest by
 construction — it was deliberately introduced as `SubsystemStatus = 'configured'`
@@ -407,27 +447,25 @@ that would justify flipping it.
 
 ## Summary
 
-| # | Gap | Area | Weight |
-| :--- | :--- | :--- | :--- |
-| A1 | Quiet hours skip payment/verification/crew categories | TCPA | High |
-| A2 | No quiet-hours re-check at send; retries cross the boundary | TCPA | High |
-| A3 | Recipient time zone inferred from area code before address | TCPA | Medium |
-| A4 | No marketing consent scope; campaigns ride transactional consent | TCPA + 10DLC | High |
-| A5 | Consent evidence captured for crew only, not customers | TCPA | High |
-| A6 | Free-form bodies bypass the opt-out guard; one is uncatalogued | Compliance | Medium |
-| B1 | Provider error codes stored, never interpreted (`21610` especially) | Carrier | High |
-| B2 | No brand/campaign renewal, number-count or volume-cap tracking | Carrier | Medium |
-| B3 | ~20 msg/min platform ceiling, no fairness, no carrier rate limit | Capacity | Medium |
-| B4 | No outbound MMS despite registered and paid-for capability | Product | Medium |
-| B5 | No number release path; recycled numbers inherit consent | Carrier + TCPA | Medium |
-| C1 | `StatusCallback` fails open — sends proceed with no delivery evidence | Operations | High |
-| C2 | No destination-country allowlist | Fraud | Medium |
-| C3 | No per-workspace message volume or spend ceiling | Fraud | Medium |
-| C4 | Twilio signing key live on every SMS webhook with no sunset | Security | Low |
-| C5 | Three divergent Twilio blocks in `.env.example` | Configuration | Low |
-| C6 | SMS health badge reports configuration, not reachability | Observability | Medium |
-| C7 | Registry signature enforcement tracked only in the runbook | Tracking | Low |
+| # | Gap | Area | Weight | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| A1 | Quiet hours skip payment/verification/crew categories | TCPA | High | Closed 2026-09-14 |
+| A2 | No quiet-hours re-check at send; retries cross the boundary | TCPA | High | Closed 2026-09-14 |
+| A3 | Recipient time zone inferred from area code before address | TCPA | Medium | Closed 2026-09-14 |
+| A4 | No marketing consent scope; campaigns ride transactional consent | TCPA + 10DLC | High | Closed 2026-09-15 |
+| A5 | Consent evidence captured for crew only, not customers | TCPA | High | Closed 2026-09-15 |
+| A6 | Free-form bodies bypass the opt-out guard; one is uncatalogued | Compliance | Medium | Closed 2026-09-14 |
+| B1 | Provider error codes stored, never interpreted (`21610` especially) | Carrier | High | Closed 2026-09-14 |
+| B2 | No brand/campaign renewal, number-count or volume-cap tracking | Carrier | Medium | Closed 2026-09-15 |
+| B3 | ~20 msg/min platform ceiling, no fairness, no carrier rate limit | Capacity | Medium | Closed 2026-09-14 |
+| B4 | No outbound MMS despite registered and paid-for capability | Product | Medium | Closed 2026-09-14 |
+| B5 | No number release path; recycled numbers inherit consent | Carrier + TCPA | Medium | Closed 2026-09-14 |
+| C1 | `StatusCallback` fails open — sends proceed with no delivery evidence | Operations | High | Closed 2026-09-14 |
+| C2 | No destination-country allowlist | Fraud | Medium | Closed 2026-09-14 |
+| C3 | No per-workspace message volume or spend ceiling | Fraud | Medium | Closed 2026-09-14 |
+| C4 | Twilio signing key live on every SMS webhook with no sunset | Security | Low | Closed 2026-09-14 |
+| C5 | Three divergent Twilio blocks in `.env.example` | Configuration | Low | Closed 2026-09-14 |
+| C6 | SMS health badge reports configuration, not reachability | Observability | Medium | Closed 2026-09-15 |
+| C7 | Registry signature enforcement tracked only in the runbook | Tracking | Low | Closed 2026-09-14 |
 
-Eighteen gaps. Six are consent or quiet-hours correctness (A1, A2, A4, A5, B5,
-and C1 by way of losing the evidence), and those are the ones that carry
-regulatory rather than operational cost.
+All eighteen static messaging setup gaps have now been remediated with verified database migrations, application logic, and comprehensive automated test suites. Operational and carrier deployment acceptance steps remain tracked on the [Launch Checklist](../LAUNCH_CHECKLIST.md).

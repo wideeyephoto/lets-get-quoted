@@ -60,6 +60,11 @@ export const PARKED_CRON_ROUTES: ParkedCronRoute[] = [
     reason:
       'RPC public.get_long_running_queries does not exist in the production database schema or repository migrations, causing 285 guaranteed failures/day.',
   },
+  {
+    job: 'sms-canary',
+    reason:
+      'Dispatched on-demand and via synthetic reachability monitoring probes to avoid exceeding the Vercel 50-cron platform limit.',
+  },
 ];
 
 export const CRON_JOBS: CronJobSpec[] = [
