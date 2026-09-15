@@ -10,5 +10,5 @@ The SWML opening now plays `public/audio/ai-disclosure-eyre-v1.wav`, followed by
 - Owner playback call: `bf13fd71-1760-4b91-8d97-6db0c6f58b39`; both play operations finished, no recording enabled. Owner reported "Normal speed".
 - Asset: first rendition cropped at 2.49–7.51 seconds from the source WAV; 5.02 seconds, mono 8 kHz PCM16.
 - Adapter tests retain the disclosure/chime/greeting order, pre-recording notice, contractor recording exclusion, and provider call limits.
-- Local validation passed: 50 targeted adapter/grounding tests, full type checking, and targeted lint. Asset validation confirmed 8 kHz mono PCM16, 5.02 seconds, and zero clipped samples. SHA-256: `29b6b75fc4c1f85d65921c37b4a9c7e7a21b0cedaf51a7d361e5c4fc92174848`.
+- Local validation passed: 59 targeted adapter, grounding, disclosure, and call-lifecycle tests, full type checking, and targeted lint. The disclosure test checks the accepted clip's checksum and playback-before-recording order. Asset validation confirmed 8 kHz mono PCM16, 5.02 seconds, and zero clipped samples. SHA-256: `29b6b75fc4c1f85d65921c37b4a9c7e7a21b0cedaf51a7d361e5c4fc92174848`.
 - Normal release checks, public asset verification, and a live inbound opening retest remain required. A passing saved playback is not a completed inbound retest.

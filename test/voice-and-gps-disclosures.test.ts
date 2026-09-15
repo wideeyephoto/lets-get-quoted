@@ -7,6 +7,7 @@ import {
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 describe('Voice & GPS Compliance Disclosures', () => {
   describe('Telephony & AI Voice Recording Disclosures', () => {
@@ -63,14 +64,20 @@ describe('Voice & GPS Compliance Disclosures', () => {
       const swml = JSON.parse(answer.body);
       const mainSections = swml.sections.main;
 
-      // Assert record_call and say elements exist in SWML
+      // Both disclosures must be played before recording starts.
       const recordAction = mainSections.find((s: Record<string, unknown>) => 'record_call' in s);
       const playAction = mainSections.find((s: Record<string, unknown>) => 'play' in s);
 
       expect(recordAction).toBeDefined();
       expect(playAction).toBeDefined();
-      expect(playAction.play.urls[0]).toContain(AI_VOICE_DISCLOSURE);
+      expect(playAction.play.urls[0]).toBe('https://app.letsgetquoted.com/audio/ai-disclosure-eyre-v1.wav');
       expect(playAction.play.urls[2]).toContain(RECORDING_DISCLOSURE);
+      expect(mainSections.indexOf(playAction)).toBeLessThan(mainSections.indexOf(recordAction));
+      // Pin the approved spoken disclosure itself, not only its URL. Changing
+      // this clip requires checking its wording and listening to it again.
+      const disclosure = fs.readFileSync(path.resolve(process.cwd(), 'public/audio/ai-disclosure-eyre-v1.wav'));
+      expect(createHash('sha256').update(disclosure).digest('hex'))
+        .toBe('29b6b75fc4c1f85d65921c37b4a9c7e7a21b0cedaf51a7d361e5c4fc92174848');
     });
   });
 
