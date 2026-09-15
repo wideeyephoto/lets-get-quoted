@@ -78,17 +78,18 @@ Provide a JSON evaluation:
             flaggedCount++;
             
             // Create a HITL action for the operator to review this call
-            createHitlAction(
-              'Review AI Receptionist Hallucination',
-              `Voice call ${call.id} flagged for policy violation: ${evalResult.reason}`,
-              { callId: call.id, severity: evalResult.severity },
-              'operations'
-            );
+            createHitlAction({
+              title: 'Review AI Receptionist Hallucination',
+              description: `Voice call ${call.id} flagged for policy violation: ${evalResult.reason}`,
+              payload: { callId: call.id, severity: evalResult.severity },
+              category: 'customer_support',
+              actionType: 'voice_audit_review'
+            });
 
             recordOperatorAudit({
-              category: 'support',
+              category: 'customer_support',
               actionName: 'Voice Quality Audit Flag',
-              severity: evalResult.severity === 'high' ? 'high' : 'medium',
+              severity: evalResult.severity === 'high' ? 'critical' : 'requires_hitl_approval',
               toolName: 'runVoiceQualityAudit',
               outputResult: { callId: call.id, ...evalResult },
               reasoningSummary: `Flagged call ${call.id} for: ${evalResult.reason}`,

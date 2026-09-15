@@ -435,7 +435,9 @@ export async function executeAssistantTool(
         data: { success: true, draft },
         actionCard: {
           type: 'draft_change_order',
-          payload: { draft, jobId: targetJobId },
+          title: 'Drafted Change Order',
+          description: draft.title,
+          data: { draft, jobId: targetJobId },
         },
       };
     }

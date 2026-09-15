@@ -379,19 +379,12 @@ export async function executeOperatorTool(
     case 'diagnose_domain_health': {
       try {
         if (!args.domain || typeof args.domain !== 'string') {
-          return {
-            status: 'error',
-            message: 'Validation Error: domain is required and must be a string.',
-          };
+          return { data: { error: 'Validation Error: domain is required and must be a string.' } };
         }
         const data = await diagnoseDomainHealth(args.domain);
-        return {
-          status: 'success',
-          data,
-          display: 'raw',
-        };
+        return { data };
       } catch (e: any) {
-        return { status: 'error', message: e.message || 'Error diagnosing domain' };
+        return { data: { error: e.message || 'Error diagnosing domain' } };
       }
     }
     case 'get_database_health': {
@@ -415,17 +408,13 @@ Provide specific EXPLAIN ANALYZE and CREATE INDEX optimization recommendations. 
 
         let aiRecommendations = 'Could not generate AI recommendations.';
         if (response.ok) {
-           const data = await response.json() as any;
-           aiRecommendations = data?.choices?.[0]?.message?.content || data?.candidates?.[0]?.content?.parts?.[0]?.text || aiRecommendations;
+           const aiData = await response.json() as any;
+           aiRecommendations = aiData?.choices?.[0]?.message?.content || aiData?.candidates?.[0]?.content?.parts?.[0]?.text || aiRecommendations;
         }
 
-        return {
-          status: 'success',
-          data: { report, aiRecommendations },
-          display: 'raw'
-        };
+        return { data: { report, aiRecommendations } };
       } catch (e: any) {
-        return { status: 'error', message: e.message || 'Error fetching database health' };
+        return { data: { error: e.message || 'Error fetching database health' } };
       }
     }
     case 'get_system_health': {
