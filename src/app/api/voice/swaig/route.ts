@@ -652,7 +652,14 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
     const email = String(args.email || '').trim().toLowerCase() || null;
     const address = String(args.address || args.service_address || '').trim() || null;
     const projectType = String(args.project_type || args.work_requested || args.service_description || '').trim() || 'AI Voice inquiry';
-    let message = String(args.notes || args.message || args.issue || '').trim() || null;
+    const requestDetails = String(args.notes || args.message || args.issue || '').trim() || null;
+    const preferredTime = String(args.preferred_time || args.requested_time || args.timeframe || '').trim() || null;
+    let message = requestDetails;
+
+    if (preferredTime && !message?.toLowerCase().includes(preferredTime.toLowerCase())) {
+      const preferredTimeNote = `Preferred time: ${preferredTime}`;
+      message = message ? `${message}\n${preferredTimeNote}` : preferredTimeNote;
+    }
 
     if (phoneRaw && !normalizeUsPhone(phoneRaw)) {
       const noteTag = `[Caller phone note: ${phoneRaw}]`;
@@ -675,8 +682,12 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
       });
 
       if (!savedLead?.id) throw new Error('Lead was not saved');
+      const reviewDetails = [finalName, address, projectType, preferredTime || requestDetails]
+        .filter((value): value is string => Boolean(value))
+        .join(', ');
+      const callbackReview = phone ? 'The callback number is stored; refer to it only as "the callback number you provided."' : 'No callback number was provided.';
       return NextResponse.json({
-        response: `I've saved your request for ${finalName}${address ? ` at ${address}` : ''}. Our team will review the details and follow up with you.`,
+        response: `I've saved your request. Complete saved intake recap: ${reviewDetails}. ${callbackReview} If the caller asks for a review, repeat every provided detail in one compact sentence.`,
       });
     } catch (err) {
       console.error('Error in capture_lead SWAIG handler:', err);

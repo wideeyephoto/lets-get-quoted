@@ -473,6 +473,8 @@ describe('loadVoiceGroundingContext', () => {
     expect(prompt).toContain('NEVER say "plus one", "+1", "country code", or read a leading "1" aloud');
     expect(prompt).toContain('810-304-2061');
     expect(prompt).toContain('final intake recap at about 1.2 times your normal speaking speed');
+    expect(prompt).toContain('complete saved intake recap returned by capture_lead');
+    expect(prompt).toContain('include every provided detail');
     expect(prompt).toContain('one compact sentence');
     expect(prompt).toContain('Return to normal speed after the recap');
   });
