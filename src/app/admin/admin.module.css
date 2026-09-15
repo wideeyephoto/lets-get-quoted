@@ -1442,3 +1442,51 @@ textarea.input {
 
 
 
+.navGroup {
+  margin-bottom: 0.75rem;
+}
+.navGroupTitle {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: rgba(247, 245, 239, 0.45);
+  padding: 0 0.65rem 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.navGroupTitle:hover {
+  color: rgba(247, 245, 239, 0.75);
+}
+.navGroupItems {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow: hidden;
+}
+.navGroupItems.collapsed {
+  display: none;
+}
+.navBadge {
+  margin-left: auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text, #f7f5ef);
+  line-height: 1;
+}
+.navBadge.critical {
+  background: rgba(255, 59, 48, 0.2);
+  color: #ff453a;
+  border: 1px solid rgba(255, 59, 48, 0.3);
+}
+.navBadge.warning {
+  background: rgba(255, 149, 0, 0.2);
+  color: #ff9f0a;
+  border: 1px solid rgba(255, 149, 0, 0.3);
+}

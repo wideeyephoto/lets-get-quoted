@@ -59,15 +59,26 @@ async function searchAccounts(admin: SupabaseClient, term: string, limit: number
     const digits = term.replace(/[^0-9]/g, '');
     const isPhoneNumber = digits.length >= 7;
 
-    const [rows, phoneRes] = await Promise.all([
+    const [rows, phoneRes, byStripeConnect] = await Promise.all([
       listAccountsForAdmin(admin, { query: term, limit, onError }),
       isPhoneNumber
         ? accountIdsByPhone(admin, digits, limit, onError)
         : Promise.resolve({ accountIds: [], phoneMatchMap: new Map<string, string>() }),
+      admin.from('accounts').select('id').is('test_marker', null).eq('stripe_connect_id', term).limit(limit),
     ]);
 
-    const emails = await ownerEmailsForAccounts(admin, rows.map((r) => r.id), onError);
-    return { available, rows: rows.map((r) => {
+    if (byStripeConnect.data?.length) {
+      const extra = await admin.from('accounts').select('*').in('id', byStripeConnect.data.map(d => d.id));
+      if (extra.data) {
+        rows.push(...(extra.data as any));
+      }
+    }
+    
+    // deduplicate
+    const uniqueRows = Array.from(new Map(rows.map(r => [r.id, r])).values());
+
+    const emails = await ownerEmailsForAccounts(admin, uniqueRows.map((r) => r.id), onError);
+    return { available, rows: uniqueRows.map((r) => {
       const email = emails.get(r.id);
       const matchedPhone = phoneRes.phoneMatchMap.get(r.id);
       const matchedOnEmail = Boolean(email && email.toLowerCase().includes(term.toLowerCase()));

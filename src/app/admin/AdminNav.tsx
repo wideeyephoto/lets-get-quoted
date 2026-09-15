@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { permissionsFor, type Permission, type StaffRole } from '@/lib/staff';
+import { getNavBadges } from './nav-actions';
 import styles from './admin.module.css';
 
 const ICONS: Record<string, string> = {
@@ -31,62 +33,163 @@ const ICONS: Record<string, string> = {
   '/admin/security': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 };
 
-export const ITEMS: { href: string; label: string; permission?: Permission }[] = [
-  { href: '/admin', label: 'Command Center' },
-  { href: '/admin/operator', label: 'AI Operator ⚡', permission: 'ops.manage' },
-  { href: '/admin/search', label: 'Search' },
-  { href: '/admin/manual', label: 'Admin manual' },
-  { href: '/admin/accounts', label: 'Accounts' },
-  { href: '/admin/accounts/closures', label: 'Closures & Trash' },
-  { href: '/admin/privacy-requests', label: 'Privacy requests' },
-  { href: '/admin/cases', label: 'Cases' },
-  { href: '/admin/quick-stops', label: 'Quick Stops' },
-  { href: '/admin/risk', label: 'Review queue' },
-  { href: '/admin/money', label: 'Money' },
-  { href: '/admin/payments', label: 'Payment ledger' },
-  { href: '/admin/billing-operations', label: 'Billing operations' },
-  { href: '/admin/health', label: 'Service health' },
-  { href: '/admin/messaging', label: 'Messaging' },
-  { href: '/admin/voice/numbers', label: 'AI Voice numbers' },
-  { href: '/admin/blog', label: 'Blog & Editorial' },
-  { href: '/admin/campaigns', label: 'Email campaigns' },
-  { href: '/admin/failures', label: 'Failures' },
-  { href: '/admin/incidents', label: 'Incidents' },
-  { href: '/admin/audit', label: 'Audit log' },
-  { href: '/admin/staff', label: 'Staff', permission: 'staff.manage' },
-  { href: '/admin/security', label: 'Security' },
+type NavItem = {
+  href: string;
+  label: string;
+  permission?: Permission;
+  badge?: keyof Awaited<ReturnType<typeof getNavBadges>>;
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+export const GROUPS: NavGroup[] = [
+  {
+    label: 'Command & Intelligence',
+    items: [
+      { href: '/admin', label: 'Command Center' },
+      { href: '/admin/operator', label: 'AI Operator ⚡', permission: 'ops.manage' },
+      { href: '/admin/manual', label: 'Operations Manual' },
+    ]
+  },
+  {
+    label: 'SRE & Reliability',
+    items: [
+      { href: '/admin/health', label: 'Service health', badge: 'crons' },
+      { href: '/admin/failures', label: 'Failures', badge: 'failures' },
+      { href: '/admin/incidents', label: 'Incidents' },
+      { href: '/admin/audit', label: 'Audit log' },
+    ]
+  },
+  {
+    label: 'Financials & Risk',
+    items: [
+      { href: '/admin/money', label: 'Money & Platform Fees' },
+      { href: '/admin/payments', label: 'Payment ledger' },
+      { href: '/admin/billing-operations', label: 'Billing operations' },
+      { href: '/admin/risk', label: 'Review queue' },
+    ]
+  },
+  {
+    label: 'Customers & Support',
+    items: [
+      { href: '/admin/accounts', label: 'Accounts' },
+      { href: '/admin/cases', label: 'Cases & SLA Clock', badge: 'casesNearSla' },
+      { href: '/admin/quick-stops', label: 'Quick Stops' },
+      { href: '/admin/privacy-requests', label: 'Privacy requests' },
+      { href: '/admin/accounts/closures', label: 'Closures & Trash' },
+    ]
+  },
+  {
+    label: 'Communications & Growth',
+    items: [
+      { href: '/admin/voice/numbers', label: 'AI Voice numbers' },
+      { href: '/admin/messaging', label: 'Platform Messaging' },
+      { href: '/admin/campaigns', label: 'Email campaigns' },
+      { href: '/admin/blog', label: 'Blog & Editorial' },
+    ]
+  },
+  {
+    label: 'Platform Governance',
+    items: [
+      { href: '/admin/search', label: 'Search' },
+      { href: '/admin/staff', label: 'Staff Roles & Permissions', permission: 'staff.manage' },
+      { href: '/admin/security', label: 'Security & MFA' },
+    ]
+  }
 ];
+
+// Flat export for compatibility with anywhere else that uses ITEMS (e.g. SearchBox may need it)
+export const ITEMS = GROUPS.flatMap(g => g.items);
 
 export default function AdminNav({ role }: { role: StaffRole }) {
   const pathname = usePathname();
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [badges, setBadges] = useState<Awaited<ReturnType<typeof getNavBadges>> | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchBadges = async () => {
+      try {
+        const data = await getNavBadges();
+        if (mounted) setBadges(data);
+      } catch (err) {
+        console.error('Failed to fetch nav badges', err);
+      }
+    };
+    
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 60000); // refresh every minute
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const toggleGroup = (groupLabel: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [groupLabel]: !prev[groupLabel] }));
+  };
+
+  const userPerms = permissionsFor(role);
+
   return (
     <nav className={styles.nav} aria-label="Staff console">
-      {ITEMS.map((item) => {
-        if (item.permission && !permissionsFor(role).includes(item.permission)) return null;
-        const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
-        const iconSvg = ICONS[item.href];
+      {GROUPS.map((group) => {
+        const groupItems = group.items.filter(item => !item.permission || userPerms.includes(item.permission));
+        if (groupItems.length === 0) return null;
+        
+        const isCollapsed = collapsedGroups[group.label];
+        
         return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? 'page' : undefined}
-            className={`${styles.navItem} ${active ? styles.active : ''}`}
-          >
-            {iconSvg ? (
-              <svg
-                className={styles.navIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-                dangerouslySetInnerHTML={{ __html: iconSvg }}
-              />
-            ) : null}
-            <span>{item.label}</span>
-          </Link>
+          <div key={group.label} className={styles.navGroup}>
+            <div 
+              className={styles.navGroupTitle} 
+              onClick={() => toggleGroup(group.label)}
+            >
+              {group.label}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }}>
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </div>
+            <div className={`${styles.navGroupItems} ${isCollapsed ? styles.collapsed : ''}`}>
+              {groupItems.map((item) => {
+                const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
+                const iconSvg = ICONS[item.href];
+                const badgeCount = item.badge && badges ? badges[item.badge] : 0;
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`${styles.navItem} ${active ? styles.active : ''}`}
+                  >
+                    {iconSvg ? (
+                      <svg
+                        className={styles.navIcon}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        dangerouslySetInnerHTML={{ __html: iconSvg }}
+                      />
+                    ) : null}
+                    <span>{item.label}</span>
+                    {badgeCount > 0 && (
+                      <span className={`${styles.navBadge} ${item.badge === 'crons' ? styles.warning : styles.critical}`}>
+                        {badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         );
       })}
     </nav>
