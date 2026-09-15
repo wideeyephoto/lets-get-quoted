@@ -1674,7 +1674,7 @@ export default function ManagedAdsScreen({
                         ${currentBundle.weeklyAdSpendDollars}/wk (100% clicks)
                       </span>
                       <span style={{ color: 'var(--muted)' }}>+</span>
-                      <span className={styles.transparentFeeTag} style={{ color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.35)', background: 'rgba(56, 189, 248, 0.12)' }}>
+                      <span className={styles.transparentFeeTagBlue}>
                         ${currentBundle.weeklyFeeDollars}/wk (AI Platform)
                       </span>
                     </div>
@@ -1696,11 +1696,11 @@ export default function ManagedAdsScreen({
                         <strong style={{ fontSize: '0.82rem', color: 'var(--foreground)' }}>
                           Weekly Drip Allocation &amp; Math
                         </strong>
-                        <span style={{ fontSize: '0.68rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '0.1rem 0.4rem', borderRadius: '10px', fontWeight: 600 }}>
+                        <span className={styles.costBreakdownPill}>
                           ${currentBundle.weeklyAdSpendDollars} Ads + ${currentBundle.weeklyFeeDollars ? `$${currentBundle.weeklyFeeDollars}` : '$0'} Fee
                         </span>
                       </div>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--accent, #f97316)', fontWeight: 600 }}>
+                      <span className={styles.costBreakdownToggle}>
                         {showWeeklyCostDetails ? 'Hide Details ▲' : 'View Breakdown ▼'}
                       </span>
                     </div>

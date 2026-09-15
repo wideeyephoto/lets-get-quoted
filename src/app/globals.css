@@ -25326,6 +25326,11 @@ button.inbox-thread-item {
   color: var(--on-accent, #ffffff);
 }
 
+:root[data-theme='light'] .next-opportunity-badge {
+  background: #c2410c;
+  color: #ffffff;
+}
+
 .next-opportunity-headline {
   margin: 0 0 0.4rem;
   font-size: 1.15rem;
@@ -57663,6 +57668,7 @@ a.ins-export-opt:focus-visible {
   font-size: 1.45rem;
   font-weight: 750;
   letter-spacing: -0.01em;
+  color: #f7f5ef;
 }
 
 .bz-rail ul {

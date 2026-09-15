@@ -9,6 +9,7 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   overflow: hidden;
   margin-bottom: 2rem;
+  color: #0f172a;
 }
 
 /* Header & Operations Summary */
@@ -44,7 +45,7 @@
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--text-primary, #0f172a);
+  color: #0f172a;
   letter-spacing: -0.01em;
 }
 
@@ -193,6 +194,7 @@
   font-size: 0.82rem;
   outline: none;
   background: #ffffff;
+  color: #0f172a;
   transition: border-color 0.15s;
 }
 
@@ -368,7 +370,7 @@
 
 .role {
   font-size: 0.72rem;
-  color: #64748b;
+  color: #475569;
 }
 
 /* Status Badges */
@@ -402,7 +404,7 @@
 
 .badgeNeutral {
   background: #f1f5f9;
-  color: #64748b;
+  color: #334155;
 }
 
 /* Job info box in card */
@@ -422,7 +424,7 @@
 }
 
 .cardJobAddress {
-  color: #64748b;
+  color: #475569;
   font-size: 0.72rem;
 }
 
@@ -431,7 +433,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 0.72rem;
-  color: #64748b;
+  color: #475569;
 }
 
 .freshnessText {
@@ -448,6 +450,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: #0f172a;
 }
 
 .drawerHeader {

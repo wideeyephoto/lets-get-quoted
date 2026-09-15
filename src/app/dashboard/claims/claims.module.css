@@ -2215,3 +2215,53 @@
 .toastStack > * {
   pointer-events: auto;
 }
+
+/* ==========================================================================
+   WCAG 2.2 AA Contrast Overrides for Light & Sunlight Themes
+   ========================================================================== */
+:root[data-theme='light'] .card,
+:root[data-theme='sunlight'] .card {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .cardTitle,
+:root[data-theme='sunlight'] .cardTitle {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .cardHeader > span,
+:root[data-theme='sunlight'] .cardHeader > span {
+  color: #475569 !important;
+}
+
+:root[data-theme='light'] .fieldLabel,
+:root[data-theme='sunlight'] .fieldLabel {
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] .tradeBadge,
+:root[data-theme='sunlight'] .tradeBadge {
+  color: #9a3412 !important;
+  background: #ffedd5 !important;
+  border-color: #fdba74 !important;
+}
+
+:root[data-theme='light'] .input,
+:root[data-theme='sunlight'] .input,
+:root[data-theme='light'] .select,
+:root[data-theme='sunlight'] .select,
+:root[data-theme='light'] .textarea,
+:root[data-theme='sunlight'] .textarea {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .card p,
+:root[data-theme='sunlight'] .card p,
+:root[data-theme='light'] .card label,
+:root[data-theme='sunlight'] .card label {
+  color: #334155 !important;
+}

@@ -326,3 +326,23 @@
     font-weight: 600;
   }
 }
+
+/* WCAG 2.2 AA Contrast Overrides for Light & Sunlight Themes */
+:root[data-theme='light'] .previewMessage,
+:root[data-theme='sunlight'] .previewMessage,
+:root[data-theme='light'] .emptyStateTitle,
+:root[data-theme='sunlight'] .emptyStateTitle {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .emptyStateSub,
+:root[data-theme='sunlight'] .emptyStateSub {
+  color: #475569 !important;
+}
+
+:root[data-theme='light'] .searchInput,
+:root[data-theme='sunlight'] .searchInput {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}

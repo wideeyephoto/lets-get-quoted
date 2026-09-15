@@ -1322,10 +1322,10 @@ export default function InventoryClient({
           }}
         >
           <div>
-            <h4 style={{ margin: 0, fontSize: '0.98rem', color: '#ffffff', fontWeight: 700 }}>
+            <h4 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--inv-text-primary)', fontWeight: 700 }}>
               Welcome to Inventory &amp; Fleet Tracker
             </h4>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#cbd5e1' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--inv-text-muted)' }}>
               Your workspace is empty. Add your own locations, tools, and fleet vehicles, or load sample starter data to explore features.
             </p>
           </div>
@@ -1393,13 +1393,13 @@ export default function InventoryClient({
         >
           <div className={styles.kpiHeader}>
             <span className={styles.kpiLabel}>Low Stock Alert</span>
-            <div className={styles.kpiIconWrap} style={{ color: lowStockResult.lowStockCount > 0 ? '#fbbf24' : '#34d399' }}>
+            <div className={styles.kpiIconWrap} style={{ color: lowStockResult.lowStockCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}>
               <Boxes size={16} />
             </div>
           </div>
           <div
             className={styles.kpiValue}
-            style={{ color: lowStockResult.lowStockCount > 0 ? '#fbbf24' : '#34d399' }}
+            style={{ color: lowStockResult.lowStockCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}
           >
             {lowStockResult.lowStockCount} {lowStockResult.lowStockCount === 1 ? 'item' : 'items'}
           </div>
@@ -1432,13 +1432,13 @@ export default function InventoryClient({
         >
           <div className={styles.kpiHeader}>
             <span className={styles.kpiLabel}>Vehicle Service Due</span>
-            <div className={styles.kpiIconWrap} style={{ color: maintenanceDueCount > 0 ? '#fbbf24' : '#34d399' }}>
+            <div className={styles.kpiIconWrap} style={{ color: maintenanceDueCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}>
               <Truck size={16} />
             </div>
           </div>
           <div
             className={styles.kpiValue}
-            style={{ color: maintenanceDueCount > 0 ? '#fbbf24' : '#34d399' }}
+            style={{ color: maintenanceDueCount > 0 ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-status-good-text, #34d399)' }}
           >
             {maintenanceDueCount} {maintenanceDueCount === 1 ? 'vehicle' : 'vehicles'}
           </div>
@@ -1475,11 +1475,11 @@ export default function InventoryClient({
         >
           <div className={styles.kpiHeader}>
             <span className={styles.kpiLabel}>Field Custody</span>
-            <div className={styles.kpiIconWrap} style={{ color: '#38bdf8' }}>
+            <div className={styles.kpiIconWrap} style={{ color: 'var(--inv-status-info-text, #38bdf8)' }}>
               <User size={16} />
             </div>
           </div>
-          <div className={styles.kpiValue} style={{ color: '#38bdf8' }}>
+          <div className={styles.kpiValue} style={{ color: 'var(--inv-status-info-text, #38bdf8)' }}>
             {checkedOutToolsCount} {checkedOutToolsCount === 1 ? 'tool' : 'tools'}
           </div>
           <div className={`${styles.kpiNote} ${styles.kpiNoteNeutral}`}>
@@ -1736,17 +1736,17 @@ export default function InventoryClient({
                               </div>
                             )}
                             <div>
-                              <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.9rem', textDecoration: 'underline' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)', fontSize: '0.9rem', textDecoration: 'underline' }}>
                                 {tool.name}
                               </div>
-                              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--inv-text-caption, #94a3b8)' }}>
                                 {tool.brand} {tool.modelNumber ? `• Mod: ${tool.modelNumber}` : ''}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className={styles.toolsTd}>
-                          <span style={{ color: '#cbd5e1', fontSize: '0.84rem' }}>{tool.category}</span>
+                          <span style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.84rem' }}>{tool.category}</span>
                         </td>
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
@@ -1778,24 +1778,24 @@ export default function InventoryClient({
                         <td className={styles.toolsTd}>
                           {isCheckedOut ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#ffb580', fontWeight: 600 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--inv-tag-orange-text, #ffb580)', fontWeight: 600 }}>
                                 <User size={13} /> {tool.assignedCrewName || 'Assigned Tech'}
                               </div>
                               {tool.expectedReturnDate && (
-                                <span style={{ fontSize: '0.72rem', color: isOverdue ? '#f87171' : '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-muted, #cbd5e1)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                   <Clock size={11} /> Due: {tool.expectedReturnDate}
                                 </span>
                               )}
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                 {isVehicleLocation(tool.locationName) ? <Truck size={11} /> : <MapPin size={11} />} Base: {tool.locationName || 'Main Shop & Warehouse'}
                               </span>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#cbd5e1' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                               {isVehicleLocation(tool.locationName) ? (
                                 <Truck size={13} style={{ color: '#60a5fa' }} />
                               ) : (
-                                <MapPin size={13} style={{ color: '#94a3b8' }} />
+                                <MapPin size={13} style={{ color: 'var(--inv-text-caption, #94a3b8)' }} />
                               )}
                               <span>{tool.locationName || 'Main Shop & Warehouse'}</span>
                               {isVehicleLocation(tool.locationName) && (
@@ -1808,7 +1808,7 @@ export default function InventoryClient({
                         </td>
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: '#e2e8f0' }}>
+                            <span style={{ fontFamily: 'monospace', fontSize: '0.82rem', color: 'var(--inv-text-primary, #e2e8f0)' }}>
                               {tool.purchaseDate || 'N/A'}
                             </span>
                             <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
@@ -1817,10 +1817,10 @@ export default function InventoryClient({
                         </td>
                         <td className={styles.toolsTd}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-                            <span style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                               Cost: <strong>{tool.purchasePrice ? formatUsdExact(tool.purchasePrice) : 'N/A'}</strong>
                             </span>
-                            <span style={{ fontSize: '0.82rem', color: '#34d399', fontWeight: 700 }}>
+                            <span style={{ fontSize: '0.82rem', color: 'var(--inv-status-good-text, #34d399)', fontWeight: 700 }}>
                               Basis: {formatUsdExact(depr.currentBookValue)}
                             </span>
                           </div>
@@ -2003,21 +2003,21 @@ export default function InventoryClient({
                             </span>
                           </div>
                           {tool.expectedReturnDate && (
-                            <div className={styles.custodyRow} style={{ color: isOverdue ? '#fca5a5' : '#cbd5e1', fontSize: '0.85rem' }}>
+                            <div className={styles.custodyRow} style={{ color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
                               <span className={styles.custodyLabel}>
                                 <Clock size={14} /> Expected Return:
                               </span>
-                              <span style={{ fontWeight: 700, color: isOverdue ? '#f87171' : '#ffffff' }}>
+                              <span style={{ fontWeight: 700, color: isOverdue ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-primary, #ffffff)' }}>
                                 {tool.expectedReturnDate} {isOverdue && '(OVERDUE)'}
                               </span>
                             </div>
                           )}
                           {tool.checkedOutAt && (
-                            <div className={styles.custodyRow} style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>
+                            <div className={styles.custodyRow} style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.85rem' }}>
                               <span className={styles.custodyLabel}>
                                 <Calendar size={14} /> Checked Out:
                               </span>
-                              <span style={{ fontWeight: 600, color: '#ffffff' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--inv-text-primary, #ffffff)' }}>
                                 {new Date(tool.checkedOutAt).toLocaleDateString()}
                               </span>
                             </div>
@@ -2056,7 +2056,7 @@ export default function InventoryClient({
                           marginTop: '0.75rem',
                           padding: isLarge ? '0.65rem 0.85rem' : '0.45rem 0.65rem',
                           borderRadius: '8px',
-                          background: 'rgba(255, 255, 255, 0.03)',
+                          background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.03))',
                           border: '1px solid var(--inv-border-subtle)',
                           display: 'flex',
                           alignItems: 'center',
@@ -2067,11 +2067,11 @@ export default function InventoryClient({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                           <span style={{ color: 'var(--inv-text-muted)' }}>
                             Cost Basis:{' '}
-                            <strong style={{ color: '#ffffff' }}>
+                            <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
                               {tool.purchasePrice ? formatUsdExact(tool.purchasePrice) : 'N/A'}
                             </strong>
                             {tool.purchaseDate && (
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '0.35rem' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', marginLeft: '0.35rem' }}>
                                 ({tool.purchaseDate})
                               </span>
                             )}
@@ -2079,11 +2079,11 @@ export default function InventoryClient({
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
                             <TaxHelpBubble schedule={tool.depreciationSchedule} />
-                            <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>{depr.statusText}</span>
+                            <span style={{ color: 'var(--inv-text-caption, #94a3b8)', fontSize: '0.74rem' }}>{depr.statusText}</span>
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--inv-text-caption, #94a3b8)', textTransform: 'uppercase', fontWeight: 700 }}>
                             Book Value
                           </div>
                           <div className={styles.taxBookValue}>{formatUsdExact(depr.currentBookValue)}</div>
@@ -2237,7 +2237,7 @@ export default function InventoryClient({
                       {/* Mileage & PM Alerts */}
                       <div style={{ marginTop: '0.95rem', display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
                         <div className={styles.mileageMeter}>
-                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#cbd5e1' }}>Current Odometer</span>
+                          <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--inv-text-muted, #cbd5e1)' }}>Current Odometer</span>
                           <span className={styles.mileageFigure}>{v.currentMileage.toLocaleString()} mi</span>
                         </div>
 
@@ -2294,7 +2294,7 @@ export default function InventoryClient({
                             <Gauge size={15} /> Odometer:
                           </span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#ffffff' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)' }}>
                               {v.currentMileage.toLocaleString()} mi
                             </span>
                             <button
@@ -2303,7 +2303,7 @@ export default function InventoryClient({
                               style={{
                                 background: 'transparent',
                                 border: 'none',
-                                color: '#ff9d5c',
+                                color: 'var(--inv-tag-orange-text, #c2410c)',
                                 fontSize: '0.85rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
@@ -2324,10 +2324,10 @@ export default function InventoryClient({
                               fontFamily: 'monospace',
                               fontWeight: 700,
                               color: audit.isServiceOverdue
-                                ? '#f87171'
+                                ? 'var(--inv-status-danger-text, #f87171)'
                                 : audit.isServiceDueSoon
-                                ? '#fbbf24'
-                                : '#ffffff',
+                                ? 'var(--inv-status-warn-text, #fbbf24)'
+                                : 'var(--inv-text-primary, #ffffff)',
                             }}
                           >
                             {v.nextServiceDueMileage ? `${v.nextServiceDueMileage.toLocaleString()} mi` : 'Not set'}
@@ -2335,11 +2335,11 @@ export default function InventoryClient({
                         </div>
 
                         {v.inspectionExpiresAt && (
-                          <div className={styles.custodyRow} style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
+                          <div className={styles.custodyRow} style={{ fontSize: '0.85rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                             <span className={styles.custodyLabel}>
                               <ShieldCheck size={15} /> State Inspection:
                             </span>
-                            <span style={{ color: audit.isInspectionExpired ? '#f87171' : '#ffffff', fontWeight: audit.isInspectionExpired ? 700 : 600 }}>
+                            <span style={{ color: audit.isInspectionExpired ? 'var(--inv-status-danger-text, #f87171)' : 'var(--inv-text-primary, #ffffff)', fontWeight: audit.isInspectionExpired ? 700 : 600 }}>
                               {v.inspectionExpiresAt}
                             </span>
                           </div>
@@ -2355,19 +2355,19 @@ export default function InventoryClient({
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           padding: '0.65rem 0.85rem',
-                          background: 'rgba(15, 23, 42, 0.65)',
+                          background: 'var(--inv-surface-subtle, rgba(15, 23, 42, 0.65))',
                           borderRadius: '8px',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.08))',
                         }}
                       >
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                           <span style={{ color: 'var(--inv-text-muted)' }}>
                             Cost Basis:{' '}
-                            <strong style={{ color: '#ffffff' }}>
+                            <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
                               {v.purchasePrice ? formatUsdExact(v.purchasePrice) : 'N/A'}
                             </strong>
                             {v.purchaseDate && (
-                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '0.35rem' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--inv-text-caption, #94a3b8)', marginLeft: '0.35rem' }}>
                                 ({v.purchaseDate})
                               </span>
                             )}
@@ -2375,11 +2375,11 @@ export default function InventoryClient({
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                             <span className={styles.taxScheduleBadge}>{depr.scheduleBadge}</span>
                             <TaxHelpBubble schedule={v.depreciationSchedule} isVehicle />
-                            <span style={{ color: '#94a3b8', fontSize: '0.74rem' }}>{depr.statusText}</span>
+                            <span style={{ color: 'var(--inv-text-caption, #94a3b8)', fontSize: '0.74rem' }}>{depr.statusText}</span>
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--inv-text-caption, #94a3b8)', textTransform: 'uppercase', fontWeight: 700 }}>
                             Book Value
                           </div>
                           <div className={styles.taxBookValue}>{formatUsdExact(depr.currentBookValue)}</div>
@@ -2592,12 +2592,12 @@ export default function InventoryClient({
                   return (
                     <tr key={item.id}>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1rem' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: '#cbd5e1' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>{item.name}</div>
+                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                           {item.sku}
                         </div>
                       </td>
-                      <td style={{ color: '#cbd5e1', fontSize: '0.92rem' }}>{item.category}</td>
+                      <td style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.92rem' }}>{item.category}</td>
                       <td>
                         <span
                           style={{
@@ -2606,11 +2606,11 @@ export default function InventoryClient({
                             gap: '0.35rem',
                             padding: '0.3rem 0.65rem',
                             borderRadius: '8px',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            border: '1px solid rgba(255, 255, 255, 0.18)',
+                            background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.08))',
+                            border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.18))',
                             fontSize: '0.85rem',
                             fontWeight: 600,
-                            color: '#ffffff',
+                            color: 'var(--inv-text-primary, #ffffff)',
                           }}
                         >
                           <MapPin size={13} /> {item.location}
@@ -2629,7 +2629,7 @@ export default function InventoryClient({
                           </button>
                           <span
                             className={styles.stepperValue}
-                            style={{ color: isLow ? '#fbbf24' : '#ffffff' }}
+                            style={{ color: isLow ? 'var(--inv-status-warn-text, #fbbf24)' : 'var(--inv-text-primary, #ffffff)' }}
                           >
                             {item.quantityOnHand} {item.unit}
                           </span>
@@ -2643,17 +2643,17 @@ export default function InventoryClient({
                             +
                           </button>
                         </div>
-                        <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginTop: '0.3rem', fontWeight: 600 }}>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--inv-text-muted, #cbd5e1)', marginTop: '0.3rem', fontWeight: 600 }}>
                           Min: {item.minThreshold} {item.unit}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: '#f1f5f9' }}>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: 'var(--inv-text-primary, #f1f5f9)' }}>
                         {formatUsdExact(item.unitCost)}
                       </td>
-                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#ffffff', fontSize: '1rem' }}>
+                      <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>
                         {formatUsdExact(item.quantityOnHand * item.unitCost)}
                       </td>
-                      <td style={{ color: '#cbd5e1', fontSize: '0.92rem' }}>{item.preferredSupplier || '—'}</td>
+                      <td style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontSize: '0.92rem' }}>{item.preferredSupplier || '—'}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span
                           className={`${styles.statusBadge} ${isLow ? styles.statusMaintenance : styles.statusAvailable}`}
@@ -2712,7 +2712,7 @@ export default function InventoryClient({
             <div style={{ background: 'var(--inv-surface-elevated)', border: '1px solid var(--inv-border-strong)', borderRadius: '18px', padding: '1.4rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '1rem' }}>
                 <ArrowLeftRight size={18} style={{ color: 'var(--accent)' }} />
-                <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
+                <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)' }}>
                   Recent Inter-Location Parts Transfers
                 </h3>
               </div>
@@ -2726,21 +2726,21 @@ export default function InventoryClient({
                       justifyContent: 'space-between',
                       padding: '0.75rem 1rem',
                       borderRadius: '12px',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))',
+                      border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))',
                     }}
                   >
                     <div>
-                      <strong style={{ color: '#ffffff' }}>
+                      <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>
                         {tr.quantity} × {tr.itemName}
                       </strong>
-                      <span style={{ color: '#cbd5e1' }}> from </span>
-                      <span style={{ color: '#ffffff', fontWeight: 600 }}>{tr.fromLocation}</span>
-                      <span style={{ color: '#cbd5e1' }}> → </span>
-                      <span style={{ color: '#ffffff', fontWeight: 600 }}>{tr.toLocation}</span>
-                      {tr.notes && <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}> ({tr.notes})</span>}
+                      <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}> from </span>
+                      <span style={{ color: 'var(--inv-text-primary, #ffffff)', fontWeight: 600 }}>{tr.fromLocation}</span>
+                      <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}> → </span>
+                      <span style={{ color: 'var(--inv-text-primary, #ffffff)', fontWeight: 600 }}>{tr.toLocation}</span>
+                      {tr.notes && <span style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontStyle: 'italic' }}> ({tr.notes})</span>}
                     </div>
-                    <span style={{ color: '#cbd5e1', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--inv-text-muted, #cbd5e1)', fontFamily: 'monospace', fontSize: '0.85rem' }}>
                       {new Date(tr.createdAt).toLocaleDateString()}
                     </span>
                   </div>
@@ -2756,10 +2756,10 @@ export default function InventoryClient({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className={styles.controlsBar}>
             <div>
-              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)' }}>
                 Equipment &amp; Fleet Service Ledger
               </h2>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: '#cbd5e1' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                 Immutable audit records of oil changes, factory recalibrations, and safety inspections.
               </p>
             </div>
@@ -2802,17 +2802,17 @@ export default function InventoryClient({
               <tbody>
                 {maintenance.map((m) => (
                   <tr key={m.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#ffffff' }}>{m.performedAt}</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--inv-text-primary, #ffffff)' }}>{m.performedAt}</td>
                     <td>
-                      <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1rem' }}>{m.assetName}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>{m.assetName}</div>
                       <span
                         style={{
                           fontSize: '0.82rem',
                           fontFamily: 'monospace',
                           textTransform: 'uppercase',
-                          color: '#ff9d5c',
-                          background: 'rgba(255, 122, 33, 0.16)',
-                          border: '1px solid rgba(255, 122, 33, 0.35)',
+                          color: 'var(--inv-tag-orange-text, #ff9d5c)',
+                          background: 'var(--inv-tag-orange-bg, rgba(255, 122, 33, 0.16))',
+                          border: '1px solid var(--inv-tag-orange-border, rgba(255, 122, 33, 0.35))',
                           padding: '2px 8px',
                           borderRadius: '6px',
                           fontWeight: 700,
@@ -2821,20 +2821,20 @@ export default function InventoryClient({
                         {m.assetType}
                       </span>
                     </td>
-                    <td style={{ fontWeight: 600, color: '#f8fafc' }}>
+                    <td style={{ fontWeight: 600, color: 'var(--inv-text-body, #f8fafc)' }}>
                       {m.serviceType}
                       {m.mileageAtService && (
-                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: '#cbd5e1', marginTop: '0.2rem' }}>
+                        <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', color: 'var(--inv-text-muted, #cbd5e1)', marginTop: '0.2rem' }}>
                           At {m.mileageAtService.toLocaleString()} mi
                         </div>
                       )}
                     </td>
-                    <td style={{ color: '#cbd5e1' }}>{m.performedBy}</td>
-                    <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: '#ffffff', fontSize: '1rem' }}>
+                    <td style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>{m.performedBy}</td>
+                    <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)', fontSize: '1rem' }}>
                       {formatUsdExact(m.cost)}
                     </td>
-                    <td style={{ fontFamily: 'monospace', color: '#cbd5e1' }}>{m.nextDueAt || '—'}</td>
-                    <td style={{ fontStyle: 'italic', color: '#e2e8f0', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td style={{ fontFamily: 'monospace', color: 'var(--inv-text-muted, #cbd5e1)' }}>{m.nextDueAt || '—'}</td>
+                    <td style={{ fontStyle: 'italic', color: 'var(--inv-text-muted, #e2e8f0)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {m.notes || '—'}
                     </td>
                   </tr>
@@ -2850,10 +2850,10 @@ export default function InventoryClient({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className={styles.controlsBar}>
             <div>
-              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)' }}>
                 Depots, Warehouses &amp; Fleet Vehicles
               </h2>
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: '#cbd5e1' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.95rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                 Configure physical stock locations and vehicles for granular supply chain replenishment.
               </p>
             </div>
@@ -2882,9 +2882,9 @@ export default function InventoryClient({
                           textTransform: 'uppercase',
                           padding: '0.25rem 0.65rem',
                           borderRadius: '999px',
-                          background: 'rgba(255, 255, 255, 0.08)',
-                          border: '1px solid rgba(255, 255, 255, 0.18)',
-                          color: '#ffffff',
+                          background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.08))',
+                          border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.18))',
+                          color: 'var(--inv-text-primary, #ffffff)',
                           fontWeight: 700,
                         }}
                       >
@@ -2893,18 +2893,18 @@ export default function InventoryClient({
                     </div>
 
                     <h3 className={styles.cardTitle}>{loc.name}</h3>
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: '#cbd5e1' }}>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
                       {loc.address || 'Standard Company Depot'}
                     </p>
 
-                    <div style={{ marginTop: '0.95rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.92rem' }}>
-                      <span style={{ color: '#cbd5e1' }}>Stock items stocked: </span>
-                      <strong style={{ fontFamily: 'monospace', color: '#ffffff', fontWeight: 800 }}>{stockCount} items</strong>
+                    <div style={{ marginTop: '0.95rem', padding: '0.85rem 1rem', borderRadius: '12px', background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))', border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))', fontSize: '0.92rem' }}>
+                      <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>Stock items stocked: </span>
+                      <strong style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary, #ffffff)', fontWeight: 800 }}>{stockCount} items</strong>
                     </div>
                   </div>
 
                   <div className={styles.cardFooter}>
-                    <span style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 600 }}>Active Facility</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--inv-status-good-text, #34d399)', fontWeight: 600 }}>Active Facility</span>
                     <div className={styles.cardActions}>
                       <button
                         type="button"
@@ -2933,10 +2933,10 @@ export default function InventoryClient({
           {vehicles.length > 0 && (
             <div style={{ marginTop: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--inv-text-primary, #ffffff)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Truck size={18} style={{ color: '#60a5fa' }} /> Mobile Fleet Units ({vehicles.length} Synced)
                 </h3>
-                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--inv-text-caption, #94a3b8)' }}>
                   Auto-synced from Fleet Vehicles • Available in all tool &amp; stock location pickers
                 </span>
               </div>
@@ -2956,18 +2956,18 @@ export default function InventoryClient({
                         </div>
 
                         <h3 className={styles.cardTitle}>{v.name}</h3>
-                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: '#cbd5e1' }}>
-                          {v.year} {v.make} {v.model} • Driver: <strong style={{ color: '#ffffff' }}>{v.primaryDriverName || 'Unassigned'}</strong>
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: 'var(--inv-text-muted, #cbd5e1)' }}>
+                          {v.year} {v.make} {v.model} • Driver: <strong style={{ color: 'var(--inv-text-primary, #ffffff)' }}>{v.primaryDriverName || 'Unassigned'}</strong>
                         </p>
 
                         <div style={{ marginTop: '0.95rem', display: 'flex', gap: '0.65rem' }}>
-                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.85rem' }}>
-                            <span style={{ color: '#cbd5e1' }}>Tools: </span>
-                            <strong style={{ fontFamily: 'monospace', color: '#ffffff' }}>{toolsCount} assigned</strong>
+                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))', border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))', fontSize: '0.85rem' }}>
+                            <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>Tools: </span>
+                            <strong style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary, #ffffff)' }}>{toolsCount} assigned</strong>
                           </div>
-                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.85rem' }}>
-                            <span style={{ color: '#cbd5e1' }}>Parts: </span>
-                            <strong style={{ fontFamily: 'monospace', color: '#ffffff' }}>{stockCount} stocked</strong>
+                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'var(--inv-surface-subtle, rgba(255, 255, 255, 0.04))', border: '1px solid var(--inv-border-subtle, rgba(255, 255, 255, 0.1))', fontSize: '0.85rem' }}>
+                            <span style={{ color: 'var(--inv-text-muted, #cbd5e1)' }}>Parts: </span>
+                            <strong style={{ fontFamily: 'monospace', color: 'var(--inv-text-primary, #ffffff)' }}>{stockCount} stocked</strong>
                           </div>
                         </div>
                       </div>
