@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: d22a5c91657332a6
+   source-sha256: 5440a07fa8ffe9d0
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -3326,11 +3326,17 @@ h3 {
   display: none;
 }
 
-.sidenav-collapse-toggle {
+.sidenav-topbar-actions {
   position: absolute;
   right: 0.15rem;
   top: 50%;
   transform: translateY(-50%);
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.sidenav-collapse-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3350,7 +3356,7 @@ h3 {
   background: rgba(var(--tint), 0.1);
   color: var(--accent);
   border-color: var(--accent);
-  transform: translateY(-50%) scale(1.05);
+  transform: scale(1.05);
 }
 
 .sidenav-collapse-toggle:focus-visible {
@@ -4528,7 +4534,7 @@ h3 {
 }
 
 .sidenav.collapsed .sidenav-link-row > .sidenav-link {
-  padding-right: 0.6rem;
+  padding-right: 0;
 }
 
 .sidenav.collapsed .sidenav-pin-toggle {
@@ -5072,6 +5078,13 @@ h3 {
     margin-bottom: 0.4rem;
   }
 
+  .sidenav.collapsed .sidenav-topbar-actions {
+    position: static;
+    transform: none;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
   .sidenav.collapsed .sidenav-topbar .sidenav-brand {
     justify-content: center;
     width: 100%;
@@ -5157,10 +5170,12 @@ h3 {
 
   .sidenav.collapsed .sidenav-actions .sidenav-plan,
   .sidenav.collapsed .sidenav-plan {
-    width: 100% !important;
+    width: 44px !important;
+    height: 44px !important;
     min-height: 44px;
+    margin: 0 auto;
     justify-content: center;
-    padding: 0.55rem 0;
+    padding: 0;
     font-size: 0;
     box-sizing: border-box;
   }
@@ -5171,14 +5186,17 @@ h3 {
 
   .sidenav.collapsed .sidenav-actions .sidenav-new-wrap {
     width: 100%;
-    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
   }
 
   .sidenav.collapsed .sidenav-actions .sidenav-new,
   .sidenav.collapsed .sidenav-new {
-    width: 100% !important;
+    width: 44px !important;
+    height: 44px !important;
     min-height: 44px;
-    padding: 0.55rem 0;
+    margin: 0 auto;
+    padding: 0;
     justify-content: center;
     font-size: 0;
     box-sizing: border-box;
@@ -22936,6 +22954,20 @@ button.plan-badge.warn.is-action:focus-visible {
   .stripe-alert-banner:hover .stripe-alert-chevron {
     transform: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Online bookings waiting on the contractor
+
+   Amber, not the brand orange. Orange on this page means "do the thing" (Plan
+   my day, + New, Set booking availability). This panel is not an action the
+   owner chose to take — it is somebody waiting on them — and it has to read as
+   a held state rather than as another button to press.
+--------------------------------------------------------------------------- */
+
+.booking-requests {
+  border-color: var(--cedge-orange-58);
+  background: linear-gradient(180deg, rgba(255, 176, 32, 0.07), rgba(var(--tint), 0.02));
 }
 
 @media (max-width: 780px) {

@@ -5195,9 +5195,9 @@ h3 {
 
   .sidenav.collapsed .sidenav-actions .sidenav-plan,
   .sidenav.collapsed .sidenav-plan {
-    width: 36px !important;
-    height: 36px !important;
-    min-height: 36px;
+    width: 44px !important;
+    height: 44px !important;
+    min-height: 44px;
     margin: 0 auto;
     justify-content: center;
     padding: 0;
@@ -5217,9 +5217,9 @@ h3 {
 
   .sidenav.collapsed .sidenav-actions .sidenav-new,
   .sidenav.collapsed .sidenav-new {
-    width: 36px !important;
-    height: 36px !important;
-    min-height: 36px;
+    width: 44px !important;
+    height: 44px !important;
+    min-height: 44px;
     margin: 0 auto;
     padding: 0;
     justify-content: center;
