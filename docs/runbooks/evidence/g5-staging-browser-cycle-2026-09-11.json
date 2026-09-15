@@ -1,0 +1,36 @@
+[
+  {
+    "state": "draft",
+    "id": "3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "title": "[REHEARSAL] Incident cycle 3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "httpStatus": 200,
+    "visible": false,
+    "cspNonce": true
+  },
+  {
+    "state": "published",
+    "id": "3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "title": "[REHEARSAL] Incident cycle 3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "httpStatus": 200,
+    "visible": true,
+    "cspNonce": true
+  },
+  {
+    "state": "updated",
+    "id": "3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "title": "[REHEARSAL] Incident cycle 3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "description": "Rehearsal update: publishing verified; checking recovery. No customer outage.",
+    "httpStatus": 200,
+    "visible": true,
+    "cspNonce": true
+  },
+  {
+    "state": "resolved",
+    "id": "3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "title": "[REHEARSAL] Incident cycle 3784c893-d22a-41f3-a0a9-f1bf3d45d122",
+    "resolution_summary": "Rehearsal completed. No customer outage occurred.",
+    "httpStatus": 200,
+    "visible": true,
+    "cspNonce": true
+  }
+]

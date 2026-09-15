@@ -18,7 +18,7 @@ could not substantiate an incident cycle. Inspection started from `65bcbae28`.
 - State the evidence boundary: this exercises the database/API, not authenticated
   operator actions, `admin_actions`, or the rendered `/status` page.
 
-## Verification
+## Initial verification, before migration approval
 
 `npm run test:incident-rehearsal` exercises the runner through the real Supabase
 JavaScript client with an in-memory transport. All 21 tests pass, including
@@ -51,7 +51,7 @@ Anonymous HTTP checks found:
 | `https://letsgetquoted.com/status` | 404 |
 | `https://letsgetquoted.com/sitemap.xml` | 200; no `/status` entry |
 
-## Remaining G5 release work
+## Gaps identified during the initial verification
 
 1. Review and apply the publishing migration in staging, then repeat the real
    database/API rehearsal. The proposed policy exposes every selectable column
@@ -66,3 +66,48 @@ Anonymous HTTP checks found:
    A service-role script bypasses operator authorization and cannot prove this.
 5. Retain the G5 publication policy and alert deep-link evidence required by
    `docs/prelaunch-gap-closure-plan-2026-09-11.md` before marking the item closed.
+
+## Subsequent staging verification
+
+The corrected public-column migration
+`20260911150644_platform_incident_public_boundary.sql` was applied to staging
+after approval. The real API rehearsal passed with fixture
+`88653710-7042-43ff-b9f8-6d621b264fae`; cleanup was verified. Staging security
+advisors reported no finding referencing `platform_incidents` afterward.
+
+A second staging fixture, `3784c893-d22a-41f3-a0a9-f1bf3d45d122`, exercised the
+local Next.js page at `http://localhost:3031/status`. Anonymous HTTP checks and
+browser reads verified hidden draft, visible publication, visible copy update,
+and resolved history. Every HTTP response returned 200 with the CSP nonce
+header; no framework error overlay appeared. Cleanup was verified. The
+unavailable state was also observed before the staging migration.
+
+The isolated release checkout is `C:\dev\g5-incident-release-20260911`, based on
+remote `main` at `7f32e44c7`. It excludes unrelated unpublished local work and
+adds the public field boundary, explicit operator controls, truthful unavailable
+state, separate active/history reads, sitemap entry, alert/cockpit links, and
+[publication policy](public-incident-channel.md).
+
+These are staging and local-page results, not a production operator rehearsal.
+Production migration approval and release verification are tracked separately.
+
+## Release validation and deployment hold
+
+- The rehearsal runner now passes 22 tests, including page-observation failure
+  cleanup. The database policy tests pass both initial-schema and prior-policy
+  scenarios, including replay, private columns, public write denial, publication
+  timestamps, and compatibility with older service-role inserts.
+- Type checking and the production build passed. Lint passed with existing
+  repository warnings. The full unit run found one public company-email exposure
+  in the new page; the support link was corrected to `/contact`, and the focused
+  status, operator, and company-email tests then passed (15 tests). The final
+  complete rerun passed all 14,897 tests across 1,159 files.
+- The production staff security page reports an MFA-verified session. No live
+  operator mutations were performed.
+- Automatic approval review rejected application of the migration to production
+  project `mfuvvtrkipkigwqqtcal`, requesting explicit approval of that project and
+  the published-incident public-read change. The identical SQL has passed staging,
+  but production remains unchanged until that specific approval is supplied.
+
+The release contains only the final restricted-column migration. It does not
+ship the earlier broad public-read policy as an intermediate migration.

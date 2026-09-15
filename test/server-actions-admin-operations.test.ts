@@ -119,6 +119,14 @@ describe('Server Actions: Admin Operations & Governance', () => {
     vi.clearAllMocks();
     fakeAdmin = {
       from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { title: 'Database outage', description: 'Primary connection pool exhausted', impact_summary: 'Quotes were slow to load' },
+              error: null,
+            }),
+          }),
+        }),
         insert: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
             single: vi.fn().mockResolvedValue({ data: { id: 'inc-123' }, error: null }),
@@ -140,6 +148,10 @@ describe('Server Actions: Admin Operations & Governance', () => {
     mocks.requirePermission.mockResolvedValue(adminContext);
     mocks.requireAdmin.mockResolvedValue(adminContext);
   });
+
+  // The incident actions reject anything that is not a real row id before they
+  // touch the database, so the fixture has to be a UUID and not a placeholder.
+  const INCIDENT_ID = '3f1c2b4a-5d6e-4f70-8a91-b2c3d4e5f607';
 
   describe('incidents actions', () => {
     it('logs an incident and pages on-call when critical', async () => {
@@ -167,20 +179,20 @@ describe('Server Actions: Admin Operations & Governance', () => {
       form.set('resolution_summary', 'Swapped read-replicas and scaled pool');
       form.set('root_cause', 'Spike in unindexed queries');
 
-      await expect(resolveIncidentAction('inc-123', form)).rejects.toThrow('NEXT_REDIRECT:/admin/incidents?done=resolved');
+      await expect(resolveIncidentAction(INCIDENT_ID, form)).rejects.toThrow('NEXT_REDIRECT:/admin/incidents?done=resolved');
       expect(mocks.logAdminAction).toHaveBeenCalledWith(
         fakeAdmin,
         adminContext,
         expect.objectContaining({
           action: 'platform_incident_resolve',
-          targetId: 'inc-123',
+          targetId: INCIDENT_ID,
         }),
       );
     });
 
     it('toggles incident public publishing state', async () => {
       const form = new FormData();
-      form.set('incident_id', 'inc-123');
+      form.set('incident_id', INCIDENT_ID);
       form.set('published', 'true');
 
       await expect(togglePublishIncidentAction(form)).rejects.toThrow('NEXT_REDIRECT:/admin/incidents?done=published');
