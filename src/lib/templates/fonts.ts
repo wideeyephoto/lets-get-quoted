@@ -73,6 +73,18 @@ const oswaldFont = Oswald({ subsets: ['latin'], variable: '--font-oswald' });
 const bebasFont = Bebas_Neue({ subsets: ['latin'], variable: '--font-bebas', weight: '400' });
 
 /**
+ * Narrow font variables for first-run surfaces (e.g. /welcome preview card).
+ * Loads only Forge display (Anton) and Forge body (Barlow), which is the face
+ * a newly seeded site actually uses (new sites are created as carbon, which
+ * getTemplate maps to Forge). Keeps the other 14 families (51KB) out of the
+ * signup route.
+ */
+export const firstRunFontVars = [
+  forgeDisplayFont.variable,
+  forgeBodyFont.variable,
+].join(' ');
+
+/**
  * Every variable above, as one className. Put it on the outermost element of
  * any surface that renders a contractor's own branding.
  */
@@ -94,3 +106,4 @@ export const templateFontVars = [
   oswaldFont.variable,
   bebasFont.variable,
 ].join(' ');
+

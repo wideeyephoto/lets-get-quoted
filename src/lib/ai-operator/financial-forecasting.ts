@@ -1,4 +1,50 @@
-import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
+import { HOMEOWNER_FINANCING } from '@/lib/financing-status';
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+export async function generateLiveFinancialForecast(
+  supabase: SupabaseClient,
+): Promise<ExecutiveFinancialForecast> {
+  try {
+    const { data: accountsData, error: accountsError } = await supabase
+      .from('accounts')
+      .select('plan')
+      .neq('status', 'suspended')
+      .neq('test_marker', true);
+
+    if (accountsError || !accountsData) {
+      throw new Error(accountsError?.message || 'Failed to fetch accounts');
+    }
+
+    const PLAN_MRR_WEIGHTS: Record<string, number> = {
+      solo: 39,
+      growth: 129,
+      scale: 329,
+    };
+
+    let currentMrrDollars = 0;
+    let currentPaidAccounts = 0;
+
+    for (const acc of accountsData) {
+      const plan = acc.plan?.toLowerCase() || 'free';
+      if (plan in PLAN_MRR_WEIGHTS) {
+        currentMrrDollars += PLAN_MRR_WEIGHTS[plan];
+        currentPaidAccounts += 1;
+      }
+    }
+
+    return generateExecutiveFinancialForecast({
+      currentMrrDollars,
+      currentPaidAccounts,
+    });
+  } catch (error) {
+    console.error('Error generating live financial forecast:', error);
+    // Fallback to default params
+    return generateExecutiveFinancialForecast({
+      currentMrrDollars: 168,
+      currentPaidAccounts: 2,
+    });
+  }
+}
 
 export interface FinancialForecastMonth {
   monthIndex: number;

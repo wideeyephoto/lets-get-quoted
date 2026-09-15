@@ -1,0 +1,59 @@
+{
+  "checkedAt": "2026-09-09T11:18:25.932Z",
+  "origin": "http://localhost:3014",
+  "liveProviderSecrets": false,
+  "pages": [
+    {
+      "errorOverlay": false,
+      "hasContent": true,
+      "headings": [
+        "Customers"
+      ],
+      "path": "/dashboard/clients",
+      "title": "Clients · Let's Get Quoted"
+    },
+    {
+      "errorOverlay": false,
+      "hasContent": true,
+      "headings": [
+        "Job calendar"
+      ],
+      "path": "/dashboard/schedule",
+      "title": "Schedule · Let's Get Quoted"
+    },
+    {
+      "errorOverlay": false,
+      "hasContent": true,
+      "headings": [
+        "Text inbox"
+      ],
+      "path": "/dashboard/messages",
+      "title": "Messages · Let's Get Quoted"
+    },
+    {
+      "errorOverlay": false,
+      "hasContent": true,
+      "headings": [
+        "Revenue & Payments"
+      ],
+      "path": "/dashboard/payments",
+      "title": "Revenue & Payments · Let’s Get Quoted · Let's Get Quoted"
+    },
+    {
+      "errorOverlay": false,
+      "hasContent": true,
+      "headings": [
+        "Command Center"
+      ],
+      "path": "/admin",
+      "title": "Command Center · Let's Get Quoted"
+    },
+    {
+      "errorOverlay": false,
+      "hasContent": true,
+      "headings": [],
+      "path": "/dashboard/jobs",
+      "title": "Jobs · Let's Get Quoted"
+    }
+  ]
+}

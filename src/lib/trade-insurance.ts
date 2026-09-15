@@ -44,6 +44,9 @@ export const INSURANCE_ELIGIBLE_TRADE_SLUGS = new Set<string>([
   'emergency-plumbing',
   'biohazard-remediation',
   'general-contractor',
+  'auto-glass',
+  'storefront-glass',
+  'glass-and-mirrors',
 ]);
 
 const ELIGIBLE_TRADE_STEMS = [
@@ -69,6 +72,10 @@ export function isInsuranceEligibleTrade(tradeSlug: string | undefined | null): 
   if (!tradeSlug) return false;
   const normalized = tradeSlug.toLowerCase().trim();
   if (INSURANCE_ELIGIBLE_TRADE_SLUGS.has(normalized)) return true;
+
+  // Handle distinct glass trades (preventing substring collisions with e.g. fiberglass)
+  const tokens = normalized.split(/[-_\s]+/);
+  if (tokens.includes('glass')) return true;
 
   // Handle trade stems and sub-categories
   return ELIGIBLE_TRADE_STEMS.some((stem) => normalized.includes(stem));
@@ -315,6 +322,57 @@ export const INSURANCE_TRADE_PROFILES: Record<string, InsuranceTradeProfile> = {
     ],
     disclaimerNote: 'Drying standards strictly adhere to IICRC S500 guidelines.',
   },
+  'auto-glass': {
+    tradeSlug: 'auto-glass',
+    name: 'Auto Glass Repair & Windshield Replacement',
+    commonPerils: [
+      'Comprehensive Glass Insurance Claim',
+      'Windshield Rock Chip & Crack',
+      'Vandalism & Broken Side / Door Glass',
+      'Storm, Tree & Road Hazard Debris',
+    ],
+    primaryCodeCitations: [
+      {
+        code: 'FMVSS 205 / 212 / 216',
+        description: 'Federal Glazing & Windshield Mounting Retention Standards',
+        requirement: 'Windshield adhesive bonding and structural retention must meet federal motor vehicle safety standards to maintain passenger compartment rollover strength.',
+      },
+      {
+        code: 'AGRSS / ANSI 003-2015',
+        description: 'Automotive Glass Replacement Safety Standard (Safe Drive-Away Time)',
+        requirement: 'Vehicle cannot be operated until urethane manufacturer minimum safe drive-away time (SDAT) has elapsed according to ambient temperature and humidity.',
+      },
+    ],
+    standardSupplements: [
+      {
+        item: 'ADAS Forward Camera Dynamic / Static Recalibration',
+        typicalCodeRef: 'OEM Safety Technical Service Bulletin',
+        reason: 'Forward collision warning and lane departure camera recalibration required following windshield replacement.',
+        defaultEstimatedCost: 375,
+        aliases: ['ADAS calibration', 'camera recalibration', 'static recalibration', 'dynamic recalibration', 'windshield calibration'],
+        unit: 'EA',
+        defaultQty: 1,
+        defaultUnitPrice: 375,
+      },
+      {
+        item: 'Moulding, Clips & Rain / Humidity Sensor Gel Pack',
+        typicalCodeRef: 'OEM Spec / NAGS Component',
+        reason: 'Single-use upper windshield moulding clips and rain sensor optical coupler pad damaged upon removal.',
+        defaultEstimatedCost: 65,
+        aliases: ['rain sensor gel', 'windshield moulding', 'reveal moulding', 'sensor pad', 'camera bracket gel'],
+        unit: 'EA',
+        defaultQty: 1,
+        defaultUnitPrice: 65,
+      },
+    ],
+    inspectionFocusAreas: [
+      'Pinchweld condition & corrosion requiring primer treatment',
+      'Rain and humidity sensor optical integrity',
+      'Heated wiper park defroster grid resistance',
+      'Acoustic interlayer / Head-Up Display (HUD) glass specification',
+    ],
+    disclaimerNote: 'Auto glass replacement conforms to ANSI/AGRSS safety standards. Deductibles subject to state comprehensive glass waiver statutes where applicable.',
+  },
 };
 
 /**
@@ -324,6 +382,8 @@ export function getInsuranceTradeProfile(tradeSlug: string | undefined | null): 
   if (!tradeSlug) return INSURANCE_TRADE_PROFILES.roofers;
   const normalized = tradeSlug.toLowerCase().trim();
 
+  const tokens = normalized.split(/[-_\s]+/);
+  if (tokens.includes('glass')) return INSURANCE_TRADE_PROFILES['auto-glass'];
   if (normalized.includes('tree')) return INSURANCE_TRADE_PROFILES['tree-services'];
   if (normalized.includes('water') || normalized.includes('flood') || normalized.includes('plumb')) {
     return INSURANCE_TRADE_PROFILES['water-damage-restoration'];

@@ -22,6 +22,9 @@ import {
 import { refundPayment } from '@/lib/payments';
 import { generateExecutiveBriefing } from './briefing';
 import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops';
+import { sendActivationNudgeBatch } from '@/lib/contractor-lifecycle-emails';
+import { scanContractorsForChurnRisk } from './churn-detector';
+import { generateLiveFinancialForecast } from './financial-forecasting';
 
 /** One prior turn of the cockpit conversation, replayed so follow-ups resolve. */
 export interface OperatorChatTurn {
@@ -30,7 +33,16 @@ export interface OperatorChatTurn {
 }
 
 /** Guards against a tool-call loop that never converges on a final answer. */
-const MAX_TOOL_TURNS = 4;
+const BASE_MAX_TOOL_TURNS = 4;
+const EXTENDED_MAX_TOOL_TURNS = 7;
+
+/** Returns a higher tool turn limit for multi-step queries containing account IDs or multi-part instructions. */
+function getMaxToolTurns(query: string): number {
+  const hasAccountId = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(query);
+  const isMultiPart = (query.match(/\b(and|then|also|plus|additionally)\b/gi) || []).length >= 2;
+  const isComplex = query.length > 200;
+  return (hasAccountId || isMultiPart || isComplex) ? EXTENDED_MAX_TOOL_TURNS : BASE_MAX_TOOL_TURNS;
+}
 
 export interface AutonomousCycleReport {
   cycleId: string;
@@ -38,7 +50,15 @@ export interface AutonomousCycleReport {
   briefing: ExecutiveBriefing;
   revOpsScan: RevOpsScanResult;
   pendingHitlActions: OperatorHitlActionRequest[];
-  safeActionsExecuted: number;
+  /**
+   * Audit actions recorded during this cycle. Renamed from safeActionsExecuted
+   * to avoid implying external messages or writes were dispatched.
+   */
+  auditActionsLogged: number;
+  /** @deprecated Renamed to auditActionsLogged */
+  safeActionsExecuted?: number;
+  /** Contractors identified as nudge candidates. Identification, not outreach. */
+  onboardingNudgeCandidates: number;
   auditLogs?: import('./types').OperatorAuditLogEntry[];
 }
 
@@ -70,10 +90,11 @@ export async function runAutonomousOperatorCycle(
     toolName: 'runAutonomousOperatorCycle',
     outputResult: {
       cycleId,
-      safeActions: revOpsScan.onboardingNudgesQueued,
+      safeActions: 0,
+      nudgeCandidates: revOpsScan.onboardingNudgeCandidates,
       pendingHitl: pendingHitlActions.length,
     },
-    reasoningSummary: `Autonomous cycle completed. ${revOpsScan.onboardingNudgesQueued} automated actions run, ${pendingHitlActions.length} HITL approvals pending.`,
+    reasoningSummary: `Autonomous cycle completed. 0 automated actions run, ${revOpsScan.onboardingNudgeCandidates} nudge candidate(s) identified (none sent), ${pendingHitlActions.length} HITL approvals pending.`,
     status: 'success',
   });
 
@@ -88,7 +109,9 @@ export async function runAutonomousOperatorCycle(
     briefing,
     revOpsScan,
     pendingHitlActions,
-    safeActionsExecuted: revOpsScan.onboardingNudgesQueued,
+    auditActionsLogged: 0,
+    safeActionsExecuted: 0,
+    onboardingNudgeCandidates: revOpsScan.onboardingNudgeCandidates,
     auditLogs,
   };
 
@@ -140,7 +163,15 @@ export async function askAiOperator(
     }
 
     if (q.includes('dispute') || q.includes('chargeback') || q.includes('evidence')) {
-      const evidence = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: 'dp_sample_123' }, ctx);
+      const match = query.match(/\b(dp_[a-zA-Z0-9_-]+)\b/i);
+      if (!match) {
+        return {
+          answer: `**Dispute Defense Packet**: Please specify a valid Stripe dispute ID (e.g., "generate dispute evidence for dp_..."). Active dispute IDs can be reviewed at /admin/money.`,
+          toolCallsExecuted: [],
+          pendingHitlActions: listPendingHitlActions(),
+        };
+      }
+      const evidence = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: match[1] }, ctx);
       return {
         answer: `**Dispute Defense Packet**:\n\n${JSON.stringify(evidence.data, null, 2)}`,
         toolCallsExecuted: ['generate_dispute_evidence_packet'],
@@ -158,10 +189,9 @@ export async function askAiOperator(
     }
 
     if (q.includes('trend') || q.includes('history') || q.includes('growth')) {
-      const trends = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
       return {
-        answer: `**7-Day Operational Trends**:\n\n${JSON.stringify(trends.data, null, 2)}`,
-        toolCallsExecuted: ['get_ops_trend_history'],
+        answer: `**7-Day Operational Trends**: No historical metrics snapshots are currently recorded, so historical trends cannot be reported. Real-time platform metrics are available via \`get_system_health\` and \`get_revenue_and_billing_summary\`.`,
+        toolCallsExecuted: [],
         pendingHitlActions: listPendingHitlActions(),
       };
     }
@@ -185,10 +215,36 @@ export async function askAiOperator(
     }
 
     if (q.includes('onboarding') || q.includes('blocker') || q.includes('nudge') || q.includes('connect')) {
-      const diagnosis = await executeOperatorTool('diagnose_contractor_onboarding', { accountId: 'acc-test-123' }, ctx);
+      const match = query.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+      if (!match) {
+        return {
+          answer: `**Onboarding Diagnostics**: Please specify a contractor account UUID to diagnose onboarding blockers (e.g., "diagnose onboarding for <account-uuid>"). You can find account IDs in /admin/accounts.`,
+          toolCallsExecuted: [],
+          pendingHitlActions: listPendingHitlActions(),
+        };
+      }
+      const diagnosis = await executeOperatorTool('diagnose_contractor_onboarding', { accountId: match[1] }, ctx);
       return {
         answer: `**Onboarding Diagnostics**: ${JSON.stringify(diagnosis.data, null, 2)}`,
         toolCallsExecuted: ['diagnose_contractor_onboarding'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('churn') || q.includes('at risk') || q.includes('retention') || q.includes('dormant')) {
+      const churnResult = await executeOperatorTool('scan_churn_risk', {}, ctx);
+      return {
+        answer: `**Churn Risk Analysis**:\n\n${JSON.stringify(churnResult.data, null, 2)}`,
+        toolCallsExecuted: ['scan_churn_risk'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('forecast') || q.includes('projection') || q.includes('next quarter') || q.includes('90 day') || q.includes('90-day')) {
+      const forecastResult = await executeOperatorTool('generate_financial_forecast', {}, ctx);
+      return {
+        answer: `**90-Day Financial Forecast**:\n\n${JSON.stringify(forecastResult.data, null, 2)}`,
+        toolCallsExecuted: ['generate_financial_forecast'],
         pendingHitlActions: listPendingHitlActions(),
       };
     }
@@ -236,9 +292,10 @@ Invariants:
     // then dumped the raw JSON at the founder -- the results were never returned to
     // the model, so it never synthesised anything. Each result now goes back as a
     // functionResponse and the model gets to answer with it in hand.
-    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+    const maxTurns = getMaxToolTurns(query);
+    for (let turn = 0; turn < maxTurns; turn++) {
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
         contents: formattedContents,
         config: {
           systemInstruction,
@@ -252,12 +309,13 @@ Invariants:
 
       if (functionCalls.length === 0) break;
 
-      formattedContents.push({
-        role: 'model',
-        parts: functionCalls.map((call) => ({
-          functionCall: { name: call.name, args: call.args },
-        })),
-      });
+      const candidateContent = response.candidates?.[0]?.content;
+      if (!candidateContent?.parts?.length) {
+        // Never execute tools if their signed model response cannot be replayed.
+        throw new Error('Gemini returned tool calls without their original response content. Please retry.');
+      }
+      // Keep all parts, ordering, call IDs and thoughtSignature metadata intact.
+      formattedContents.push(candidateContent);
 
       const responseParts = [];
       for (const call of functionCalls) {
@@ -282,6 +340,7 @@ Invariants:
           functionResponse: {
             name: call.name,
             response: { result: toolOutput },
+            ...(call.id ? { id: call.id } : {}),
           },
         });
       }
@@ -297,12 +356,13 @@ Invariants:
       pendingHitlActions: await listPendingHitlActionsAsync(new Date(), ctx.supabase),
     };
   } catch (err: unknown) {
+    await flushOperatorWrites();
     const errorMsg = err instanceof Error ? err.message : String(err);
     const briefing = await generateExecutiveBriefing(ctx.supabase);
     return {
       answer: `AI Engine Note: ${errorMsg}\n\n${briefing.markdownSummary}`,
-      toolCallsExecuted: ['fallback_briefing'],
-      pendingHitlActions: listPendingHitlActions(),
+      toolCallsExecuted: [...toolCallsExecuted, 'fallback_briefing'],
+      pendingHitlActions: await listPendingHitlActionsAsync(new Date(), ctx.supabase),
     };
   }
 }
@@ -449,6 +509,14 @@ export async function executeHitlDecision(
           break;
         }
 
+        case 'sre.inspect_webhook_failure': {
+          return {
+            success: false,
+            action,
+            error: 'This read-only inspection approval is obsolete. Review the failure in webhook monitoring; inspection alone cannot resolve it.',
+          };
+        }
+
         case 'trigger_contractor_lifecycle_nudge': {
           const toolRes = await executeOperatorTool(
             'trigger_contractor_lifecycle_nudge',
@@ -464,6 +532,32 @@ export async function executeHitlDecision(
           break;
         }
 
+        case 'batch_activation_nudges': {
+          const isFlagEnabled = process.env.ACTIVATION_NUDGE_SEND_ENABLED === 'true';
+          const stepId = typeof action.payload.stepId === 'string' ? (action.payload.stepId as any) : 'nudge_zero_quotes';
+          const recipients = Array.isArray(action.payload.recipients) ? action.payload.recipients : [];
+
+          if (!recipients.length) {
+            throw new Error('This approval has no prepared recipients. Decline the old card and run a fresh growth scan to preview the current audience.');
+          }
+
+          const batchRes = await sendActivationNudgeBatch(supabase, {
+            stepId,
+            recipients,
+            dryRun: !isFlagEnabled,
+          });
+
+          if (batchRes.errors > 0) {
+            return { success: false, error: 'Some activation emails failed. Review the results before retrying.', executionResult: batchRes, action };
+          }
+
+          executionResult = {
+            ...batchRes,
+            flagEnabled: isFlagEnabled,
+          };
+          break;
+        }
+
         default: {
           const toolRes = await executeOperatorTool(
             action.actionType,
@@ -476,6 +570,15 @@ export async function executeHitlDecision(
             },
           );
           executionResult = toolRes.data;
+          const dataObj = toolRes.data as Record<string, any> | null | undefined;
+          if (dataObj && typeof dataObj.error === 'string') {
+            return {
+              success: false,
+              error: `Execution failed: ${dataObj.error}`,
+              executionResult: toolRes.data,
+              action,
+            };
+          }
           break;
         }
       }

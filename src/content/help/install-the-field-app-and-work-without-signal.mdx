@@ -1,0 +1,35 @@
+---
+title: "Install the field app and work without mobile signal"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Getting set up"
+---
+
+# Purpose
+Install the field app on mobile home screens, queue updates offline, and sync job notes when reconnected.
+
+# Steps
+## Install the Field App to your mobile home screen
+1. iOS (Safari): Open your field access link, tap the Share icon at the bottom of Safari, and select "Add to Home Screen".
+2. Android (Chrome): Open your field access link, tap the 3-dot menu in Chrome, and select "Install app" or "Add to Home screen".
+3. Launch the app from your home screen icon for full-screen mobile operation.
+
+## Work in basements and dead zones with offline queueing
+- When signal drops, the field app displays an offline status indicator.
+- Technicians can continue clocking shifts, checking off punch list items, taking photos, and typing job notes.
+- All updates are securely stored in the mobile browser’s encrypted offline storage queue.
+
+## The 12-hour sync window invariant
+CRITICAL OFFLINE RULE: As soon as mobile signal or Wi-Fi is restored, open the app or visit /field/offline to sync queued updates. Any offline queue items older than 12 hours will be permanently rejected by the server to avoid overwriting newer changes.
+
+
+
+# Done State
+Field technicians will log notes, checklists, and timecards even in basements and remote job sites.
+
+# Common Failure
+**Offline queue shows pending items after returning to service.**
+Open the field app, tap the offline indicator, and click "Sync Now".
+
+**App asks for login again when reopening.**
+Ensure you launch the app from the installed Home Screen icon rather than opening private/incognito browser tabs.

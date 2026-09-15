@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { cache } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { signingKeys } from '@/lib/auth-jwks';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { clientIpFrom } from '@/lib/rate-limit';
@@ -11,6 +9,7 @@ import { deniedMessage, parseStaffRole, staffCan, type Permission, type StaffRol
 import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
 import { OFFICE_NO_ACCESS_PATH, officeLandingPath } from '@/lib/office-access';
 import { preferredWorkspace, selectWorkspaceMembership } from '@/lib/workspace-selection';
+import { hasAdminPasskeyGrant } from '@/lib/admin-passkeys';
 
 /**
  * React's per-request memoization, where it exists.
@@ -48,24 +47,8 @@ const perRequest: typeof cache = typeof cache === 'function' ? cache : (fn) => f
  *
  * A database read is never a cacheable fetch. This applies to all of them.
  */
-export const noStoreFetch: typeof fetch = (input, init) => (
-  fetch(input, {
-    ...init,
-    cache: 'no-store',
-    signal: init?.signal ?? AbortSignal.timeout(15000),
-  })
-);
-
-export function createAdminClient() {
-  return createClient(
-    normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-    {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: { fetch: noStoreFetch },
-    }
-  );
-}
+import { createAdminClient, noStoreFetch } from './supabase-admin';
+export { createAdminClient, noStoreFetch };
 
 export type CurrentMembership = {
   accountId: string | null;
@@ -844,10 +827,16 @@ export async function requirePermissions(...permissions: Permission[]): Promise<
 async function requireMfa(context: AdminContext): Promise<AdminContext> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (error || data.currentLevel !== 'aal2') {
-    redirect(`/admin/security?step_up=1&permission=${encodeURIComponent(context.permission ?? '')}`);
+  if (!error && data?.currentLevel === 'aal2') return context;
+  // App passkeys are a separate, server-verified second factor. Their proof is
+  // short-lived and bound to this user, a live provider session, and a credential.
+  // This does not change the provider's AAL or the staff permission checks above.
+  try {
+    if (await hasAdminPasskeyGrant(context, supabase)) return context;
+  } catch {
+    // Missing, expired, or unavailable verification must leave actions locked.
   }
-  return context;
+  redirect(`/admin/security?step_up=1&permission=${encodeURIComponent(context.permission ?? '')}`);
 }
 
 /** High-impact staff mutations require an authenticator-verified session. */

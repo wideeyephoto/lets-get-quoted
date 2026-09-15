@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { CRON_JOBS, cronHealth, cronSummaryHasFailures, type CronHealth } from '@/lib/cron-jobs';
@@ -43,31 +44,38 @@ const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
  */
 const PRUNE_ODDS = 50;
 
-async function startRun(admin: SupabaseClient, job: string): Promise<string | null> {
+type CronRunIdentity = Pick<CronRunRow, 'id' | 'job' | 'started_at'>;
+
+async function startRun(admin: SupabaseClient, job: string): Promise<CronRunIdentity> {
+  // Keep the identity even when the insert response is lost. Completion can
+  // then create the missing row or finish the already committed row safely.
+  const identity = { id: randomUUID(), job, started_at: new Date().toISOString() };
   try {
-    const { data, error } = await admin
+    const { error } = await admin
       .from('cron_runs')
-      .insert({ job, started_at: new Date().toISOString() })
+      .insert(identity)
       .select('id')
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return (data as { id: string } | null)?.id ?? null;
   } catch (error) {
     console.error(`cron_runs start failed for ${job}:`, error instanceof Error ? error.message : error);
-    return null;
   }
+  return identity;
 }
 
 async function finishRun(
   admin: SupabaseClient,
-  runId: string | null,
+  identity: CronRunIdentity,
   patch: { ok: boolean; durationMs: number; summary?: unknown; error?: string | null },
 ): Promise<void> {
-  if (!runId) return;
   try {
-    await admin
+    // One completion write for this invocation; never rerun business work.
+    // The stable primary key covers both a rejected insert and an insert that
+    // committed before its response failed, without creating duplicate runs.
+    const { error } = await admin
       .from('cron_runs')
-      .update({
+      .upsert({
+        ...identity,
         finished_at: new Date().toISOString(),
         ok: patch.ok,
         duration_ms: patch.durationMs,
@@ -75,8 +83,10 @@ async function finishRun(
         // string is wrapped so the shape stays queryable.
         summary: patch.summary === undefined ? null : asJson(patch.summary),
         error: patch.error ?? null,
-      })
-      .eq('id', runId);
+      }, { onConflict: 'id' });
+    if (error) {
+      console.error('cron_runs finish write error:', error.message);
+    }
   } catch (error) {
     console.error('cron_runs finish failed:', error instanceof Error ? error.message : error);
   }
@@ -90,7 +100,10 @@ function asJson(value: unknown): Record<string, unknown> | null {
 
 async function pruneOldRuns(admin: SupabaseClient): Promise<void> {
   try {
-    await admin.from('cron_runs').delete().lt('started_at', new Date(Date.now() - RETENTION_MS).toISOString());
+    const { error } = await admin.from('cron_runs').delete().lt('started_at', new Date(Date.now() - RETENTION_MS).toISOString());
+    if (error) {
+      console.error('cron_runs prune write error:', error.message);
+    }
   } catch (error) {
     console.error('cron_runs prune failed:', error instanceof Error ? error.message : error);
   }
@@ -105,8 +118,22 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
   if (typeof summary.error === 'string' && summary.error.trim().length > 0) {
     return `${job} failed: ${summary.error}`.slice(0, 2000);
   }
+  if (typeof summary.firstError === 'string' && summary.firstError.trim().length > 0) {
+    return `${job} failed: ${summary.firstError}`.slice(0, 2000);
+  }
+  if (typeof summary.first_error === 'string' && summary.first_error.trim().length > 0) {
+    return `${job} failed: ${summary.first_error}`.slice(0, 2000);
+  }
+  if (typeof summary.first_failure_reason === 'string' && summary.first_failure_reason.trim().length > 0) {
+    return `${job} failed: ${summary.first_failure_reason}`.slice(0, 2000);
+  }
   if (Array.isArray(summary.errors) && summary.errors.length > 0) {
     const errorList = summary.errors.map(String).join('; ');
+    const countPrefix = summary.failed ? `${summary.failed} failed items: ` : '';
+    return `${job} logical failure (${countPrefix}${errorList})`.slice(0, 2000);
+  }
+  if (Array.isArray(summary.failure_reasons) && summary.failure_reasons.length > 0) {
+    const errorList = summary.failure_reasons.map(String).join('; ');
     const countPrefix = summary.failed ? `${summary.failed} failed items: ` : '';
     return `${job} logical failure (${countPrefix}${errorList})`.slice(0, 2000);
   }
@@ -114,12 +141,22 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
     return `${job} logical failure: ${JSON.stringify(summary.failures)}`.slice(0, 2000);
   }
 
+  if (
+    typeof summary.candidates === 'number' &&
+    summary.candidates > 0 &&
+    typeof summary.closed === 'number' &&
+    summary.closed === 0 &&
+    Number(summary.already_closed ?? 0) + Number(summary.nothing_owed ?? 0) + Number(summary.deferred ?? 0) === 0
+  ) {
+    return `${job} reported 0 closed periods while ${summary.candidates} candidate(s) exist`.slice(0, 2000);
+  }
+
   const breakdown: string[] = [];
   for (const [key, val] of Object.entries(summary)) {
     if (
       typeof val === 'number' &&
       val > 0 &&
-      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors|pauseFailures|pause_failures)$/i.test(key) &&
+      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors|pauseFailures|pause_failures|no_customer|no_stripe_customer|completion_unconfirmed)$/i.test(key) &&
       key !== 'failures' &&
       key !== 'failed'
     ) {
@@ -165,14 +202,14 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
     }
 
     const admin = createAdminClient();
-    const runId = await startRun(admin, job);
+    const runRecord = await startRun(admin, job);
     const startedMs = Date.now();
 
     try {
       const summary = await run();
       const summaryJson = asJson(summary);
       const logicalFailure = cronSummaryHasFailures(summaryJson);
-      await finishRun(admin, runId, {
+      await finishRun(admin, runRecord, {
         ok: !logicalFailure,
         durationMs: Date.now() - startedMs,
         summary,
@@ -186,7 +223,7 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`${job} cron failed:`, message);
-      await finishRun(admin, runId, { ok: false, durationMs: Date.now() - startedMs, error: message.slice(0, 2000) });
+      await finishRun(admin, runRecord, { ok: false, durationMs: Date.now() - startedMs, error: message.slice(0, 2000) });
       // Status stays 500 so Vercel's own run history marks it failed too. The
       // body no longer needs to carry detail — it is in cron_runs.error, where
       // somebody can actually find it.

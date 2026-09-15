@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
-import { sendPaymentReminderAction } from './actions';
+import { sendCardUpdateReminderAction } from './actions';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { cardUpdateText } from '@/lib/sms-templates';
 import { getClientInitials, getAvatarColor } from '@/lib/avatar-utils';
 
 interface Props {
   failedPayments: PaymentLedgerItem[];
   onOpenManualPayment: (jobId: string, invoiceId?: string, amount?: number) => void;
   onSuccess: (message: string) => void;
+  businessName?: string;
 }
 
 function formatUsd(n: number): string {
@@ -19,6 +22,7 @@ export default function FailedPaymentsRecoveryPanel({
   failedPayments,
   onOpenManualPayment,
   onSuccess,
+  businessName,
 }: Props) {
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
@@ -26,12 +30,11 @@ export default function FailedPaymentsRecoveryPanel({
     setRetryingId(paymentId);
     const formData = new FormData();
     formData.set('paymentId', paymentId);
-    formData.set('channel', 'sms');
 
-    const res = await sendPaymentReminderAction(formData);
+    const res = await sendCardUpdateReminderAction(formData);
     setRetryingId(null);
     if (res.success) {
-      onSuccess('SMS sent with link for customer to update card.');
+      onSuccess(res.message || 'SMS sent with link for customer to update card.');
     } else {
       alert(res.error || 'Failed to send card update link.');
     }
@@ -145,6 +148,16 @@ export default function FailedPaymentsRecoveryPanel({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <strong style={{ fontSize: '1.05rem', color: '#dc2626' }}>{formatUsd(p.amount)}</strong>
                   <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <SmsPreview
+                      message={cardUpdateText({
+                        businessName: businessName || 'Your Business',
+                        url: 'https://lgq.co/pay/…/update-card',
+                      })}
+                      phone={p.clientPhone}
+                      recipientLabel={p.clientName}
+                      triggerLabel="👁 Preview"
+                      buttonClassName="btn secondary"
+                    />
                     <button
                       type="button"
                       className="btn primary"

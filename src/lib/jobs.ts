@@ -36,6 +36,7 @@ export type QuoteItem = {
 };
 
 export type Job = {
+  document_email_revision?: string;
   id: string;
   account_id: string;
   ref: string;
@@ -88,6 +89,8 @@ export type Job = {
   source_voice_provider_call_id?: string | null;
   /** When the appointment was confirmed by client text reply */
   appointment_confirmed_at?: string | null;
+  /** Permanent parcel number / tax identification for municipal permit applications */
+  parcel_number?: string | null;
   created_at: string;
 };
 

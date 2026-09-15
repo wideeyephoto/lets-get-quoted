@@ -140,7 +140,7 @@ export default function NeighborhoodHaloDashboardTab({
               </span>
             </div>
             <p style={{ fontSize: '0.84rem', color: 'var(--muted)', margin: '0.35rem 0 0' }}>
-              Surrounds completed jobs with geofenced micro-ads on Google &amp; Meta. Uses verified site craftsmanship and privacy-sanitized street copy.
+              Surrounds completed jobs with geofenced micro-ads on Meta. Uses verified site craftsmanship and privacy-sanitized street copy. After a campaign stops, unused funds stay reserved for 72 hours while final spend is reconciled.
             </p>
           </div>
 
@@ -170,7 +170,7 @@ export default function NeighborhoodHaloDashboardTab({
           <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
             <span style={{ fontSize: '0.72rem', color: 'var(--muted)', display: 'block' }}>Active / Total Halos</span>
             <strong style={{ fontSize: '1.15rem' }}>
-              {campaigns.filter((c) => c.status === 'active' || c.status === 'simulated_sandbox').length} Active
+              {campaigns.filter((c) => c.status === 'active').length} Active
               <span style={{ fontSize: '0.8rem', color: 'var(--muted)', fontWeight: 400 }}> ({campaigns.length} total)</span>
             </strong>
           </div>
@@ -330,7 +330,7 @@ export default function NeighborhoodHaloDashboardTab({
                               : 'var(--muted)',
                         }}
                       >
-                        {c.status === 'simulated_sandbox' ? 'Sandbox' : c.status.toUpperCase()}
+                        {c.settlementRequestedAt && c.status === 'paused' ? 'FINAL SPEND PENDING' : c.status === 'simulated_sandbox' ? 'Sandbox' : c.status.toUpperCase()}
                       </span>
                     </td>
                     <td style={{ padding: '0.75rem 0.5rem' }}>
@@ -358,7 +358,7 @@ export default function NeighborhoodHaloDashboardTab({
                         >
                           View Offer ↗
                         </a>
-                        {c.status === 'active' || c.status === 'simulated_sandbox' ? (
+                        {c.status === 'active' ? (
                           <button
                             type="button"
                             onClick={() => handleToggleState(c.id, 'pause')}
@@ -367,7 +367,7 @@ export default function NeighborhoodHaloDashboardTab({
                             Pause
                           </button>
                         ) : null}
-                        {c.status === 'paused' ? (
+                        {c.status === 'paused' && !c.settlementRequestedAt ? (
                           <button
                             type="button"
                             onClick={() => handleToggleState(c.id, 'resume')}
@@ -376,13 +376,13 @@ export default function NeighborhoodHaloDashboardTab({
                             Resume
                           </button>
                         ) : null}
-                        {c.status !== 'completed' && c.status !== 'killed' ? (
+                        {!['completed', 'killed', 'failed'].includes(c.status) && !c.settlementRequestedAt ? (
                           <button
                             type="button"
                             onClick={() => handleToggleState(c.id, 'kill')}
                             style={{ fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#fca5a5', borderRadius: '4px', padding: '0.25rem 0.5rem', cursor: 'pointer' }}
                           >
-                            Kill &amp; Refund
+                            Stop &amp; Reconcile
                           </button>
                         ) : null}
                       </div>

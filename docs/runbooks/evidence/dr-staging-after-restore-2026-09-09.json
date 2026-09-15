@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-09-09T11:07:43.965Z",
+  "checks": [
+    {
+      "name": "core_tables_presence",
+      "status": "passed",
+      "detail": "All 10 core tables present."
+    },
+    {
+      "name": "table_row_counts",
+      "status": "recorded",
+      "counts": {
+        "accounts": 11,
+        "memberships": 8,
+        "staff": 2,
+        "jobs": 691,
+        "clients": 961,
+        "invoices": 273,
+        "payments": 282,
+        "estimate_offers": 0,
+        "extra_stop_requests": 0,
+        "email_suppression": 0
+      },
+      "detail": "Counts require comparison with the source snapshot; a count alone does not prove recovery."
+    },
+    {
+      "name": "job_account_fk_integrity",
+      "status": "passed",
+      "detail": "Zero orphaned job records detected."
+    },
+    {
+      "name": "payment_account_fk_integrity",
+      "status": "passed",
+      "detail": "Zero orphaned payment records detected."
+    }
+  ],
+  "passed": true,
+  "durationMs": 996,
+  "target": {
+    "host": "db.uydlabvgauzujdwuqzxq.supabase.co",
+    "projectRef": "uydlabvgauzujdwuqzxq",
+    "database": "postgres",
+    "port": 5432,
+    "user": "postgres"
+  },
+  "scope": "Core table presence, row counts, and two account foreign-key checks only",
+  "restorePerformed": false,
+  "fullRecoveryVerified": false
+}

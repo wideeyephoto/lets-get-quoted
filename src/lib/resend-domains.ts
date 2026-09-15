@@ -35,12 +35,58 @@ interface ResendApiDomain {
   records?: ResendApiRecord[];
 }
 
-function getApiKey(): string | undefined {
-  return process.env.RESEND_API_KEY;
+// Domain management needs full access; sending does not. Keep them apart so a
+// restricted sending key cannot silently disable domain provisioning, and so a
+// full-access key is never handed to the 15 paths that only send.
+export function getApiKey(): string | undefined {
+  return process.env.RESEND_DOMAINS_API_KEY || process.env.RESEND_API_KEY;
 }
 
-export function isSendingDomainProvisioningConfigured(): boolean {
-  return Boolean(getApiKey());
+let cachedProvisioningConfigured: boolean | null = null;
+
+export function _resetSendingDomainConfiguredCacheForTesting(): void {
+  cachedProvisioningConfigured = null;
+}
+
+export async function isSendingDomainProvisioningConfigured(): Promise<boolean> {
+  if (cachedProvisioningConfigured !== null) {
+    return cachedProvisioningConfigured;
+  }
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    return false;
+  }
+
+  try {
+    const url = new URL('/domains', 'https://api.resend.com');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (res.status === 200) {
+      cachedProvisioningConfigured = true;
+      return true;
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      cachedProvisioningConfigured = false;
+      return false;
+    }
+
+    // Anything else (timeout, 5xx, rate-limiting) is treated as not configured
+    // for this request only, never cached so a provider blip does not pin the
+    // feature off until the next deploy.
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function isEmailSendingDomainsFeatureEnabled(): boolean {
@@ -52,6 +98,49 @@ export function isEmailSendingDomainsFeatureEnabled(): boolean {
   }
   return true;
 }
+
+/**
+ * Checks if a given workspace is eligible for custom email sending domains.
+ *
+ * Requirements:
+ * 1. Global feature flag must be enabled (isEmailSendingDomainsFeatureEnabled).
+ * 2. If LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST is configured:
+ *    - Must match accountId in comma-separated list, or '*' for all workspaces.
+ *    - In production, an empty/missing allowlist fails closed (false) to protect the canary.
+ *    - In non-production, an empty/missing allowlist defaults to true for developer ease.
+ */
+export function isWorkspaceEligibleForSendingDomains(accountId?: string | null): boolean {
+  if (!isEmailSendingDomainsFeatureEnabled()) {
+    return false;
+  }
+  if (!accountId || typeof accountId !== 'string') {
+    return false;
+  }
+  const cleanAccountId = accountId.trim().toLowerCase();
+  const rawAllowlist = process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST;
+  const allowlist = rawAllowlist?.trim();
+
+  if (!allowlist) {
+    // In production, failure to specify an allowlist fails closed
+    if (process.env.NODE_ENV === 'production') {
+      return false;
+    }
+    return true;
+  }
+
+  if (allowlist === '*') {
+    return true;
+  }
+
+  const allowedIds = new Set(
+    allowlist
+      .split(',')
+      .map((id) => id.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return allowedIds.has(cleanAccountId);
+}
+
 
 function normalizeStatus(status?: string): SendingDomainStatus {
   if (status === 'verified') return 'verified';
@@ -124,10 +213,22 @@ function mapDomainResponse(data: ResendApiDomain): SendingDomainResponse {
   };
 }
 
+export class ResendApiError extends Error {
+  statusCode: number;
+  providerBody: string;
+
+  constructor(statusCode: number, providerBody: string) {
+    super(`Resend API error (${statusCode}): ${providerBody}`);
+    this.name = 'ResendApiError';
+    this.statusCode = statusCode;
+    this.providerBody = providerBody;
+  }
+}
+
 async function resendRequest<T>(path: string, method = 'GET', body?: object): Promise<T | null> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error('RESEND_API_KEY is not configured.');
+    throw new Error('RESEND_DOMAINS_API_KEY / RESEND_API_KEY is not configured.');
   }
 
   const url = new URL(path, 'https://api.resend.com');
@@ -147,7 +248,7 @@ async function resendRequest<T>(path: string, method = 'GET', body?: object): Pr
   }
   if (!res.ok) {
     const errorBody = await res.text().catch(() => '');
-    throw new Error(`Resend API error (${res.status}): ${errorBody || res.statusText}`);
+    throw new ResendApiError(res.status, errorBody || res.statusText);
   }
   if (res.status === 204) {
     return null;
@@ -170,44 +271,28 @@ export async function listSendingDomains(): Promise<Array<{ id: string; name: st
     .map((d) => ({ id: d.id, name: d.name.trim().toLowerCase() }));
 }
 
-async function findExistingDomain(domain: string): Promise<string | null> {
-  const target = domain.trim().toLowerCase();
-  try {
-    const listRes = await resendRequest<{ data?: Array<{ id: string; name: string }> }>('/domains', 'GET');
-    const existing = listRes?.data?.find((d) => d.name.trim().toLowerCase() === target);
-    return existing?.id ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Idempotently create a domain at Resend.
- * Inspects existing domains first, and on error checks again to avoid duplicates on retries.
+ * Reuse only the binding already owned by this workspace. Finding a name in
+ * the shared provider inventory does not prove tenant ownership: otherwise an
+ * orphan's existing DKIM could verify a new tenant on the next cron run.
  */
-export async function createSendingDomain(domain: string): Promise<SendingDomainResponse> {
+export async function createSendingDomain(domain: string, ownedProviderId?: string | null): Promise<SendingDomainResponse> {
   const cleanDomain = domain.trim().toLowerCase();
-  const existingId = await findExistingDomain(cleanDomain);
-  if (existingId) {
-    const existing = await getSendingDomain(existingId);
-    if (existing) return existing;
+  if (ownedProviderId) {
+    const existing = await getSendingDomain(ownedProviderId);
+    if (existing) {
+      if (existing.name.trim().toLowerCase() !== cleanDomain) {
+        throw new Error('The saved provider binding belongs to a different domain.');
+      }
+      return existing;
+    }
   }
 
-  try {
-    const created = await resendRequest<ResendApiDomain>('/domains', 'POST', { name: cleanDomain });
-    if (!created?.id) {
-      throw new Error('Resend did not return a domain ID upon creation.');
-    }
-    return mapDomainResponse(created);
-  } catch (error) {
-    // Retry check for race condition
-    const racedId = await findExistingDomain(cleanDomain);
-    if (racedId) {
-      const raced = await getSendingDomain(racedId);
-      if (raced) return raced;
-    }
-    throw error;
+  const created = await resendRequest<ResendApiDomain>('/domains', 'POST', { name: cleanDomain });
+  if (!created?.id) {
+    throw new Error('Resend did not return a domain ID upon creation.');
   }
+  return mapDomainResponse(created);
 }
 
 export async function getSendingDomain(id: string): Promise<SendingDomainResponse | null> {
@@ -217,6 +302,10 @@ export async function getSendingDomain(id: string): Promise<SendingDomainRespons
 }
 
 export async function triggerSendingDomainVerify(id: string): Promise<SendingDomainResponse | null> {
+  // Verification is asynchronous. Re-triggering an already verified domain
+  // resets it to pending, so an immediate read can never show completion.
+  const current = await getSendingDomain(id);
+  if (!current || current.status === 'verified') return current;
   await resendRequest(`/domains/${encodeURIComponent(id)}/verify`, 'POST');
   return await getSendingDomain(id);
 }

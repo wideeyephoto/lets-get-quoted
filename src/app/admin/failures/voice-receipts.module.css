@@ -1,0 +1,4 @@
+.table { min-width: 64rem; }
+.reference { min-width: 24ch; max-width: 32ch; overflow-wrap: anywhere; line-height: 1.4; }
+.reference code { font-size: .75rem; }
+.retryForm { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; min-width: 12rem; max-width: 17rem; }

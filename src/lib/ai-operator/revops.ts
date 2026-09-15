@@ -1,12 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordOperatorAudit, createHitlAction } from './audit';
-import { getPaymentsNeedingAttention, getNotOnboardedAccounts } from '@/lib/admin-alerts';
+import {
+  getPaymentsNeedingAttention,
+  getNotOnboardedAccounts,
+  getZeroQuoteActivationCandidates,
+} from '@/lib/admin-alerts';
+import { ownerEmailsForAccounts } from '@/lib/admin-accounts';
+import { classifyEmail } from '@/lib/email-quality';
 
 export interface RevOpsScanResult {
   scannedAt: string;
   dunningAccountsIdentified: number;
   dunningTotalAmountCents: number;
-  onboardingNudgesQueued: number;
+  /**
+   * Contractors identified as needing a nudge. Named "Queued" originally, which was
+   * read as work performed and reported to the founder as safeActionsExecuted --
+   * nothing is queued and nothing is sent, these are candidates for the HITL card.
+   */
+  onboardingNudgeCandidates: number;
   tierUpgradesRecommended: number;
   hitlActionsCreated: number;
   details: {
@@ -19,7 +30,7 @@ export interface RevOpsScanResult {
 /**
  * Runs an automated RevOps and Growth scan across contractor accounts.
  * - Detects dunning / failed recurring payments and triggers automated retry or HITL escalation
- * - Identifies unactivated contractor signups (no quotes created < 48h) and queues targeted nudges
+ * - Identifies unactivated contractor signups (zero quotes) and queues targeted nudges
  * - Recommends plan tier upgrades for high-volume accounts
  */
 export async function runRevOpsGrowthScan(
@@ -29,9 +40,10 @@ export async function runRevOpsGrowthScan(
   const autoDispatch = options?.autoDispatchNudges ?? true;
   const highValueThreshold = options?.highValueThresholdDollars ?? 500;
 
-  const [dunningRows, notOnboardedRows] = await Promise.all([
+  const [dunningRows, _notOnboardedRows, zeroQuoteCandidates] = await Promise.all([
     getPaymentsNeedingAttention(supabase).catch(() => []),
     getNotOnboardedAccounts(supabase).catch(() => []),
+    getZeroQuoteActivationCandidates(supabase, { minAgeDays: 5, maxAgeDays: 15 }).catch(() => []),
   ]);
 
   const details: RevOpsScanResult['details'] = {
@@ -74,22 +86,124 @@ export async function runRevOpsGrowthScan(
     }
   }
 
-  // 2. Process onboarding nudges for unactivated contractors
-  if (notOnboardedRows.length > 0) {
-    createHitlAction({
-      category: 'growth_lifecycle',
-      title: `Send First-Quote Activation Nudges (${notOnboardedRows.length} Contractors)`,
-      description: `${notOnboardedRows.length} contractor(s) signed up recently without sending quotes. 1-click approve to send targeted SMS/email guidance with quote templates.`,
-      actionType: 'batch_activation_nudges',
-      payload: {
-        accountIds: notOnboardedRows.map((a) => a.id),
-        contractorCount: notOnboardedRows.length,
-      },
-    });
-    hitlActionsCount++;
+  // 2. Process first-quote activation nudges for unactivated contractors (zero quotes)
+  if (zeroQuoteCandidates.length > 0) {
+    const candidateIds = zeroQuoteCandidates.map((a) => a.id);
+
+    // Resolve owner emails, suppressions, and already-sent ledgers at queue time
+    const [ownerEmailMap, suppressionsRes, sentEventsRes] = await Promise.all([
+      ownerEmailsForAccounts(supabase, candidateIds).catch(() => new Map<string, string>()),
+      supabase.from('email_suppression').select('account_id, email').in('account_id', candidateIds),
+      supabase
+        .from('account_events')
+        .select('account_id, meta')
+        .in('account_id', candidateIds)
+        .eq('kind', 'contractor_lifecycle_email_sent'),
+    ]);
+
+    if (suppressionsRes.error || sentEventsRes.error || (sentEventsRes.data?.length ?? 0) >= 1000) {
+      throw new Error('Activation audience checks unavailable; no approval card created.');
+    }
+
+    const suppressedSet = new Set<string>();
+    for (const s of suppressionsRes.data ?? []) {
+      if (s.email) suppressedSet.add(`${s.account_id}:${String(s.email).toLowerCase().trim()}`);
+    }
+
+    const sentAccountIds = new Set<string>();
+    for (const ev of sentEventsRes.data ?? []) {
+      const meta = ev.meta as Record<string, unknown> | null;
+      if (meta?.step_id === 'nudge_zero_quotes') {
+        sentAccountIds.add(ev.account_id);
+      }
+    }
+
+    const recipients: Array<{
+      accountId: string;
+      businessName: string;
+      email: string;
+      ageDays: number;
+      quotedJobs: number;
+    }> = [];
+
+    const skipped: Array<{
+      accountId: string;
+      businessName: string;
+      reason: string;
+    }> = [];
+
+    for (const cand of zeroQuoteCandidates) {
+      const bName = cand.business_name || `Account #${cand.account_number || cand.id}`;
+      const email = ownerEmailMap.get(cand.id);
+
+      if (!email) {
+        skipped.push({ accountId: cand.id, businessName: bName, reason: 'no_email' });
+        continue;
+      }
+
+      const cleanEmail = email.trim().toLowerCase();
+      const verdict = classifyEmail(cleanEmail);
+      if (!verdict.valid || verdict.junk) {
+        skipped.push({
+          accountId: cand.id,
+          businessName: bName,
+          reason: `not_mailable (${verdict.reason || 'invalid'})`,
+        });
+        continue;
+      }
+
+      if (suppressedSet.has(`${cand.id}:${cleanEmail}`)) {
+        skipped.push({ accountId: cand.id, businessName: bName, reason: 'suppressed' });
+        continue;
+      }
+
+      if (sentAccountIds.has(cand.id)) {
+        skipped.push({ accountId: cand.id, businessName: bName, reason: 'already_sent' });
+        continue;
+      }
+
+      recipients.push({
+        accountId: cand.id,
+        businessName: bName,
+        email: cleanEmail,
+        ageDays: cand.age_days,
+        quotedJobs: cand.quoted_jobs,
+      });
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const deterministicId = `hitl-batch_activation_nudges-${today}`;
+
+    // One outstanding activation batch at a time, including cards from prior days.
+    const { data: pending, error: pendingError } = await supabase.from('ai_operator_action_requests')
+      .select('id').eq('action_type', 'batch_activation_nudges').eq('status', 'pending').limit(1);
+    if (pendingError) throw new Error('Could not check pending activation approvals.');
+
+    if (recipients.length > 0 && !pending?.length) {
+      createHitlAction(
+        {
+          id: deterministicId,
+          category: 'growth_lifecycle',
+          title: `Send First-Quote Activation Nudges (${recipients.length} Contractors)`,
+          description: `${recipients.length} business owner(s) have no priced quote yet. Preview and approve a first-quote help email with a link to Jobs. Eligibility is checked again before sending (${skipped.length} skipped).`,
+          actionType: 'batch_activation_nudges',
+          payload: {
+            stepId: 'nudge_zero_quotes',
+            channel: 'email',
+            generatedAt: new Date().toISOString(),
+            recipients,
+            skipped,
+            accountIds: candidateIds,
+            contractorCount: recipients.length,
+          },
+        },
+        supabase,
+      );
+      hitlActionsCount++;
+    }
   }
 
-  for (const account of notOnboardedRows.slice(0, 15)) {
+  for (const account of zeroQuoteCandidates.slice(0, 15)) {
     const displayName = account.business_name || `Account #${account.account_number || account.id}`;
     details.onboardingNudges.push({
       accountId: account.id,
@@ -98,14 +212,17 @@ export async function runRevOpsGrowthScan(
     });
 
     if (autoDispatch) {
-      recordOperatorAudit({
-        category: 'growth_lifecycle',
-        actionName: 'Automated Onboarding Nudge Dispatched',
-        severity: 'safe_auto',
-        accountId: account.id,
-        reasoningSummary: `Contractor ${displayName} has zero quotes/uncompleted onboarding. Dispatched automated guidance.`,
-        status: 'success',
-      });
+      recordOperatorAudit(
+        {
+          category: 'growth_lifecycle',
+          actionName: 'Onboarding Nudge Candidate Identified',
+          severity: 'info',
+          accountId: account.id,
+          reasoningSummary: `Contractor ${displayName} has zero quotes. Identified as an activation nudge candidate; nothing was sent.`,
+          status: 'success',
+        },
+        supabase,
+      );
     }
   }
 
@@ -113,7 +230,7 @@ export async function runRevOpsGrowthScan(
     scannedAt: new Date().toISOString(),
     dunningAccountsIdentified: details.dunningActions.length,
     dunningTotalAmountCents,
-    onboardingNudgesQueued: details.onboardingNudges.length,
+    onboardingNudgeCandidates: details.onboardingNudges.length,
     tierUpgradesRecommended: details.upgradeRecommendations.length,
     hitlActionsCreated: hitlActionsCount,
     details,
@@ -127,10 +244,10 @@ export async function runRevOpsGrowthScan(
     outputResult: {
       dunningCount: result.dunningAccountsIdentified,
       dunningTotalAmountCents: result.dunningTotalAmountCents,
-      nudgesCount: result.onboardingNudgesQueued,
+      nudgeCandidates: result.onboardingNudgeCandidates,
       hitlCreated: hitlActionsCount,
     },
-    reasoningSummary: `Scan found ${result.dunningAccountsIdentified} dunning items ($${(dunningTotalAmountCents / 100).toFixed(2)} total), queued ${result.onboardingNudgesQueued} onboarding nudges, and created ${hitlActionsCount} HITL actions.`,
+    reasoningSummary: `Scan found ${result.dunningAccountsIdentified} dunning items ($${(dunningTotalAmountCents / 100).toFixed(2)} total), identified ${result.onboardingNudgeCandidates} onboarding nudge candidate(s) (none sent), and created ${hitlActionsCount} HITL actions.`,
     status: 'success',
   });
 

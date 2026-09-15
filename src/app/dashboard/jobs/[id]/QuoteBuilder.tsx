@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
@@ -6,6 +6,9 @@ import type { DraftSource, SerializedDraft } from '@/lib/quote-draft';
 import { guardSummary, type FindingSource, type QuoteFinding } from '@/lib/quote-guard';
 import { AiRefineChips } from '@/components/ai';
 import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { quoteUpdatedText } from '@/lib/sms-templates';
+import PhotoDefectEstimatorModal from '../PhotoDefectEstimatorModal';
 
 type Row = QuoteItem;
 
@@ -78,9 +81,15 @@ export default function QuoteBuilder({
   approved = false,
   approvedTotal = 0,
   clientLabel = 'the customer',
+  businessName,
+  jobRef,
+  clientPhone,
   changeOrderHref,
   printHref,
 }: {
+  businessName?: string;
+  jobRef?: string;
+  clientPhone?: string | null;
   // Job page: persists on its own Save button. Lead form: omit action and pass
   // onItemsChange to feed a parent <form> (the form's submit does the saving).
   action?: (items: QuoteItem[], options?: { revision?: boolean }) => Promise<{ ok: boolean; total: number; message?: string; needsRevision?: boolean }>;
@@ -166,6 +175,20 @@ export default function QuoteBuilder({
   const [review, setReview] = useState<{ findings: QuoteFinding[]; aiRan: boolean } | null>(null);
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+
+  function handleApplyPhotoDefects(items: Array<{ name: string; cost: number }>) {
+    const newRows: Row[] = items.map((item) => ({
+      id: nextId(),
+      label: item.name,
+      amount: item.cost,
+      kind: 'base',
+      selected: true,
+      recommended: false,
+    }));
+    setRows((current) => [...current, ...newRows]);
+    setResult(null);
+  }
 
   // Report every edit up to a parent in live mode, without re-firing when the
   // parent hands us a new callback identity.
@@ -597,6 +620,15 @@ export default function QuoteBuilder({
                 {reviewing ? 'Checking…' : 'Check before sending'}
               </button>
             ) : null}
+            <button
+              type="button"
+              className="quote-tool"
+              onClick={() => setPhotoModalOpen(true)}
+              title="Upload or analyze damage photos to detect defects, estimate labor and materials, and add itemized repairs to this quote."
+            >
+              <span aria-hidden="true">📸</span>
+              AI Photo Estimate
+            </button>
           </div>
           {printHref ? (
             <a href={printHref} className="quote-print">
@@ -621,6 +653,12 @@ export default function QuoteBuilder({
           onRefine={runDraft}
         />
       ) : null}
+
+      <PhotoDefectEstimatorModal
+        isOpen={photoModalOpen}
+        onClose={() => setPhotoModalOpen(false)}
+        onApplyLineItems={handleApplyPhotoDefects}
+      />
 
       {rows.length === 0 ? (
         <p className="empty-state">No line items yet. Add what&apos;s included, then optional add-ons the client can accept.</p>
@@ -843,15 +881,30 @@ export default function QuoteBuilder({
             {pending ? 'Saving…' : approved ? 'Save revised quote' : 'Save quote'}
           </button>
           {notifyAction ? (
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={saveAndNotify}
-              disabled={pending || (approved && !dirty)}
-              title={approved && !dirty ? 'Change something first — this quote matches what is saved.' : undefined}
-            >
-              {pending ? 'Saving…' : 'Save & text the client'}
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={saveAndNotify}
+                disabled={pending || (approved && !dirty)}
+                title={approved && !dirty ? 'Change something first — this quote matches what is saved.' : undefined}
+              >
+                {pending ? 'Saving…' : 'Save & text the client'}
+              </button>
+              <SmsPreview
+                message={quoteUpdatedText({
+                  businessName: businessName || 'Your contractor',
+                  jobRef: jobRef || 'quote',
+                  link: 'https://letsgetquoted.com/client/jobs/…',
+                  total: total > 0 ? formatUsd(total) : null,
+                  direction: total > approvedTotal ? 'up' : total < approvedTotal ? 'down' : 'same',
+                })}
+                recipientLabel={clientLabel}
+                phone={clientPhone}
+                triggerLabel="👁 Preview text"
+                buttonClassName="btn ghost"
+              />
+            </div>
           ) : null}
           {result ? (
             <small className={`review-request-hint ${result.ok ? 'is-ok' : 'is-error'}`}>{result.message}</small>

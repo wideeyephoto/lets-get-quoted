@@ -1,6 +1,9 @@
 'use server';
 
-import { requireAdmin, requirePermission } from '@/lib/auth';
+import { randomUUID } from 'node:crypto';
+import { requireAdmin, requirePermission, requireMfaPermission } from '@/lib/auth';
+import { logAdminAction } from '@/lib/admin';
+import { staffCan } from '@/lib/staff';
 import {
   renderPlatformCampaignEmailHtml,
   resolvePlatformCampaignRecipients,
@@ -10,14 +13,16 @@ import {
   type PlatformCampaignInput,
 } from '@/lib/admin-platform-campaigns';
 
+
+
 /**
  * Server action to generate exact live HTML preview for a campaign.
  */
 export async function previewPlatformCampaignAction(
   input: Omit<PlatformCampaignInput, 'audience'>,
 ): Promise<{ success: boolean; html?: string; error?: string }> {
+  await requireAdmin();
   try {
-    await requireAdmin();
     const sampleRecipient = {
       email: 'alex@millerplumbing.com',
       name: 'Alex Miller',
@@ -30,9 +35,6 @@ export async function previewPlatformCampaignAction(
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
-
-import { logAdminAction } from '@/lib/admin';
-import { staffCan } from '@/lib/staff';
 
 function maskEmail(email: string): string {
   const parts = email.split('@');
@@ -51,8 +53,8 @@ export async function getAudienceReachAction(
   audience: PlatformAudienceId,
   customEmails = '',
 ): Promise<{ success: boolean; count: number; sampleEmails: string[]; error?: string }> {
+  const ctx = await requireAdmin();
   try {
-    const ctx = await requireAdmin();
     const recipients = await resolvePlatformCampaignRecipients(ctx.admin, audience, customEmails);
     const canViewPii = staffCan(ctx.staff, 'ops.manage');
 
@@ -97,8 +99,8 @@ export async function sendTestPlatformEmailAction(
   campaign: Omit<PlatformCampaignInput, 'audience'>,
   testEmail: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const context = await requirePermission('ops.manage');
   try {
-    const context = await requirePermission('ops.manage');
     const cleanEmail = (testEmail || '').trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       return { success: false, error: 'A valid destination email is required for test sends.' };
@@ -126,9 +128,10 @@ export async function sendTestPlatformEmailAction(
 
 /**
  * Server action to broadcast a platform email campaign blast to the target audience.
+ * Strictly gated behind MFA with ops.manage permission and protected by idempotency key.
  */
 export async function sendPlatformCampaignBlastAction(
-  input: PlatformCampaignInput,
+  input: PlatformCampaignInput & { idempotencyKey?: string },
 ): Promise<{
   success: boolean;
   campaignId?: string;
@@ -138,9 +141,57 @@ export async function sendPlatformCampaignBlastAction(
   failures?: Array<{ email: string; error: string }>;
   error?: string;
 }> {
+  const context = await requireMfaPermission('ops.manage');
+
+  const idKey = input.idempotencyKey || `${input.audience}:${input.subject}:${input.senderEmail || 'default'}`;
+  const campaignId = randomUUID();
+
   try {
-    const context = await requirePermission('ops.manage');
-    const result = await sendPlatformCampaignBlast(context.admin, context, input);
+    // Insert-first idempotency: claim the dispatch key before entering the send loop
+    const { error: insertErr } = await context.admin
+      .from('platform_campaign_dispatches')
+      .insert({
+        idempotency_key: idKey,
+        campaign_id: campaignId,
+        status: 'dispatching',
+        details: {
+          audience: input.audience,
+          subject: input.subject,
+          senderEmail: input.senderEmail,
+          initiatedBy: context.adminEmail,
+        },
+      });
+
+    if (insertErr) {
+      if (
+        insertErr.code === '23505' ||
+        insertErr.message?.includes('duplicate key') ||
+        insertErr.message?.includes('violates unique constraint')
+      ) {
+        return {
+          success: false,
+          error: `Duplicate campaign dispatch blocked: a blast with idempotency key "${idKey}" has already been dispatched.`,
+        };
+      }
+      console.warn('[sendPlatformCampaignBlastAction] Dispatch reservation warning:', insertErr.message);
+    }
+
+    const result = await sendPlatformCampaignBlast(context.admin, context, {
+      ...input,
+      campaignId,
+      idempotencyKey: idKey,
+    } as any);
+
+    await context.admin
+      .from('platform_campaign_dispatches')
+      .update({
+        status: result.failedCount === 0 ? 'sent' : result.sentCount > 0 ? 'partially_failed' : 'failed',
+        completed_at: new Date().toISOString(),
+        sent_count: result.sentCount,
+        failed_count: result.failedCount,
+      })
+      .eq('idempotency_key', idKey);
+
     return {
       success: true,
       campaignId: result.campaignId,

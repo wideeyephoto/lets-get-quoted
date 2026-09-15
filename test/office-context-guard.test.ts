@@ -123,6 +123,12 @@ vi.mock('@/lib/supabase-server', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
+  // Matches the real export: Next's own control-flow errors go back up, and
+  // anything else is left for the caller's catch to handle.
+  unstable_rethrow: (thrown: unknown) => {
+    const digest = (thrown as { digest?: unknown })?.digest;
+    if (typeof digest === 'string' && digest.startsWith('NEXT_REDIRECT')) throw thrown;
+  },
   notFound: () => { throw new Error('notFound'); },
   redirect: (to: string) => { throw new Error(`REDIRECT:${to}`); },
 }));
@@ -463,6 +469,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/jobs/invoices-actions.ts',
       'src/app/dashboard/jobs/page.tsx',
       'src/app/dashboard/jobs/payments-actions.ts',
+      'src/app/dashboard/jobs/photo-estimate-actions.ts',
       'src/app/dashboard/leads/[leadId]/page.tsx',
       'src/app/dashboard/leads/actions.ts',
       'src/app/dashboard/leads/page.tsx',
@@ -513,6 +520,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/settings/actions.ts',
       'src/app/dashboard/settings/developer-api-actions.ts',
       'src/app/dashboard/settings/email-domain-actions.ts',
+      'src/app/dashboard/settings/financing-actions.ts',
       'src/app/dashboard/settings/office-team-actions.ts',
       'src/app/dashboard/settings/page.tsx',
       'src/app/dashboard/sites/actions.ts',

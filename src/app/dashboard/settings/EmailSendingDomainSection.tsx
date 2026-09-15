@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { DNS_PROVIDERS } from '@/lib/dns-providers';
 import {
   createEmailSendingDomainAction,
@@ -13,12 +13,14 @@ interface Props {
   initialDomain: EmailSendingDomainRow | null;
   isConfigured?: boolean;
   isEnabled: boolean;
+  isEnrollmentAllowed?: boolean;
 }
 
 export default function EmailSendingDomainSection({
   initialDomain,
   isConfigured: _isConfigured,
   isEnabled,
+  isEnrollmentAllowed = true,
 }: Props) {
   const [domainRow, setDomainRow] = useState<EmailSendingDomainRow | null>(initialDomain);
   const [domainInput, setDomainInput] = useState('');
@@ -28,6 +30,16 @@ export default function EmailSendingDomainSection({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isConfirmingDisconnect, setIsConfirmingDisconnect] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const disconnectInFlight = useRef(false);
+  const disconnectButtonRef = useRef<HTMLButtonElement>(null);
+  const keepDomainButtonRef = useRef<HTMLButtonElement>(null);
+  const disconnectConfirmationId = useId();
+
+  useEffect(() => {
+    if (isConfirmingDisconnect) keepDomainButtonRef.current?.focus();
+  }, [isConfirmingDisconnect]);
 
   if (!isEnabled) {
     return null;
@@ -83,29 +95,35 @@ export default function EmailSendingDomainSection({
     });
   };
 
-  const handleDelete = () => {
-    if (!domainRow) return;
-    if (!confirm(`Are you sure you want to disconnect ${domainRow.domain}? Outbound email will revert to the platform address.`)) {
-      return;
-    }
+  const cancelDisconnect = () => {
+    if (disconnectInFlight.current) return;
+    setIsConfirmingDisconnect(false);
+    disconnectButtonRef.current?.focus();
+  };
 
+  const handleDelete = async () => {
+    if (!domainRow || !isConfirmingDisconnect || disconnectInFlight.current) return;
+    disconnectInFlight.current = true;
+    setIsDisconnecting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    startTransition(async () => {
-      try {
-        await deleteEmailSendingDomainAction(domainRow.id);
-        setDomainRow(null);
-        setDomainInput('');
-        setSuccessMessage('Sending domain disconnected.');
-      } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to disconnect domain.');
-      }
-    });
+    try {
+      await deleteEmailSendingDomainAction(domainRow.id);
+      setDomainRow(null);
+      setDomainInput('');
+      setIsConfirmingDisconnect(false);
+      setSuccessMessage('Sending domain disconnected.');
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to disconnect domain.');
+    } finally {
+      disconnectInFlight.current = false;
+      setIsDisconnecting(false);
+    }
   };
 
   return (
-    <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px', marginTop: '24px' }}>
+    <div id="email-domain" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px', marginTop: '24px', scrollMarginTop: '100px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a', margin: '0 0 6px 0' }}>
@@ -113,6 +131,10 @@ export default function EmailSendingDomainSection({
           </h3>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
             Send quotes, invoices, and job updates from your own business email address (e.g. <code>quotes@{domainRow?.domain || 'yourbusiness.com'}</code>).
+          </p>
+          <p style={{ fontSize: '14px', color: '#64748b', margin: '8px 0 0', lineHeight: 1.5 }}>
+            This sets up outgoing mail and does not create an inbox. Replies go to your Customer reply email in Business basics.
+            To receive new messages sent directly to your sending address, set up that mailbox or alias with your email provider.
           </p>
         </div>
 
@@ -156,7 +178,7 @@ export default function EmailSendingDomainSection({
       </div>
 
       {errorMessage && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+        <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
           {errorMessage}
         </div>
       )}
@@ -167,7 +189,18 @@ export default function EmailSendingDomainSection({
         </div>
       )}
 
+      {domainRow?.status !== 'verified' && domainRow?.failure_reason && (
+        <p role="status" style={{ color: '#92400e', fontSize: '14px', lineHeight: 1.5, marginBottom: '16px' }}>
+          {domainRow.failure_reason.replace(/^[A-Z_]+:\s*/, '')}
+        </p>
+      )}
+
       {!domainRow ? (
+        !isEnrollmentAllowed ? (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', fontSize: '13px', color: '#64748b' }}>
+            Custom email sending domains are currently limited to early access workspaces. Contact support to request access.
+          </div>
+        ) : (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
             <div>
@@ -222,6 +255,7 @@ export default function EmailSendingDomainSection({
             </button>
           </div>
         </form>
+        )
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -231,15 +265,22 @@ export default function EmailSendingDomainSection({
               </div>
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                 {domainRow.status === 'verified'
-                  ? 'Active · DKIM & SPF aligned to your domain'
+                  ? 'Active · Domain verified for sending'
+                  : domainRow.status === 'failed'
+                  ? 'Connection needs attention · Outbound mail currently uses platform default'
+                  : domainRow.status === 'disabled'
+                  ? 'Custom domain sending is disabled'
                   : 'Pending DNS verification · Outbound mail currently uses platform default'}
               </div>
             </div>
 
             <button
+              ref={disconnectButtonRef}
               type="button"
-              onClick={handleDelete}
-              disabled={isPending}
+              onClick={() => setIsConfirmingDisconnect(true)}
+              disabled={isPending || isDisconnecting}
+              aria-expanded={isConfirmingDisconnect}
+              aria-controls={isConfirmingDisconnect ? disconnectConfirmationId : undefined}
               style={{
                 background: 'transparent',
                 border: '1px solid #e2e8f0',
@@ -253,6 +294,62 @@ export default function EmailSendingDomainSection({
               Disconnect
             </button>
           </div>
+
+          {isConfirmingDisconnect && (
+            <div
+              id={disconnectConfirmationId}
+              role="group"
+              aria-label={`Disconnect ${domainRow.domain}?`}
+              aria-busy={isDisconnecting}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancelDisconnect();
+                }
+              }}
+              style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: '8px', padding: '16px', color: '#7c2d12' }}
+            >
+              <p style={{ fontWeight: 600, margin: '0 0 8px' }}>Disconnect {domainRow.domain}?</p>
+              <p style={{ fontSize: '14px', lineHeight: 1.5, margin: '0 0 16px' }}>
+                New emails will use the Let&apos;s Get Quoted sending address until you reconnect and verify this domain.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                <button ref={keepDomainButtonRef} type="button" className="btn" disabled={isDisconnecting} onClick={cancelDisconnect}>
+                  Keep domain connected
+                </button>
+                <button type="button" className="btn danger" disabled={isDisconnecting} onClick={handleDelete}>
+                  {isDisconnecting ? 'Disconnecting…' : 'Disconnect domain'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {domainRow.status === 'verified' && (
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '16px',
+                fontSize: '13px',
+                lineHeight: 1.6,
+                color: '#334155',
+              }}
+            >
+              <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '6px' }}>
+                📬 Where do customer replies go?
+              </div>
+              <p style={{ margin: '0 0 10px 0', color: '#475569' }}>
+                When customers click <strong>Reply</strong> to your quotes or invoices, their messages land directly in your regular business email address via the email <code>Reply-To</code> header.
+              </p>
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', marginTop: '10px' }}>
+                <span style={{ fontWeight: 500, color: '#0f172a' }}>💡 Recommended tip for your email provider:</span>
+                <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
+                  If a customer manually copies or types <code>{domainRow.from_local_part}@{domainRow.domain}</code> into a brand new message, your existing email provider (Google Workspace, Microsoft 365, etc.) handles the delivery. We recommend setting up a free <strong>{domainRow.from_local_part}</strong> email alias or forwarder in your email provider pointing to your primary inbox so you never miss a direct email.
+                </p>
+              </div>
+            </div>
+          )}
 
           {domainRow.status !== 'verified' && (
             <div>

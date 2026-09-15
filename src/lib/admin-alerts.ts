@@ -22,7 +22,8 @@ export type AdminSignalKey =
   | 'incidents'
   | 'privacyRequests'
   | 'casesNearSla'
-  | 'myCases';
+  | 'myCases'
+  | 'zeroQuoteActivation';
 
 export type AdminSignalDiagnostics = { failed: AdminSignalKey[] };
 
@@ -156,6 +157,92 @@ export async function getNotOnboardedAccounts(admin: SupabaseClient, opts?: Sign
     return [];
   }
   return (data ?? []) as NotOnboardedAccountRow[];
+}
+
+export type ZeroQuoteActivationCandidateRow = {
+  id: string;
+  business_name: string | null;
+  account_number: number | null;
+  created_at: string;
+  age_days: number;
+  quoted_jobs: number;
+};
+
+export function isSyntheticAccountName(name: string | null | undefined): boolean {
+  if (!name) return false;
+  return /^(webhook test|e2e\b|test\b)/i.test(name.trim());
+}
+
+export async function getZeroQuoteActivationCandidates(
+  admin: SupabaseClient,
+  opts?: SignalOptions & { limit?: number; minAgeDays?: number; maxAgeDays?: number; now?: Date },
+): Promise<ZeroQuoteActivationCandidateRow[]> {
+  const now = opts?.now ?? new Date();
+
+  const { data: accounts, error } = await admin
+    .from('accounts')
+    .select('id, business_name, account_number, created_at, test_marker')
+    .is('test_marker', null)
+    .order('created_at', { ascending: false })
+    .limit(opts?.limit ? Math.max(opts.limit * 3, 50) : 100);
+
+  if (error) {
+    signalFailed(opts?.diagnostics, 'zeroQuoteActivation', 'getZeroQuoteActivationCandidates', error);
+    return [];
+  }
+
+  const rawAccounts = (accounts ?? []) as Array<{
+    id: string;
+    business_name: string | null;
+    account_number: number | null;
+    created_at: string;
+    test_marker: string | null;
+  }>;
+
+  const candidateAccounts = rawAccounts.filter((a) => !isSyntheticAccountName(a.business_name));
+  if (!candidateAccounts.length) return [];
+
+  const accountIds = candidateAccounts.map((a) => a.id);
+
+  const { data: jobRows, error: jobsError } = await admin
+    .from('jobs')
+    .select('account_id')
+    .in('account_id', accountIds)
+    .gt('quoted_amount', 0);
+
+  if (jobsError) {
+    signalFailed(opts?.diagnostics, 'zeroQuoteActivation', 'getZeroQuoteActivationCandidates:jobs', jobsError);
+    return [];
+  }
+
+  const quotedAccountIds = new Set<string>();
+  for (const j of jobRows ?? []) {
+    if (j.account_id) quotedAccountIds.add(j.account_id);
+  }
+
+  const results: ZeroQuoteActivationCandidateRow[] = [];
+
+  for (const acct of candidateAccounts) {
+    if (quotedAccountIds.has(acct.id)) continue;
+
+    const ageDays = Math.floor((now.getTime() - new Date(acct.created_at).getTime()) / (24 * 60 * 60 * 1000));
+
+    if (opts?.minAgeDays !== undefined && ageDays < opts.minAgeDays) continue;
+    if (opts?.maxAgeDays !== undefined && ageDays > opts.maxAgeDays) continue;
+
+    results.push({
+      id: acct.id,
+      business_name: acct.business_name,
+      account_number: acct.account_number,
+      created_at: acct.created_at,
+      age_days: Math.max(0, ageDays),
+      quoted_jobs: 0,
+    });
+
+    if (opts?.limit && results.length >= opts.limit) break;
+  }
+
+  return results;
 }
 
 export type SuspendedAccountRow = {
@@ -330,15 +417,15 @@ export type FailedEmailEventRow = {
 };
 
 // Fed by the Resend delivery webhook (src/app/api/resend/webhook/route.ts).
-// A complaint is treated the same as a bounce here — both mean the send did
-// not land as a good transactional message, and either can indicate a client
-// contact detail gone bad.
+// Include recipient complaints, delivery failures and provider suppression.
+// These signals need review; they do not all imply an invalid address.
+const EMAIL_FAILURE_STATUSES = ['bounced', 'complained', 'failed', 'suppressed'];
 export async function getFailedEmailEvents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<FailedEmailEventRow[]> {
   const { data, error } = await admin
     .from('email_events')
     .select('id, account_id, kind, recipient, status, error_reason, occurred_at')
     .is('test_marker', null)
-    .in('status', ['bounced', 'complained'])
+    .in('status', EMAIL_FAILURE_STATUSES)
     .order('occurred_at', { ascending: false })
     .limit(opts?.limit ?? 50);
   if (error) {
@@ -399,7 +486,7 @@ export async function countFailedEmailEvents(admin: SupabaseClient): Promise<num
     .from('email_events')
     .select('id', { count: 'exact', head: true })
     .is('test_marker', null)
-    .in('status', ['bounced', 'complained']);
+    .in('status', EMAIL_FAILURE_STATUSES);
   if (error) return 0;
   return count ?? 0;
 }
@@ -407,19 +494,19 @@ export async function countFailedEmailEvents(admin: SupabaseClient): Promise<num
 export type PlatformIncidentRow = {
   id: string;
   kind: string;
+  severity: string;
   title: string;
   description: string | null;
-  severity: string;
+  impact_summary: string | null;
+  affected_services: string[];
+  resolution_summary: string | null;
+  root_cause: string | null;
+  external_url: string | null;
   started_at: string;
   resolved_at: string | null;
-  /** Who wrote it down. These rows are hand-authored, so it always matters. */
-  created_by: string | null;
+  created_by: string;
   owner: string | null;
-  affected_services: string[];
-  impact_summary: string | null;
-  root_cause: string | null;
-  resolution_summary: string | null;
-  external_url: string | null;
+  published: boolean;
 };
 
 export type ListIncidentsResult = {

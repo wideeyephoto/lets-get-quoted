@@ -7,7 +7,7 @@ import {
   reconcileSmsTextUsage,
 } from '@/lib/sms-usage-reconciliation';
 
-const BATCH_SIZE = 20;
+const BATCH_SIZE = 75;
 
 export function smsDeliveryWorkerEnabled(): boolean {
   return process.env.LGQ_SMS_DELIVERY_WORKER_ENABLED === '1';

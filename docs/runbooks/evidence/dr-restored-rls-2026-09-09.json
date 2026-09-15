@@ -1,0 +1,131 @@
+{
+  "checkedAt": "2026-09-09T11:00:42.121Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "tests": 30,
+  "passed": 29,
+  "failed": 1,
+  "fixtureTransactionRolledBack": true,
+  "testsReported": [
+    {
+      "name": "what a crew session can see reads the job it is assigned to, and no other",
+      "status": "passed"
+    },
+    {
+      "name": "what a crew session can see CANNOT read the accounts table — the bug that switched required clocking off",
+      "status": "passed"
+    },
+    {
+      "name": "what a crew session can see reads its own crew row but not a coworker's pay rate",
+      "status": "passed"
+    },
+    {
+      "name": "what a crew session can see sees its own stops and the day's unassigned ones, not another truck's",
+      "status": "passed"
+    },
+    {
+      "name": "changing a job status cannot update the jobs table directly at all",
+      "status": "passed"
+    },
+    {
+      "name": "changing a job status starts work through the function, stamping started_at",
+      "status": "passed"
+    },
+    {
+      "name": "changing a job status never re-dates started_at on a second press",
+      "status": "failed",
+      "failure": "AssertionError: column \"completed_at\" of relation \"jobs\" does not exist: expected false to be true // Object.is equality"
+    },
+    {
+      "name": "changing a job status refuses a job this crew member is not on",
+      "status": "passed"
+    },
+    {
+      "name": "changing a job status refuses a status that is not one of the two the app offers",
+      "status": "passed"
+    },
+    {
+      "name": "changing a job status leaves the quoted amount untouched — the reason the grant was withdrawn",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it pins the rate to the owner's number, whatever the insert asks for",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses a shift claimed to have started yesterday",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses a shift claimed to start in the future",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it does not fire on a genuine replay from earlier in the same day",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses a shift opened on a job they are not assigned to",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses a shift opened in somebody else's name",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses a rate rise applied to a running shift",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses backdating the start of a running shift",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses moving the hours onto another job",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses passing a guessed end time off as an owner-closed one",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it allows exactly one thing: clocking out",
+      "status": "passed"
+    },
+    {
+      "name": "the clock, and what a crew member is paid for it refuses changing the end of a closed shift",
+      "status": "passed"
+    },
+    {
+      "name": "labor costs refuses a rate the owner never set",
+      "status": "passed"
+    },
+    {
+      "name": "labor costs refuses an amount that is not hours times the rate",
+      "status": "passed"
+    },
+    {
+      "name": "labor costs accepts the honest one",
+      "status": "passed"
+    },
+    {
+      "name": "labor costs accepts a rate snapshotted at clock-in after the owner changes it",
+      "status": "passed"
+    },
+    {
+      "name": "labor costs leaves a material cost alone — hours and rates are not its business",
+      "status": "passed"
+    },
+    {
+      "name": "offline replay cannot double-bill refuses the same submission key twice",
+      "status": "passed"
+    },
+    {
+      "name": "offline replay cannot double-bill and crew hold no policy on that ledger, so they cannot pre-claim their own",
+      "status": "passed"
+    },
+    {
+      "name": "revoking field-app access ends the session's reach the moment the membership goes",
+      "status": "passed"
+    }
+  ]
+}

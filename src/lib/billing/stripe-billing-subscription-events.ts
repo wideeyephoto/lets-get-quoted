@@ -13,6 +13,7 @@ import {
 import {
   assertConfiguredStripeBillingMode,
   BASE_PLAN_SUBSCRIPTION_PURPOSE,
+  StripeBillingModeMismatchError,
   SUBSCRIPTION_CHECKOUT_METADATA_KEYS,
   type BasePlanSubscriptionMetadata,
 } from '@/lib/billing/stripe-billing-subscription-checkout';
@@ -71,6 +72,12 @@ export class StripeSubscriptionProjectionProviderError extends Error {
   ) {
     super('Stripe Billing subscription projection verification failed.');
   }
+}
+
+/** Only emitted for a non-live receipt after the runtime and key agree on live mode. */
+export class TestModeSubscriptionRehearsalError extends Error {
+  override readonly name = 'TestModeSubscriptionRehearsalError';
+  constructor() { super('Non-live subscription event rejected by a valid live runtime.'); }
 }
 
 function fail(
@@ -541,7 +548,10 @@ async function retrieveProviderContext(
 ): Promise<StripeSubscriptionProviderContext> {
   try {
     assertMode(claim.livemode);
-  } catch {
+  } catch (error) {
+    if (error instanceof StripeBillingModeMismatchError && claim.livemode === false) {
+      throw new TestModeSubscriptionRehearsalError();
+    }
     return fail('billing_mode_configuration_invalid');
   }
 

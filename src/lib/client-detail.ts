@@ -75,12 +75,13 @@ export async function loadClientDetail(
   supabase: SupabaseClient,
   accountId: string,
   clientId: string,
-  options?: { isOwner?: boolean },
+  options?: { isOwner?: boolean; canSeeQuotes?: boolean },
 ): Promise<ClientDetailDto | null> {
   const client = await getClient(supabase, accountId, clientId);
   if (!client) return null;
 
   const isOwner = options?.isOwner !== false;
+  const canSeeQuotes = options?.canSeeQuotes ?? isOwner;
 
   const [statement, jobRowsRes, { count: requestCount }] = await Promise.all([
     isOwner ? getClientStatement(supabase, accountId, clientId) : Promise.resolve(null),
@@ -105,7 +106,7 @@ export async function loadClientDetail(
     id: string;
     ref: string | null;
     status: string;
-    quoted_amount: number | null;
+    quoted_amount?: number | null;
     created_at: string;
     scheduled_for: string | null;
   }>;
@@ -116,9 +117,10 @@ export async function loadClientDetail(
   // lib/jobs says so where it is defined.
   const money = (value: number) => formatMoneyExact(value);
 
-  const quotedTotal = isOwner && statement
+  const rawQuotedTotal = isOwner && statement
     ? statement.totalQuoted
     : jobRows.reduce((sum, j) => sum + (Number(j.quoted_amount) || 0), 0);
+  const quotedTotal = canSeeQuotes ? rawQuotedTotal : 0;
   const jobCount = isOwner && statement ? statement.jobCount : jobRows.length;
   const openJobCount = isOwner && statement
     ? statement.jobs.filter((job) => OPEN_STATUSES.has(job.status)).length
@@ -143,7 +145,7 @@ export async function loadClientDetail(
       quoted: quotedTotal,
       paid: isOwner && statement ? statement.totalPaid : 0,
       outstanding: isOwner && statement ? statement.outstanding : 0,
-      quotedLabel: money(quotedTotal),
+      quotedLabel: canSeeQuotes ? money(quotedTotal) : '—',
       paidLabel: isOwner && statement ? money(statement.totalPaid) : '—',
       outstandingLabel: isOwner && statement ? money(statement.outstanding) : '—',
     },
@@ -156,7 +158,7 @@ export async function loadClientDetail(
           status: job.status,
           statusLabel: JOB_STATUS_LABEL[job.status as JobStatus] ?? job.status,
           dateLabel: formatLeadDate(job.date),
-          quotedLabel: money(job.quoted),
+          quotedLabel: canSeeQuotes ? money(job.quoted) : '—',
           paidLabel: money(job.paid),
           balance: job.balance,
           balanceLabel: money(job.balance),
@@ -167,7 +169,7 @@ export async function loadClientDetail(
           status: job.status,
           statusLabel: JOB_STATUS_LABEL[job.status as JobStatus] ?? job.status,
           dateLabel: formatLeadDate(job.created_at),
-          quotedLabel: money(Number(job.quoted_amount) || 0),
+          quotedLabel: canSeeQuotes ? money(Number(job.quoted_amount) || 0) : '—',
           paidLabel: '—',
           balance: 0,
           balanceLabel: '—',

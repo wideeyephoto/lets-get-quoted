@@ -16,18 +16,6 @@ export async function diagnoseContractorOnboarding(
   supabase: SupabaseClient,
   accountId: string,
 ): Promise<ContractorBlockerAnalysis> {
-  let stripeRes: { data: { id: string; charges_enabled?: boolean; payouts_enabled?: boolean } | null } = { data: null };
-  try {
-    const res = await supabase
-      .from('stripe_connected_accounts')
-      .select('id, charges_enabled, payouts_enabled')
-      .eq('account_id', accountId)
-      .maybeSingle();
-    stripeRes = res;
-  } catch {
-    stripeRes = { data: null };
-  }
-
   const [accountRes, senderRes, quotesRes, jobsRes] = await Promise.all([
     supabase
       .from('accounts')
@@ -42,22 +30,20 @@ export async function diagnoseContractorOnboarding(
     supabase
       .from('jobs')
       .select('id', { count: 'exact', head: true })
-      .eq('account_id', accountId),
+      .eq('account_id', accountId)
+      .gt('quoted_amount', 0),
     supabase
       .from('jobs')
       .select('id', { count: 'exact', head: true })
       .eq('account_id', accountId)
-      .eq('status', 'in_progress'),
+      .in('status', ['scheduled', 'in_progress']),
   ]);
 
   const account = accountRes.data;
   const name = account?.business_name || 'Contractor';
   
-  // Stripe connection check: either stripe_connected_accounts row has charges enabled OR account has connect_onboarded = true
-  const isStripe = Boolean(
-    stripeRes.data?.charges_enabled ||
-    (account?.connect_onboarded && !account?.connect_disabled_at)
-  );
+  // Stripe connection check based on account connect onboarding status
+  const isStripe = Boolean(account?.connect_onboarded && !account?.connect_disabled_at);
 
   const hasSms = (senderRes.data?.length ?? 0) > 0;
   const quotesCount = quotesRes.count ?? 0;
@@ -88,13 +74,13 @@ export async function diagnoseContractorOnboarding(
     blockers.push('Field Hotline SMS number not assigned');
     blockerDetails.push({
       code: 'sms_hotline_missing',
-      title: 'Dedicated SMS Hotline Not Provisioned',
+      title: 'SMS Delivery Route Not Configured',
       description:
-        'Contractor lacks an active 10DLC registered SMS number to auto-dispatch quote approvals, booking confirmations, and arrival alerts.',
+        'Contractor lacks an active SMS delivery route to auto-dispatch quote approvals, booking confirmations, and arrival alerts.',
       remediationSteps: [
         'Open Settings > Field Hotline (/dashboard/settings/phone).',
-        'Choose a local area code and claim a dedicated business phone number.',
-        'Complete 10DLC brand registration for 100% white-labeled deliverability to customer mobile devices.',
+        'Configure outgoing notifications and messaging preferences.',
+        'Review messaging carrier registration and delivery health in /admin/messaging.',
       ],
       severity: 'high',
     });
@@ -152,19 +138,21 @@ export async function diagnoseContractorOnboarding(
 }
 
 /**
- * Triages an incoming contractor support case and drafts an intelligent, contextual response
+ * Synchronously triages ticket text and generates classified topic and recommended reply.
  */
-export async function triageSupportCase(
-  supabase: SupabaseClient,
-  caseItem: { id: string; subject: string; body?: string; account_id?: string | null },
-): Promise<SupportCaseTriageResult> {
-  const text = `${caseItem.subject} ${caseItem.body || ''}`.toLowerCase();
+export function triageSupportTicket(ticket: { subject: string; body?: string }): {
+  topic: SupportCaseTriageResult['identifiedTopic'];
+  urgency: SupportCaseTriageResult['urgency'];
+  suggestedReply: string;
+  internalAction: string;
+  requiresFounderReview: boolean;
+} {
+  const text = `${ticket.subject} ${ticket.body || ''}`.toLowerCase();
 
   let topic: SupportCaseTriageResult['identifiedTopic'] = 'general';
   let urgency: SupportCaseTriageResult['urgency'] = 'normal';
   let reply = '';
   let internalAction = 'Review ticket and follow up.';
-
 
   // Topic classification & diagnostic drafting
   if (
@@ -204,7 +192,7 @@ export async function triageSupportCase(
   ) {
     topic = 'sms_phone';
     urgency = 'normal';
-    reply = `Hello! Your LGQ Field Hotline gives your business a dedicated local SMS number for sending client quotes, appointment reminders, and receiving incoming leads. All messages are 100% white-labeled under your company name. To manage or select your active number, head over to Settings > Field Hotline. Let us know if you would like us to assign a specific area code!`;
+    reply = `Hello! Your LGQ Field Hotline routes client quote notifications, appointment reminders, and incoming customer leads through our verified messaging network. To manage your notification preferences and phone settings, head over to Settings > Field Hotline.`;
     internalAction = 'Verify 10DLC brand registration and active carrier status in /admin/messaging.';
   } else if (
     text.includes('first quote') ||
@@ -279,7 +267,7 @@ export async function triageSupportCase(
   ) {
     topic = 'website_domain';
     urgency = 'normal';
-    reply = `Hello! Your hosted marketing website is live with instant quote intake forms. To connect a custom domain (e.g. yourcompany.com), configure it under Settings > Custom Domain. SSL certificates are issued automatically.`;
+    reply = `Hello! Your hosted marketing website is live with instant quote intake forms. To connect a custom domain (e.g. yourcompany.com), configure your CNAME records under Settings > Custom Domain. Domains are verified once DNS records propagate.`;
     internalAction = 'Verify custom domain DNS propagation and SSL status in /admin.';
   } else if (text.includes('error') || text.includes('bug') || text.includes('crash') || text.includes('500') || text.includes('broken') || text.includes('failed')) {
     topic = 'bug';
@@ -294,17 +282,34 @@ export async function triageSupportCase(
     reply = `Hello! Thank you for contacting Let's Get Quoted support. We are reviewing your inquiry and will follow up shortly to help you keep your jobs moving forward.`;
   }
 
-
   const requiresFounder = urgency === 'urgent' || topic === 'billing';
+
+  return {
+    topic,
+    urgency,
+    suggestedReply: reply,
+    internalAction,
+    requiresFounderReview: requiresFounder,
+  };
+}
+
+/**
+ * Triages an incoming contractor support case and drafts an intelligent, contextual response
+ */
+export async function triageSupportCase(
+  supabase: SupabaseClient,
+  caseItem: { id: string; subject: string; body?: string; account_id?: string | null },
+): Promise<SupportCaseTriageResult> {
+  const triaged = triageSupportTicket(caseItem);
 
   const result: SupportCaseTriageResult = {
     caseId: caseItem.id,
     subject: caseItem.subject,
-    urgency,
-    identifiedTopic: topic,
-    suggestedCustomerReply: reply,
-    suggestedInternalAction: internalAction,
-    requiresFounderReview: requiresFounder,
+    urgency: triaged.urgency,
+    identifiedTopic: triaged.topic,
+    suggestedCustomerReply: triaged.suggestedReply,
+    suggestedInternalAction: triaged.internalAction,
+    requiresFounderReview: triaged.requiresFounderReview,
   };
 
   recordOperatorAudit({
@@ -312,7 +317,7 @@ export async function triageSupportCase(
     actionName: `Support Case Triaged: #${caseItem.id}`,
     severity: 'safe_auto',
     toolName: 'triageSupportCase',
-    reasoningSummary: `Triaged case "${caseItem.subject}" as topic=${topic}, urgency=${urgency}. Requires founder=${requiresFounder}.`,
+    reasoningSummary: `Triaged case "${caseItem.subject}" as topic=${triaged.topic}, urgency=${triaged.urgency}. Requires founder=${triaged.requiresFounderReview}.`,
     outputResult: result,
     status: 'success',
   });

@@ -12,6 +12,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { promisify } from 'node:util';
 
 const MIGRATION = 'migrations/20260903215831_voice_contractor_dispatch_hardening.sql';
+const CURRENT_CONTRACT = process.env.LGQ_VOICE_CURRENT_CONTRACT === '1';
 const PORT = Number(process.env.LGQ_VOICE_CONTRACTOR_DISPATCH_CHECK_PORT || 54379);
 const execFileAsync = promisify(execFile);
 
@@ -364,6 +365,7 @@ const pg = new EmbeddedPostgres({
   password: 'postgres',
   port: PORT,
   persistent: false,
+  initdbFlags: ['--encoding=UTF8'],
 });
 
 let client;
@@ -390,6 +392,33 @@ try {
   await client.query(migrationSql);
   await client.query(migrationSql);
   check('migration applies idempotently on PostgreSQL 17', true);
+
+  if (CURRENT_CONTRACT) {
+    // Exercise the actual upgrade sequence, including the later migration
+    // that replaced the private implementation with an incompatible body.
+    await client.query(`
+      create table public.voice_staff_step_up_challenges(id uuid primary key);
+      alter function public.apply_voice_contractor_action(uuid,text,text,text,uuid,uuid,jsonb)
+        rename to apply_voice_contractor_action_after_step_up;
+      alter table public.voice_call_admissions add column provider_terminal_at timestamptz,
+        add column allowed_minutes integer, add column tool_invocations integer not null default 0;
+      grant select, update on public.voice_call_admissions to service_role;
+      grant select on public.voice_events to service_role;
+      alter table public.jobs add column client_phone text, add column address text,
+        add column created_at timestamptz default now();
+      alter table public.leads alter column id set default gen_random_uuid();
+    `);
+    for (const name of [
+      '20260904080000_voice_lead_creation_without_step_up.sql',
+      '20260905190506_voice_staff_without_verification_codes.sql',
+      '20260906111632_voice_dispatch_latency.sql',
+      '20260908205749_voice_dispatch_contract_restore.sql',
+      '20260908205749_voice_dispatch_contract_restore.sql',
+      '20260909195808_voice_tool_call_deadline.sql',
+      '20260909195808_voice_tool_call_deadline.sql',
+    ]) await client.query(readFileSync(join(process.cwd(), 'migrations', name), 'utf8'));
+    check('complete dispatch upgrade sequence and repeated repair apply', true);
+  }
 
   const privilege = one(await client.query(`
     select
@@ -981,6 +1010,101 @@ try {
       && atomicState.feed_count === 0,
     atomic.errorCode ?? JSON.stringify(atomicState),
   );
+  if (CURRENT_CONTRACT) {
+    const request = {
+      providerCallId: calls.authorized, callerNumber: ownerPhoneA,
+      functionName: 'append_job_caution_or_note', targetJobId: jobA,
+      payload: { note: 'Dispatch acceptance test only', is_caution: false },
+    };
+    const saved = await invoke(request);
+    const repeated = await invoke(request);
+    const noteState = one(await client.query(`select
+      (select count(*)::integer from public.job_feed where source_id=$1) as feed_count,
+      (select notes from public.clients where id=$2) as client_notes`,
+    [saved.outcome?.action_id ?? null, clientA]));
+    check('owner note saves once to existing feed/client schema and returns saved text',
+      saved.errorCode === null && saved.outcome?.saved?.note === request.payload.note
+        && repeated.outcome?.replayed === true
+        && repeated.outcome?.action_id === saved.outcome?.action_id
+        && noteState.feed_count === 1 && noteState.client_notes.includes(request.payload.note),
+      saved.message ?? JSON.stringify(noteState));
+    const status = one(await client.query(`select public.get_voice_contractor_action_status(
+      $1,$2,$3,$4,$5,null,$6::jsonb) as outcome`,
+    [accountA, calls.authorized, ownerPhoneA, request.functionName, jobA, JSON.stringify(request.payload)]));
+    check('read-only recovery returns the identical committed note snapshot',
+      status.outcome?.action_id === saved.outcome?.action_id
+        && status.outcome?.saved?.note === request.payload.note);
+    for (const payload of [{ line_item_label: 'Extra', line_item_price: 2300 }, { quote_total: 2300 }]) {
+      const denied = await invoke({ ...request, functionName: 'update_job_details', payload });
+      check('direct financial update is rejected without a job or ledger write', denied.errorCode === '22023');
+    }
+    const lead = await invoke({ ...request, functionName: 'create_or_update_lead', targetJobId: null,
+      payload: { name: 'Controlled lead', message: 'Requested a repair estimate' } });
+    check('lead default create accepts substantive detail without a phone',
+      lead.errorCode === null && Boolean(lead.outcome?.lead_id), lead.message ?? 'saved');
+    const draft = await invoke({ ...request, functionName: 'create_job_change_order',
+      payload: { title: 'Extra work', description: 'Describe work for office pricing' } });
+    check('unpriced change order saves a draft without changing the quote',
+      draft.errorCode === null && Boolean(draft.outcome?.change_order_id), draft.message ?? 'saved');
+    const labor = await invoke({ ...request, functionName: 'log_crew_time_and_materials',
+      payload: { crew_id: fieldCrew, hours: 1, note: 'Controlled labor entry' } });
+    check('labor writes to current costs schema and current burden field',
+      labor.errorCode === null && Boolean(labor.outcome?.action_id), labor.message ?? 'saved');
+    const acl = one(await client.query(`select
+      has_function_privilege('service_role', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as service_exec,
+      has_function_privilege('anon', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as anon_exec,
+      has_function_privilege('authenticated', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as auth_exec`));
+    check('private implementation cannot bypass the live-call wrapper', !acl.service_exec && !acl.anon_exec && !acl.auth_exec);
+
+    const admissionProbe = async (callId, caller = ownerPhoneA) => {
+      await client.query('set role service_role');
+      try {
+        return one(await client.query('select public.authorize_voice_tool_invocation($1,$2,$3) as allowed',
+          [accountA, callId, caller])).allowed;
+      } finally { await client.query('reset role'); }
+    };
+    for (const allowance of [null, 1, 2, 10]) {
+      const callId = `deadline-${allowance}-${randomUUID()}`;
+      const duration = (allowance ?? 10) * 60 - 2;
+      await client.query(`insert into public.voice_call_admissions(
+        account_id,provider,provider_call_id,caller_number,caller_kind,allowed_minutes,admitted_at
+      ) values($1,'signalwire',$2,$3,'owner',$4,clock_timestamp()-make_interval(secs=>$5))`,
+      [accountA, callId, ownerPhoneA, allowance, duration - 3]);
+      const deadlineRequest = { ...request, providerCallId: callId,
+        payload: { note: `Deadline ${allowance} probe`, is_caution: false } };
+      check(`gateway accepts ${allowance ?? 'legacy'} allowance before its deadline`, await admissionProbe(callId));
+      const accepted = await invoke(deadlineRequest);
+      check(`mutation accepts ${allowance ?? 'legacy'} allowance before its deadline`,
+        accepted.errorCode === null && Boolean(accepted.outcome?.action_id), accepted.message ?? 'saved');
+      await client.query(`update public.voice_call_admissions set
+        admitted_at=clock_timestamp()-make_interval(secs=>$2) where provider_call_id=$1`, [callId, duration]);
+      check(`gateway denies ${allowance ?? 'legacy'} allowance at deadline`, !await admissionProbe(callId));
+      const denied = await invoke({ ...deadlineRequest, payload: { note: 'Must not save after expiry' } });
+      const count = one(await client.query('select count(*)::integer as n from public.voice_tool_actions where provider_call_id=$1', [callId]));
+      check(`expired ${allowance ?? 'legacy'} mutation creates no extra action`, denied.errorCode === '42501' && count.n === 1);
+      const recovered = one(await client.query(`select public.get_voice_contractor_action_status(
+        $1,$2,$3,$4,$5,null,$6::jsonb) as outcome`,
+      [accountA, callId, ownerPhoneA, request.functionName, jobA, JSON.stringify(deadlineRequest.payload)]));
+      check(`expired ${allowance ?? 'legacy'} outcome remains readable without another mutation`,
+        recovered.outcome?.action_id === accepted.outcome?.action_id && recovered.outcome?.replayed === true);
+    }
+
+    const gateCall = calls.authorized;
+    await client.query(`update public.voice_call_admissions set admitted_at=clock_timestamp(),allowed_minutes=10
+      where provider_call_id=$1`, [gateCall]);
+    check('gateway rejects a mismatched caller', !await admissionProbe(gateCall, revokedPhone));
+    for (const scenario of [
+      { name: 'future admission', update: "admitted_at=clock_timestamp()+interval '1 minute'" },
+      { name: 'invalid allowance', update: 'allowed_minutes=11' },
+      { name: 'terminal call', update: 'provider_terminal_at=clock_timestamp()' },
+      { name: 'exhausted invocation count', update: 'tool_invocations=100' },
+    ]) {
+      await client.query(`update public.voice_call_admissions set admitted_at=clock_timestamp(),allowed_minutes=10,
+        provider_terminal_at=null,tool_invocations=0 where provider_call_id=$1`, [gateCall]);
+      await client.query(`update public.voice_call_admissions set ${scenario.update} where provider_call_id=$1`, [gateCall]);
+      check(`gateway rejects ${scenario.name}`, !await admissionProbe(gateCall));
+    }
+  }
 } catch (error) {
   fatalError = error;
   console.error(`FATAL  ${errorText(error)}`);
@@ -1017,5 +1141,5 @@ try {
 }
 
 const failed = checks.filter((item) => !item.ok);
-console.log(`\n${checks.length - failed.length}/${checks.length} checks passed.`);
-if (failed.length > 0 || fatalError) process.exitCode = 1;
+console.log(`\n${checks.length - failed.length}/${checks.length} checks passed.${fatalError ? ' Fatal error: verification incomplete.' : ''}`);
+if (failed.length > 0 || fatalError) process.exit(1);

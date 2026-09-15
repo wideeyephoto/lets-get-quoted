@@ -25,321 +25,46 @@ describe('Halo Pacing Worker', () => {
     vi.clearAllMocks();
   });
 
-  it('advances pacing for active campaign and completes when duration is reached', async () => {
-    const activeCampaign = {
-      id: 'halo_1',
-      account_id: 'acc_1',
-      job_id: 'job_1',
-      street_name: 'Maple Ave',
-      city: 'Rochester',
-      status: 'active',
-      duration_days: 5,
-      days_active: 4,
-      budget_dollars: 25.0,
-      spend_dollars: 20.0,
-      daily_budget_dollars: 5.0,
-      impressions: 200,
-      clicks: 8,
-      leads_generated: 1,
-      center_lat: 42.68,
-      center_lng: -83.13,
-      radius_miles: 1.0,
-      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-    };
-
-    const mockAdmin = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({ data: [activeCampaign], error: null }),
-          }),
-        }),
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    } as never;
-
-    const res = await runHaloPacingWorker(mockAdmin);
-    expect(res.processed).toBe(1);
-    expect(res.completed).toBe(1);
-    expect(res.advanced).toBe(0);
-    expect(res.totalDailySpendDollars).toBe(0);
+  function fixture(overrides: any = {}) {
+    const row = { id: 'halo', account_id: 'account', status: 'active', meta_campaign_id: '123', budget_dollars: 25, spend_dollars: 0,
+      created_at: new Date(Date.now()-86400000).toISOString(), updated_at: new Date().toISOString(), expires_at: new Date(Date.now()+86400000).toISOString(), ...overrides };
+    const admin: any = { rpc: vi.fn().mockResolvedValue({ data: true }), from: () => ({ select: () => ({ in: () => ({ is: async () => ({ data: [row], error: null }) }) }) }) };
+    return { admin, row };
+  }
+  it('refreshes lifetime metrics instead of incrementing synthetic spend', async () => {
+    vi.mocked(fetchMetaCampaignDailySpend).mockResolvedValue({ success: true, spendCents: 450, impressions: 340, clicks: 14 } as never);
+    const { admin } = fixture(); const result = await runHaloPacingWorker(admin);
+    expect(result.advanced).toBe(1); expect(result.totalDailySpendDollars).toBe(4.5);
+    expect(fetchMetaCampaignDailySpend).toHaveBeenCalledWith('123', undefined, 'maximum');
+    expect(admin.rpc).toHaveBeenCalledWith('sync_halo_metrics', expect.objectContaining({ p_spend_cents: 450 }));
   });
-
-  it('advances active campaign by 1 day when duration not yet reached', async () => {
-    const activeCampaign = {
-      id: 'halo_2',
-      account_id: 'acc_1',
-      job_id: 'job_1',
-      street_name: 'Oak Ridge Rd',
-      city: 'Dallas',
-      status: 'active',
-      duration_days: 5,
-      days_active: 1,
-      budget_dollars: 25.0,
-      spend_dollars: 5.0,
-      daily_budget_dollars: 5.0,
-      impressions: 80,
-      clicks: 3,
-      leads_generated: 0,
-      center_lat: 32.77,
-      center_lng: -96.79,
-      radius_miles: 1.0,
-      created_at: new Date(Date.now() - 1 * 86400000).toISOString(),
-    };
-
-    const mockAdmin = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({ data: [activeCampaign], error: null }),
-          }),
-        }),
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    } as never;
-
-    const res = await runHaloPacingWorker(mockAdmin);
-    expect(res.processed).toBe(1);
-    expect(res.advanced).toBe(1);
-    expect(res.completed).toBe(0);
-    expect(res.totalDailySpendDollars).toBe(5.0);
+  it('requests a stop at expiry and keeps funds held during settlement', async () => {
+    const { killHaloCampaign } = await import('@/lib/neighborhood-halo-service'); vi.mocked(killHaloCampaign).mockResolvedValue({ status: 'paused' } as never);
+    const { admin } = fixture({ expires_at: '2020-01-01' }); const result = await runHaloPacingWorker(admin);
+    expect(killHaloCampaign).toHaveBeenCalledWith(admin, 'account', 'halo', 'duration_complete'); expect(result.completed).toBe(0);
   });
-
-  it('reconciles real performance metrics from Meta Marketing API when meta_campaign_id is present', async () => {
-    const metaCampaign = {
-      id: 'halo_meta_1',
-      account_id: 'acc_1',
-      job_id: 'job_1',
-      street_name: 'Pine Creek Rd',
-      city: 'Austin',
-      status: 'active',
-      duration_days: 5,
-      days_active: 2,
-      budget_dollars: 25.0,
-      spend_dollars: 10.0,
-      daily_budget_dollars: 5.0,
-      impressions: 150,
-      clicks: 5,
-      leads_generated: 1,
-      meta_campaign_id: 'camp_meta_real_999',
-      center_lat: 30.26,
-      center_lng: -97.74,
-      radius_miles: 1.0,
-      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-    };
-
-    let updatedPayload: any = null;
-    const mockAdmin = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({ data: [metaCampaign], error: null }),
-          }),
-        }),
-        update: vi.fn().mockImplementation((payload) => {
-          updatedPayload = payload;
-          return {
-            eq: vi.fn().mockResolvedValue({ error: null }),
-          };
-        }),
-      }),
-    } as never;
-
-    const res = await runHaloPacingWorker(mockAdmin);
-    expect(res.processed).toBe(1);
-    expect(res.advanced).toBe(1);
-    expect(updatedPayload).toBeDefined();
-    expect(updatedPayload.impressions).toBe(340); // from Meta API mock
-    expect(updatedPayload.clicks).toBe(14); // from Meta API mock
-    expect(updatedPayload.spend_dollars).toBe(14.5); // 10.0 + 4.50 from Meta spend
+  it('reconciles stopped campaigns until final settlement completes', async () => {
+    const { killHaloCampaign } = await import('@/lib/neighborhood-halo-service'); vi.mocked(killHaloCampaign).mockResolvedValue({ status: 'completed' } as never);
+    const { admin } = fixture({ status: 'paused', settlement_requested_at: '2020-01-01' }); expect((await runHaloPacingWorker(admin)).completed).toBe(1);
+    expect(admin.rpc).not.toHaveBeenCalled();
   });
-
-  it('pauses live Meta campaign when campaign completes duration and refunds unspent wallet balance', async () => {
-    const expiredMetaCampaign = {
-      id: 'halo_meta_exp',
-      account_id: 'acc_1',
-      job_id: 'job_1',
-      street_name: 'Sunset Blvd',
-      city: 'Los Angeles',
-      status: 'active',
-      duration_days: 5,
-      days_active: 4,
-      budget_dollars: 25.0,
-      spend_dollars: 15.0,
-      wallet_deducted_cents: 2500,
-      daily_budget_dollars: 5.0,
-      impressions: 300,
-      clicks: 10,
-      leads_generated: 1,
-      meta_campaign_id: 'camp_meta_live_completed_123',
-      center_lat: 34.05,
-      center_lng: -118.24,
-      radius_miles: 1.0,
-      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-    };
-
-    vi.mocked(fetchMetaCampaignDailySpend).mockResolvedValueOnce({
-      success: true,
-      impressions: 450,
-      clicks: 18,
-      spendCents: 400, // $4.00 additional -> final spend $19.00
-      conversions: 2,
-      date: '2026-09-07',
-    });
-
-    let updatedPayload: any = null;
-    const mockRpc = vi.fn().mockResolvedValue({ data: { success: true }, error: null });
-    const mockAdmin = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({ data: [expiredMetaCampaign], error: null }),
-          }),
-        }),
-        update: vi.fn().mockImplementation((payload) => {
-          updatedPayload = payload;
-          return {
-            eq: vi.fn().mockResolvedValue({ error: null }),
-          };
-        }),
-      }),
-      rpc: mockRpc,
-    } as never;
-
-    const res = await runHaloPacingWorker(mockAdmin);
-    expect(res.processed).toBe(1);
-    expect(res.completed).toBe(1);
-    expect(res.pauseFailures).toBe(0);
-    expect(pauseMetaCampaign).toHaveBeenCalledWith('camp_meta_live_completed_123');
-    expect(updatedPayload?.status).toBe('completed');
-    expect(updatedPayload?.spend_dollars).toBe(19.0);
-    expect(updatedPayload?.impressions).toBe(450);
-    expect(updatedPayload?.clicks).toBe(18);
-
-    // Proven debited: $25 (2500c), actual spend: $19 (1900c) -> refundable: 600c ($6.00)
-    expect(mockRpc).toHaveBeenCalledWith('atomic_ad_wallet_credit', {
-      p_account_id: 'acc_1',
-      p_payment_intent_id: 'refund_halo_complete_halo_meta_exp',
-      p_credit_cents: 600,
-      p_fee_cents: 0,
-    });
+  it('reports provider pause failures without announcing completion', async () => {
+    const { killHaloCampaign } = await import('@/lib/neighborhood-halo-service'); vi.mocked(killHaloCampaign).mockRejectedValueOnce(new Error('Pause failed'));
+    const { admin } = fixture({ expires_at: '2020-01-01' }); const result = await runHaloPacingWorker(admin); expect(result.pauseFailures).toBe(1); expect(result.completed).toBe(0);
   });
-
-  it('leaves campaign active and increments pauseFailures when pauseMetaCampaign fails on completed campaign', async () => {
-    vi.mocked(pauseMetaCampaign).mockResolvedValueOnce({
-      success: false,
-      message: 'Meta API rate limit or auth failure',
-    });
-
-    const expiredCampaign = {
-      id: 'halo_fail_pause',
-      account_id: 'acc_1',
-      job_id: 'job_1',
-      street_name: 'Sunset Blvd',
-      city: 'Los Angeles',
-      status: 'active',
-      duration_days: 5,
-      days_active: 5,
-      budget_dollars: 25.0,
-      spend_dollars: 20.0,
-      wallet_deducted_cents: 2500,
-      daily_budget_dollars: 5.0,
-      impressions: 300,
-      clicks: 10,
-      leads_generated: 1,
-      meta_campaign_id: 'camp_meta_rate_limited_999',
-      center_lat: 34.05,
-      center_lng: -118.24,
-      radius_miles: 1.0,
-      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
-    };
-
-    let updateCalled = false;
-    const mockAdmin = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({ data: [expiredCampaign], error: null }),
-          }),
-        }),
-        update: vi.fn().mockImplementation(() => {
-          updateCalled = true;
-          return {
-            eq: vi.fn().mockResolvedValue({ error: null }),
-          };
-        }),
-      }),
-      rpc: vi.fn(),
-    } as never;
-
-    const res = await runHaloPacingWorker(mockAdmin);
-    expect(res.processed).toBe(1);
-    expect(res.completed).toBe(0);
-    expect(res.pauseFailures).toBe(1);
-    expect(res.summary).toContain('1 pause failures');
-    // Row must NOT have been updated to completed, stays active for next cron run retry
-    expect(updateCalled).toBe(false);
+  it('does not fabricate metrics when insights fails', async () => {
+    vi.mocked(fetchMetaCampaignDailySpend).mockResolvedValueOnce({ success: false } as never); const { admin } = fixture();
+    expect((await runHaloPacingWorker(admin)).pauseFailures).toBe(1); expect(admin.rpc).not.toHaveBeenCalled();
   });
-
-  it('does NOT add synthetic spend if Meta API insights fetch fails on live campaign', async () => {
-    vi.mocked(fetchMetaCampaignDailySpend).mockResolvedValueOnce({
-      success: false,
-      message: 'Rate limit or network error',
-      impressions: 0,
-      clicks: 0,
-      spendCents: 0,
-      conversions: 0,
-      date: '2026-09-07',
-    });
-
-    const liveCampaign = {
-      id: 'halo_meta_fail',
-      account_id: 'acc_1',
-      job_id: 'job_1',
-      street_name: 'Elm St',
-      city: 'Austin',
-      status: 'active',
-      duration_days: 5,
-      days_active: 2,
-      budget_dollars: 25.0,
-      spend_dollars: 10.0,
-      daily_budget_dollars: 5.0,
-      impressions: 150,
-      clicks: 5,
-      leads_generated: 1,
-      meta_campaign_id: 'camp_meta_real_999',
-      center_lat: 30.26,
-      center_lng: -97.74,
-      radius_miles: 1.0,
-      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
-    };
-
-    let updatedPayload: any = null;
-    const mockAdmin = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          in: vi.fn().mockReturnValue({
-            is: vi.fn().mockResolvedValue({ data: [liveCampaign], error: null }),
-          }),
-        }),
-        update: vi.fn().mockImplementation((payload) => {
-          updatedPayload = payload;
-          return {
-            eq: vi.fn().mockResolvedValue({ error: null }),
-          };
-        }),
-      }),
-    } as never;
-
-    const res = await runHaloPacingWorker(mockAdmin);
-    expect(res.processed).toBe(1);
-    expect(res.advanced).toBe(1);
-    expect(res.totalDailySpendDollars).toBe(0);
-    expect(updatedPayload?.spend_dollars).toBe(10.0); // Spend unchanged, NOT inflated
+  it('refuses simulated campaigns and reports failed metric writes', async () => {
+    const simulated = fixture({ meta_campaign_id: 'meta_123' }); expect((await runHaloPacingWorker(simulated.admin)).pauseFailures).toBe(1); expect(simulated.admin.rpc).not.toHaveBeenCalled();
+    const { admin } = fixture(); admin.rpc.mockResolvedValue({ data: null, error: { message: 'DB unavailable' } }); expect((await runHaloPacingWorker(admin)).pauseFailures).toBe(1);
+  });
+  it('recovers abandoned provisioning and pauses zero-click campaigns', async () => {
+    const { killHaloCampaign } = await import('@/lib/neighborhood-halo-service'); vi.mocked(killHaloCampaign).mockResolvedValue({ status: 'killed' } as never);
+    const pending = fixture({ status: 'pending_provisioning', updated_at: '2020-01-01' }); await runHaloPacingWorker(pending.admin); expect(killHaloCampaign).toHaveBeenCalledWith(pending.admin, 'account', 'halo', 'incomplete_provisioning');
+    vi.mocked(fetchMetaCampaignDailySpend).mockResolvedValueOnce({ success: true, spendCents: 450, clicks: 0, impressions: 0 } as never);
+    const zero = fixture({ created_at: new Date(Date.now()-74*3600000).toISOString() }); expect((await runHaloPacingWorker(zero.admin)).killed).toBe(1);
   });
 
   describe('halo-pacing cron route', () => {

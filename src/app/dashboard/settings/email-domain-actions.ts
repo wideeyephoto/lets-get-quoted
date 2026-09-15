@@ -8,12 +8,15 @@ import {
   deleteSendingDomain,
   isSendingDomainProvisioningConfigured,
   isEmailSendingDomainsFeatureEnabled,
+  isWorkspaceEligibleForSendingDomains,
   triggerSendingDomainVerify,
   validateFromLocalPart,
   filterSafeSendingDnsRecords,
   toStoredStatus,
   failureReasonFor,
+  ResendApiError,
   type SendingDomainRecord,
+  type SendingDomainResponse,
   type StoredSendingDomainStatus,
 } from '@/lib/resend-domains';
 
@@ -40,6 +43,7 @@ export async function getEmailSendingDomainAction(): Promise<{
   domain: EmailSendingDomainRow | null;
   isConfigured: boolean;
   isEnabled: boolean;
+  isEnrollmentAllowed: boolean;
 }> {
   const { accountId } = await requireOfficeContext('settings.write');
   const admin = createAdminClient();
@@ -56,10 +60,14 @@ export async function getEmailSendingDomainAction(): Promise<{
     console.error('Failed to query email_sending_domains:', error);
   }
 
+  const isEligible = isWorkspaceEligibleForSendingDomains(accountId);
+  const hasExisting = Boolean(data);
+
   return {
     domain: (data as EmailSendingDomainRow) ?? null,
-    isConfigured: isSendingDomainProvisioningConfigured(),
-    isEnabled: isEmailSendingDomainsFeatureEnabled(),
+    isConfigured: await isSendingDomainProvisioningConfigured(),
+    isEnabled: isEligible || hasExisting,
+    isEnrollmentAllowed: isEligible,
   };
 }
 
@@ -74,6 +82,16 @@ export async function createEmailSendingDomainAction(input: {
     throw new Error('Custom email sending domains are currently disabled.');
   }
 
+  // C01: Server-side workspace allowlist rollout control
+  if (!isWorkspaceEligibleForSendingDomains(accountId)) {
+    throw new Error('Custom email sending domains are currently limited to early access workspaces.');
+  }
+
+  const isConfigured = await isSendingDomainProvisioningConfigured();
+  if (!isConfigured) {
+    throw new Error('Domain connection is temporarily unavailable — we have been notified.');
+  }
+
   const domain = validateCustomDomain(input.domain);
   const localPart = (input.fromLocalPart || 'hello').trim().toLowerCase();
   const localPartValidation = validateFromLocalPart(localPart);
@@ -82,6 +100,35 @@ export async function createEmailSendingDomainAction(input: {
   }
 
   const admin = createAdminClient();
+
+  // C05: Bound active/pending attempts per workspace.
+  // v1 allows at most one sending domain per workspace.
+  const { data: existingDomains, error: countErr } = await admin
+    .from('email_sending_domains')
+    .select('id, domain, status, failure_reason, verified_at, provider_domain_id')
+    .eq('account_id', accountId);
+
+  if (countErr) throw countErr;
+
+  const otherDomains = (existingDomains ?? []).filter(
+    (d) => d.domain.toLowerCase() !== domain.toLowerCase(),
+  );
+  if (otherDomains.length >= 1) {
+    throw new Error('Your account already has a sending domain configured. Disconnect it before connecting a new one.');
+  }
+
+  // C04: Administrative suspension check on this domain if previously disabled
+  const matchingDomain = (existingDomains ?? []).find(
+    (d) => d.domain.toLowerCase() === domain.toLowerCase(),
+  );
+  if (
+    matchingDomain &&
+    matchingDomain.status === 'disabled' &&
+    matchingDomain.failure_reason &&
+    /administrative/i.test(matchingDomain.failure_reason)
+  ) {
+    throw new Error('This domain has an administrative hold. Contact support to resume service.');
+  }
 
   // Check if another account already connected this domain
   const { data: conflict, error: conflictErr } = await admin
@@ -96,8 +143,61 @@ export async function createEmailSendingDomainAction(input: {
     throw new Error('This domain is already connected to another account.');
   }
 
+  // Reserve ownership before spending a provider slot. The database's unique
+  // account index also covers pending attempts and closes concurrent preflights.
+  let reservedId: string | null = null;
+  if (!matchingDomain) {
+    const { data: reservation, error: reservationError } = await admin
+      .from('email_sending_domains')
+      .insert({ account_id: accountId, domain, status: 'pending', failure_reason: 'PROVISIONING_PENDING: Connecting to provider.' })
+      .select('id')
+      .maybeSingle();
+    if (reservationError?.code === '23505') {
+      throw new Error('A sending domain is already being connected. Refresh settings before trying again.');
+    }
+    if (reservationError || !reservation) throw new Error('Could not reserve sending domain configuration.');
+    reservedId = reservation.id;
+  } else if (!matchingDomain.provider_domain_id && matchingDomain.failure_reason?.startsWith('PROVISIONING_PENDING:')) {
+    throw new Error('This domain is still being connected. Refresh settings; contact support if it remains pending.');
+  }
+
   // Create or retrieve domain from provider
-  const providerRes = await createSendingDomain(domain);
+  let providerRes: SendingDomainResponse;
+  try {
+    providerRes = await createSendingDomain(domain, matchingDomain?.provider_domain_id);
+  } catch (err: unknown) {
+    if (reservedId) {
+      await admin.from('email_sending_domains')
+        .update({ status: 'failed', failure_reason: 'PROVISIONING_FAILED: Provider connection failed. Retry or contact support.', updated_at: new Date().toISOString() })
+        .eq('id', reservedId).eq('account_id', accountId).eq('status', 'pending')
+        .eq('failure_reason', 'PROVISIONING_PENDING: Connecting to provider.');
+    }
+    const rawError =
+      err instanceof ResendApiError
+        ? err.providerBody
+        : err instanceof Error
+          ? err.message
+          : String(err);
+    const statusCode = err instanceof ResendApiError ? err.statusCode : undefined;
+    console.error(
+      `[email-domains] Failed to create sending domain for account ${accountId} (status ${statusCode ?? 'unknown'}):`,
+      rawError,
+    );
+    if (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      /Resend API error \((?:401|403)\)/i.test(rawError)
+    ) {
+      throw new Error('Domain connection is temporarily unavailable — we have been notified.');
+    }
+    if (
+      statusCode === 422 ||
+      /limit|quota|exceeded/i.test(rawError)
+    ) {
+      throw new Error('Domain capacity limit reached. Please contact support.');
+    }
+    throw new Error('Could not configure sending domain with the email provider.');
+  }
 
   // Filter DNS records to protect against hostile apex MX records
   const { safeRecords, warnings } = filterSafeSendingDnsRecords(providerRes.records, domain);
@@ -105,8 +205,15 @@ export async function createEmailSendingDomainAction(input: {
     console.warn(`[email-domains] Filtered dangerous records for ${domain}:`, warnings);
   }
 
-  const storedStatus = toStoredStatus(providerRes.status);
-  const verifiedAt = storedStatus === 'verified' ? new Date().toISOString() : null;
+  // C03: A newly attached domain must never adopt a pre-verified status from an
+  // orphaned or pre-existing provider record without explicit DNS ownership proof.
+  const isExistingVerifiedOnAccount =
+    matchingDomain && matchingDomain.status === 'verified';
+  const storedStatus =
+    isExistingVerifiedOnAccount && providerRes.status === 'verified'
+      ? 'verified'
+      : toStoredStatus(providerRes.status === 'verified' ? 'pending' : providerRes.status);
+  const verifiedAt = storedStatus === 'verified' ? (matchingDomain?.verified_at || new Date().toISOString()) : null;
 
   const payload = {
     account_id: accountId,
@@ -121,6 +228,15 @@ export async function createEmailSendingDomainAction(input: {
     verified_at: verifiedAt,
     failure_reason: failureReasonFor(providerRes.status),
     updated_at: new Date().toISOString(),
+  };
+
+  const cleanupUnsavedBinding = async () => {
+    // Existing bindings are owned and must survive an unrelated database error.
+    if (providerRes.id === matchingDomain?.provider_domain_id) return;
+    const removed = await deleteSendingDomain(providerRes.id);
+    if (!removed) {
+      console.error(`[email-domains] Unsaved provider binding requires cleanup: account=${accountId} provider=${providerRes.id} domain=${domain}`);
+    }
   };
 
   // DELIBERATELY NOT AN UPSERT.
@@ -139,19 +255,32 @@ export async function createEmailSendingDomainAction(input: {
   // race hits the unique index and is refused (23505) instead.
   const { data: owned, error: ownedErr } = await admin
     .from('email_sending_domains')
-    .select('id')
+    .select('id, status, failure_reason')
     .eq('account_id', accountId)
     .eq('domain', domain)
     .maybeSingle();
-  if (ownedErr) throw ownedErr;
+  if (ownedErr) {
+    await cleanupUnsavedBinding();
+    throw ownedErr;
+  }
 
-  const write = owned
-    ? admin.from('email_sending_domains').update(payload).eq('id', owned.id).eq('account_id', accountId)
-    : admin.from('email_sending_domains').insert(payload);
+  if (!owned || owned.id !== (reservedId ?? matchingDomain?.id)) {
+    await cleanupUnsavedBinding();
+    throw new Error('Your sending domain changed while connecting. Refresh settings before trying again.');
+  }
+
+  if (owned && owned.status === 'disabled' && owned.failure_reason && /administrative/i.test(owned.failure_reason)) {
+    await cleanupUnsavedBinding();
+    throw new Error('This domain has an administrative hold. Contact support to resume service.');
+  }
+
+  const write = admin.from('email_sending_domains').update(payload)
+    .eq('id', owned.id).eq('account_id', accountId).neq('status', 'disabled');
 
   const { data: row, error: insertErr } = await write.select('*').maybeSingle();
 
   if (insertErr) {
+    await cleanupUnsavedBinding();
     // 23505 is the ownership race above, or the one-verified-domain-per-account
     // partial index. Both mean someone else got there first, which the caller
     // can act on; anything else is ours and stays generic.
@@ -164,7 +293,8 @@ export async function createEmailSendingDomainAction(input: {
   // An accepted statement is not a changed row: without this, a domain the owner
   // disconnected mid-request would report success and return null to the UI.
   if (!row) {
-    throw new Error('Your sending domain changed while it was being saved. Check it again.');
+    await cleanupUnsavedBinding();
+    throw new Error('Your sending domain changed or is administratively held. Check it again.');
   }
 
   revalidatePath('/dashboard/settings');
@@ -189,6 +319,11 @@ export async function verifyEmailSendingDomainAction(
     throw new Error('Sending domain configuration not found.');
   }
 
+  // C04: Administrative suspension guard
+  if (existing.status === 'disabled') {
+    throw new Error('This domain has been disabled and cannot be verified.');
+  }
+
   if (!existing.provider_domain_id) {
     throw new Error('Domain has no active provider binding.');
   }
@@ -207,7 +342,8 @@ export async function verifyEmailSendingDomainAction(
         updated_at: new Date().toISOString(),
       })
       .eq('id', domainId)
-      .eq('account_id', accountId);
+      .eq('account_id', accountId)
+      .neq('status', 'disabled');
 
     throw new Error('Could not contact domain provider. Your existing status was preserved.');
   }
@@ -230,7 +366,8 @@ export async function verifyEmailSendingDomainAction(
       ? existing.verified_at || new Date().toISOString()
       : null;
 
-  // Zero-row write protection: ensure row matches id, account_id, and domain
+  // Zero-row write protection & C04: ensure row matches id, account_id, domain,
+  // and is NOT disabled (so an in-flight verify cannot overwrite an admin suspension).
   const { data: updated, error: updateErr } = await admin
     .from('email_sending_domains')
     .update({
@@ -244,12 +381,13 @@ export async function verifyEmailSendingDomainAction(
     .eq('id', domainId)
     .eq('account_id', accountId)
     .eq('domain', existing.domain)
+    .neq('status', 'disabled')
     .select('*')
     .maybeSingle();
 
   if (updateErr) throw updateErr;
   if (!updated) {
-    throw new Error('Domain changed or was removed during verification.');
+    throw new Error('Domain changed, was removed, or is administratively disabled.');
   }
 
   revalidatePath('/dashboard/settings');
@@ -274,23 +412,42 @@ export async function deleteEmailSendingDomainAction(
     return { success: true };
   }
 
+  // C04: An administrative hold cannot be deleted by the tenant to bypass suspension
+  if (
+    existing.status === 'disabled' &&
+    existing.failure_reason &&
+    /administrative/i.test(existing.failure_reason)
+  ) {
+    throw new Error('This domain has an administrative hold and cannot be disconnected. Contact support.');
+  }
+
   let providerDeleted = true;
+  // Disable before provider deletion. Retain a retry marker until both the
+  // provider and database deletes succeed, so failures cannot leave live From.
+  const disableQuery = admin
+    .from('email_sending_domains')
+    .update({
+      status: 'disabled',
+      failure_reason: 'CLEANUP_PENDING: Disconnect requested.',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', domainId)
+    .eq('account_id', accountId)
+    .eq('status', existing.status);
+  // A cleanup retry can race a new administrative hold without changing status.
+  const { data: disabled, error: disableErr } = await (existing.failure_reason == null
+    ? disableQuery.is('failure_reason', null)
+    : disableQuery.eq('failure_reason', existing.failure_reason))
+    .select('id')
+    .maybeSingle();
+  if (disableErr) throw new Error('Could not disable the domain. Try disconnecting again.');
+  if (!disabled) throw new Error('Domain changed while disconnecting. Refresh and try again.');
+
   if (existing.provider_domain_id) {
     providerDeleted = await deleteSendingDomain(existing.provider_domain_id);
   }
 
   if (!providerDeleted) {
-    // If provider delete failed, mark disabled and retain so reconciler can clean up
-    await admin
-      .from('email_sending_domains')
-      .update({
-        status: 'disabled',
-        failure_reason: 'Provider delete request failed. Marked disabled for retry.',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', domainId)
-      .eq('account_id', accountId);
-
     revalidatePath('/dashboard/settings');
     throw new Error('Could not delete domain from provider. Domain was disabled instead.');
   }
@@ -299,7 +456,9 @@ export async function deleteEmailSendingDomainAction(
     .from('email_sending_domains')
     .delete()
     .eq('id', domainId)
-    .eq('account_id', accountId);
+    .eq('account_id', accountId)
+    .eq('status', 'disabled')
+    .ilike('failure_reason', 'CLEANUP_PENDING:%');
 
   if (deleteErr) throw deleteErr;
 

@@ -57,6 +57,10 @@ describe('what the statement counts as paid', () => {
     const block = clients.slice(clients.indexOf('const feePaymentIds'), clients.indexOf('const paidByJob'));
     expect(block).toContain("eq('account_id', accountId)");
   });
+
+  it('calculates totalPaid by summing job paid amounts so aggregate never drifts from rows', () => {
+    expect(clients).toMatch(/totalPaid\s*=\s*statementJobs\.reduce\(\(sum,\s*job\)\s*=>\s*sum\s*\+\s*job\.paid,\s*0\)/);
+  });
 });
 
 describe('what the statement shows', () => {

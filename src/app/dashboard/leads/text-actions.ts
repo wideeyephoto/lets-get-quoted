@@ -8,7 +8,6 @@ import { normalizeUsPhone } from '@/lib/phone';
 import {
   getMessagingCapability,
   formatClientDashboardSmsText,
-  formatPrivateSmsText,
   type MessagingCapability,
 } from '@/lib/dashboard-sms-dispatch';
 import {
@@ -22,6 +21,7 @@ import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-pr
 import { createHash } from 'node:crypto';
 import { findOrCreateClientId } from '@/lib/clients';
 import { issuePortalLink } from '@/lib/client-portal-data';
+import { portalViewUrlFull } from '@/lib/portal-urls';
 
 export async function getAccountMessagingCapabilityAction(): Promise<MessagingCapability> {
   const { accountId } = await requireOfficeContext('messages.read');
@@ -78,7 +78,7 @@ export async function sendLeadClientDashboardSmsAction(
       });
       const issued = await issuePortalLink(admin, accountId, { kind: 'sms', value: phone });
       if (issued) {
-        clientDashboardUrl = `${origin}/portal/view/${issued.token}`;
+        clientDashboardUrl = portalViewUrlFull(issued.token);
       }
     } catch (e) {
       console.warn('Lead portal link generation fallback to /portal:', e);
@@ -166,7 +166,6 @@ export async function sendLeadPrivateSmsAction(
   }
 
   const businessName = await loadBusinessName(supabase, accountId);
-  const formattedBody = formatPrivateSmsText({ businessName, body: cleanBody });
   const bodyHash = createHash('sha256').update(cleanBody).digest('hex').slice(0, 16);
   const bucket15m = Math.floor(Date.now() / (15 * 60 * 1000));
   const idempotencyKey = userIntentKey || `lead-private-sms:${leadId}:${phone}:${bodyHash}:${bucket15m}`;
@@ -175,7 +174,7 @@ export async function sendLeadPrivateSmsAction(
     await sendInboxReplySms({
       phone,
       businessName,
-      body: formattedBody,
+      body: cleanBody,
       accountId,
       idempotencyKey,
       requireExistingThread: false,

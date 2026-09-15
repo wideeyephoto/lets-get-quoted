@@ -1,5 +1,6 @@
 import { requireOfficeContextAny } from '@/lib/auth';
 import { listJobs } from '@/lib/jobs';
+import { loadBusinessName } from '@/lib/business-name';
 import { loadPaymentsLedgerData, type LedgerFilterOptions } from '@/lib/payments-ledger-data';
 import { loadReceivablesData } from '@/lib/receivables-data';
 import { loadStripePayoutsOverview } from '@/lib/payouts-data';
@@ -24,12 +25,13 @@ export default async function PaymentsRevenuePage({
 
   const selectedRange = (searchParams.range || '30d') as NonNullable<LedgerFilterOptions['range']>;
 
-  const [ledgerRes, receivablesRes, payoutsRes, analyticsRes, jobsRes] = await Promise.all([
+  const [ledgerRes, receivablesRes, payoutsRes, analyticsRes, jobsRes, businessName] = await Promise.all([
     loadPaymentsLedgerData(supabase, accountId, { range: selectedRange }),
     loadReceivablesData(supabase, accountId),
     loadStripePayoutsOverview(supabase, accountId),
     loadRevenueAnalyticsData(supabase, accountId),
     listJobs(supabase, accountId),
+    loadBusinessName(supabase, accountId),
   ]);
 
   const mappedJobs = jobsRes.map((j) => ({
@@ -50,6 +52,7 @@ export default async function PaymentsRevenuePage({
       selectedRange={selectedRange}
       isOwner={isOwner}
       stripeError={stripeError}
+      businessName={businessName}
     />
   );
 }

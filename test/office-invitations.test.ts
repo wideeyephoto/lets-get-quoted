@@ -192,7 +192,7 @@ describe('removal', () => {
   });
 
   it('refuses to remove an owner, in the database and not only in the UI', () => {
-    const sql = read2('migrations', '20260819230000_remove_office_user.sql');
+    const sql = read2('migrations', '20260820114135_remove_office_user.sql');
     expect(sql).toContain('office_removal_wrong_role');
     expect(sql).toContain("v_role <> 'office'");
     // And it must not have shipped without the trigger that stops a workspace
@@ -203,7 +203,7 @@ describe('removal', () => {
   it('does not invent a suspended state', () => {
     // A state that behaves identically to another is not a state; re-inviting
     // already covers "they might come back".
-    const sql = read2('migrations', '20260819230000_remove_office_user.sql');
+    const sql = read2('migrations', '20260820114135_remove_office_user.sql');
     expect(sql).toContain('WHY NOT SUSPENSION');
     expect(sql).not.toMatch(/suspended_at|status\s+text/);
   });

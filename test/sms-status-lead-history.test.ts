@@ -20,6 +20,16 @@ const ingress = (disposition = 'applied', eventId: string | null = 'event-1') =>
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe('durable lead delivery history', () => {
+  it('applies an authenticated JSON status callback through the same atomic ingress', async () => {
+    mocks.rpc.mockResolvedValueOnce(ingress()).mockResolvedValueOnce({ data: true, error: null });
+    const json = new Request('http://localhost/api/sms/status', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'SMreal', status: 'delivered' }),
+    });
+    expect((await POST(json)).status).toBe(204);
+    expect(mocks.rpc.mock.calls[0][1]).toMatchObject({ p_provider_status: 'delivered', p_provider_event_id: 'SMreal' });
+    expect(mocks.rpc).toHaveBeenLastCalledWith('record_sms_lead_delivery_history', { p_sms_event_id: 'event-1' });
+  });
   it.each(['applied', 'duplicate', 'ignored_terminal'])('uses the canonical atomic RPC for %s receipts', async (disposition) => {
     mocks.rpc.mockResolvedValueOnce(ingress(disposition)).mockResolvedValueOnce({ data: false, error: null });
     expect((await POST(request())).status).toBe(204);

@@ -139,9 +139,11 @@ function TopUpIcon({ id }: { id: string }) {
 export default function TopUpPurchaseCheckout({
   planCode,
   returnStatus = null,
+  addonRefundsEnabled = false,
 }: {
   planCode: PlanCode;
   returnStatus?: 'success' | 'canceled' | null;
+  addonRefundsEnabled?: boolean;
 }) {
   const offered = offeredTopUps(planCode);
   const [operationIds, setOperationIds] = useState<Readonly<Record<string, string>>>({});
@@ -201,10 +203,21 @@ export default function TopUpPurchaseCheckout({
         Prices and eligibility are verified again at secure checkout.
       </p>
 
+      {addonRefundsEnabled ? (
+        <p className="plan-usage-note">
+          Refunds of AI Voice, voice minute packs, extra storage, and office seats remove the
+          corresponding minutes or capacity. If refunded voice minutes have already been used
+          or reserved for a call, future minute grants first cover that balance. For example,
+          20 refunded minutes already used means your next 100-minute grant adds 80 usable minutes.
+          A full refund of a monthly add-on cancels that add-on immediately, including future
+          renewals. Existing files and team memberships are kept.
+        </p>
+      ) : null}
+
       {returnStatus === 'success' ? (
         <p className="plan-usage-note" role="status">
-          Thanks — your payment was received. What you bought is applied once Stripe confirms the
-          charge; refresh this page to see it. Nothing is lost if that takes a while.
+          You have returned from checkout. Credits or capacity appear after your payment is
+          confirmed; refresh this page to check the updated balance.
         </p>
       ) : null}
       {returnStatus === 'canceled' ? (

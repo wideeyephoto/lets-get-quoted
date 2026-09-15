@@ -1,0 +1,74 @@
+{
+  "projectRef": "uydlabvgauzujdwuqzxq",
+  "captureDir": "C:\\dev\\CLAUDE CODE FOLDER\\tmp\\dr-captures\\uydlabvgauzujdwuqzxq-2026-09-09T10-24-17-302Z",
+  "snapshot": {
+    "id": "00000022-000034A1-1",
+    "captured_at": "2026-09-09T10:24:18.437Z",
+    "server_version": "17.6",
+    "read_only": "on"
+  },
+  "captureVerified": true,
+  "archive": {
+    "file": "database.dump.aesgcm",
+    "bytes": 4089936,
+    "sha256": "e576c57b6e0989fab57799b8a5305d19e5b5f946311f7f4f147642371f35c344",
+    "encryptedSha256": "34ef399390d87defb87120da675b81a93f0633943541478aa61219f878ec721e"
+  },
+  "tocEntries": 2991,
+  "tocSchemas": {
+    "public": true,
+    "auth": true,
+    "storage": true
+  },
+  "publicTables": 145,
+  "coreRowCounts": [
+    {
+      "table_name": "auth.users",
+      "row_count": "6"
+    },
+    {
+      "table_name": "public.accounts",
+      "row_count": "9"
+    },
+    {
+      "table_name": "public.clients",
+      "row_count": "40"
+    },
+    {
+      "table_name": "public.invoices",
+      "row_count": "14"
+    },
+    {
+      "table_name": "public.jobs",
+      "row_count": "33"
+    },
+    {
+      "table_name": "public.memberships",
+      "row_count": "10"
+    },
+    {
+      "table_name": "public.payments",
+      "row_count": "14"
+    },
+    {
+      "table_name": "public.staff",
+      "row_count": "1"
+    }
+  ],
+  "storage": [
+    {
+      "bucket": "account-attachments",
+      "objects": 0,
+      "bytes": 0
+    },
+    {
+      "bucket": "site-images",
+      "objects": 0,
+      "bytes": 0
+    }
+  ],
+  "restorePerformed": false,
+  "approvedForDestruction": true,
+  "firstAttempt": "Connection timeout; encrypted failure log retained in earlier capture directory; one retry succeeded",
+  "approval": "Explicit user approval to restore production snapshot into staging-db"
+}

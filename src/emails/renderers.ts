@@ -22,6 +22,7 @@ export interface SendClientQuoteEmailInput {
   quotedAmount: number;
   quoteUrl: string;
   includesScheduleOptions?: boolean;
+  financingAvailable?: boolean;
 }
 
 /**
@@ -51,6 +52,18 @@ export function renderClientQuoteEmailHtml(input: SendClientQuoteEmailInput & { 
     prompt: `Questions about quote ${escapeHtml(input.jobRef)}?`,
   });
 
+  const financingNotice = input.financingAvailable
+    ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 0;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:8px;overflow:hidden">
+      <tr>
+        <td style="padding:10px 14px;font-family:${FONT_STACK};font-size:12px;color:#475569;text-align:center">
+          💳 <strong>Monthly payment options</strong> available through Acorn Finance &nbsp;·&nbsp; Review options on your quote
+        </td>
+      </tr>
+    </table>
+  `
+    : '';
+
   const approvalTrustBadge = `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 10px;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:8px;overflow:hidden">
       <tr>
@@ -67,7 +80,7 @@ export function renderClientQuoteEmailHtml(input: SendClientQuoteEmailInput & { 
     eyebrow: `Quote ${input.jobRef}`,
     heading: `${input.clientName}, here is your quote`,
     paragraphs,
-    bodyHtml: `${quoteSummary}${approvalTrustBadge}`,
+    bodyHtml: `${quoteSummary}${financingNotice}${approvalTrustBadge}`,
     cta: { label: 'View & approve your quote', url: input.quoteUrl },
     contactCallout: contactHtml,
   });

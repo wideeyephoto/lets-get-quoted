@@ -15,9 +15,8 @@ export interface ManualResolutionInput {
 }
 
 export async function logManualResolutionAction(input: ManualResolutionInput) {
+  const context = await requireAdmin();
   try {
-    const context = await requireAdmin();
-
     await logAdminAction(context.admin, context, {
       action: 'manual.resolution_completed',
       targetType: 'manual_article',
@@ -48,9 +47,8 @@ export async function requestDualApprovalAction(input: {
   targetEntityId?: string;
   reason: string;
 }) {
+  const context = await requireAdmin();
   try {
-    const context = await requireAdmin();
-
     await logAdminAction(context.admin, context, {
       action: 'manual.dual_auth_requested',
       targetType: 'manual_article',
@@ -72,8 +70,8 @@ export async function requestDualApprovalAction(input: {
 }
 
 export async function exportManualMarkdownAction() {
+  const context = await requireAdmin();
   try {
-    const context = await requireAdmin();
     const markdown = exportAllManualArticlesMarkdown(context.role, context.staff?.active ?? true);
     return { success: true, markdown };
   } catch (err) {

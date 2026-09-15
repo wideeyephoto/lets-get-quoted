@@ -67,6 +67,8 @@ describe('isOwnChromeRoute', () => {
       '/security',
       '/resources',
       '/resources/how-to-price-a-job',
+      '/blog',
+      '/blog/contractor-software-pricing',
       '/contact',
       '/privacy',
       '/terms',

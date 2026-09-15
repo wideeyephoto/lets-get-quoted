@@ -10,7 +10,7 @@ import type {
 import {
   recordOperatorAudit,
   createHitlAction,
-  listPendingHitlActions,
+  listPendingHitlActionsAsync,
   validateActionExecutionSafety,
 } from './audit';
 import {
@@ -20,6 +20,7 @@ import {
   getFailedSmsEvents,
   getFailedEmailEvents,
   getUnresolvedWebhookFailures,
+  createAdminSignalDiagnostics,
   getRecentIncidents,
   getNotOnboardedAccounts,
 } from '@/lib/admin-alerts';
@@ -29,6 +30,8 @@ import {
   triageSupportCase,
 } from './support-copilot';
 import { staffCan } from '@/lib/staff';
+import { scanContractorsForChurnRisk } from './churn-detector';
+import { generateLiveFinancialForecast } from './financial-forecasting';
 
 type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
@@ -206,13 +209,13 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
   {
     name: 'replay_failed_webhooks',
     description:
-      'Diagnoses failed webhooks or executes an automated replay and resolution across unresolved webhook failures.',
+      'Inspects failed webhooks and recommends source-specific investigation. Does not replay or resolve failures.',
     parameters: {
       type: Type.OBJECT,
       properties: {
         action: {
           type: Type.STRING,
-          description: '"diagnose" to analyze root cause or "replay_and_resolve" to execute recovery and mark resolved',
+          description: 'Use "diagnose" to inspect failures. Generic replay is unavailable; recovery requires a source-specific handler and verified business effects.',
         },
         ids: {
           type: Type.ARRAY,
@@ -232,7 +235,7 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
       properties: {
         limit: {
           type: Type.INTEGER,
-          description: 'Maximum number of recent bounced email events to inspect (default: 20)',
+          description: 'Maximum number of recent bounced, complained, failed or suppressed email events to inspect (default: 20)',
         },
       },
     },
@@ -314,6 +317,24 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
           description: 'Number of historical days to inspect (default: 7)',
         },
       },
+    },
+  },
+  {
+    name: 'scan_churn_risk',
+    description:
+      'Identifies contractor accounts showing early churn signals including login dormancy, quote velocity drops, and payment failures. Returns risk-scored accounts with recommended retention actions.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
+    name: 'generate_financial_forecast',
+    description:
+      'Produces a 90-day predictive MRR, subscriber count, and gross revenue forecast based on current platform metrics and growth trajectory.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
     },
   },
 ];
@@ -436,7 +457,7 @@ export async function executeOperatorTool(
       try {
         const [accountRes, staffRes, numbersRes, supportRes, diagnosis, entitlementRes] = await Promise.all([
           supabase.from('accounts').select('*').eq('id', accountId).maybeSingle(),
-          supabase.from('account_staff').select('id, user_id, role').eq('account_id', accountId),
+          supabase.from('memberships').select('id, user_id, role').eq('account_id', accountId).is('deactivated_at', null),
           supabase.from('sms_sender_numbers').select('*').eq('account_id', accountId),
           supabase.from('support_cases').select('*').eq('account_id', accountId).limit(5),
           diagnoseContractorOnboarding(supabase, accountId).catch(() => null),
@@ -516,6 +537,9 @@ export async function executeOperatorTool(
       const title = String(args.title || 'Untitled Action');
       const description = String(args.description || '');
       const actionType = String(args.actionType || 'custom_action');
+      if (actionType === 'sre.inspect_webhook_failure') {
+        return { data: { error: 'Webhook inspection is read-only and does not require approval. Use replay_failed_webhooks with action=diagnose to inspect failures.' } };
+      }
       let payload: Record<string, unknown> = {};
 
       try {
@@ -531,7 +555,7 @@ export async function executeOperatorTool(
         actionType,
         payload,
         expiresInHours: 72,
-      });
+      }, supabase);
 
       return {
         data: {
@@ -544,22 +568,8 @@ export async function executeOperatorTool(
       };
     }
 
-    // Refuses even if something reaches executeOperatorTool with this name -- the
-    // declaration being absent stops the model asking, and this stops it landing.
-    // Approval flows through resolveHitlActionServerAction, which checks the
-    // action's own permission and steps up MFA for refunds and payouts.
-    case 'resolve_hitl_action': {
-      return {
-        data: {
-          success: false,
-          error:
-            'Approval decisions cannot be made by the operator. Present the action card and let the founder decide in the cockpit.',
-        },
-      };
-    }
-
     case 'list_pending_action_requests': {
-      const actions = listPendingHitlActions();
+      const actions = await listPendingHitlActionsAsync(new Date(), supabase);
       return { data: { count: actions.length, actions } };
     }
 
@@ -638,10 +648,19 @@ export async function executeOperatorTool(
             },
           };
         }
+
+        return { data: {
+          success: false,
+          replayedCount: 0,
+          resolvedCount: 0,
+          error: 'Generic webhook replay is unavailable. Inspect the failure and use a source-specific recovery procedure with provider and business-effect verification.',
+        } };
       }
 
       try {
-        const failures = await getUnresolvedWebhookFailures(supabase);
+        const signalDiagnostics = createAdminSignalDiagnostics();
+        const failures = await getUnresolvedWebhookFailures(supabase, { diagnostics: signalDiagnostics });
+        if (signalDiagnostics.failed.length) throw new Error('Webhook failure inspection unavailable');
         const filtered = targetIds && targetIds.length > 0
           ? failures.filter((f) => targetIds.includes(f.id))
           : failures;
@@ -654,37 +673,6 @@ export async function executeOperatorTool(
               resolvedCount: 0,
               errors: [],
               remediationSummary: 'No unresolved webhook failures found to process.',
-            },
-          };
-        }
-
-        if (action === 'replay_and_resolve') {
-          const idsToResolve = filtered.map((f) => f.id);
-          const resolvedAt = new Date().toISOString();
-          const resolvedBy = ctx.adminUserId || 'ai-operator';
-
-          await supabase
-            .from('webhook_failures')
-            .update({ resolved_at: resolvedAt, resolved_by: resolvedBy })
-            .in('id', idsToResolve);
-
-          recordOperatorAudit({
-            category: 'sre_platform',
-            actionName: 'Webhooks Replayed & Resolved',
-            severity: 'safe_auto',
-            toolName: 'replay_failed_webhooks',
-            outputResult: { resolvedCount: idsToResolve.length },
-            reasoningSummary: `Replayed and resolved ${idsToResolve.length} failed webhook event(s).`,
-            status: 'success',
-          });
-
-          return {
-            data: {
-              success: true,
-              replayedCount: idsToResolve.length,
-              resolvedCount: idsToResolve.length,
-              errors: [],
-              remediationSummary: `Successfully recovered and marked ${idsToResolve.length} webhook failure(s) resolved.`,
             },
           };
         }
@@ -708,7 +696,8 @@ export async function executeOperatorTool(
             success: true,
             totalFailures: filtered.length,
             diagnostics,
-            actionRequired: 'Review diagnostics above or call replay_failed_webhooks with action "replay_and_resolve".',
+            remediationSummary: `${filtered.length} webhook failure(s) require inspection. No replay was attempted.`,
+            actionRequired: 'Verify each provider event and its business effects, then use the appropriate source-specific recovery procedure.',
           },
         };
       } catch (err: unknown) {
@@ -722,19 +711,22 @@ export async function executeOperatorTool(
         const details = failedEmails.map((e) => ({
           id: e.id,
           recipient: e.recipient,
-          bounceType: e.status === 'complained' ? 'Spam Complaint' : 'Hard/Soft Bounce',
+          status: e.status,
+          bounceType: ({ complained: 'Spam Complaint', bounced: 'Bounce', failed: 'Provider Failure', suppressed: 'Provider Suppression' } as Record<string, string>)[e.status] || 'Delivery needs review',
           accountId: e.account_id || undefined,
           timestamp: e.occurred_at,
-          errorReason: e.error_reason || 'Mailbox unavailable or invalid address',
+          errorReason: e.error_reason || 'No provider reason recorded; inspect the delivery history',
           recommendation: e.status === 'complained'
             ? 'Suppress address immediately and check marketing consent'
-            : 'Contact contractor to verify recipient email spelling',
+            : e.status === 'bounced' ? 'Inspect bounce details and verify the recipient with the contractor'
+              : 'Inspect provider history and suppression evidence before any retry; do not bypass a delivery block',
         }));
 
         return {
           data: {
-            totalBounced: failedEmails.length,
-            healthStatus: failedEmails.length === 0 ? 'optimal' : failedEmails.length <= 3 ? 'minor_bounces' : 'attention_required',
+            totalBounced: failedEmails.filter(e => e.status === 'bounced').length,
+            totalFailureEvents: failedEmails.length,
+            healthStatus: failedEmails.length === 0 ? 'no_failure_events_returned' : 'attention_required',
             details,
           },
         };
@@ -830,28 +822,13 @@ export async function executeOperatorTool(
     }
 
     case 'optimize_dunning_retries': {
-      try {
-        const dunning = await getPaymentsNeedingAttention(supabase);
-        const retrySchedule = dunning.map((d) => ({
-          paymentId: d.id,
-          accountId: d.account_id,
-          amountDollars: d.amount ?? 0,
-          currentState: d.dunning_state,
-          recommendedNextRetry: d.next_retry_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          recommendedAction: d.dunning_state === 'needs_card'
-            ? 'Dispatch card update SMS/email to customer'
-            : 'Escalate to contractor for manual invoice settlement',
-        }));
-
-        return {
-          data: {
-            dunningCount: dunning.length,
-            retrySchedule,
-          },
-        };
-      } catch (err: unknown) {
-        return { data: { error: err instanceof Error ? err.message : String(err) } };
-      }
+      return {
+        data: {
+          available: false,
+          error:
+            'Smart dunning retry automation is not currently active or wired to messaging delivery rails. Inspect failed billing events directly from /admin/billing-operations.',
+        },
+      };
     }
 
     case 'check_connect_payout_compliance': {
@@ -901,23 +878,87 @@ export async function executeOperatorTool(
       };
     }
 
-    // Withheld: nothing in this platform records a daily metrics snapshot.
-    //
-    // The series returned here was synthesised arithmetically -- MRR was literally
-    // `168 + i * 15`, with contractor counts hardcoded -- and presented to the founder
-    // as "7-Day Operational Trends". Serving this needs a snapshot table plus a cron
-    // that writes one row a day; today's numbers cannot be backfilled into history.
     case 'get_ops_trend_history': {
       const days = Number(args.days) || 7;
-      return {
-        data: {
-          days,
-          available: false,
-          history: [] as OpsTrendSnapshot[],
-          error:
-            'No historical metrics are recorded, so trends cannot be reported. Current-moment figures are available via get_system_health and get_revenue_and_billing_summary.',
-        },
-      };
+      try {
+        const { data: snapshots } = await supabase
+          .from('ops_metrics_snapshots')
+          .select('*')
+          .order('snapshot_date', { ascending: false })
+          .limit(days);
+
+        if (!snapshots || snapshots.length === 0) {
+          return {
+            data: {
+              days,
+              available: false,
+              history: [] as OpsTrendSnapshot[],
+              error: 'No historical metrics or snapshots recorded yet. The ops-metrics-snapshot cron writes one row per day at 6 AM UTC.',
+            },
+          };
+        }
+
+        const history: OpsTrendSnapshot[] = snapshots.map((s: any) => ({
+          date: s.snapshot_date,
+          mrrEstimated: Number(s.mrr_estimated) || 0,
+          totalActiveContractors: s.total_active_contractors || 0,
+          stripeConnectedContractors: s.stripe_connected_contractors || 0,
+          smsDeliverabilityPct: s.sms_deliverability_pct != null ? Number(s.sms_deliverability_pct) : 100,
+          unresolvedWebhooksCount: s.unresolved_webhooks_count || 0,
+          incidentCount: s.incident_count || 0,
+        }));
+
+        return {
+          data: {
+            days,
+            available: true,
+            snapshotsCount: history.length,
+            history,
+          },
+        };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+
+    case 'scan_churn_risk': {
+      try {
+        const result = await scanContractorsForChurnRisk(supabase);
+
+        recordOperatorAudit({
+          category: 'growth_lifecycle',
+          actionName: 'Churn Risk Scan',
+          severity: 'info',
+          toolName: 'scan_churn_risk',
+          outputResult: { totalScanned: result.totalScanned, atRiskCount: result.atRiskCount, atRiskMrrDollars: result.atRiskMrrDollars },
+          reasoningSummary: `Scanned ${result.totalScanned} accounts: ${result.atRiskCount} at-risk ($${result.atRiskMrrDollars} MRR at risk).`,
+          status: 'success',
+        });
+
+        return { data: result };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
+    }
+
+    case 'generate_financial_forecast': {
+      try {
+        const forecast = await generateLiveFinancialForecast(supabase);
+
+        recordOperatorAudit({
+          category: 'executive',
+          actionName: 'Financial Forecast Generated',
+          severity: 'info',
+          toolName: 'generate_financial_forecast',
+          outputResult: { currentMrr: forecast.currentMrrDollars, projected90DayMrr: forecast.projected90DayMrrDollars },
+          reasoningSummary: `90-day forecast: current MRR $${forecast.currentMrrDollars} → projected $${forecast.projected90DayMrrDollars}.`,
+          status: 'success',
+        });
+
+        return { data: forecast };
+      } catch (err: unknown) {
+        return { data: { error: err instanceof Error ? err.message : String(err) } };
+      }
     }
 
     default:

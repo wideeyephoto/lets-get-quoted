@@ -8,6 +8,7 @@ import {
   sendLeadPrivateSmsAction,
 } from '@/app/dashboard/leads/text-actions';
 import type { MessagingCapability } from '@/lib/dashboard-sms-dispatch';
+import { formatClientDashboardSmsText } from '@/lib/sms-templates';
 import styles from './TextCustomerModal.module.css';
 
 export interface TextCustomerModalProps {
@@ -18,6 +19,7 @@ export interface TextCustomerModalProps {
   phone: string;
   initialMessage?: string;
   isConverted?: boolean;
+  businessName?: string;
 }
 
 export default function TextCustomerModal({
@@ -28,6 +30,7 @@ export default function TextCustomerModal({
   phone,
   initialMessage = '',
   isConverted = false,
+  businessName,
 }: TextCustomerModalProps) {
   const [capability, setCapability] = useState<MessagingCapability | null>(null);
   const [customText, setCustomText] = useState(initialMessage);
@@ -144,9 +147,18 @@ export default function TextCustomerModal({
 
             <div className={styles.previewBox}>
               {isConverted ? (
-                <>&ldquo;[Your Business Name] here &mdash; view your project portal and next steps: https://letsgetquoted.com/client/jobs/&hellip; Reply STOP to opt out.&rdquo;</>
+                <>&ldquo;{formatClientDashboardSmsText({
+                  businessName: businessName || 'Your Business',
+                  clientName: customerName || 'there',
+                  clientDashboardUrl: 'https://letsgetquoted.com/client/jobs/…',
+                  nextActionPrompt: 'Review Project & Next Steps',
+                })}&rdquo;</>
               ) : (
-                <>&ldquo;[Your Business Name] here &mdash; view your project portal and next steps: https://letsgetquoted.com/portal&hellip; Reply STOP to opt out.&rdquo;</>
+                <>&ldquo;{formatClientDashboardSmsText({
+                  businessName: businessName || 'Your Business',
+                  clientName: customerName || 'there',
+                  clientDashboardUrl: 'https://letsgetquoted.com/portal',
+                })}&rdquo;</>
               )}
             </div>
 

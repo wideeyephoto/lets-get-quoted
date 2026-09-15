@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { lgqSmsText } from '@/lib/sms-brand';
+
 import {
   FunctionCallingConfigMode,
   GoogleGenAI,
@@ -586,7 +588,7 @@ export async function processOwnerFieldClaim(
   if (!isOwner) {
     const reason = 'Crew field commands are temporarily unavailable by text';
     const confirmationText = sanitizeGsm7Text(
-      '[LGQ] Crew field commands are temporarily unavailable by text. Ask the account owner to make this update.',
+      'Crew field commands are temporarily unavailable by text. Ask the account owner to make this update.',
     );
     const { data: rpcOutcome, error: rpcError } = await admin.rpc(
       'apply_authorized_sms_field_action',
@@ -596,7 +598,7 @@ export async function processOwnerFieldClaim(
         p_intent: 'no_action',
         p_params: { reason: 'crew_field_intake_not_supported' },
         p_transcript: rawBody,
-        p_confirmation_text: confirmationText,
+        p_confirmation_text: lgqSmsText(confirmationText),
       },
     );
     if (rpcError) {
@@ -771,7 +773,7 @@ INSTRUCTIONS:
     if (usage.kind === 'no_credits') {
       const reason = 'No AI Intake credits are available';
       const confirmationText = sanitizeGsm7Text(
-        '[LGQ] No AI Intake credits remain, so no change was made. Add credits in the dashboard, then resend this field message.',
+        'No AI Intake credits remain, so no change was made. Add credits in the dashboard, then resend this field message.',
       );
       const { data: rpcOutcome, error: rpcError } = await admin.rpc('apply_authorized_sms_field_action', {
         p_task_id: claim.taskId,
@@ -779,7 +781,7 @@ INSTRUCTIONS:
         p_intent: 'no_action',
         p_params: { reason },
         p_transcript: rawBody,
-        p_confirmation_text: confirmationText,
+        p_confirmation_text: lgqSmsText(confirmationText),
       });
       if (rpcError) {
         throw new Error(`apply_authorized_sms_field_action RPC failed: ${rpcError.message}`);
@@ -910,7 +912,7 @@ INSTRUCTIONS:
       p_intent: toolName,
       p_params: actionParams,
       p_transcript: transcript,
-      p_confirmation_text: confirmationText,
+      p_confirmation_text: lgqSmsText(confirmationText),
     });
 
     if (rpcError) {

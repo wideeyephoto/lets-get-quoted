@@ -455,7 +455,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
       viewAllHref: '/admin/failures#texts',
       viewAllLabel: 'All grouped text failures',
     }),
-    boardCard({ key: 'failedEmails', title: 'Failed emails', items: failedEmailItems, empty: 'No bounced or complained emails.', viewAllHref: '/admin/failures#emails', viewAllLabel: 'All grouped email failures' }),
+    boardCard({ key: 'failedEmails', title: 'Failed emails', items: failedEmailItems, empty: 'No failed, bounced, suppressed or complained email events found.', viewAllHref: '/admin/failures#emails', viewAllLabel: 'All grouped email failures' }),
     boardCard({ key: 'webhookFailures', title: 'Webhook failures', items: webhookFailureItems, empty: 'No unresolved webhook failures.', viewAllHref: '/admin/failures#webhooks', viewAllLabel: 'All grouped webhook failures' }),
   ].map((card) => ({ ...card, available: !unavailableSignals.has(card.key) }));
 

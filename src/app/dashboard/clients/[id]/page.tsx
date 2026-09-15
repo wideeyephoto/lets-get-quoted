@@ -42,6 +42,9 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
     );
   }
 
+  const canSeeQuotes = role === 'owner' || capabilities.has('quotes.read') || capabilities.has('reports.read');
+  const canSeeStatement = role === 'owner' || capabilities.has('payments.read') || capabilities.has('reports.read');
+
   const portalLinks = await listPortalLinks(supabase, accountId, client.id);
 
   const [
@@ -100,10 +103,16 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
     shareUrl: clientReferralUrl || bookingUrl || origin,
   });
 
-  const jobs = jobRows ?? [];
+  const jobs = (jobRows ?? []) as Array<{
+    id: string;
+    ref: string | null;
+    status: string;
+    quoted_amount?: number | null;
+    scheduled_for?: string | null;
+    created_at: string;
+  }>;
   const leads = leadRows ?? [];
-  const totalValue = jobs.reduce((sum, job) => sum + (Number(job.quoted_amount) || 0), 0);
-  const canSeeStatement = role === 'owner' || capabilities.has('payments.read') || capabilities.has('reports.read');
+  const totalValue = canSeeQuotes ? jobs.reduce((sum, job) => sum + (Number(job.quoted_amount) || 0), 0) : 0;
   const statement = canSeeStatement ? await getClientStatement(supabase, accountId, client.id) : null;
   const boundUpdate = updateClientAction.bind(null, client.id);
 
@@ -130,7 +139,7 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
           </div>
           <div className="job-command-facts" aria-label="Client facts">
             <span><strong>{jobs.length}</strong> job{jobs.length === 1 ? '' : 's'}</span>
-            <span><strong>{formatMoney(totalValue)}</strong> lifetime value</span>
+            {canSeeQuotes ? <span><strong>{formatMoney(totalValue)}</strong> lifetime value</span> : null}
             {statement ? (
               <>
                 <span><strong>{formatMoney(statement.totalPaid)}</strong> paid</span>
@@ -180,7 +189,9 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
                         {STATUS_LABEL[job.status as JobStatus] ?? job.status} · {formatDate(job.created_at)}
                       </span>
                     </div>
-                    <span className="cost-item-amount">{formatMoney(Number(job.quoted_amount) || 0)}</span>
+                    {canSeeQuotes ? (
+                      <span className="cost-item-amount">{formatMoney(Number(job.quoted_amount) || 0)}</span>
+                    ) : null}
                   </Link>
                 ))}
               </div>

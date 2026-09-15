@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TERMS_EFFECTIVE_DATE } from '@/lib/terms';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import styles from '../legal.module.css';
 
 export const metadata: Metadata = {
@@ -112,10 +113,11 @@ export default function PrivacyPolicyPage() {
             <li><strong>Payment Processing:</strong> Stripe, Inc. (PCI-DSS Level 1 certified payments, deposits, and merchant payouts under Stripe Connect).</li>
             <li><strong>Telephony &amp; Voice Communications:</strong> SignalWire, Inc. (carrier 10DLC messaging, programmable SIP, and real-time voice dispatching).</li>
             <li><strong>Accounting Integrations:</strong> Intuit Inc. (bi-directional QuickBooks sync for customers, invoices, and payments, where authorized by contractor).</li>
-            <li><strong>Artificial Intelligence Inference Platforms:</strong> Google LLC (Google Gemini API) and OpenAI, LLC. All AI inference is conducted exclusively through paid enterprise API tiers with strict zero-data-retention and non-training guarantees: customer data, prompts, job notes, photos, and voice transcripts are never used to train public foundation models.</li>
+            <li><strong>Artificial Intelligence Inference Platforms:</strong> Google LLC (Google Gemini API) and OpenAI, LLC. Customer data, prompts, job notes, photos, and voice transcripts are not used to train public foundation models.</li>
             <li><strong>Transactional Email Delivery:</strong> Resend, Inc. (DKIM/SPF-signed transactional and notification emails).</li>
             <li><strong>Property Intelligence:</strong> RentCast, Inc. (address-level structural and valuation baselines for estimating).</li>
             <li><strong>Mapping &amp; Geocoding:</strong> Google Maps Platform (server-side geocoding and browser mapping with referrer restrictions).</li>
+            <li><strong>Homeowner Financing Marketplace (Optional Referral):</strong> Acorn Finance Inc. When a contractor enables homeowner financing, homeowners may voluntarily click through to Acorn Finance&apos;s lending marketplace to prequalify for personal home improvement loans. Outbound referral links convey estimated project totals and partner attribution codes; Let&apos;s Get Quoted never transmits customer personal identifying information (such as name, email, or address) in prequalification link parameters. Any application information submitted by the homeowner is handled directly by Acorn Finance and its participating lenders under Acorn&apos;s privacy policy.</li>
           </ul>
           <p>
             For contractors processing personal data subject to state privacy regulations (such as the CCPA), our{' '}
@@ -170,11 +172,14 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2>7. Contact Us</h2>
+          <h2>7. Contact Us &amp; Privacy Request Intake</h2>
           <p>
-            If you have questions about this Privacy Policy or wish to submit a privacy inquiry, please use our{' '}
-            <Link href="/contact">contact page</Link> and include &ldquo;Privacy request&rdquo; in the subject.
+            If you have questions about this Privacy Policy or wish to exercise your rights under GDPR, CCPA, or applicable state privacy statutes (Subject Access Requests, deletion, or correction orders), you may submit a formal request through our monitored intake channels:
           </p>
+          <ul>
+            <li><strong>Support &amp; Privacy Intake Desk:</strong> Submit an inquiry via our monitored <Link href="/contact">contact form</Link> with &ldquo;Privacy request / DSAR&rdquo; in the subject (monitored by platform compliance staff; statutory response clock begins upon receipt).</li>
+            <li><strong>Written Inquiries:</strong> Attn: Privacy Compliance Team, {LGQ_LEGAL_NAME}, {LGQ_MAILING_ADDRESS}.</li>
+          </ul>
         </section>
       </div>
 

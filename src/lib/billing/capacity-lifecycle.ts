@@ -89,6 +89,21 @@ export function periodEndIso(currentPeriodEnd: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+/** Add-on checkouts create one item; modern Stripe periods belong to that item. */
+export function capacitySubscriptionPeriodEnd(subscription: unknown): number | null {
+  if (!subscription || typeof subscription !== 'object') return null;
+  const items = (subscription as { items?: unknown }).items;
+  if (!items || typeof items !== 'object') return null;
+  const list = items as { data?: unknown; has_more?: unknown };
+  if (list.has_more === true || !Array.isArray(list.data) || list.data.length !== 1) return null;
+  const item: unknown = list.data[0];
+  if (!item || typeof item !== 'object') return null;
+  const end = (item as { current_period_end?: unknown }).current_period_end;
+  return typeof end === 'number' && Number.isSafeInteger(end) && periodEndIso(end) !== null
+    ? end
+    : null;
+}
+
 /** Outcomes apply_purchased_capacity_provider_state can return. */
 export const CAPACITY_RECONCILE_OUTCOMES = [
   'active',

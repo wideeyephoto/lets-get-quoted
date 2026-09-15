@@ -6,6 +6,9 @@ import {
   WAITLIST_STATUS_LABELS,
   WAITLIST_URGENCY_LABELS,
   formatWaitlistWindowLabel,
+  draftWaitlistOfferBody,
+  composeWaitlistOfferMessage,
+  dayWord,
   type OpenedSlotWindow,
   type RankedWaitlistCandidate,
   type WaitlistEntry,
@@ -27,6 +30,7 @@ import {
   searchExistingContactsAction,
   type ExistingContactMatch,
 } from './actions';
+import { SmsBubble } from '@/components/sms/SmsPreview';
 import styles from './WaitlistManager.module.css';
 
 interface WaitlistManagerProps {
@@ -34,6 +38,7 @@ interface WaitlistManagerProps {
   offers: WaitlistOffer[];
   activePendingOffers: WaitlistOffer[];
   enabled?: boolean;
+  businessName?: string;
 }
 
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -42,6 +47,7 @@ export default function WaitlistManager({
   entries,
   offers,
   activePendingOffers,
+  businessName,
 }: WaitlistManagerProps) {
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'offered' | 'fulfilled'>('active');
@@ -67,7 +73,29 @@ export default function WaitlistManager({
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<RankedWaitlistCandidate | null>(null);
   const [customSmsBody, setCustomSmsBody] = useState('');
+  const [isCustomEdited, setIsCustomEdited] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  const defaultDraftBody = selectedCandidate
+    ? draftWaitlistOfferBody({
+        clientName: selectedCandidate.entry.client_name,
+        dayText: dayWord(slotDate, new Date().toISOString().split('T')[0]),
+        windowLabel: formatWaitlistWindowLabel(windowStart, windowEnd),
+        serviceName: selectedCandidate.entry.service_name,
+        holdMinutes,
+      })
+    : '';
+
+  useEffect(() => {
+    setIsCustomEdited(false);
+    setCustomSmsBody(defaultDraftBody);
+  }, [selectedCandidate?.entry.id]);
+
+  useEffect(() => {
+    if (!isCustomEdited && selectedCandidate) {
+      setCustomSmsBody(defaultDraftBody);
+    }
+  }, [slotDate, windowStart, windowEnd, holdMinutes, defaultDraftBody, isCustomEdited, selectedCandidate]);
 
   // Form State for Adding Entry
   const [formName, setFormName] = useState('');
@@ -895,6 +923,33 @@ export default function WaitlistManager({
                     <label htmlFor="autoCascade" className={styles.autoCascadeLabel}>
                       Auto-cascade to next candidate on expiry/decline
                     </label>
+                  </div>
+                </div>
+
+                {/* Offer SMS Message & Preview */}
+                <div style={{ marginTop: 14 }}>
+                  <label className={styles.formLabel}>
+                    Offer SMS Message (Editable)
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={customSmsBody}
+                    onChange={(e) => {
+                      setIsCustomEdited(true);
+                      setCustomSmsBody(e.target.value);
+                    }}
+                    className={styles.formTextarea}
+                    placeholder={defaultDraftBody}
+                  />
+                  <div style={{ marginTop: 8 }}>
+                    <SmsBubble
+                      recipientLabel={selectedCandidate.entry.client_name}
+                      phone={selectedCandidate.entry.client_phone}
+                      message={composeWaitlistOfferMessage(
+                        businessName || "Let's Get Quoted",
+                        customSmsBody.trim() || defaultDraftBody
+                      )}
+                    />
                   </div>
                 </div>
               </div>

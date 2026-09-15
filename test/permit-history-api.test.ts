@@ -92,6 +92,6 @@ describe('Permit History API Route - GET /api/jobs/:id/permits/history', () => {
     expect(body.data).toBeDefined();
     expect(body.data.authorityId).toBe('mi-royal-oak');
     expect(body.data.records.length).toBeGreaterThan(0);
-    expect(body.data.portalSearchUrl).toContain('accessmygov.com');
+    expect(body.data.portalSearchUrl).toContain('bsaonline.com');
   });
 });

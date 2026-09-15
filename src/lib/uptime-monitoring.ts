@@ -3,30 +3,30 @@ import { createAdminClient } from '@/lib/auth';
 import { smsProviderSummary } from '@/lib/sms-provider';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
 import { voiceWebhookSecuritySummary } from '@/lib/voice/auth';
-import { CRON_JOBS, cronHealth, type CronHealth } from '@/lib/cron-jobs';
+import { CRON_JOBS, cronHealth } from '@/lib/cron-jobs';
 import { loadCronStatus } from '@/lib/cron-runs';
 
-export type SubsystemStatus = 'operational' | 'degraded' | 'outage';
+export type SubsystemStatus = 'operational' | 'configured' | 'degraded' | 'outage';
 
 export interface SubsystemHealthProbe {
   id: string;
   name: string;
   category: 'core' | 'payments' | 'communications' | 'ai' | 'infrastructure';
   status: SubsystemStatus;
-  latencyMs: number;
+  latencyMs: number | null;
   lastCheckedAt: string;
   detail: string;
   consequenceIfDown: string;
 }
 
 export interface UptimeSlaMetrics {
-  uptime24hPct: number;
-  uptime7dPct: number;
-  uptime30dPct: number;
-  incidentFreeDays: number;
-  totalProbesRun24h: number;
-  degradedProbesRun24h: number;
-  outageProbesRun24h: number;
+  uptime24hPct: number | null;
+  uptime7dPct: number | null;
+  uptime30dPct: number | null;
+  incidentFreeDays: number | null;
+  totalProbesRun24h: number | null;
+  degradedProbesRun24h: number | null;
+  outageProbesRun24h: number | null;
 }
 
 export interface SyntheticUptimeReport {
@@ -91,66 +91,91 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
   });
 
   // 2. Instant Quoting & PDF Generation Engine
-  const quoteStart = performance.now();
   const hasDb = dbStatus === 'operational' || dbStatus === 'degraded';
-  const quoteLatency = Math.max(1, Math.round(performance.now() - quoteStart) + Math.min(dbLatency, 15));
   subsystems.push({
     id: 'quoting-engine',
     name: 'Instant Quoting & PDF Generation Engine',
     category: 'core',
-    status: hasDb ? 'operational' : 'outage',
-    latencyMs: quoteLatency,
+    status: hasDb ? 'configured' : 'outage',
+    latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasDb ? 'Material algorithms and PDF builder operational' : 'Blocked by database outage',
     consequenceIfDown: 'Contractors cannot generate live estimates or produce branded client PDFs.',
   });
 
   // 3. Stripe Payments & Connected Accounts
-  const stripeStart = performance.now();
   const hasStripeSecret = Boolean(process.env.STRIPE_SECRET_KEY);
-  const stripeLatency = Math.max(1, Math.round(performance.now() - stripeStart) + 8);
   subsystems.push({
     id: 'stripe-payments',
     name: 'Stripe Payments & Connect Rails',
     category: 'payments',
-    status: hasStripeSecret ? 'operational' : 'degraded',
-    latencyMs: stripeLatency,
+    status: hasStripeSecret ? 'configured' : 'degraded',
+    latencyMs: null,
     lastCheckedAt: testedAt,
-    detail: hasStripeSecret ? 'Stripe Connect API V2 operational' : 'Missing STRIPE_SECRET_KEY credentials',
+    detail: hasStripeSecret ? 'Stripe Connect API credentials configured' : 'Missing STRIPE_SECRET_KEY credentials',
     consequenceIfDown: 'Homeowners cannot pay deposits or invoices; payouts cannot settle.',
   });
 
   // 4. Two-Way Carrier SMS Gateway
   const smsSummary = smsProviderSummary();
   const hasSmsConfig = Boolean(smsSummary.active);
+  let smsStatus: SubsystemStatus = hasSmsConfig ? 'configured' : 'degraded';
+  let smsDetail = hasSmsConfig
+    ? `${smsSummary.active === 'signalwire' ? 'SignalWire' : 'Twilio'} carrier integration configured (${smsSummary.senderMode})`
+    : 'No SMS carrier credentials configured';
+  let smsLatency: number | null = null;
+
+  if (hasSmsConfig && typeof client?.from === 'function') {
+    try {
+      const { data: latestProbe } = await client
+        .from('sms_canary_probes')
+        .select('status, confirmed_at, latency_ms, error_message, dispatched_at')
+        .order('dispatched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestProbe) {
+        const probeAgeMs = Date.now() - new Date(latestProbe.dispatched_at).getTime();
+        if (latestProbe.status === 'confirmed' && probeAgeMs < 2 * 60 * 60 * 1000) {
+          smsStatus = 'operational';
+          smsLatency = latestProbe.latency_ms ?? null;
+          smsDetail = `Active reachability canary verified (${smsLatency !== null ? `${smsLatency}ms delivery latency` : 'confirmed'})`;
+        } else if (latestProbe.status === 'failed' || latestProbe.status === 'timeout') {
+          smsStatus = 'degraded';
+          smsDetail = `Canary reachability failed: ${latestProbe.error_message || 'status callback timeout'}`;
+        }
+      }
+    } catch {
+      // Table may not exist or query failed in isolated tests
+    }
+  }
+
   subsystems.push({
     id: 'sms-gateway',
     name: 'Two-Way SMS & Dedicated Phone Gateway',
     category: 'communications',
-    status: hasSmsConfig ? 'operational' : 'degraded',
-    latencyMs: 12,
+    status: smsStatus,
+    latencyMs: smsLatency,
     lastCheckedAt: testedAt,
-    detail: hasSmsConfig
-      ? `${smsSummary.active === 'signalwire' ? 'SignalWire' : 'Twilio'} 10DLC carrier network connected (${smsSummary.senderMode})`
-      : 'No SMS carrier credentials configured',
+    detail: smsDetail,
     consequenceIfDown: 'Lead text-backs, quote reminders, and two-way dispatch conversations stall.',
   });
 
   // 5. AI Voice Webhook Engine
   const voiceEnabled = aiVoiceEnabled();
   const voiceSecurity = voiceWebhookSecuritySummary();
-  const voiceOperational = !voiceEnabled || (voiceSecurity.inboundSigningConfigured && voiceSecurity.receiptBasicConfigured);
+  const voiceConfigured = !voiceEnabled || (voiceSecurity.inboundSigningConfigured && voiceSecurity.receiptBasicConfigured);
   subsystems.push({
     id: 'voice-webhook',
     name: 'AI Voice Receptionist & Webhook Engine',
     category: 'ai',
-    status: voiceOperational ? 'operational' : 'degraded',
-    latencyMs: 16,
+    status: voiceConfigured ? 'configured' : 'degraded',
+    latencyMs: null,
     lastCheckedAt: testedAt,
     detail: !voiceEnabled
       ? 'Feature disabled by LGQ_AI_VOICE_ENABLED'
-      : voiceOperational
-        ? 'Inbound HMAC & Basic auth receipts validated'
+      : voiceConfigured
+        ? 'Inbound HMAC & Basic auth credentials configured'
         : 'Incomplete webhook signing keys or credentials',
     consequenceIfDown: 'AI phone answering fails to admit calls or drop recordings into CRM.',
   });
@@ -161,18 +186,21 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'email-resend',
     name: 'Transactional Email Delivery (Resend)',
     category: 'communications',
-    status: hasResend ? 'operational' : 'degraded',
-    latencyMs: 14,
+    status: hasResend ? 'configured' : 'degraded',
+    latencyMs: null,
     lastCheckedAt: testedAt,
-    detail: hasResend ? 'Resend transactional API configured with bounce tracking' : 'Missing RESEND_API_KEY credential',
+    detail: hasResend ? 'Resend transactional API configured' : 'Missing RESEND_API_KEY credential',
     consequenceIfDown: 'Quotes, receipts, invite tokens, and owner notification emails cannot dispatch.',
   });
 
   // 7. Background Scheduled Cron Fleet
   let cronStatus: SubsystemStatus = 'operational';
   let cronDetail = 'All scheduled background jobs running on cadence';
+  const cronStart = performance.now();
+  let cronLatency: number | null = null;
   try {
     const { last, lastSuccessAt } = await loadCronStatus(client, CRON_JOBS.map((j) => j.job));
+    cronLatency = Math.max(1, Math.round(performance.now() - cronStart));
     const now = new Date();
     const evaluated = CRON_JOBS.map((spec) => ({
       spec,
@@ -191,6 +219,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
   } catch {
     cronStatus = 'degraded';
     cronDetail = 'Unable to evaluate cron run history table';
+    cronLatency = Math.max(1, Math.round(performance.now() - cronStart));
   }
 
   subsystems.push({
@@ -198,7 +227,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     name: 'Background Scheduled Cron Fleet',
     category: 'infrastructure',
     status: cronStatus,
-    latencyMs: 24,
+    latencyMs: cronLatency,
     lastCheckedAt: testedAt,
     detail: cronDetail,
     consequenceIfDown: 'Billing settlements, overage period freezes, and automated dunning stall.',
@@ -210,10 +239,10 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'contractor-cdn',
     name: 'Edge Network CDN & Contractor Domains',
     category: 'infrastructure',
-    status: hasCdn ? 'operational' : 'degraded',
-    latencyMs: 10,
+    status: hasCdn ? 'configured' : 'degraded',
+    latencyMs: null,
     lastCheckedAt: testedAt,
-    detail: hasCdn ? 'Global Anycast Edge Network and DNS routing operational' : 'Missing root domain config',
+    detail: hasCdn ? 'Edge Network and root domain configured' : 'Missing root domain config',
     consequenceIfDown: 'Homeowner public website visits and quote viewing links fail.',
   });
 
@@ -227,15 +256,15 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
 
   const totalLatencyMs = Math.max(1, Math.round(performance.now() - startTime));
 
-  // SLA calculations (dynamic approximation with guaranteed high target)
+  // SLA calculations: unmeasured until historical synthetic probe telemetry is persisted
   const sla: UptimeSlaMetrics = {
-    uptime24hPct: overallStatus === 'operational' ? 99.99 : overallStatus === 'degraded' ? 99.85 : 98.5,
-    uptime7dPct: 99.98,
-    uptime30dPct: 99.95,
-    incidentFreeDays: overallStatus === 'operational' ? 42 : 0,
-    totalProbesRun24h: 1440, // every 1 min
-    degradedProbesRun24h: overallStatus === 'degraded' ? 2 : 0,
-    outageProbesRun24h: overallStatus === 'outage' ? 1 : 0,
+    uptime24hPct: null,
+    uptime7dPct: null,
+    uptime30dPct: null,
+    incidentFreeDays: null,
+    totalProbesRun24h: null,
+    degradedProbesRun24h: null,
+    outageProbesRun24h: null,
   };
 
   return {

@@ -754,6 +754,47 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
             <strong>Live Gross Margin Tracking:</strong> Logged expenses instantly update your job scorecard, comparing actual direct costs against quoted prices to protect your profit margin.
           </div>
         `
+      },
+      {
+        id: 'art-acorn-homeowner-financing',
+        slug: 'offering-homeowner-financing-via-acorn-finance',
+        title: 'Offering Homeowner Financing via Acorn Finance (0% Merchant Fees)',
+        category: 'Payments & Financing',
+        readTime: '4 min read',
+        audience: 'Owners & Estimators',
+        lastUpdated: 'September 2026',
+        lastReviewed: 'September 2026',
+        applicableRegion: 'US Residential Construction (All 50 States)',
+        author: 'LGQ Lending Network Operations',
+        sources: [
+          { title: 'Acorn Finance Contractor Network', url: 'https://www.acornfinance.com' },
+          { title: 'NMLS Consumer Access (Headway Sales Inc. NMLS ID #1817022)', url: 'https://www.nmlsconsumeraccess.org' }
+        ],
+        content: `
+          <h3>Close Bigger Residential Jobs Without Merchant Discount Fees</h3>
+          <p>Home improvement projects often require flexible financing so homeowners can fund major renovations, roof replacements, or HVAC installations without depleting emergency savings. Through Let’s Get Quoted’s partnership with Acorn Finance, contractors can offer homeowners access to pre-qualified loan options from top national lending institutions with <strong>zero merchant discount fees</strong>.</p>
+
+          <h3>Key Contractor Benefits</h3>
+          <ul>
+            <li><strong>0% Merchant Fee:</strong> Unlike traditional contractor financing programs or credit card processing fees that subtract 3% to 10% from your bottom line, you retain 100% of your quoted contract amount.</li>
+            <li><strong>Multiple Lending Partners:</strong> Homeowners submit a single soft-pull pre-qualification form to compare offers across a network of trusted national lenders.</li>
+            <li><strong>No Credit Score Impact to Check Rates:</strong> Pre-qualification uses a soft credit check that does not affect the homeowner’s credit bureau score.</li>
+            <li><strong>Broad Loan Coverage:</strong> Available for project values ranging from $1,000 up to $100,000.</li>
+            <li><strong>Direct Payouts:</strong> Once the homeowner accepts an approved loan offer, funds are released quickly so work can commence on schedule.</li>
+          </ul>
+
+          <h3>How It Works on Customer Proposals and Invoices</h3>
+          <ol>
+            <li><strong>Contractor Enrollment:</strong> Enable Acorn Finance under <em>Settings &gt; Payments &amp; Financing</em> and verify your business profile.</li>
+            <li><strong>Automatic Prequalification Prompts:</strong> When a quote, invoice, or payment request reaches or exceeds $1,000, homeowners automatically see a secure <em>Check Financing Options</em> banner.</li>
+            <li><strong>Instant Application:</strong> Homeowners click the pre-qualification link directly from their branded portal, select their preferred terms with the lender, and complete verification.</li>
+            <li><strong>Contract Sign-Off:</strong> With funding secured, the homeowner approves the proposal, pays their booking deposit, and your team gets dispatched.</li>
+          </ol>
+
+          <div class="calloutSuccess">
+            <strong>Truth in Lending Compliance:</strong> All rate calculations, terms, and disclosures are rendered directly on the secure lender partner platform. Let’s Get Quoted never stores sensitive financial credentials or credit data, keeping your business fully compliant.
+          </div>
+        `
       }
     ]
   },
@@ -1064,6 +1105,13 @@ export const FAQS: FAQItem[] = [
     question: 'What happens if I accidentally delete a quote, job, or client?',
     answer:
       'Deleted items are safely stored in your Trash workspace for 30 days. You can browse to Dashboard > Trash to search and restore any record with complete historical photos, notes, and activity timeline intact.'
+  },
+  {
+    id: 'faq-9',
+    category: 'payments',
+    question: 'How does homeowner financing through Acorn Finance work?',
+    answer:
+      'Eligible residential projects ($1,000 to $100,000) allow homeowners to check pre-qualified loan offers from top national lending partners in minutes with no impact to their credit score. Contractors pay 0% merchant discount fees on approved loans.'
   }
 ];
 

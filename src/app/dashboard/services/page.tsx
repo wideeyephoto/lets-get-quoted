@@ -15,6 +15,8 @@ import {
   loadTradeStarterCatalogAction,
 } from './actions';
 
+import MoneyNav from '@/components/MoneyNav';
+
 export const metadata = { title: 'Price book' };
 
 export default async function ServicesPage({
@@ -46,6 +48,9 @@ export default async function ServicesPage({
 
   return (
     <main className="wide-shell workspace-shell">
+      <div style={{ marginBottom: '1.25rem' }}>
+        <MoneyNav />
+      </div>
       <div style={{ marginBottom: '1rem' }}>
         <Link href="/dashboard/settings#price-book" className="btn secondary sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
           &larr; Back to Business settings

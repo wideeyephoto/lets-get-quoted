@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceStaffCaller } from '@/lib/voice/caller-identity';
 import { voiceRequestDeadline } from '@/lib/voice/timing';
+import { spokenUsd } from '@/lib/voice/spoken-money';
 
 export const CONTRACTOR_VOICE_FUNCTIONS = new Set([
   'lookup_jobs',
@@ -62,7 +63,7 @@ type RpcOutcome = {
   hours?: number;
   material_cost?: number;
   is_caution?: boolean;
-  saved?: { scope_append?: string; status?: string; scheduled_date?: string; scheduled_time?: string };
+  saved?: { scope_append?: string; status?: string; scheduled_date?: string; scheduled_time?: string; note?: string; is_caution?: boolean };
 };
 
 function canonicalFunction(name: string): string {
@@ -92,6 +93,15 @@ function normalizeLookup(value: string): string {
     .replace(/\b(?:job|project|customer|client)\b/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** Only a complete spoken J-reference, never a fuzzy customer-name rewrite. */
+function spokenJobReference(value: string | null): string | null {
+  const match = value?.trim().match(/^(?:job\s+)?jay(?:\s+(?:dash|hyphen))?\s+(?:([a-z]{1,12})(?:\s+(?:dash|hyphen))?\s+)?(\d(?:[\d\s]*\d)?)\.?$/i);
+  if (!match) return null;
+  const digits = match[2].replace(/\s/g, '');
+  if (digits.length > 12) return null;
+  return ['J', match[1]?.toUpperCase(), digits].filter(Boolean).join('-');
 }
 
 function isUuid(value: string): boolean {
@@ -125,7 +135,7 @@ async function loadVoiceJobs(
   admin: SupabaseClient,
   accountId: string,
   target: string | null,
-  options: Readonly<{ allowedCallerPhone?: string | null }> = {},
+  options: Readonly<{ allowedCallerPhone?: string | null; timeoutMs?: number }> = {},
 ): Promise<{ jobs: VoiceJobCandidate[]; totalCount: number } | null> {
   const started = performance.now();
   try {
@@ -133,7 +143,7 @@ async function loadVoiceJobs(
       p_account_id: accountId,
       p_query: target,
       p_phone_candidates: options.allowedCallerPhone ? phoneCandidates(options.allowedCallerPhone) : null,
-    }), 4000);
+    }), options.timeoutMs ?? 4000);
     if (error || !data || !Array.isArray(data.jobs)
         || !Number.isSafeInteger(data.total_count) || data.total_count < data.jobs.length
         || (data.total_count > 1 && data.jobs.length < 2)) return null;
@@ -217,14 +227,14 @@ export async function resolveVoiceJob(
 
 function jobChoices(jobs: VoiceJobCandidate[], detailsRequested = false, totalCount = jobs.length): string {
   const choices = jobs.slice(0, 3).map((job, index) => {
+    const quote = detailsRequested ? spokenUsd(job.quoted_amount) : null;
     const details = [
       `Option ${index + 1}: ${job.ref}, ${job.client_name}`,
       job.scope ? `work: ${job.scope.slice(0, detailsRequested ? 240 : 70)}` : null,
       job.address ? `address: ${job.address}` : null,
       detailsRequested && job.status ? `status: ${job.status.replace(/_/g, ' ')}` : null,
       detailsRequested ? (job.scheduled_for ? `scheduled: ${job.scheduled_for}${job.scheduled_time ? ` at ${job.scheduled_time}` : ''}` : 'not scheduled') : null,
-      detailsRequested && job.quoted_amount != null && numberValue(job.quoted_amount) !== null
-        ? `recorded quote: $${Number(job.quoted_amount).toFixed(2)}` : null,
+      quote === null ? null : `recorded quote: ${quote}`,
     ];
     return details.filter(Boolean).join('; ');
   });
@@ -358,8 +368,22 @@ export async function handleContractorVoiceAction(
   }
 
   if (fn === 'lookup_jobs') {
-    const query = text(args.query ?? args.job_ref_or_client ?? args.client_name, 500);
-    const found = await loadVoiceJobs(context.admin, context.accountId, query);
+    let query = text(args.query ?? args.job_ref_or_client ?? args.client_name, 500);
+    const deadline = performance.now() + 4000;
+    let found = await loadVoiceJobs(context.admin, context.accountId, query);
+    const spokenReference = spokenJobReference(query);
+    // Preserve a literal name/address match. A second, read-only search is allowed
+    // only after a proven empty result, within the original four-second budget.
+    if (found?.totalCount === 0 && spokenReference) {
+      const remaining = Math.floor(deadline - performance.now());
+      const fallback = remaining > 0
+        ? await loadVoiceJobs(context.admin, context.accountId, spokenReference, { timeoutMs: remaining }) : null;
+      if (!fallback) found = null;
+      else if (fallback.jobs.length && fallback.jobs.every(job => normalizeLookup(job.ref) === normalizeLookup(spokenReference))) {
+        query = spokenReference;
+        found = fallback;
+      }
+    }
     if (!found) return { handled: true, response: 'I could not finish a reliable job lookup. Please try again or open the jobs dashboard; I did not change anything.' };
     const { jobs } = found;
     const resolution = query ? matchVoiceJobs(jobs, query) : null;
@@ -582,8 +606,10 @@ export async function handleContractorVoiceAction(
     || ['caution', 'warning', 'danger', 'dog', 'gate', 'hazard'].some((word) => lowerNote.includes(word));
   const result = await applyAction(context, fn, job.id, null, { note, is_caution: isCaution });
   if (!result.outcome) return { handled: true, response: failedResponse(result.code) };
+  const savedNote = text(result.outcome.saved?.note, 4000);
+  const savedCaution = result.outcome.saved?.is_caution ?? result.outcome.is_caution ?? isCaution;
   return {
     handled: true,
-    response: `${replayPrefix(result.outcome)}I added that ${isCaution ? 'caution' : 'note'} to ${job.client_name}'s job (${job.ref}).`,
+    response: `${replayPrefix(result.outcome)}I added that ${savedCaution ? 'caution' : 'note'} to ${job.client_name}'s job (${job.ref}).${savedNote ? ` Saved text: “${savedNote.slice(0, 240)}${savedNote.length > 240 ? '…' : ''}”` : ''}`,
   };
 }

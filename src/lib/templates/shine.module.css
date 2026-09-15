@@ -1,0 +1,23 @@
+
+.shine {
+  --c-bg: #fff; --c-surface: #f2f3f5; --c-ink: #14202e; --c-muted: #5c6675; --c-line: #e7e9ed; --c-deep: #0f1b2d; --c-on-deep: #fff;
+  --sh-navy: var(--c-deep); --sh-ink: var(--c-ink); --sh-muted: var(--c-muted); --sh-surface: var(--c-surface);
+  --shine-ambient: radial-gradient(circle at 75% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 15% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
+  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+.shine[data-mode='dark'] {
+  --shine-ambient: radial-gradient(circle at 50% -10%, rgba(123, 92, 255, 0.24), transparent 50%), radial-gradient(circle at 85% 25%, rgba(236, 72, 153, 0.15), transparent 35%), radial-gradient(circle at 15% 75%, rgba(56, 189, 248, 0.12), transparent 40%), linear-gradient(180deg, #0c0817 0%, #150e26 50%, #07040d 100%);
+}
+.shine .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.shine .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
+.shine .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--sh-ink); }
+.shine .kicker { color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
+.shine .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(15,27,45,.28); }
+.shine .serviceIcon { background: var(--sh-navy); color: var(--theme-accent); border-radius: 12px; }
+.shine .serviceCard h3 { color: var(--sh-ink); }
+.shine .serviceCard p { color: var(--sh-muted); }
+.shine .statItem { background: var(--sh-navy); border-radius: 16px; padding: 1.4rem 1rem; }
+.shine .statValue { color: var(--theme-accent); }
+.shine .statLabel { color: color-mix(in srgb, var(--c-on-deep) 72%, transparent); }
+.shine .processNum { background: color-mix(in srgb, var(--theme-accent) 18%, transparent); color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
+.shine[data-mode='dark'] { --c-bg: #0f1626; --c-surface: #172032; --c-ink: #e9edf5; --c-muted: #98a2b3; --c-line: #263149; --c-deep: #0b1220; --c-on-deep: #e9edf5; }

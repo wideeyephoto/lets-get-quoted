@@ -45,7 +45,7 @@ const pillars = [
   },
   {
     title: 'Managed cloud infrastructure',
-    body: 'The platform runs on modern managed cloud hosting and a managed Postgres database with automated backups — the same class of infrastructure trusted with production workloads.',
+    body: 'The platform runs on managed cloud hosting and a managed Postgres database, with access controls that separate each business’s data.',
   },
   {
     title: 'Your data is yours',

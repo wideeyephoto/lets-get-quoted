@@ -70,41 +70,6 @@ const MAX_EXCEPTION_BUFFER_SIZE = 100;
 const requestBuffer: RequestMetric[] = [];
 const exceptionBuffer: CapturedException[] = [];
 
-// Seed sample production telemetry if empty so cold starts show honest baselines
-function ensureBaselineMetrics() {
-  if (requestBuffer.length > 0) return;
-
-  const now = Date.now();
-  const sampleRoutes = [
-    { path: '/api/leads', method: 'POST', baseLatency: 85, errorProb: 0.01 },
-    { path: '/api/quotes/calculate', method: 'POST', baseLatency: 120, errorProb: 0.005 },
-    { path: '/api/stripe/webhook', method: 'POST', baseLatency: 95, errorProb: 0.002 },
-    { path: '/api/sms/inbound', method: 'POST', baseLatency: 65, errorProb: 0.001 },
-    { path: '/api/health', method: 'GET', baseLatency: 12, errorProb: 0.0 },
-    { path: '/admin/health', method: 'GET', baseLatency: 140, errorProb: 0.0 },
-    { path: '/api/voice/ai', method: 'POST', baseLatency: 180, errorProb: 0.02 },
-    { path: '/dashboard', method: 'GET', baseLatency: 75, errorProb: 0.001 },
-  ];
-
-  for (let i = 0; i < 120; i++) {
-    const route = sampleRoutes[i % sampleRoutes.length];
-    const isError = Math.random() < route.errorProb;
-    const variance = Math.floor((Math.random() - 0.5) * 40);
-    const duration = Math.max(8, route.baseLatency + variance);
-    const statusCode = isError ? 500 : 200;
-
-    requestBuffer.push({
-      id: `req_${now - (120 - i) * 500}_${i}`,
-      path: route.path,
-      method: route.method,
-      statusCode,
-      durationMs: duration,
-      timestamp: new Date(now - (120 - i) * 500).toISOString(),
-      error: isError ? 'Internal handler exception' : null,
-    });
-  }
-}
-
 /**
  * Records an incoming HTTP request or server action execution into the APM telemetry buffer
  */
@@ -182,8 +147,6 @@ function calculatePercentile(sorted: number[], p: number): number {
  * Computes route-level performance breakdown across all tracked requests
  */
 export function getRoutePerformanceBreakdown(): RoutePerformanceStat[] {
-  ensureBaselineMetrics();
-
   const grouped = new Map<string, { durations: number[]; errorCount: number; lastSeenAt: string }>();
 
   for (const req of requestBuffer) {
@@ -228,8 +191,6 @@ export function getRoutePerformanceBreakdown(): RoutePerformanceStat[] {
  * Returns full high-level APM Summary for health dashboard and observability reporting
  */
 export function getApmSummary(): ApmSummary {
-  ensureBaselineMetrics();
-
   const activeProvider = process.env.SENTRY_DSN
     ? 'sentry'
     : process.env.DATADOG_API_KEY
@@ -269,11 +230,11 @@ export function getApmSummary(): ApmSummary {
   const spanMinutes = Math.max(1, (Date.now() - oldestTime) / 60000);
   const rpm = Math.round(total / spanMinutes);
 
-  const healthy = p95 < 800 && errorRatePct < 2.0;
+  const healthy = total === 0 || (p95 < 800 && errorRatePct < 2.0);
 
   return {
     provider: activeProvider,
-    active: true,
+    active: total > 0,
     totalRequestsTracked: total,
     rpm,
     errorRatePct,

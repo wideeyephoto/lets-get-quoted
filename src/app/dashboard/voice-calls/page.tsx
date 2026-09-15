@@ -115,7 +115,7 @@ export default async function VoiceCallsPage({
       .maybeSingle(),
     supabase
       .from('voice_settings')
-      .select('status, answer_mode, greeting, transfer_number, voice_tone, business_hours')
+      .select('status, answer_mode, greeting, transfer_number, emergency_transfer_number, voice_tone, business_hours')
       .eq('account_id', accountId)
       .maybeSingle(),
     supabase
@@ -255,8 +255,8 @@ export default async function VoiceCallsPage({
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', background: 'var(--bg-card, rgba(255,255,255,0.04))', border: '1px solid var(--rule-t12, rgba(255,255,255,0.08))', borderRadius: '6px', fontSize: '0.8125rem', color: (typeof voiceMinutes === 'number' && voiceMinutes < 60) ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)', fontWeight: 500 }}>
               <span>⚡ <strong>{typeof voiceMinutes === 'number' ? voiceMinutes.toLocaleString('en-US') : 0}</strong> AI minutes available</span>
               {(typeof voiceMinutes === 'number' && voiceMinutes < 60) ? (
-                <Link href="/dashboard/settings#voice-assistant" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline', marginLeft: '0.25rem' }}>
-                  Low Balance • Review voice plan
+                <Link href="/dashboard/settings#plan" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline', marginLeft: '0.25rem' }}>
+                  Low Balance • Review voice plan &amp; top-up
                 </Link>
               ) : null}
             </div>
@@ -729,10 +729,12 @@ export default async function VoiceCallsPage({
 
           <div style={{ maxWidth: '1280px', width: '100%', margin: '0 auto' }}>
             <AiReceptionistSection
+              businessName={resolvedBusinessName}
               status={(voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off'}
               answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'always'}
               greeting={(voiceSettings?.greeting as string | null) ?? ''}
               transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
+              emergencyTransferNumber={(voiceSettings?.emergency_transfer_number as string | null) ?? ''}
               alertPhone={(account?.alert_phone as string | null) ?? ''}
               verifiedNumbers={verifiedNumbers}
               callForwardNumber={callForwardNumber}

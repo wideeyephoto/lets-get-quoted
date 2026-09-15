@@ -170,6 +170,63 @@ describe('the caller id, which is not always a phone number', () => {
 });
 
 describe('when the two halves disagree', () => {
+  it.each([0, 1, 2, 9, 10, 15])('accounts for all ten measured minutes at balance %s, including a duplicate receipt', async (balance) => {
+    const held = Math.min(balance, 10);
+    admissionRow = admitted({
+      reservation_id: held ? 'res-1' : null, reserved_minutes: held,
+      allowed_minutes: 10, minute_mode: 'measure',
+      unmetered_reason: held ? null : 'exhausted_not_enforced',
+    });
+    settleVoiceCall.mockResolvedValue(held);
+    const full = receipt({ aiStartMicros: 1_000_000_000, aiEndMicros: 1_600_000_000 });
+    for (let retry = 0; retry < 2; retry++) {
+      const result = await settleVoiceReceipt(admin, full, { voiceEventId: EVENT });
+      expect(result.reconcile).toBeNull();
+      expect(history.mock.calls.at(-1)![0]).toMatchObject({
+        provider_call_id: CALL, measured_minutes: 10, billed_minutes: held ? held : null,
+        absorbed_minutes: 10 - held,
+        absorption_reason: held === 10 ? null : held === 0 ? 'exhausted_not_enforced' : 'partial_balance',
+      });
+    }
+    if (held) expect(settleVoiceCall).toHaveBeenCalledWith(admin, expect.objectContaining({ reservedMinutes: held }), 10);
+    else expect(settleVoiceCall).not.toHaveBeenCalled();
+  });
+
+  it('does not mark unsettled minutes as absorbed, and recovers after a history-write failure', async () => {
+    admissionRow = admitted({ reserved_minutes: 2, allowed_minutes: 10, minute_mode: 'measure' });
+    const full = receipt({ aiStartMicros: 1_000_000_000, aiEndMicros: 1_600_000_000 });
+    settleVoiceCall.mockResolvedValueOnce(null).mockResolvedValue(2);
+    expect((await settleVoiceReceipt(admin, full)).reconcile).toBe('settlement_failed');
+    expect(history.mock.calls.at(-1)![0]).toMatchObject({
+      measured_minutes: 10, absorbed_minutes: null, absorption_reason: null, settlement: 'unsettled',
+    });
+    historyError = { code: '08006' };
+    await expect(settleVoiceReceipt(admin, full)).rejects.toThrow('history write failed');
+    historyError = null;
+    expect((await settleVoiceReceipt(admin, full)).reconcile).toBeNull();
+    expect(history.mock.calls.at(-1)![0]).toMatchObject({ measured_minutes: 10, billed_minutes: 2, absorbed_minutes: 8 });
+  });
+
+  it.each(['ledger_unavailable', 'not_metered'])('retains the admission reason %s for unreserved usage', async (reason) => {
+    admissionRow = admitted({ reservation_id: null, reserved_minutes: 0, allowed_minutes: 10, unmetered_reason: reason });
+    await settleVoiceReceipt(admin, receipt());
+    expect(history.mock.calls.at(-1)![0]).toMatchObject({ measured_minutes: 1, absorbed_minutes: 1, absorption_reason: reason });
+  });
+
+  it('records a late receipt whose reservation already expired as absorbed', async () => {
+    admissionRow = admitted({ reserved_minutes: 2, allowed_minutes: 10, minute_mode: 'measure' });
+    settleVoiceCall.mockResolvedValue(0);
+    await settleVoiceReceipt(admin, receipt());
+    expect(history.mock.calls.at(-1)![0]).toMatchObject({ billed_minutes: 0, absorbed_minutes: 1, absorption_reason: 'reservation_released' });
+  });
+
+  it('keeps a carrier overrun visible without increasing the customer debit', async () => {
+    admissionRow = admitted({ reserved_minutes: 10, allowed_minutes: 10, minute_mode: 'measure' });
+    settleVoiceCall.mockResolvedValue(10);
+    await settleVoiceReceipt(admin, receipt({ aiStartMicros: 1_000_000_000, aiEndMicros: 1_661_000_000 }));
+    expect(history.mock.calls.at(-1)![0]).toMatchObject({ measured_minutes: 12, billed_minutes: 10, absorbed_minutes: 2, absorption_reason: 'duration_limit_exceeded' });
+  });
+
   it('creates the lead even when settlement fails', async () => {
     // The caller still rang, and the contractor still needs to know.
     settleVoiceCall.mockResolvedValue(null);

@@ -1,16 +1,40 @@
 # AI Voice Receptionist — go-live runbook
 
-## Call duration update — 2026-09-06
+## Current release policy and evidence — 2026-09-08
+
+Production flags verified individually: `LGQ_VOICE_MINUTE_METER_ENABLED=1`,
+`LGQ_VOICE_ALLOWANCE_WORKER_ENABLED=1`, `LGQ_VOICE_MINUTE_GATE_ENABLED=0`.
+The owner approved measurement mode and absorption of usage beyond available
+credit. Strict financial enforcement is a later owner decision. Step 9 is a
+deferred full-period reconciliation milestone; Step 10 is not authorized now.
+
+The controlled staff call on September 8 ended at **593.807 connected seconds**
+with a system-side hangup. The user confirmed a clear closing message and no
+long silent gaps. Its receipt processed on the first attempt, committed ten
+minutes, and saved the requested note once after the database contract repair.
+The earlier 600.938-second overrun remains historical evidence. This staff-call
+result does not substitute for transfer/voicemail boundary or statistical audio
+latency acceptance. See the [current checklist](voice-dispatch-production-todo-2026-09-08.md).
+
+The failed post-call receipt was recovered by the supported worker without a
+duplicate debit. Its automatic caller follow-up exposed an ineligible customer
+sender. BrokePipes caller follow-ups are paused and the customer registration
+guard is installed; voice and owner alerts remain active. Customer messaging
+needs its own approved registration and acceptance. See the [sender guard](customer-sms-sender-guard-2026-09-08.md).
+
+## Call duration and accounting
 
 The owner selected a **10-minute maximum** for reception and dispatch calls.
 New allowance admissions reserve at most ten minutes. A definite ledger
-shortfall retries with the smaller available whole-minute balance; the actual
-reservation determines the provider duration. One or two remaining minutes are
-usable. Duplicate inbound webhooks reload the saved limit. Ambiguous ledger
-failures do not trigger a smaller retry.
+shortfall can reserve the smaller available whole-minute balance. In measurement
+mode the call retains its normal ten-minute limit and any excess is recorded as
+absorbed usage. Only an explicitly enabled enforcement mode ties the duration
+to reserved minutes. Duplicate inbound webhooks reload the saved policy and
+limit. Ambiguous ledger failures do not trigger a smaller retry.
 
 SignalWire's documented `answer.max_duration` bounds the entire answered call
-(including greeting and transfers), with `ai.params.hard_stop_time` set fifteen
+(including greeting and transfers), configured at 598 seconds to leave a timer
+margin, with `ai.params.hard_stop_time` set fifteen
 seconds earlier to allow a closing line, followed by explicit hangup. The old
 `ai.params.max_duration` setting was not a documented duration control.
 References: https://signalwire.com/docs/swml/reference/answer and
@@ -19,7 +43,7 @@ https://signalwire.com/docs/swml/reference/calling/ai/params.
 The 90-minute reservation expiry remains a receipt-processing grace period,
 not a call limit. Settlement uses the original admission's cap so delayed
 receipts from older calls are not incorrectly reduced to the new maximum.
-This change does not enable financial enforcement or authorize overage.
+This change does not enable financial enforcement or bill absorbed usage.
 Before enforcement, validate a controlled call reaching the provider cutoff,
 low-balance admission, recovery/retries, and Step 9 invoice reconciliation.
 
@@ -64,17 +88,16 @@ monthly allocations. SWAIG tools for in-call booking, warm transfers, emergency
 alerts, and structured post-conversation extractions are authenticated via
 admission-bound HMAC-SHA256 tool permits.
 
-**The consequence for the order below: the worker goes on BEFORE the meter.**
-Turning the meter on first measures nothing at all, and turning the gate on
-before minutes exist refuses every caller. That is now step 7, ahead of 8 and 9,
-and it is the only ordering that works.
+**Keep the allowance worker and meter enabled; leave exhaustion blocking off.**
+The worker grants eligible credit. The meter records rounded AI usage and its
+debited/absorbed split even when credit is insufficient. Enforcing before credit
+and reconciliation are correct can refuse real callers.
 
-One thing to know while watching it: a workspace only gets minutes if its base
-plan includes them (Scale) or it holds an **active** AI Voice add-on. All four
-voice SKUs are in `TOP_UPS_WITHHELD`, so nobody can buy one yet — meaning today
-only Scale workspaces receive an allowance, and every other workspace's calls
-will still read `unmetered` on the history panel. That is correct, and it is what
-the panel says in those words.
+Use the current billing entitlement and allowance ledger for eligibility.
+Checkout, provisioning, and renewal acceptance are tracked in the billing
+workstream; historical SKU-withholding statements are not current launch
+evidence. An unmetered settlement alone is insufficient to diagnose a failure:
+inspect measured minutes, absorbed minutes/reason, and the admission policy.
 
 ## Prerequisites
 
@@ -97,6 +120,11 @@ All required voice migrations applied to production, in order:
 | `20260821191000` | atomic concurrency admission and token-bound release/finalization |
 | `20260821221223` | exact active dedicated-number revision binding for admission |
 | `20260821230000` | single transcript, entitlement-bounded visibility, and service-only purge |
+| `20260908160159` | immutable measurement policy and explicit absorbed usage |
+| `20260908163021` | confirmed transfer completion survives AI receipt recovery |
+| `20260908204510` | customer SMS requires matching eligible registration |
+| `20260908205505` | restore current private dispatch write contract |
+| `20260908210359` | bounded voice health alerts in the operator failure inbox |
 
 ```sql
 select to_regclass('public.voice_events')            as voice_events,
@@ -285,8 +313,9 @@ order by created_at desc limit 10;
 | 4 lead | one row, `source = 'ai_voice'`, linked to the receipt by `source_voice_event_id` | none → check (2) and (5); lead failure keeps the receipt retryable, so `failed` plus a future `next_attempt_at` is expected until a retry succeeds. |
 | 5 failures | empty | read it; every rejection lands here with a reason. |
 
-`settlement = 'unmetered'` is **correct at this stage** and is what §0 predicts.
-The history panel will show "Answered but not billed".
+For a deliberately disabled-meter fixture, `settlement = 'unmetered'` is expected.
+For current production, inspect the saved policy and measured/absorbed split;
+do not treat all unmetered calls as healthy or as broken.
 
 For a receipt that includes `call_log`, check (3) must show that normalized array
 only in `voice_calls.transcript`; `has_transcript_key` must be false in
@@ -298,12 +327,13 @@ payload. Any duplicate transcript or stale hash is a stop condition.
 They look identical to a caller, so use the tables:
 
 - **Working and billed** — admission with a `reservation_id`, `voice_calls.settlement = 'allowance'`, a matching committed `usage_reservations` row.
-- **Working, not billed** — admission with `reservation_id` null, `settlement = 'unmetered'`. This is every call today.
+- **Working with absorbed usage** — measured minutes equal committed plus absorbed minutes, with an explicit absorption reason and measurement-mode admission. A zero-credit call may have no reservation.
+- **Expected non-AI/historical** — fallback-only or historical unsnapshotted calls are inspected separately; do not backfill invented AI duration or debit them.
 - **Not working** — no admission row at all. The caller still reached the business through forwarding, so nobody complains. **This is the failure that hides**, and check (1) is the only thing that finds it.
 
 ---
 
-## Steps 7–9 — now runnable, in this order
+## Measurement operation and deferred enforcement milestones
 
 **7. Grant minutes first.** `LGQ_VOICE_ALLOWANCE_WORKER_ENABLED=1`, redeploy.
 Then confirm before going further:
@@ -322,20 +352,22 @@ the period end** — that tail is what lets a 90-minute hold draw on the lot in 
 final minutes of a period, and without it calls refuse once a month with the
 credits visibly present.
 
-**8. Meter on.** `LGQ_VOICE_MINUTE_METER_ENABLED=1`, redeploy. Only meaningful
-once a granter exists. Watch for a week: every call should produce a
-`usage_reservations` row that commits for the rounded minutes, and
-`voice_calls.settlement` should read `allowance`.
+**8. Meter on (verified).** Keep `LGQ_VOICE_MINUTE_METER_ENABLED=1` and the gate
+off. A funded call should commit its rounded minutes once. Low/zero-credit calls
+retain the bounded duration, debit at most reserved credit, and explicitly record
+absorbed minutes. Check `measured_minutes = coalesce(billed_minutes,0) +
+coalesce(absorbed_minutes,0)` on new snapshotted calls.
 
-**9. Reconcile before enforcing.** Compare a full period of ledger minutes
+**9. Deferred full-period reconciliation, required before enforcement.** Compare a full period of ledger minutes
 against the SignalWire invoice. They will not match exactly — LGQ bills
 AI-connected time rounded up, the provider bills its own basis — but the shape
 must be explicable. An unexplained gap means the meter is wrong, and enforcing a
 wrong meter refuses real callers.
 
-**10. Gate on.** `LGQ_VOICE_MINUTE_GATE_ENABLED=1`, redeploy. Only after 7, 8 and 9.
-From here an exhausted workspace sends callers to voicemail, which is the
-published behaviour but is the first time a billing decision can end a call.
+**10. Later owner decision only.** Keep `LGQ_VOICE_MINUTE_GATE_ENABLED=0` now.
+If the owner later chooses strict enforcement, complete Step 9 and repeat
+exhausted/partial-balance canaries before that separate release. The current
+launch absorbs usage beyond available credit.
 
 ---
 

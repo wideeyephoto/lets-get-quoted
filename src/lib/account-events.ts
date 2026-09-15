@@ -44,6 +44,11 @@ export type AccountEventKind =
   // is dark, so there is nothing to charge yet, and without a row here the
   // answer to "which plan did people come here for" is thrown away.
   | 'plan_intent_recorded'
+  // First-run intake completion. Records how the trade was determined (guessed from
+  // business name, typed manually, or passed via URL) and whether the ZIP was
+  // resolved to a verified place. Used to evaluate whether the trade guess is
+  // accurate or should be removed.
+  | 'first_run_completed'
   // Written BEFORE the Stripe call, so the request survives a crash mid-flight.
   // The OUTCOME is the projector's to record, not this one's.
   | 'subscription_cancellation_requested'

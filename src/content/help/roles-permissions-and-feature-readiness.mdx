@@ -1,0 +1,33 @@
+---
+title: "Understand roles, permissions, plans, and prerequisites"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Getting set up"
+---
+
+# Purpose
+Understand workspace roles, server-enforced access gates, plan allowances, and live feature readiness.
+
+# Steps
+## Know the three workspace roles
+- Owner: Unrestricted access to the entire business, billing, plans, payouts, team invitations, and irreversible actions.
+- Office Staff: Invited via email to access permitted dashboard pages (Leads, Schedule, Messages, Jobs, Reports) as bounded by server security gates. Note: there are no individual capability checkboxes in the UI.
+- Crew: Field workers who access assigned jobs, timecards, arrival buttons, and in-app voice notes via their magic link field portal (/field). They do not access the back-office dashboard.
+
+## Separate four kinds of feature readiness
+1. Role gate: Does the user role (Owner vs Office vs Crew) have server clearance for the requested action?
+2. Plan entitlement: Does your active subscription tier include sufficient seats, text credits, or storage?
+3. Operational prerequisites: Are external connections (such as Stripe Connect or carrier 10DLC registration) complete?
+4. Status vs Live: An on/off switch in settings expresses intent, but the feature only works live when dependencies are satisfied.
+
+
+
+# Done State
+You will understand what owners, office staff, and field crew can access without confusing plan limits or server gates.
+
+# Common Failure
+**An office user cannot access certain actions like sending quotes or merging clients.**
+High-trust financial and destructive actions require Owner role clearance.
+
+**A feature is enabled but not sending messages.**
+Verify carrier registration under Settings → Business and check that text credits are available.

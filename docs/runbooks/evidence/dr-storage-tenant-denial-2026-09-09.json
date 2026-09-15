@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-09-09T12:24:05.718Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "memberIdSha256": "0356383a139cf2653901fd31812ff924cf5f015bfc154c8514cc083e6ee3276e",
+  "bucket": "crew-photos",
+  "objectPathSha256": "5c79563e490db71e578c5a8ecd41539b1d9d73b49e8128bde8071db3d7125cea",
+  "privateBucket": true,
+  "membershipExcludesObjectAccount": true,
+  "serviceRoleDownload": {
+    "success": true,
+    "bytes": 2103537
+  },
+  "memberDownload": {
+    "denied": true,
+    "status": "404"
+  },
+  "memberSignedUrl": {
+    "denied": true,
+    "status": "404"
+  },
+  "anonymousCompletionRpc": {
+    "denied": true,
+    "code": "42501",
+    "status": 401
+  },
+  "passed": true
+}

@@ -7,7 +7,10 @@ import { getContrastRatio } from '@/lib/templates/theme-color';
 const read = (...parts: string[]) =>
   readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
-const THEMES_CSS = read('src', 'lib', 'templates', 'themes.module.css');
+const TEMPLATE_CSS_FILES = ['themes', 'coat', 'fixit', 'forge', 'guild', 'handy', 'reno', 'shine', 'vista'];
+const THEMES_CSS = TEMPLATE_CSS_FILES
+  .map((f) => read('src', 'lib', 'templates', `${f}.module.css`))
+  .join('\n');
 
 describe('Forge photo hero text contrast and decoupling', () => {
   it('defines --c-on-photo on Forge and decouples photo hero text from data-mode', () => {

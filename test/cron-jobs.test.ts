@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   CRON_JOBS,
+  PARKED_CRON_ROUTES,
   cronHealth,
   cronJob,
   expectedIntervalMs,
@@ -54,6 +55,32 @@ describe('the registry and vercel.json agree', () => {
 
   it('says what breaks for every job', () => {
     for (const spec of CRON_JOBS) expect(spec.consequence.length).toBeGreaterThan(20);
+  });
+
+  const UNSCHEDULED_CRON_ALLOWLIST: Record<string, string> = Object.fromEntries(
+    PARKED_CRON_ROUTES.map((p) => [p.job, p.reason]),
+  );
+
+  it('verifies every route under src/app/api/cron is either scheduled in vercel.json & registered in cron-jobs.ts, or explicitly listed in UNSCHEDULED_CRON_ALLOWLIST with a reason (T24 gate)', () => {
+    const routesOnDisk = readdirSync(join(process.cwd(), 'src/app/api/cron'), { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+
+    for (const route of routesOnDisk) {
+      const isScheduledAndRegistered = scheduled.has(route) && CRON_JOBS.some((j) => j.job === route);
+      const allowlistReason = UNSCHEDULED_CRON_ALLOWLIST[route];
+
+      if (!isScheduledAndRegistered) {
+        expect(
+          allowlistReason,
+          `Orphaned cron route '${route}' is not scheduled in vercel.json / registered in cron-jobs.ts, and has no documented reason in UNSCHEDULED_CRON_ALLOWLIST`,
+        ).toBeDefined();
+        expect(
+          allowlistReason.length,
+          `Documented reason for unscheduled cron '${route}' must be substantive`,
+        ).toBeGreaterThanOrEqual(20);
+      }
+    }
   });
 });
 

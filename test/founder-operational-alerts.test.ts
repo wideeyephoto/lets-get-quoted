@@ -1,12 +1,16 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { sendOperationalEmergencyAlert } from '../src/lib/founder-alerts';
 
+const send = vi.hoisted(() => vi.fn());
+vi.mock('resend', () => ({ Resend: class { emails = { send }; } }));
+
 describe('sendOperationalEmergencyAlert', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
+    send.mockReset().mockResolvedValue({ data: { id: 'provider-email' }, error: null });
   });
 
   afterEach(() => {
@@ -50,6 +54,16 @@ describe('sendOperationalEmergencyAlert', () => {
       });
 
       expect(result.recipient).toBe('founder@letsgetquoted.com');
+      expect(result.dispatched).toBe(true);
+      expect(result.providerId).toBe('provider-email');
     }
+  });
+
+  it('reports SDK rejection and respects the configured on-call inbox', async () => {
+    process.env.RESEND_API_KEY = 'test';
+    process.env.ONCALL_PRIMARY_EMAIL = 'primary@example.com';
+    send.mockResolvedValue({ data: null, error: { message: 'rejected' } });
+    const result = await sendOperationalEmergencyAlert({ incidentType: 'cron_failure', severity: 'high', title: 'Controlled failure', summary: 'No business effects' });
+    expect(result).toEqual({ dispatched: false, recipient: 'primary@example.com' });
   });
 });

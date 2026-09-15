@@ -13,6 +13,7 @@ import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
 import { loadSignalWireVoiceNumberReadiness } from '@/lib/voice/number-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import {
+  AI_VOICE_DISCLOSURE,
   greetingWithAiDisclosure,
   type InboundCall,
   type VoiceAnswerPlan,
@@ -24,10 +25,11 @@ import {
 } from '@/lib/voice/grounding';
 import { recordProvisionalVoiceCall } from '@/lib/voice/settlement';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { reconcileVoiceTerminalAdmission } from '@/lib/voice/terminal-reconciliation';
 import { ensureSmsConsentBaseline } from '@/lib/sms';
 
 /**
- * Deciding what happens to an inbound call, with no HTTP anywhere in it.
+ * Deciding what happens to an inbound call independently of its webhook route.
  *
  * SEPARATE FROM THE ROUTE ON PURPOSE. This is the only place in AI Voice where a
  * caller is on the line while LGQ makes a decision, and every branch of it needs
@@ -75,6 +77,7 @@ export type VoiceSettings = Readonly<{
   businessHours: BusinessHours;
   greeting: string | null;
   transferNumber: string | null;
+  emergencyTransferNumber?: string | null;
   recordingEnabled: boolean;
   postCallSmsEnabled: boolean;
   contractorNotificationsEnabled: boolean;
@@ -117,16 +120,18 @@ export async function resolveVoiceWorkspace(
   if (numberReadiness.kind !== 'ready') return null;
   const dedicatedNumber = numberReadiness.number;
 
-  const { data: account, error } = await admin
-    .from('accounts')
-    // NOT selecting a per-workspace greeting. There is no column for one yet,
-    // and PostgREST answers an unknown column with 42703 -- which this function
-    // turns into null, which sends EVERY caller to the unavailable message. A
-    // read written ahead of its column does not degrade; it fails closed for
-    // everyone. The greeting lands with the settings screen that edits it.
-    .select('id, call_forward_number, timezone')
-    .eq('id', dedicatedNumber.accountId)
-    .maybeSingle();
+  const [accountResult, voiceEntitlement, configuredResult] = await Promise.all([
+    admin.from('accounts')
+      .select('id, call_forward_number, timezone')
+      .eq('id', dedicatedNumber.accountId)
+      .maybeSingle(),
+    loadVoiceEntitlement(admin, dedicatedNumber.accountId),
+    admin.from('voice_settings')
+      .select('status, answer_mode, business_hours, greeting, transfer_number, emergency_transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
+      .eq('account_id', dedicatedNumber.accountId)
+      .maybeSingle(),
+  ]);
+  const { data: account, error } = accountResult;
 
   if (error) {
     console.error('voice workspace lookup failed:', error);
@@ -138,16 +143,10 @@ export async function resolveVoiceWorkspace(
   // concurrency number, but only Scale inclusion or an active add-on makes the
   // product usable. Keep the arithmetic in one shared reader so the route and
   // the dashboard cannot disagree.
-  const voiceEntitlement = await loadVoiceEntitlement(admin, String(account.id));
-
   // No row means never configured, which is off. Read separately and
   // defensively for the same reason as the entitlement: an unreadable row must
   // not become a permissive default on the one surface that answers a phone.
-  const { data: configured } = await admin
-    .from('voice_settings')
-    .select('status, answer_mode, business_hours, greeting, transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
-    .eq('account_id', account.id)
-    .maybeSingle();
+  const { data: configured } = configuredResult;
 
   const row = configured as Record<string, unknown> | null;
 
@@ -165,6 +164,7 @@ export async function resolveVoiceWorkspace(
         businessHours: (row.business_hours ?? {}) as BusinessHours,
         greeting: (row.greeting as string | null) ?? null,
         transferNumber: (row.transfer_number as string | null) ?? null,
+        emergencyTransferNumber: (row.emergency_transfer_number as string | null) ?? null,
         recordingEnabled: row.recording_enabled === true,
         postCallSmsEnabled: row.post_call_sms_enabled !== false,
         contractorNotificationsEnabled: row.contractor_notifications_enabled !== false,
@@ -176,10 +176,9 @@ export async function resolveVoiceWorkspace(
 /**
  * How many AI calls this workspace has running.
  *
- * Counted as admissions inside the cap window with no receipt yet. There is no
- * call-started or call-ended event to maintain a live count from — the provider
- * sends one callback, at the end — so the window IS the liveness signal, and it
- * follows the maximum call duration.
+ * Count admissions inside the cap window without a receipt or terminal proof.
+ * A hangup during the opening can produce no AI receipt. At capacity, bounded
+ * provider reads recover exact ended admissions before refusing another call.
  *
  * Errs toward refusing: an unreadable count returns the limit itself, so an
  * outage sheds AI calls to voicemail rather than admitting an unbounded number
@@ -196,7 +195,7 @@ export async function countOpenAiCalls(
   try {
     const { data, error } = await admin
       .from('voice_call_admissions')
-      .select('provider_call_id, provider_terminal_at, provider_terminal_status')
+      .select('provider_call_id, provider_terminal_at, provider_terminal_status, dialed_number, caller_number')
       .eq('account_id', accountId)
       .gte('admitted_at', since);
 
@@ -225,7 +224,14 @@ export async function countOpenAiCalls(
     const settled = new Set(
       finished.map((row) => String((row as { provider_call_id: string }).provider_call_id)),
     );
-    return ids.filter((id) => !settled.has(id)).length;
+    const pending = liveAdmissions.filter((row) => !settled.has(String(row.provider_call_id)));
+    if (pending.length < limit) return pending.length;
+    // A caller who hangs up during the opening has no AI receipt. Before
+    // sending the next caller to voicemail, verify at most three candidates
+    // against the provider. Each request is bounded and uncertainty stays full.
+    const closed = await Promise.all(pending.slice(0, 3).map((row) =>
+      reconcileVoiceTerminalAdmission(admin, accountId, row)));
+    return pending.length - closed.filter(Boolean).length;
   } catch (error) {
     console.error('open AI call count threw:', error);
     return limit;
@@ -272,7 +278,8 @@ export async function planInboundCall(
     // phone number even when the product on top of it is off.
     const forwardTo = workspace?.settings?.transferNumber || workspace?.callForwardNumber;
     if (forwardTo && workspace
-      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')) {
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.toNumber)) {
       return Object.freeze({
         accountId: workspace.accountId,
         declineReason: reason,
@@ -319,21 +326,14 @@ export async function planInboundCall(
   if (!settings || settings.status === 'off') return fallback(workspace, 'not_configured');
   if (settings.status === 'paused') return fallback(workspace, 'paused');
 
-  // The common configuration: the contractor takes their own calls during the
-  // day and wants the evenings covered. Answering during business hours would
-  // put the AI in front of customers who expected a person.
-  if (settings.answerMode === 'after_hours'
-    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
-    return fallback(workspace, 'within_business_hours');
-  }
-
   if (workspace.concurrentCallLimit < 1) return fallback(workspace, 'no_seat');
 
-  const callerIdentity = await resolveVoiceCallerIdentity(
-    admin,
-    workspace.accountId,
-    call.fromNumber,
-  ).catch(() => ({ status: 'unavailable' as const }));
+  const [callerIdentity, open] = await Promise.all([
+    resolveVoiceCallerIdentity(admin, workspace.accountId, call.fromNumber)
+      .catch(() => ({ status: 'unavailable' as const })),
+    countOpenAiCalls(admin, workspace.accountId, workspace.concurrentCallLimit,
+      (options.now ?? (() => new Date()))(), call.providerCallId),
+  ]);
 
   // Transient lookup failure or ambiguous matches must not deny AI answering to customers.
   // We degrade safely to customer status (which denies staff mutation tools but admits the caller).
@@ -344,15 +344,21 @@ export async function planInboundCall(
   const callerKind = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.role
     : 'customer';
-  const callerNumber = effectiveIdentity.status === 'staff'
+  const rawCallerNumber = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.normalizedPhone
     : normalizeUsPhone(call.fromNumber || '');
+  // Anonymous / *67 / invalid numbers (e.g. +10000000000) must be treated as null
+  // so claim_voice_call_admission_v2 does not throw error 22023 on area code regex.
+  const callerNumber = rawCallerNumber && /^\+1[2-9]\d{9}$/.test(rawCallerNumber) ? rawCallerNumber : null;
 
-  const open = await countOpenAiCalls(
-    admin, workspace.accountId, workspace.concurrentCallLimit,
-    (options.now ?? (() => new Date()))(),
-    call.providerCallId,
-  );
+  // After-hours is the homeowner answering schedule. Registered staff keep
+  // access to Dispatch all day; off/paused and entitlement gates still apply.
+  // Unknown or ambiguous identities never receive this staff-only exception.
+  if (effectiveIdentity.status !== 'staff' && settings.answerMode === 'after_hours'
+    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
+    return fallback(workspace, 'within_business_hours');
+  }
+
   if (open >= workspace.concurrentCallLimit) return fallback(workspace, 'at_capacity');
 
   const decision = await admitVoiceCall(admin, {
@@ -391,8 +397,18 @@ export async function planInboundCall(
     console.error('Failed to load voice grounding context:', err);
     return null;
   });
-  const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;
-  const postPrompt = grounding ? buildVoicePostPrompt() : undefined;
+  // Never bridge the caller to themselves or back into this receptionist.
+  const safeDestination = (value: string | null | undefined) => {
+    const number = normalizeUsPhone(value || '');
+    return number && number !== normalizeUsPhone(call.fromNumber || '')
+      && number !== normalizeUsPhone(call.toNumber) ? number : null;
+  };
+  const transferTo = safeDestination(settings.transferNumber || workspace.callForwardNumber);
+  const emergencyTransferTo = safeDestination(settings.emergencyTransferNumber) || transferTo;
+  const systemPrompt = grounding ? buildVoiceSystemPrompt({
+    ...grounding, forwardPhoneOffice: transferTo, forwardPhoneEmergency: emergencyTransferTo,
+  }) : undefined;
+  const postPrompt = buildVoicePostPrompt(grounding ?? undefined);
 
   return Object.freeze({
     accountId: workspace.accountId,
@@ -403,20 +419,25 @@ export async function planInboundCall(
       receiptAuthorization: options.receiptAuthorization,
       greeting: greetingWithAiDisclosure(
         grounding?.contractorStaffCaller
-          ? 'Connecting to field dispatch.'
+          ? AI_VOICE_DISCLOSURE
           : (settings.greeting?.trim() || DEFAULT_GREETING)
       ),
       systemPrompt,
       postPrompt,
-      capMinutes: decision.outcome === 'admitted'
-        ? decision.lease.reservedMinutes
-        : decision.outcome === 'admitted_overage'
-          ? decision.overage.units
-          : decision.outcome === 'admitted_existing'
-            ? decision.capMinutes : VOICE_CALL_CAP_MINUTES,
+      hints: [
+        ...(grounding?.serviceNames || []),
+        ...(grounding?.serviceAreas ? grounding.serviceAreas.split(',').map((s: string) => s.trim()) : []),
+        ...(grounding?.companyName ? [grounding.companyName] : []),
+        ...(grounding?.recognizedCaller?.clientName ? [grounding.recognizedCaller.clientName] : []),
+        ...(grounding?.recognizedCaller?.serviceAddress ? [grounding.recognizedCaller.serviceAddress] : []),
+        ...(grounding?.recognizedCaller?.activeJobRef ? [grounding.recognizedCaller.activeJobRef] : []),
+      ].filter(Boolean),
+      capMinutes: decision.capMinutes,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
-      transferTo: settings.transferNumber || workspace.callForwardNumber,
+      transferTo,
+      emergencyTransferTo,
+      transferStatusUrl: options.forwardActionUrl(workspace.accountId),
       recordCall: settings.recordingEnabled === true && !grounding?.contractorStaffCaller,
       recordingStatusUrl: options.recordingStatusUrl
         ? options.recordingStatusUrl(workspace.accountId)

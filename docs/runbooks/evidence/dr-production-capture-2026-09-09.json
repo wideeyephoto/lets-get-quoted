@@ -1,0 +1,113 @@
+{
+  "checkedAt": "2026-09-09T10:25:22.043Z",
+  "projectRef": "mfuvvtrkipkigwqqtcal",
+  "snapshot": {
+    "id": "0000002C-000271FF-1",
+    "captured_at": "2026-09-09T10:17:00.776Z",
+    "server_version": "17.6",
+    "read_only": "on"
+  },
+  "captureVerified": true,
+  "restorePerformed": false,
+  "offsiteCopy": false,
+  "captureDir": "C:\\dev\\CLAUDE CODE FOLDER\\tmp\\dr-captures\\mfuvvtrkipkigwqqtcal-2026-09-09T10-16-59-591Z",
+  "archive": {
+    "file": "database.dump.aesgcm",
+    "bytes": 10630650,
+    "sha256": "29e71be956cbd71cbd7e7c499ea5b604b5a59d38ca8b3047a311510bcb73797c",
+    "encryptedSha256": "4d7f2460d17972396f32ede793380711c8c7fc53e01be471ca554fb3c487f500"
+  },
+  "tocEntries": 4348,
+  "tocSchemas": {
+    "public": true,
+    "auth": true,
+    "storage": true
+  },
+  "dumpDurationMs": 68542,
+  "publicTables": 227,
+  "publicPolicies": 272,
+  "forceRlsTables": 59,
+  "publicFunctions": 414,
+  "coreRowCounts": [
+    {
+      "table_name": "auth.users",
+      "row_count": "12"
+    },
+    {
+      "table_name": "public.accounts",
+      "row_count": "11"
+    },
+    {
+      "table_name": "public.clients",
+      "row_count": "961"
+    },
+    {
+      "table_name": "public.estimate_offers",
+      "row_count": "0"
+    },
+    {
+      "table_name": "public.invoices",
+      "row_count": "273"
+    },
+    {
+      "table_name": "public.jobs",
+      "row_count": "691"
+    },
+    {
+      "table_name": "public.memberships",
+      "row_count": "8"
+    },
+    {
+      "table_name": "public.payments",
+      "row_count": "282"
+    },
+    {
+      "table_name": "public.staff",
+      "row_count": "2"
+    }
+  ],
+  "storage": [
+    {
+      "bucket": "account-attachments",
+      "objects": 0,
+      "bytes": 0
+    },
+    {
+      "bucket": "crew-photos",
+      "objects": 2,
+      "bytes": 5266120
+    },
+    {
+      "bucket": "insurance-proof",
+      "objects": 1,
+      "bytes": 1439107
+    },
+    {
+      "bucket": "job-photos",
+      "objects": 9,
+      "bytes": 639742
+    },
+    {
+      "bucket": "lead-photos",
+      "objects": 12,
+      "bytes": 2464290
+    },
+    {
+      "bucket": "site-images",
+      "objects": 11,
+      "bytes": 8163329
+    },
+    {
+      "bucket": "site-videos",
+      "objects": 3,
+      "bytes": 17754334
+    }
+  ],
+  "encryption": "AES-256-GCM; LGQDR001 + nonce(12) + tag(16) + ciphertext",
+  "localKeyFile": ".env.dr-backup.local",
+  "tooling": {
+    "version": "17.11",
+    "source": "https://get.enterprisedb.com/postgresql/postgresql-17.11-3-windows-x64-binaries.zip",
+    "zipSha256": "4b8db0930c38f6ef845db919551dedda3b6b845aeb0927b3d79a6e8e9e4537cf"
+  }
+}

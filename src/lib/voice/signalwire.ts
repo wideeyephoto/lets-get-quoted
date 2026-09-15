@@ -1,4 +1,4 @@
-import { greetingWithAiDisclosure } from '@/lib/voice/provider';
+import { AI_VOICE_DISCLOSURE, greetingWithAiDisclosure } from '@/lib/voice/provider';
 import { VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import type {
   InboundCall,
@@ -10,6 +10,58 @@ import type {
   VoiceTranscriptTurn,
 } from '@/lib/voice/provider';
 import { sanitizeVoiceReceipt } from '@/lib/voice/receipt-redaction';
+
+// A 600-second provider timer produced 600.938 connected seconds in the live
+// cutoff test. Reserve two seconds for timer/hangup completion.
+const HANGUP_MARGIN_SECONDS = 2;
+const MAX_CONNECTED_SECONDS = VOICE_CALL_CAP_MINUTES * 60 - HANGUP_MARGIN_SECONDS;
+
+function forwardTimeout(seconds: number): number {
+  return Number.isFinite(seconds) ? Math.max(5, Math.min(60, Math.floor(seconds))) : 20;
+}
+
+/**
+ * SignalWire AI microphone sensitivity threshold (energy_level).
+ * SignalWire's default is 52 (dB, 0-100 scale). Ambient vehicle/jobsite/office noise
+ * trips speech detection prematurely at 52; raising to 62 provides solid noise immunity
+ * while keeping normal conversational speech clear and responsive.
+ */
+export const DEFAULT_VOICE_ENERGY_LEVEL = 62;
+
+export function voiceEnergyLevel(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_ENERGY_LEVEL);
+  return Number.isFinite(custom) && custom >= 0 && custom <= 100 ? custom : DEFAULT_VOICE_ENERGY_LEVEL;
+}
+
+/**
+ * Minimum words required to interrupt/barge the AI agent while speaking.
+ * Default SignalWire is 1; setting to 2 prevents brief background sounds, coughs,
+ * or breathing from cutting the agent off mid-sentence.
+ */
+export const DEFAULT_VOICE_BARGE_MIN_WORDS = 2;
+
+export function voiceBargeMinWords(env: Record<string, string | undefined> = process.env): number {
+  const custom = Number(env.SIGNALWIRE_VOICE_BARGE_MIN_WORDS);
+  return Number.isSafeInteger(custom) && custom >= 1 && custom <= 99 ? custom : DEFAULT_VOICE_BARGE_MIN_WORDS;
+}
+
+/** A completed bridge must not fall through into an unanswered-call recording. */
+function failedTransferVoicemail(message: string, recordingStatusUrl?: string) {
+  return {
+    switch: {
+      // SignalWire sets this to connected or failed after the peer leg ends.
+      variable: 'connect_result',
+      case: {
+        failed: [
+          { play: { url: `say: ${message}` } },
+          { record: { ...VOICEMAIL_RECORDING, ...(recordingStatusUrl ? { status_url: recordingStatusUrl } : {}) } },
+        ],
+      },
+      // Unknown results also end safely; they do not establish a missed call.
+      default: [],
+    },
+  };
+}
 
 /**
  * SignalWire AI Agents, behind the provider-neutral seam.
@@ -41,6 +93,7 @@ function text(value: unknown): string | null {
 
 export const CUSTOMER_SWAIG_TOOLS = [
   'transfer_to_business',
+  'transfer_to_emergency',
   'send_booking_link',
   'check_available_slots',
   'book_appointment_slot',
@@ -232,9 +285,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
       const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
         recordingEnabled: recordCall,
       });
+      const remainingGreeting = spokenGreeting.replace(AI_VOICE_DISCLOSURE, '').trim();
       const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
         ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
-      const maxDurationSeconds = capMinutes * 60;
+      const maxDurationSeconds = capMinutes * 60 - HANGUP_MARGIN_SECONDS;
       // answer.max_duration bounds the whole answered call, including greeting
       // and transfers. AI hard_stop_time leaves time for a brief closing line.
       // ai.params.max_duration is not a documented SignalWire duration control.
@@ -244,7 +298,20 @@ export const signalwireVoiceProvider: VoiceProvider = {
       // The deterministic disclosure must finish before recording begins. The
       // AI instruction that follows cannot substitute for audio the caller has
       // actually heard.
-      mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
+      mainSection.push({
+        play: {
+          urls: [
+            `say: ${AI_VOICE_DISCLOSURE}`,
+            new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
+            ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
+          ],
+          // Pin the opening voice separately from the accepted conversational
+          // profile. An engine-qualified voice avoids a provider-default switch.
+          say_voice: 'rime.eyre:coda',
+          // Reduce the opening's playback level for speakerphone comfort.
+          volume: -2,
+        },
+      });
       if (recordCall) {
         mainSection.push({
           record_call: {
@@ -256,11 +323,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
       }
       const swaigFunctions: Record<string, unknown>[] = [];
 
-      if (plan.transferTo) {
+      for (const transfer of [
+        { destination: plan.transferTo, name: 'transfer_to_business', emergency: false },
+        { destination: plan.emergencyTransferTo, name: 'transfer_to_emergency', emergency: true },
+      ]) {
+        if (!transfer.destination) continue;
         swaigFunctions.push({
-          function: 'transfer_to_business',
-          purpose: 'Send the caller to a person when they ask for one or the '
-            + 'request is beyond what can be handled.',
+          function: transfer.name,
+          purpose: transfer.emergency
+            ? 'Connect an urgent safety or emergency service caller to the configured on-call team. This is not emergency services and does not guarantee a response.'
+            : 'Send the caller to a person when they ask for one or the request is beyond what can be handled.',
           argument: {
             type: 'object',
             properties: {
@@ -273,7 +345,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           data_map: { expressions: [{
             string: 'true', pattern: '.*',
             output: {
-              response: 'Connecting you with our office staff now. Please hold for just a moment.',
+              response: transfer.emergency
+                ? 'I will try to connect you with our on-call team now.'
+                : 'Connecting you with our office staff now. Please hold for just a moment.',
               action: [{
                 transfer: true,
                 SWML: {
@@ -282,15 +356,21 @@ export const signalwireVoiceProvider: VoiceProvider = {
                     main: [
                       {
                         connect: {
-                          to: plan.transferTo,
+                          to: transfer.destination,
                           timeout: 25,
+                          max_duration: maxDurationSeconds,
+                          ...(plan.transferStatusUrl ? { status_url: plan.transferStatusUrl } : {}),
                           confirm: [
-                            { play: { url: 'say: Incoming transfer from AI receptionist regarding: %{args.reason}.' } },
+                            // The live mobile test started speech 112 ms after answer,
+                            // before the recipient could hear the opening words.
+                            { play: { urls: [
+                              'silence:1.0',
+                              'say: Incoming transfer from AI receptionist regarding: %{args.reason}.',
+                            ] } },
                           ],
                         },
                       },
-                      { play: { url: 'say: Our office staff is currently unavailable to take your call. Please leave a message after the beep.' } },
-                      { record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } },
+                      failedTransferVoicemail('Our office staff is currently unavailable to take your call. Please leave a message after the beep.', plan.recordingStatusUrl),
                       { hangup: {} },
                     ],
                   },
@@ -323,7 +403,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'check_available_slots',
-          purpose: 'Query live appointment slots and dispatch windows by date or timeframe.',
+          purpose: 'Query available appointment request windows by date or timeframe. Availability is not a confirmed booking.',
           argument: {
             type: 'object',
             properties: {
@@ -349,7 +429,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
         if (!plan.contractorMode) {
           swaigFunctions.push({
             function: 'book_appointment_slot',
-            purpose: 'Directly schedule and confirm an appointment slot into the system, place a hold, and send an SMS confirmation to the caller.',
+            purpose: 'Save an appointment request and temporary slot hold for office review. The team must confirm the appointment. Report the saved request and whether a text was queued; never claim a final booking or delivered text.',
             argument: {
               type: 'object',
               properties: {
@@ -517,7 +597,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'cancel_or_reschedule_appointment',
-          purpose: 'Reschedule or cancel an existing appointment for a customer by their phone number or address.',
+          purpose: 'Save a cancellation or rescheduling request for the office to verify and review. The existing appointment is unchanged until the office confirms. Caller-provided phone/address is not proof of ownership.',
           argument: {
             type: 'object',
             properties: {
@@ -586,7 +666,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       if (plan.swaigUrl && plan.contractorMode) {
         swaigFunctions.push({
           function: 'lookup_jobs',
-          purpose: 'Read existing jobs for a verified owner or office caller. Use when asked what jobs exist, for job details, or to list choices before an update when the caller does not know a job reference. Returns references, scope, address, status, schedule, and recorded quote. Registered staff identity and role permissions are checked automatically; never ask for a verification code. Does not create or update anything.',
+          purpose: 'Read existing jobs for a verified owner or office caller. Use for job listings, customer identity, details, current total or recorded quote, and choices before an update. For a selected job total, quote, schedule, status or summary, set include_details=true. A brief result omitting the quote does not mean it is inaccessible. Returns references, scope, address, status, schedule, and recorded quote. Answer only what was asked. Registered staff identity and role permissions are checked automatically; never ask for a verification code. Does not create or update anything.',
           argument: {
             type: 'object',
             properties: {
@@ -596,7 +676,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               },
               include_details: {
                 type: 'boolean',
-                description: 'True only when the caller asks for full details of one selected job. Choices stay brief.',
+                description: 'Set true when asked for the total, recorded quote, schedule, status, scope or summary of one selected job, even if only one field is requested. Read only the requested fields aloud. Choices stay brief.',
               },
             },
           },
@@ -607,7 +687,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'append_job_caution_or_note',
-          purpose: 'Add an internal note, safety warning, gate code, pet caution, or special request to a job or client record.',
+          purpose: 'Save an internal note, safety warning, gate code, pet caution, or special request to a job or client record. When the caller explicitly asks to add a note and the job and text are clear, save it without an extra confirmation. Do not call this function merely to draft, preview, or read back text. Repeat an unsaved draft from the conversation and label it unsaved; read confirmed Saved text from an earlier result without writing again.',
           argument: {
             type: 'object',
             properties: {
@@ -633,7 +713,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'update_job_details',
-          purpose: 'Update active job scope, schedule date/time, or status. Cannot change quote prices, totals, discounts, or priced line items. Direct price changes to the signed-in job quote editor; never claim a price was changed.',
+          purpose: 'Update active job scope, schedule date/time, or status only when the caller explicitly requests that field. A note, reminder, test phrase, or ambiguous add request is not a scope change; use append_job_caution_or_note for notes, or clarify the destination first. Cannot change quote prices, totals, discounts, or priced line items. Direct price changes to the signed-in job quote editor; never claim a price was changed.',
           argument: {
             type: 'object',
             additionalProperties: false,
@@ -644,7 +724,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               },
               scope: {
                 type: 'string',
-                description: 'New or additional scope of work completed or requested.',
+                description: 'Additional work explicitly requested for the job scope. Never put notes, reminders, test phrases, or an ambiguous add request here. Confirm the destination first when unclear.',
               },
               status: {
                 type: 'string',
@@ -785,6 +865,12 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
       mainSection.push({
         ai: {
+          languages: [
+            { name: 'English', code: 'en-US', voice: 'rime.eyre:coda' },
+            { name: 'Spanish', code: 'es-US', voice: 'rime.eyre:coda' },
+          ],
+          voice: 'rime.eyre:coda',
+          ...(plan.hints && plan.hints.length > 0 ? { hints: plan.hints } : {}),
           post_prompt_url: plan.receiptUrl,
           // SignalWire supports these as dedicated fields. Using them
           // produces Authorization: Basic on the receipt request while
@@ -793,21 +879,34 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
+            energy_level: voiceEnergyLevel(),
+            barge_min_words: voiceBargeMinWords(),
             end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
             enable_turn_detection: true,
             turn_detection_timeout: 250,
             function_wait_for_talking: false,
+            ...(plan.contractorMode ? {
+              utility_model: 'gpt-4.1-nano',
+              auto_correct: true,
+              enable_text_normalization: 'off',
+              transparent_barge: true,
+              barge_functions: false,
+              interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
+            } : {}),
             hard_stop_time: `${maxDurationSeconds - 15}s`,
             hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can
             // still retain originals, so the receipt boundary redacts again.
-            redact_prompt: 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
+            redact_prompt: plan.contractorMode
+              ? 'Sensitive content is actual secret values: six-digit authentication codes, one-time passwords, OTPs, verification codes, and PINs. Mark only those values when present, including secrets within a note. Preserve the remaining words and their meaning. Ordinary job references and business details are not credentials merely because they contain digits. Do not insert category names, explanations, new requests or words the caller did not say.'
+              : 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
           },
           prompt: {
             text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '
               + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'When speaking, repeating, confirming, or reading back any phone number to the caller, always speak it as a standard 10-digit number starting directly with the area code (e.g. 810-304-2061); never include "+1", "plus one", or a leading "1". '
               + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '
@@ -846,16 +945,17 @@ export const signalwireVoiceProvider: VoiceProvider = {
             version: '1.0.0',
             sections: {
               main: [
+                { answer: { max_duration: MAX_CONNECTED_SECONDS } },
                 {
                   connect: {
                     to: plan.number,
                     from: plan.callerId,
-                    timeout: plan.timeoutSeconds,
+                    timeout: forwardTimeout(plan.timeoutSeconds),
+                    max_duration: MAX_CONNECTED_SECONDS,
                     status_url: plan.actionUrl,
                   },
                 },
-                { play: { url: "say: We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep." } },
-                { record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } },
+                failedTransferVoicemail('We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep.', plan.recordingStatusUrl),
                 { hangup: {} },
               ],
             },
@@ -869,7 +969,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
           version: '1.0.0',
           sections: {
             main: [
-              { answer: {} },
+              { answer: { max_duration: MAX_CONNECTED_SECONDS } },
               { play: { url: `say: ${message}` } },
               ...(plan.kind === 'voicemail' ? [{ record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } }] : []),
               { hangup: {} },
@@ -885,7 +985,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       return Object.freeze({
         contentType: 'text/xml',
         body: '<?xml version="1.0" encoding="UTF-8"?><Response>'
-          + `<Dial timeout="${plan.timeoutSeconds}" callerId="${escapeXml(plan.callerId)}"`
+          + `<Dial timeout="${forwardTimeout(plan.timeoutSeconds)}" timeLimit="${MAX_CONNECTED_SECONDS - forwardTimeout(plan.timeoutSeconds) - 5}" callerId="${escapeXml(plan.callerId)}"`
           + ` action="${escapeXml(plan.actionUrl)}" method="POST">`
           + `<Number>${escapeXml(plan.number)}</Number></Dial></Response>`,
       });

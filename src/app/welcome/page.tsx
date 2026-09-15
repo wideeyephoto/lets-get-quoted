@@ -71,7 +71,7 @@ export default async function WelcomePage({
 
   return (
     <main className="page-shell">
-      <div className="hero-card auth-card">
+      <div className="hero-card auth-card welcome-card">
         <p className="eyebrow">{returning ? 'Updated terms' : 'Welcome'}</p>
         <h1>{returning ? 'We\'ve updated our terms' : 'Let\'s set up your business'}</h1>
         <p className="welcome-lead">
@@ -112,6 +112,7 @@ export default async function WelcomePage({
           feature={intent.feature}
           city={cityParam}
           next={intent.next}
+          returning={returning}
         />
       </div>
     </main>

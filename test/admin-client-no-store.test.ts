@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { noStoreFetch } from '@/lib/auth';
+import { createAdminClient, noStoreFetch } from '@/lib/auth';
 
 describe('the admin client never reads from the Next data cache', () => {
   it('forces cache: no-store on every request', async () => {
@@ -18,10 +18,23 @@ describe('the admin client never reads from the Next data cache', () => {
   });
 
   it('is wired into createAdminClient', async () => {
-    const { readFileSync } = await import('node:fs');
-    const source = readFileSync('src/lib/auth.ts', 'utf8');
     // A worker that claims the same row ten times looks identical to one doing
-    // real work, so this wiring is pinned rather than assumed.
-    expect(source).toMatch(/global:\s*\{\s*fetch:\s*noStoreFetch\s*\}/);
+    // real work. Exercise the actual transport so moving the factory does not
+    // invalidate this check or hide a lost no-store option.
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'test-admin-key');
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('[]', {
+      headers: { 'Content-Type': 'application/json' },
+    }));
+    try {
+      const result = await createAdminClient().from('voice_events').select('id');
+      expect(result.error).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(String(spy.mock.calls[0][0])).toContain('/rest/v1/voice_events');
+      expect(spy.mock.calls[0][1]?.cache).toBe('no-store');
+    } finally {
+      spy.mockRestore();
+      vi.unstubAllEnvs();
+    }
   });
 });

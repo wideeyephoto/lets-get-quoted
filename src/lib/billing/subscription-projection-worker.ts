@@ -206,6 +206,13 @@ implements StripeBillingSubscriptionProjectionStore {
     return this.delegate.ignoreForeignRail(input);
   }
 
+  async ignoreTestModeRehearsal(
+    input: Parameters<StripeBillingSubscriptionProjectionStore['ignoreTestModeRehearsal']>[0],
+  ) {
+    assertOwnedInput(this.claimValue, input.billingEventId, input.claimToken);
+    return this.delegate.ignoreTestModeRehearsal(input);
+  }
+
   async project(input: Parameters<StripeBillingSubscriptionProjectionStore['project']>[0]) {
     assertOwnedInput(this.claimValue, input.billingEventId, input.claimToken);
     return this.delegate.project(input);
@@ -319,7 +326,7 @@ export async function runStripeBillingSubscriptionProjectionBatch(
     let claim: StripeSubscriptionProjectorClaim | null;
     try {
       claim = await dependencies.queue.claimNext();
-    } catch {
+    } catch (err) {
       return Object.freeze({
         status: 'claim_failed',
         requestedBatchSize,

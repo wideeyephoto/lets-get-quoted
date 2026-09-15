@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
+import { assertScratchTarget } from './scripts/lib/dr-target.mjs';
 
 // Integration suite for the admin console, run against a REAL staging database.
 //
@@ -45,9 +46,14 @@ function stagingEnv(): Record<string, string> {
       // shape .env.staging.local ships in for every optional key.
       if (key && value) env[key] = value;
     }
-  } catch {
-    // The suite itself reports the missing file far more clearly than a config
-    // crash would.
+  } catch (error) {
+    throw new Error('Staging tests require a readable .env.staging.local; no production fallback is allowed.', { cause: error });
+  }
+  const primary = readFileSync(new URL('./.env.local', import.meta.url), 'utf8');
+  const productionUrl = primary.split(/\r?\n/).find((line) => line.startsWith('DATABASE_URL='))?.slice('DATABASE_URL='.length).trim().replace(/^['"]|['"]$/g, '');
+  const target = assertScratchTarget(env.DATABASE_URL, productionUrl);
+  if (new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname !== `${target.projectRef}.supabase.co`) {
+    throw new Error('Staging API and database projects differ.');
   }
   return env;
 }

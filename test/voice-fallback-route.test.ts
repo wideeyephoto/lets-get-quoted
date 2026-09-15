@@ -64,9 +64,12 @@ describe.each([
     } else {
       expect(response.headers.get('content-type')).toContain('application/json');
       const { sections: { main } } = await response.json();
-      expect(main[0]).toEqual({ answer: {} });
+      expect(main[0]).toEqual({ answer: { max_duration: 598 } });
       expect(main[1].play.url).toContain('after the beep');
-      expect(main[2]).toEqual({ record: expect.objectContaining({ beep: true, max_length: 120 }) });
+      expect(main[2]).toEqual({ record: expect.objectContaining({
+        beep: true, max_length: 120,
+        status_url: ORIGIN + '/api/voice/recording-status/18105550101/18105550102',
+      }) });
       expect(main[3]).toEqual({ hangup: {} });
       expect(main.some((step: object) => 'ai' in step || 'record_call' in step)).toBe(false);
     }

@@ -62,7 +62,7 @@ export async function listUploadedSiteImages(accountId: string): Promise<SiteIma
     });
 }
 
-export async function uploadSiteImage(accountId: string, file: File): Promise<SiteImage> {
+export async function uploadSiteImage(accountId: string, file: File, width?: number, height?: number): Promise<SiteImage> {
   if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
     throw new Error('Upload a JPG, PNG, or WebP image.');
   }
@@ -98,6 +98,8 @@ export async function uploadSiteImage(accountId: string, file: File): Promise<Si
     id: `upload-${storagePath}`,
     url: data.publicUrl,
     alt: imageAltFromName(file.name),
+    width: width || undefined,
+    height: height || undefined,
     category: 'craft',
     source: 'upload',
     storagePath,

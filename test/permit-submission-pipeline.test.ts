@@ -87,19 +87,27 @@ describe('Permit Submission Pipeline & Authorization Controls', () => {
       applicant: {
         type: 'contractor',
         companyName: 'Test Roofing',
-        contactName: 'John Doe',
-        licenseNumber: '', // Missing
-        licenseType: 'Builder',
+        contactName: { status: 'provided', value: 'John Doe', sourceId: 'test' },
+        licenseNumber: { status: 'missing', label: 'State Builder License #' },
+        licenseType: { status: 'provided', value: 'Builder', sourceId: 'test' },
+        licenseExpiration: { status: 'provided', value: '2027-01-01', sourceId: 'test' },
+        insuranceCarrier: { status: 'provided', value: 'InsureCo', sourceId: 'test' },
+        insurancePolicyNumber: { status: 'provided', value: 'POL-1', sourceId: 'test' },
+        workersCompCarrier: { status: 'provided', value: 'CompCo', sourceId: 'test' },
+        workersCompPolicy: { status: 'provided', value: 'WC-1', sourceId: 'test' },
+        mescEmployerNumber: { status: 'provided', value: 'M-1', sourceId: 'test' },
+        fein: { status: 'provided', value: 'FEIN-1', sourceId: 'test' },
         phone: '248-555-1234',
         email: 'test@example.com',
         address: 'Royal Oak, MI',
       },
       property: {
-        ownerName: 'Jane Smith',
+        ownerName: { status: 'provided', value: 'Jane Smith', sourceId: 'test' },
         streetAddress: '211 S Williams St',
         city: 'Royal Oak',
         state: 'MI',
         zip: '48067',
+        parcelNumber: { status: 'provided', value: 'PARCEL-1', sourceId: 'test' },
         occupancyType: 'R-3',
         constructionType: 'V-B',
       },
@@ -118,6 +126,10 @@ describe('Permit Submission Pipeline & Authorization Controls', () => {
         applicantSignatureText: 'Agent',
         signatureDate: '2026-08-26',
         section23aNotice: 'Notice',
+      },
+      readiness: {
+        complete: false,
+        missing: ['State Builder License #'],
       },
     };
 

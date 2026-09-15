@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 // Exact, not rounded: every amount in this file names a charge, a receipt or a
 // refund. "Requested a deposit of $438" against a $437.50 card charge is the
 // same defect as the payment page's button. See formatMoneyExact.
@@ -61,11 +62,11 @@ export function ownerHighValueLeadText(input: {
   const range = input.estimate
     ? ` ($${input.estimate.min.toLocaleString()}-$${input.estimate.max.toLocaleString()})`
     : '';
-  return `🔥 High-value lead for ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return lgqSmsText(`🔥 High-value lead for workspace ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl} — Reply STOP to opt out.`);
 }
 
 export function ownerVerificationCodeText(input: { code: string }): string {
-  return `Your Let’s Get Quoted verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`;
+  return lgqSmsText(`Your verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`);
 }
 
 export function crewPhoneVerificationCodeText(input: { businessName: string; code: string }): string {
@@ -73,7 +74,45 @@ export function crewPhoneVerificationCodeText(input: { businessName: string; cod
 }
 
 export function voiceStaffStepUpCodeText(input: { code: string }): string {
-  return `Your Let’s Get Quoted voice authorization code is ${input.code}. It expires in 10 minutes. Only use it on the call you started. Reply STOP to opt out.`;
+  return lgqSmsText(`Your voice authorization code is ${input.code}. It expires in 10 minutes. Only use it on the call you started. Reply STOP to opt out.`);
+}
+
+function voiceAlertBrief(raw: string, fallback: string): string {
+  let summary = raw.trim();
+  // Post-call summaries can be serialized structured data, not prose. Never
+  // truncate that data before parsing it or expose malformed JSON in a text.
+  if (/[{}\[\]]|```/.test(summary)) {
+    const json = summary.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    summary = '';
+    try {
+      const parsed: unknown = JSON.parse(json);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const fields = parsed as Record<string, unknown>;
+        const text = (key: string) => {
+          const value = typeof fields[key] === 'string' ? fields[key].trim() : '';
+          return /[{}\[\]]|```/.test(value) ? '' : value;
+        };
+        const request = text('work_requested')
+          || (fields.transfer_requested === true ? 'Caller requested a transfer' : '')
+          || (fields.follow_up_action === 'callback_required' ? 'Caller requested a callback' : '');
+        const parts = [request];
+        if (text('service_address')) parts.push(`at ${text('service_address')}`);
+        if (text('booked_slot')) parts.push(`Booked: ${text('booked_slot')}`);
+        else if (text('requested_slot')) parts.push(`Requested: ${text('requested_slot')}`);
+        if (text('hazard_type')) parts.push(`Hazard: ${text('hazard_type').replace(/_/g, ' ')}`);
+        summary = parts.filter(Boolean).join(' ');
+      }
+    } catch {
+      // The linked call record retains the original payload for review.
+    }
+  }
+  summary = (summary || fallback).replace(/\s+/g, ' ').trim();
+  if (summary.length > 140) {
+    const prefix = summary.slice(0, 137);
+    const boundary = prefix.lastIndexOf(' ');
+    summary = `${boundary > 0 ? prefix.slice(0, boundary) : prefix}...`;
+  }
+  return /[.!?…]$/.test(summary) ? summary : `${summary}.`;
 }
 
 export function ownerVoiceEmergencyAlertText(input: {
@@ -83,7 +122,8 @@ export function ownerVoiceEmergencyAlertText(input: {
   dashboardUrl: string;
 }): string {
   const caller = input.callerNumber || 'Unknown caller';
-  return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  const brief = voiceAlertBrief(input.hazardSummary, 'Review the call for emergency details');
+  return lgqSmsText(`🚨 EMERGENCY CALL for workspace ${input.businessName} from ${caller}: ${brief} Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`);
 }
 
 export function ownerVoiceCallNotificationText(input: {
@@ -94,8 +134,8 @@ export function ownerVoiceCallNotificationText(input: {
   dashboardUrl: string;
 }): string {
   const caller = input.callerName ? `${input.callerName} (${input.callerNumber || 'Unknown'})` : (input.callerNumber || 'Unknown caller');
-  const brief = input.summary.slice(0, 140);
-  return `📞 New call answered for ${input.businessName} from ${caller}: ${brief}. Details: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  const brief = voiceAlertBrief(input.summary, 'No call summary available');
+  return lgqSmsText(`📞 New call answered for workspace ${input.businessName} from ${caller}: ${brief} Details: ${input.dashboardUrl} — Reply STOP to opt out.`);
 }
 
 export function callerVoiceBookingLinkText(input: {
@@ -135,7 +175,7 @@ export function ownerBookingRequestAlertText(input: {
   dashboardUrl: string;
 }): string {
   const service = input.serviceName ? ` (${input.serviceName})` : '';
-  return `📅 New booking request for ${input.businessName}: ${input.customerName || 'Customer'} requested ${input.whenLabel}${service}. Confirm in dashboard: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return lgqSmsText(`📅 New booking request for workspace ${input.businessName}: ${input.customerName || 'Customer'} requested ${input.whenLabel}${service}. Confirm in dashboard: ${input.dashboardUrl} — Reply STOP to opt out.`);
 }
 
 export function ownerPortalMessageAlertText(input: {
@@ -147,7 +187,7 @@ export function ownerPortalMessageAlertText(input: {
   const preview = input.messagePreview.length > 80
     ? `${input.messagePreview.slice(0, 77)}...`
     : input.messagePreview;
-  return `💬 New message from ${input.customerName || 'Customer'} for ${input.businessName}: "${preview}". View in messages: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return lgqSmsText(`💬 New message from ${input.customerName || 'Customer'} for workspace ${input.businessName}: "${preview}". View in messages: ${input.dashboardUrl} — Reply STOP to opt out.`);
 }
 
 
@@ -177,6 +217,15 @@ export function quickStopConfirmedText(input: {
   return `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. Your visit fee is paid; any service or parts are billed separately. We'll text updates on the way.${manage} Reply STOP to opt out.`;
 }
 
+export function quickStopStatusText(
+  kind: 'en_route' | 'arrived' | 'eta',
+  input?: { minutes?: number }
+): string {
+  if (kind === 'en_route') return 'Your Quick Stop technician is on the way.';
+  if (kind === 'arrived') return 'Your technician has arrived.';
+  return `Quick Stop update: Your technician is approximately ${input?.minutes ?? 15} minutes away.`;
+}
+
 // -- crew --------------------------------------------------------------------
 
 export function crewAssignmentText(input: {
@@ -192,14 +241,14 @@ export function crewAssignmentText(input: {
   const scheduledNote = input.scheduledFor
     ? ` Scheduled ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}.`
     : '';
-  return `Hi ${input.crewName}, ${input.businessName} assigned you to job ${input.jobRef} — ${input.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
+  return lgqSmsText(`Hi ${input.crewName}, ${input.businessName} assigned you to job ${input.jobRef} — ${input.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`);
 }
 
 export function crewWelcomeText(input: {
   crewName: string;
   businessName: string;
 }): string {
-  return `Hi ${input.crewName}! ${input.businessName} added you to their team on Let's Get Quoted. You can text this number anytime from the job site with progress updates, gate codes, or material receipt photos. Reply STOP to opt out.`;
+  return lgqSmsText(`Hi ${input.crewName}! ${input.businessName} added you to their team on Let's Get Quoted. You can text this number anytime from the job site with progress updates, gate codes, or material receipt photos. Reply STOP to opt out.`);
 }
 
 export function crewScheduleSelectedText(input: {
@@ -213,7 +262,7 @@ export function crewScheduleSelectedText(input: {
 }): string {
   const addressNote = input.address ? input.address : 'Address not set';
   const scheduledNote = formatJobSchedule(input.scheduledFor, input.scheduledTime);
-  return `Hi ${input.crewName}, job ${input.jobRef} for ${input.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. ${input.businessName}. Reply STOP to opt out.`;
+  return lgqSmsText(`Hi ${input.crewName}, job ${input.jobRef} for ${input.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. Workspace: ${input.businessName}. Reply STOP to opt out.`);
 }
 
 // -- subcontractor dispatch ---------------------------------------------------
@@ -237,7 +286,7 @@ export function subcontractorCoveredText(input: {
   location: string;
 }): string {
   const where = input.location.trim() ? ` in ${input.location.trim()}` : '';
-  return `${input.businessName}: the ${input.workDescription.trim()}${where} has been covered by another sub. Thanks for taking a look — we will send the next one. Reply STOP to opt out.`;
+  return lgqSmsText(`Workspace: ${input.businessName}. The ${input.workDescription.trim()}${where} has been covered by another sub. Thanks for taking a look — we will send the next one. Reply STOP to opt out.`);
 }
 
 /** "It's yours." Carries the link, because the address is behind it. */
@@ -248,7 +297,7 @@ export function subcontractorWonText(input: {
   link: string;
 }): string {
   const when = input.whenLabel.trim() ? ` ${input.whenLabel.trim()}` : '';
-  return `${input.businessName}: you are confirmed for the ${input.workDescription.trim()}${when}. Address and contact details: ${input.link} Reply STOP to opt out.`;
+  return lgqSmsText(`Workspace: ${input.businessName}. You are confirmed for the ${input.workDescription.trim()}${when}. Address and contact details: ${input.link} Reply STOP to opt out.`);
 }
 
 /** The owner pulled the job before anybody took it. */
@@ -256,7 +305,7 @@ export function subcontractorCancelledText(input: {
   businessName: string;
   workDescription: string;
 }): string {
-  return `${input.businessName}: the ${input.workDescription.trim()} we sent you has been cancelled. No action needed. Reply STOP to opt out.`;
+  return lgqSmsText(`Workspace: ${input.businessName}. The ${input.workDescription.trim()} we sent you has been cancelled. No action needed. Reply STOP to opt out.`);
 }
 
 // -- the job -----------------------------------------------------------------
@@ -376,7 +425,7 @@ export function leadQuoteVisitText(input: {
   leadName: string;
   address: string | null;
   scheduledFor: string;
-  scheduledTime: string;
+  scheduledTime: string | null;
 }): string {
   const addressNote = input.address ? ` at ${input.address}` : '';
   return `${input.businessName} scheduled your free in-person quote${addressNote} for ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}. ${input.leadName}, reply STOP to opt out.`;
@@ -424,6 +473,28 @@ export function cardSetupText(input: { businessName: string; url: string }): str
 
 export function cardUpdateText(input: { businessName: string; url: string }): string {
   return `Your saved card for ${input.businessName} was declined, so your recurring payment didn't go through. Update your card here to keep your service going: ${input.url}. Reply STOP to opt out.`;
+}
+
+export function noiNoticeText(input: {
+  businessName: string;
+  clientName?: string | null;
+  amount: number;
+  url: string;
+}): string {
+  const greeting = input.clientName?.trim() ? `Hi ${input.clientName.trim()}, ` : '';
+  const amount = formatMoney(Number(input.amount));
+  return withOptOut(
+    `${input.businessName}: ${greeting}Notice of Intent to File Lien for overdue balance of ${amount}. Review document & payment options: ${input.url}`
+  );
+}
+
+export function lienWaiverText(input: {
+  customerName: string;
+  waiverTypeTitle: string;
+  jobRef: string;
+  url: string;
+}): string {
+  return `Hi ${input.customerName}, here is your official signed ${input.waiverTypeTitle} for job ${input.jobRef}: ${input.url}. Reply STOP to opt out.`;
 }
 
 // -- coming back -------------------------------------------------------------
@@ -484,7 +555,12 @@ export function selectionRequestText(input: {
  * catalogue — "we wrote this" and "we addressed this" are different promises.
  */
 export function inboxReplyText(input: { businessName: string; body: string }): string {
-  return `${input.businessName}: ${input.body}`;
+  const text = input.body.trim();
+  const prefix = `${input.businessName.trim()}:`;
+  if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return text;
+  }
+  return `${input.businessName}: ${text}`;
 }
 
 export function campaignText(input: { businessName: string; body: string }): string {
@@ -546,6 +622,34 @@ export function intakeConfirmationText(input: {
   return withOptOut(
     `Hi ${firstName}, thanks for reaching out to ${input.businessName}! We received your ${cleanService}.${estimateClause} Our team is reviewing the details and will follow up shortly.`
   );
+}
+
+/**
+ * Formats a 10DLC-compliant transactional text containing the Client Dashboard link.
+ */
+export function formatClientDashboardSmsText(params: {
+  businessName: string;
+  clientName: string;
+  clientDashboardUrl: string;
+  nextActionPrompt?: string;
+}): string {
+  const firstName = params.clientName.trim().split(/\s+/)[0] || 'there';
+  const nextNote = params.nextActionPrompt ? ` (${params.nextActionPrompt})` : '';
+  return `${params.businessName}: Hi ${firstName}, here is your project portal and next steps${nextNote}: ${params.clientDashboardUrl} Reply STOP to opt out.`;
+}
+
+/**
+ * Formats a private text sent from a dedicated 2-way number.
+ */
+export function formatPrivateSmsText(params: {
+  businessName: string;
+  body: string;
+}): string {
+  const text = params.body.trim();
+  if (text.toLowerCase().includes(params.businessName.toLowerCase())) {
+    return withOptOut(text);
+  }
+  return withOptOut(`${params.businessName}: ${text}`);
 }
 
 

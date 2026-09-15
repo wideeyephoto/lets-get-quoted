@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { SiteImage } from '@/lib/site-images';
 import type { PexelsPickPhoto } from '@/lib/stock/types';
-import { compressImage } from '@/lib/client-images';
+import { compressImageWithDimensions } from '@/lib/client-images';
 import { deleteSiteImageAction, searchPexelsAction } from './actions';
 import styles from './SiteEditor.module.css';
 
@@ -82,9 +82,11 @@ export default function ImageLibrary({
     setIsUploading(true);
     setUploadProgress(2);
     try {
-      const compressed = await compressImage(file, 2000, 0.84);
+      const compressed = await compressImageWithDimensions(file, 2000, 0.84);
       const formData = new FormData();
-      formData.set('image', compressed);
+      formData.set('image', compressed.file);
+      formData.set('width', compressed.width.toString());
+      formData.set('height', compressed.height.toString());
       const image = await new Promise<SiteImage>((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open('POST', '/api/site-images');
@@ -103,7 +105,7 @@ export default function ImageLibrary({
       setUploads((current) => [image, ...current]);
       onUpload?.(image);
       setSource('upload');
-      setMessage(`Image optimized from ${(file.size / 1024 / 1024).toFixed(1)} MB to ${(compressed.size / 1024 / 1024).toFixed(1)} MB.`);
+      setMessage(`Image optimized from ${(file.size / 1024 / 1024).toFixed(1)} MB to ${(compressed.file.size / 1024 / 1024).toFixed(1)} MB.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Image upload failed.');
     } finally {

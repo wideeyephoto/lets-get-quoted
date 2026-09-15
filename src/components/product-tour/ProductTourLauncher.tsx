@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './product-tour.module.css';
+import { DASHBOARD_ORIENTATION_TOUR, getTourCopySummary } from '@/lib/product-tour/catalog';
+import { dismissTourAction, recordTourEventAction } from '@/app/dashboard/tour-actions';
 
 export function ChecklistTourInvitation({
+  allowedStepIds,
+  offer = true,
   onStart,
   onDismiss,
 }: {
+  allowedStepIds?: string[];
+  offer?: boolean;
   onStart?: () => void;
   onDismiss?: () => void;
 }) {
@@ -22,7 +28,21 @@ export function ChecklistTourInvitation({
     }
   }, []);
 
-  if (dismissed) return null;
+  // Emit tour_offered telemetry when the banner actually renders
+  useEffect(() => {
+    if (dismissed || offer === false) return;
+    recordTourEventAction({
+      client_event_id: `cl_offer_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      tour_key: DASHBOARD_ORIENTATION_TOUR.key,
+      tour_version: DASHBOARD_ORIENTATION_TOUR.version,
+      event_type: 'tour_offered',
+      source: 'checklist_invitation',
+    }).catch(() => {});
+  }, [dismissed, offer]);
+
+  if (dismissed || offer === false) return null;
+
+  const { durationText, surfacesText } = getTourCopySummary(allowedStepIds);
 
   const handleStart = () => {
     if (onStart) {
@@ -32,22 +52,23 @@ export function ChecklistTourInvitation({
     }
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
     setDismissed(true);
     try {
       sessionStorage.setItem('lgq_checklist_tour_dismissed', 'true');
     } catch {
       // Ignore
     }
+    await dismissTourAction(DASHBOARD_ORIENTATION_TOUR.key, DASHBOARD_ORIENTATION_TOUR.version);
     if (onDismiss) onDismiss();
   };
 
   return (
     <div className={styles.checklistLauncher} role="region" aria-label="Product Tour Invitation">
       <div className={styles.checklistLauncherCopy}>
-        <span className={styles.checklistLauncherTitle}>✨ New here? Take a 90-second orientation tour</span>
+        <span className={styles.checklistLauncherTitle}>✨ New here? Take a {durationText} orientation tour</span>
         <span className={styles.checklistLauncherSub}>
-          See how leads, jobs, scheduling, website builder and automations connect together.
+          See how {surfacesText} connect together.
         </span>
       </div>
       <div className={styles.checklistLauncherActions}>
@@ -56,7 +77,7 @@ export function ChecklistTourInvitation({
           onClick={handleStart}
           className={styles.launcherStartBtn}
         >
-          Take a 90-second tour &rarr;
+          Take a {durationText} tour &rarr;
         </button>
         <button
           type="button"
@@ -84,9 +105,10 @@ export function HelpTourRestartButton({
       type="button"
       onClick={handleRestart}
       className={className ?? styles.primaryBtn}
-      title="Restart the 90-second dashboard orientation"
+      title="Restart the dashboard orientation tour"
     >
       🧭 Restart Product Tour
     </button>
   );
 }
+

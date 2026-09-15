@@ -3578,6 +3578,40 @@
   border-top-color: #e2e8f0 !important;
 }
 
+:global(:root[data-theme='sunlight']) .toolFeatures li {
+  color: #334155 !important;
+}
+
+:global(:root[data-theme='sunlight']) .toolFeatures li span {
+  color: #047857 !important;
+}
+
+:global(:root[data-theme='sunlight']) .toolBadge {
+  color: #047857 !important;
+  background: #d1fae5 !important;
+}
+
+:global(:root[data-theme='sunlight']) .toolLink {
+  color: #c2410c !important;
+}
+
+:global(:root[data-theme='sunlight']) .crossToolCard {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='sunlight']) .crossToolTitle {
+  color: #0f172a !important;
+}
+
+:global(:root[data-theme='sunlight']) .crossToolDesc {
+  color: #334155 !important;
+}
+
+:global(:root[data-theme='sunlight']) .crossToolLink {
+  color: #c2410c !important;
+}
+
 :global(:root[data-theme='sunlight']) .estimateTable th {
   background: #e2e8f0 !important;
   color: #0f172a !important;

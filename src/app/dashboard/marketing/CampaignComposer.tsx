@@ -9,7 +9,10 @@ import {
   hasBlockingFinding,
   type CampaignFinding,
   smsSegments,
+  sentBody,
 } from '@/lib/campaign-guard';
+import { campaignText } from '@/lib/sms-templates';
+import { calculateSmsSegments, SmsBubble } from '@/components/sms/SmsPreview';
 import { AiSparkleButton, AiRefineChips } from '@/components/ai';
 import { EMAIL_THEMES, normalizeEmailTheme, type EmailThemeId } from '@/emails/brand';
 import type { TemplateCard } from '@/lib/campaign-recommendations';
@@ -230,6 +233,17 @@ export default function CampaignComposer({
               : reachCount === 0
                 ? 'Nobody in this audience can be reached on the channel you picked.'
                 : null;
+
+  const effectiveBusinessName = (businessName || "Let's Get Quoted").trim();
+  const sampleCampaignSms = campaignText({
+    businessName: effectiveBusinessName,
+    body: body.replace(/\{\s*name\s*\}/gi, 'Sarah').replace(/\{\s*referral_link\s*\}/gi, 'https://example.com/book/acme?ref=sample123'),
+  });
+  const campaignSmsForSegments = campaignText({
+    businessName: effectiveBusinessName,
+    body: sentBody(body),
+  });
+  const campaignSmsSegmentCount = calculateSmsSegments(campaignSmsForSegments).count;
   const canSend = sendBlockedReason === null;
 
   function runRead() {
@@ -474,13 +488,21 @@ export default function CampaignComposer({
               ~92-character link it becomes, so the count is what actually gets
               billed rather than what is on screen. */}
           {wantSms ? (
-            <span className={smsSegments(body) > 1 ? ' warn' : ''}>
-              {' '}Texts: ~{smsSegments(body)} segment
-              {smsSegments(body) > 1 ? 's' : ''} each (business name &amp; opt-out line are
-              added automatically).
+            <span className={campaignSmsSegmentCount > 1 ? ' warn' : ''}>
+              {' '}Texts: ~{campaignSmsSegmentCount} segment
+              {campaignSmsSegmentCount > 1 ? 's' : ''} each (business name &amp; opt-out line included).
             </span>
           ) : null}
         </p>
+        {wantSms && body.trim() ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <SmsBubble
+              recipientLabel="Sample Customer"
+              message={sampleCampaignSms}
+              note="Sample preview with business name, substituted name/link, and mandatory STOP opt-out line."
+            />
+          </div>
+        ) : null}
       </div>
 
       {/* Campaign Guard. The checks are already on screen before anybody asks

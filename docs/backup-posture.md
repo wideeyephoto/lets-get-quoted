@@ -1,68 +1,38 @@
 # Database & Storage Backup Posture — Let's Get Quoted
 
-**Status:** ACTIVE & PRODUCTION-HARDENED  
-**Target Database:** PostgreSQL 17.6.1 (`mfuvvtrkipkigwqqtcal` on Supabase, `us-west-2`)  
-**Storage Assets:** 7 Managed Buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`)  
-**Last Updated:** 2026-09-01
+**Status: staging acceptance passes; the verified corrective migration is applied to production. Encrypted twice-daily Google Drive backups are installed, an independent cloud download authenticates successfully, and the user confirms Dashlane key escrow. Full infrastructure/provider disaster recovery remains unproven.**
+**Last checked:** 2026-09-09. Production project: `mfuvvtrkipkigwqqtcal`, PostgreSQL 17.6, Supabase organization `LETS GET QUOTED` (Free plan).
 
----
+## Measured posture
 
-## 1. RPO & RTO Objectives
+| Item | Verified evidence |
+| --- | --- |
+| PITR | Disabled: Management API reports `pitr_enabled: false`. |
+| Managed recovery points | API reports `backups: []` and `physical_backup_data: {}`. No retention window or backup cadence can be measured. `walg_enabled: true` does not establish PITR availability. |
+| RPO | 12-hour target while this PC and Drive are available; availability guarantee unmeasured. PITR remains disabled by the user's keep-Free decision. |
+| RTO | Full-disaster RTO unestablished. Initial restore/verification ended after 37m 32.680s with a crew-completion defect. Follow-up acceptance passed 1h 50m 3.457s after the first restore command, including the intervening pause and correction. Infrastructure/provider recovery was not rehearsed. |
+| Manual database copy | Captured at 2026-09-09 10:17:00.776Z: 10,630,650-byte custom archive, 4,348 readable TOC entries, including `public`, `auth`, and `storage` data. |
+| Manual Storage copy | All 38 objects in the seven current buckets downloaded: 35,726,922 bytes. Every object's length matches source metadata. Metadata was unchanged when checked after capture. |
+| Encryption verification | All archive and object files encrypted with AES-256-GCM, read back, authenticated, and compared by SHA-256. |
+| Scheduled or offsite backup | Twice daily 08:45/20:45, 30-day Drive retention. Full capture/publication and mounted readback passed. A user-downloaded cloud pack independently matches its receipt and authenticates the database, all 38 Storage objects, source and configuration. See the offsite runbook. |
 
-| Parameter | Objective SLA | Mechanism | Verified Capability |
-| :--- | :--- | :--- | :--- |
-| **RPO (Recovery Point Objective)** | $\le$ 1 Hour | Hourly automated `pg_dump` with custom binary format (`-Fc`), per-object SHA-256 Storage mirroring, and Supabase continuous WAL archiving (PITR). | Hourly snapshots mirrored to offsite encrypted storage; PITR WAL continuous log retention up to 7 days. |
-| **RTO (Recovery Time Objective)** | $\le$ 30 Minutes | Automated restore scripts (`scripts/run-pitr-restore-drill.mjs`) applying schema, dropping ownership constraints (`--no-owner --no-privileges`), and hydrating relational tables. | Verified clean restore of auth users, invoices, jobs, and storage assets in $< 5$ minutes on scratch database. |
+Sources: [raw backups response](runbooks/evidence/dr-backups-2026-09-09.json), [capture summary and hashes](runbooks/evidence/dr-production-capture-2026-09-09.json), and [drill results](runbooks/dr-drill-record-2026-09-09.md).
 
----
+The key is also saved independently in the user's Dashlane, confirmed by the user. The encrypted recovery kit contains source, local environment configuration, database and Storage data. See [offsite operation and recovery](runbooks/dr-offsite-recovery.md) for measured checks and remaining limitations.
 
-## 2. Backup Architecture & Infrastructure
+## Local capture and recovery tooling
 
-### 2.1 Database Rails
-1. **Continuous WAL Archiving (Supabase PITR)**:
-   - Supabase Point-in-Time Recovery archives database Write-Ahead Logs continuously.
-   - Allows second-precision rollbacks to any point within the retention window.
-2. **Scheduled Hourly Custom Dumps (`pg_dump -Fc`)**:
-   - Out-of-band backup scripts export the full schema and data using PostgreSQL custom format:
-     ```bash
-     pg_dump --format=custom --no-owner --no-privileges --compress=9 -d "$DATABASE_URL" -f "db_backup_$(date +%Y%m%d_%H%M%S).dump"
-     ```
-   - Encrypted with GPG (AES-256 symmetric cipher) and replicated to offsite Google Drive storage.
+- `scripts/capture-dr-backup.mjs` takes a read-only, repeatable-read database snapshot and gives that snapshot to `pg_dump`. It records row counts, table grants, RLS settings, policy hashes, and function hashes from that snapshot. Storage files are copied separately through the Storage API.
+- `scripts/restore-dr-managed.mjs` is the tested hosted-Supabase path; the raw `restore-dr-backup.mjs` rolled back on protected platform ownership. The managed wrapper defaults to a dry run. It rejects the production project, production aliases through the session pooler, connection-string host overrides, and source/target equality. Applying requires the explicitly chosen project and exact destruction acknowledgement. The restore uses one transaction and stops on the first error. It preserves platform DDL, loads managed data in dependency order, and clears destination defaults before replaying archive grants. Exact grant parity is a mandatory post-restore check.
+- `scripts/run-pitr-restore-drill.mjs` is a read-only relational validator. It uses `SCRATCH_DATABASE_URL` or an explicit target, never a `DATABASE_URL` fallback. Its output does not certify sign-in, blob availability, RLS, or source/target count parity.
+- `test/disaster-recovery-safety.test.ts` tests those guards and reporting logic. Unit tests are not restore evidence.
 
-### 2.2 Storage Asset Rails
-1. **7 Object Buckets Mirrored**:
-   - `insurance-proof`: Contractor COI and general liability proof documents.
-   - `job-photos`: Work-in-progress, pre-job, and post-completion field documentation photos.
-   - `lead-photos`: Homeowner-submitted property damage/project intake photos.
-   - `site-videos`: Contractor hero and showcase promotional video assets.
-   - `site-images`: Website builder branding logos, trade banners, and team assets.
-   - `crew-photos`: Field worker badges and profile photos.
-   - `account-attachments`: Change order PDFs, lien waiver signed notices, and invoices.
-2. **Metadata & Blob Integrity**:
-   - Object paths structured as `${accountId}/${randomUUID()}.${ext}` maintain strict tenant partitioning.
-   - Storage state mirrored with object checksum verification.
+The PostgreSQL 17.11 client binaries are in `tmp/dr-tools/pgsql/bin`. Encrypted captures are in the gitignored `tmp/dr-captures/` directory. The encryption key is in `.env.dr-backup.local`; the one-day Management API token is in `.env.management.local`. Keep both key files out of commits, deployment environments, and frontend code.
 
----
+## Recovery results and remaining gates
 
-## 3. Disaster Recovery Restoration Procedure
+The approved production snapshot was restored into existing staging. All 258 captured table/RLS/grant entries, 272 policies and 435 function/grant entries matched at baseline. Captured row counts matched with one declared destination-infrastructure exception: staging retains its pre-existing Vault secret. All 38 Storage objects were restored and verified through signed-download hashes. Existing-member sign-in, tenant denial, photo display, invoice generation and dashboard/admin smoke succeeded.
 
-### 3.1 Pre-Restoration Checks
-1. Identify recovery timestamp (UTC) or specific backup archive file (`.dump`).
-2. Provision or target an isolated scratch PostgreSQL 17 instance.
-3. Validate decryption passphrase against GPG offsite bundle.
+The source function's missing `jobs.completed_at` write initially caused a 29/30 result. The staged forward migration fixes completion and its enum/text boundary and removes anonymous execution. All **35 real RLS tests now pass**. Follow-up comparison confirms only that intended function/grant change. All 12 Auth users' checked fields and all 14 identities match the capture; an authenticated cross-account private Storage download and signed-URL request are denied. App use and migration-history deltas are documented separately from the original parity evidence.
 
-### 3.2 Database Restore Execution
-```bash
-# 1. Restore database without ownership and privileges (preventing supabase admin permission errors)
-pg_restore --clean --if-exists --no-owner --no-privileges -d "$SCRATCH_DATABASE_URL" "db_backup.dump"
-
-# 2. Execute verification script to audit relational integrity and counts
-node scripts/run-pitr-restore-drill.mjs --target="$SCRATCH_DATABASE_URL"
-```
-
-### 3.3 Post-Restore Verification Checklist
-- [x] **Auth Users**: Confirm `auth.users` row count matches production snapshot and identities can sign in.
-- [x] **Core Tenancy**: Validate `accounts`, `memberships`, and `staff` tables.
-- [x] **Financial Records**: Validate `invoices`, `payments`, `billing_events`, and Stripe customer mappings.
-- [x] **Field Operations**: Validate `jobs`, `clients`, `quotes`, and `crew_members`.
-- [x] **Storage Assets**: Verify signed URL generation and object availability across all 7 buckets.
+The verified crew-completion migration was applied to production at 12:30 UTC; readback matches the passing staging function exactly, including removal of anonymous execution. No production business rows were changed. Offsite capture/publication, scheduling, independent cloud-download authentication and user-confirmed Dashlane escrow are established. Dashlane retrieval itself, provider reconciliation, deployment/DNS and broader recovery tiers remain open. Staging's SMS cron remains disabled. See the [dated evidence and limitations](runbooks/dr-drill-record-2026-09-09.md).

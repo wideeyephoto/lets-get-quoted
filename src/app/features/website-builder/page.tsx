@@ -91,7 +91,7 @@ export default async function WebsiteBuilderPage() {
       {/* Structural contracts for suite assertions */}
       <SuiteContractAssertions
         eyebrow="AI website builder for contractors"
-        primary={{ label: 'Browse All 8 Design Archetypes', href: '/demo/sites' }}
+        primary={{ label: 'See the website builder in the demo', href: '/demo/sites' }}
         demo={<HeroThemeCycler />}
         afterHero={
           <ExampleSiteShowcase

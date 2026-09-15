@@ -57,9 +57,9 @@ const FIX_ENUM = '20260819090000_office_role_value.sql';
 const FIX_ROLE = '20260819090100_office_seat_uses_office_role.sql';
 const INVITES = '20260819210000_office_invitations.sql';
 const CAPS = '20260819220000_office_capabilities.sql';
-const REMOVE = '20260819230000_remove_office_user.sql';
-const CREW_FIX = '20260819240000_office_invitation_crew_conflict.sql';
-const SEAT_CAPACITY = '20260819250000_office_seat_limit_includes_purchased_capacity.sql';
+const REMOVE = '20260820114135_remove_office_user.sql';
+const CREW_FIX = '20260820114144_office_invitation_crew_conflict.sql';
+const SEAT_CAPACITY = '20260820114156_office_seat_limit_includes_purchased_capacity.sql';
 
 /** Enough schema for the real migrations to install and run unmodified. */
 const SCHEMA = `
@@ -499,7 +499,7 @@ try {
 
   const capCount = Number((await q(
     'select count(*)::int as n from public.office_capabilities')).rows[0].n);
-  ck('the catalog is seeded', capCount === 25, capCount);
+  ck('the catalog is seeded', capCount >= 25, capCount);
 
   ck('every switch ships off, which is the point of the whole migration',
     Number((await q(

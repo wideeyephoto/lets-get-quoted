@@ -69,4 +69,30 @@ describe('Product Tour Integration and Stable DOM Anchors', () => {
     expect(route).toContain('sanitizeTourEventPayload');
     expect(route).toContain("from('product_tour_events')");
   });
+
+  it('verifies anti-flicker stability contract, modal isolation, and memoization', () => {
+    const rootSrc = readFileSync('src/components/product-tour/ProductTourRoot.tsx', 'utf8');
+    const coachmarkSrc = readFileSync('src/components/product-tour/ProductTourCoachmark.tsx', 'utf8');
+    const cssSrc = readFileSync('src/components/product-tour/product-tour.module.css', 'utf8');
+
+    // 1. Tour steps are memoized to avoid infinite render/effect loops
+    expect(rootSrc).toContain('useMemo(');
+    expect(rootSrc).toContain('hasInitializedRef');
+
+    // 2. Coachmark dialog has explicit data-tour-coachmark and aria-label="Product Tour"
+    expect(coachmarkSrc).toContain('data-tour-coachmark="true"');
+    expect(coachmarkSrc).toContain('aria-label="Product Tour"');
+
+    // 3. Modal detection excludes tour coachmark and overlays
+    expect(rootSrc).toContain(':not([data-tour-coachmark])');
+
+    // 4. Viewport centering and boundary flip logic exist to prevent obscuring targets
+    expect(rootSrc).toContain("block: 'center'");
+    expect(coachmarkSrc).toContain('spaceBelow');
+    expect(coachmarkSrc).toContain('spaceAbove');
+
+    // 5. CSS transitions do not animate all properties during scrolling
+    expect(cssSrc).not.toContain('transition: all 0.25s');
+    expect(cssSrc).toContain('transition: opacity');
+  });
 });

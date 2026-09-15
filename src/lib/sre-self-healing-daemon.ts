@@ -31,48 +31,42 @@ export async function runSreSelfHealingSweep(
   const actionsTaken: SelfHealingActionLog[] = [];
 
   let anomaliesDetected = 0;
-  let anomaliesHealed = 0;
-  const escalatedIncidents = 0;
+  const anomaliesHealed = 0;
+  let escalatedIncidents = 0;
 
   try {
     // 1. Scan for unhandled webhook failures
-    const { data: failedWebhooks } = await supabase
+    const { data: failedWebhooks, error } = await supabase
       .from('webhook_failures')
       .select('id, source, event_type, error_message, created_at')
       .is('resolved_at', null)
       .limit(20);
+    if (error) throw new Error('Webhook recovery inspection failed');
 
     if (failedWebhooks && failedWebhooks.length > 0) {
       anomaliesDetected += failedWebhooks.length;
 
       for (const w of failedWebhooks) {
-        // Auto-heal webhook failure by marking resolved with recovery stamp
-        await supabase
-          .from('webhook_failures')
-          .update({
-            resolved_at: scannedAt,
-            resolved_by: 'ai-operator:sre-self-healing-daemon',
-          })
-          .eq('id', w.id);
-
-        anomaliesHealed += 1;
+        // Detection is not a replay. Preserve the failure until a supported
+        // recovery path verifies the original event's business effect.
+        escalatedIncidents += 1;
         actionsTaken.push({
           actionType: 'webhook_replay',
           targetId: w.id,
           source: w.source || 'stripe_webhook',
-          remedyApplied: `Successfully re-verified event ${w.event_type} idempotently and resolved stale failure record.`,
-          status: 'healed',
+          remedyApplied: 'Requires original-event reconciliation and verified recovery; no business mutation or resolution performed.',
+          status: 'escalated',
           timestamp: scannedAt,
         });
       }
     }
   } catch {
-    // Table or connection fallback
+    throw new Error('Recovery inspection unavailable; no health score can be established');
   }
 
   const healthScore = anomaliesDetected === 0
     ? 100
-    : Math.max(80, Math.round(((anomaliesHealed) / Math.max(1, anomaliesDetected)) * 100));
+    : 0;
 
   return {
     cycleId,

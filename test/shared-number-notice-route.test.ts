@@ -145,7 +145,7 @@ describe('the shared number answers a reply', () => {
     const body = await response.text();
 
     expect(response.status).toBe(200);
-    expect(body).toContain('<Message>BrokePipes: Alerts only');
+    expect(body).toContain('<Message>Let&apos;s Get Quoted: Alerts only');
     expect(body).toContain('/portal');
     expect(body).toMatch(/Reply STOP to opt out/);
     expect(client.rpc).toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.objectContaining({

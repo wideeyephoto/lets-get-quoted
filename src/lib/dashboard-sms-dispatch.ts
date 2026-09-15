@@ -1,4 +1,4 @@
-﻿import { createAdminClient } from '@/lib/auth';
+import { createAdminClient } from '@/lib/auth';
 import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
 import { getSharedFieldPhoneNumber } from '@/lib/sms';
 
@@ -36,30 +36,4 @@ export async function getMessagingCapability(
   };
 }
 
-/**
- * Formats a 10DLC-compliant transactional text containing the Client Dashboard link.
- */
-export function formatClientDashboardSmsText(params: {
-  businessName: string;
-  clientName: string;
-  clientDashboardUrl: string;
-  nextActionPrompt?: string;
-}): string {
-  const firstName = params.clientName.trim().split(/\s+/)[0] || 'there';
-  const nextNote = params.nextActionPrompt ? ` (${params.nextActionPrompt})` : '';
-  return `${params.businessName}: Hi ${firstName}, here is your project portal and next steps${nextNote}: ${params.clientDashboardUrl} Reply STOP to opt out.`;
-}
-
-/**
- * Formats a private text sent from a dedicated 2-way number.
- */
-export function formatPrivateSmsText(params: {
-  businessName: string;
-  body: string;
-}): string {
-  const text = params.body.trim();
-  if (text.toLowerCase().includes(params.businessName.toLowerCase())) {
-    return text;
-  }
-  return `${params.businessName}: ${text}`;
-}
+export { formatClientDashboardSmsText, formatPrivateSmsText } from '@/lib/sms-templates';

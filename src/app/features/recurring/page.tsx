@@ -166,7 +166,7 @@ export default function RecurringFeaturePage() {
       lede="A maintenance customer should be a schedule, not a reminder to invoice. Set the cadence and every cycle creates its own scheduled job and its own itemized charge, against a card the customer already saved."
       heroChips={['Pause or cancel any time', 'Declines retried and chased', 'You still assign the crew']}
       heroNote="Weekly, every other week or monthly. Cap a plan at a set number of visits, or leave it running until somebody stops it."
-      primary={{ label: 'See live recurring plans', href: '/demo/recurring' }}
+      primary={{ label: 'See recurring jobs in the demo', href: '/demo/recurring' }}
       demo={
         <ExampleFrame
           label="One plan, and the visits it has produced by itself."

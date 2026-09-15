@@ -28,7 +28,7 @@ export default function PriorityQueue({
   return (
     <>
       {/* ACT NOW — needs contractor attention */}
-      <section className="panel workspace-section-card priority-panel" data-tour-id="dashboard:needs-attention">
+      <section className="panel workspace-section-card priority-panel">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Act now</p>
           <h2>Needs your attention</h2>

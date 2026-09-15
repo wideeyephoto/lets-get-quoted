@@ -1,9 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { existsSync } from 'node:fs';
+import { emailCampaignAdmin } from './helpers/email-campaign-admin';
 import {
   CONTRACTOR_LIFECYCLE_STEPS,
   renderContractorLifecycleEmailHtml,
   sendContractorWelcomeEmail,
   runContractorLifecycleSweep,
+  sendActivationNudgeBatch,
 } from '@/lib/contractor-lifecycle-emails';
 import { PLATFORM_CAMPAIGN_TEMPLATES } from '@/lib/platform-campaign-templates';
 import { renderPlatformCampaignEmailHtml } from '@/lib/admin-platform-campaigns';
@@ -116,6 +119,7 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
         order: () => q,
         limit: () => q,
         in: () => q,
+        gt: () => q,
         eq: () => q,
       };
       return q;
@@ -131,19 +135,151 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
 
     const res = await runContractorLifecycleSweep(mockAdmin as any, { dryRun: true });
     expect(res.checked).toBe(1);
-    expect(res.sent).toBe(1);
-    expect(res.details[0].status).toBe('sent');
+    expect(res.sent).toBe(0);
+    expect(res.planned).toBe(1);
+    expect(res.details[0].status).toBe('planned');
     // Because account has never received welcome_day0, it must receive welcome_day0 first
     expect(res.details[0].stepId).toBe('welcome_day0');
     expect(res.details[0].note).toContain('[DRY-RUN]');
   });
 
   it('validates all 10 CTA paths map to existing App Router dashboard paths', () => {
-    const VALID_BASE_PATHS = ['/dashboard', '/dashboard/jobs', '/dashboard/crew', '/dashboard/reviews', '/dashboard/settings'];
-
     for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
-      const basePath = step.ctaPath.split('?')[0];
-      expect(VALID_BASE_PATHS).toContain(basePath);
+      const basePath = step.ctaPath.split(/[?#]/)[0];
+      expect(existsSync(`src/app${basePath}/page.tsx`)).toBe(true);
     }
+  });
+});
+
+describe('sendActivationNudgeBatch execution and quality gating', () => {
+  it('executes in safe dryRun mode and reports detailed dispatch status', async () => {
+    const mockRecipients = [
+      {
+        accountId: 'acc-valid-1',
+        businessName: 'Apex Framing',
+        email: 'apex@apexframing.com',
+        ageDays: 14,
+        quotedJobs: 0,
+      },
+      {
+        accountId: 'acc-valid-2',
+        businessName: 'Apex Roofing',
+        email: 'roofs@apexroofing.com',
+        ageDays: 7,
+        quotedJobs: 0,
+      },
+    ];
+
+    const mockAdmin = emailCampaignAdmin({
+      accounts: mockRecipients.map(r => ({ id: r.accountId, business_name: r.businessName, created_at: new Date(Date.now() - r.ageDays * 86400000).toISOString() })),
+      owners: mockRecipients.map(r => ({ account_id: r.accountId, email: r.email })),
+    });
+
+    const res = await sendActivationNudgeBatch(mockAdmin as unknown as Parameters<typeof sendActivationNudgeBatch>[0], {
+      stepId: 'nudge_zero_quotes',
+      recipients: mockRecipients,
+      dryRun: true,
+    });
+
+    expect(res.dryRun).toBe(true);
+    expect(res.sent).toBe(0);
+    expect(res.planned).toBe(2);
+    expect(res.skipped).toBe(0);
+    expect(res.errors).toBe(0);
+    expect(res.details.length).toBe(2);
+    expect(res.details[0].status).toBe('planned');
+    expect(res.details[0].note).toContain('[DRY-RUN]');
+    expect(res.details[0].note).toContain('apex@apexframing.com');
+  });
+
+  it('skips suppressed and invalid/junk addresses', async () => {
+    const mockRecipients = [
+      {
+        accountId: 'acc-suppressed',
+        businessName: 'Suppressed Builder',
+        email: 'suppressed@examplebuilder.com',
+      },
+      {
+        accountId: 'acc-placeholder',
+        businessName: 'Placeholder User',
+        email: 'test-contractor@example.com', // placeholder domain
+      },
+      {
+        accountId: 'acc-role',
+        businessName: 'Role Local User',
+        email: 'hello@letsgetquoted.com', // role address
+      },
+    ];
+
+    const mockAdmin: any = {
+      from: (table: string) => ({
+        select: () => ({
+          in: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+            then: (resolve: any) => {
+              if (table === 'email_suppression') {
+                return resolve({
+                  data: [{ account_id: 'acc-suppressed', email: 'suppressed@examplebuilder.com' }],
+                  error: null,
+                });
+              }
+              return resolve({ data: [], error: null });
+            },
+          }),
+        }),
+      }),
+    };
+
+    const res = await sendActivationNudgeBatch(mockAdmin, {
+      stepId: 'nudge_zero_quotes',
+      recipients: mockRecipients,
+      dryRun: true,
+    });
+
+    expect(res.sent).toBe(0);
+    expect(res.skipped).toBe(3);
+    expect(res.details.some((d) => d.note?.includes('suppressed'))).toBe(true);
+    expect(res.details.some((d) => d.note?.includes('deliverability/quality'))).toBe(true);
+  });
+
+  it('skips accounts that have already received the nudge_zero_quotes step', async () => {
+    const mockRecipients = [
+      {
+        accountId: 'acc-already-sent',
+        businessName: 'Already Sent Co',
+        email: 'already@examplecontractor.com',
+      },
+    ];
+
+    const mockAdmin: any = {
+      from: (_table: string) => ({
+        select: () => ({
+          in: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    account_id: 'acc-already-sent',
+                    meta: { step_id: 'nudge_zero_quotes' },
+                  },
+                ],
+                error: null,
+              }),
+            then: (resolve: any) => resolve({ data: [], error: null }),
+          }),
+        }),
+      }),
+    };
+
+    const res = await sendActivationNudgeBatch(mockAdmin, {
+      stepId: 'nudge_zero_quotes',
+      recipients: mockRecipients,
+      dryRun: true,
+    });
+
+    expect(res.sent).toBe(0);
+    expect(res.skipped).toBe(1);
+    expect(res.details[0].status).toBe('skipped');
+    expect(res.details[0].note).toContain('already sent');
   });
 });

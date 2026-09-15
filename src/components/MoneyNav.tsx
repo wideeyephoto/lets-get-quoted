@@ -8,6 +8,7 @@ const MONEY_NAV_ITEMS: SubNavItem[] = [
   { href: '/dashboard/cash-flow', label: 'Cash Flow' },
   { href: '/dashboard/expenses', label: 'Expenses' },
   { href: '/dashboard/reports', label: 'Reports' },
+  { href: '/dashboard/services', label: 'Price Book' },
 ];
 
 export default function MoneyNav({ className }: { className?: string }) {

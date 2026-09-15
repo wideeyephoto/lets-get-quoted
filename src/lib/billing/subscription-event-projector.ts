@@ -8,6 +8,7 @@ import {
   createStripeBillingSubscriptionProjectionResolver,
   ForeignSubscriptionRailError,
   StripeSubscriptionProjectionProviderError,
+  TestModeSubscriptionRehearsalError,
 } from '@/lib/billing/stripe-billing-subscription-events';
 
 /**
@@ -222,6 +223,11 @@ export interface StripeBillingSubscriptionProjectionStore {
   }): Promise<void>;
   /** Record a claimed event as belonging to another rail. Never a failure. */
   ignoreForeignRail(input: {
+    billingEventId: string;
+    claimToken: string;
+  }): Promise<void>;
+  /** Record a claimed event as an ignored test-mode rehearsal. Never a failure. */
+  ignoreTestModeRehearsal(input: {
     billingEventId: string;
     claimToken: string;
   }): Promise<void>;
@@ -544,13 +550,29 @@ implements StripeBillingSubscriptionProjectionStore {
       throw new Error('Foreign Stripe subscription ignore RPC was not acknowledged.');
     }
   }
+
+  async ignoreTestModeRehearsal(input: {
+    billingEventId: string;
+    claimToken: string;
+  }): Promise<void> {
+    const { data, error } = await this.admin.rpc('ignore_test_mode_stripe_billing_subscription_event', {
+      p_billing_event_id: requiredUuid(input.billingEventId, 'billing event ID'),
+      p_claim_token: requiredUuid(input.claimToken, 'claim token'),
+    });
+    if (error) throw rpcFailure('Unable to record a test-mode Stripe subscription event', error);
+    if (data !== 'test_mode_rehearsal_ignored') {
+      throw new Error('Test-mode Stripe subscription ignore RPC was not acknowledged.');
+    }
+  }
 }
 
 export type ProjectStripeBillingSubscriptionEventResult =
   | Readonly<{
     status: 'in_progress' | 'replay_processed' | 'replay_ignored' | 'failed_terminal'
       // Another rail owns this subscription. Terminal, and not a failure.
-      | 'ignored_foreign_rail';
+      | 'ignored_foreign_rail'
+      // Rehearsal event in live mode. Terminal, and not a failure.
+      | 'ignored_test_mode';
     billingEventId: string;
   }>
   | (StripeSubscriptionProjectResult & Readonly<{ billingEventId: string }> )
@@ -638,6 +660,16 @@ export async function projectStripeBillingSubscriptionEvent(
       });
       return Object.freeze({
         status: 'ignored_foreign_rail' as const,
+        billingEventId: claim.billingEventId,
+      });
+    }
+    if (error instanceof TestModeSubscriptionRehearsalError) {
+      await dependencies.store.ignoreTestModeRehearsal({
+        billingEventId: claim.billingEventId,
+        claimToken,
+      });
+      return Object.freeze({
+        status: 'ignored_test_mode' as const,
         billingEventId: claim.billingEventId,
       });
     }

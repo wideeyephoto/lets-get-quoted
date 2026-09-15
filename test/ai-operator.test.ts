@@ -22,6 +22,7 @@ import {
 } from '@/lib/ai-operator/support-copilot';
 import { runRevOpsGrowthScan } from '@/lib/ai-operator/revops';
 import { generateExecutiveBriefing, calculateSmsDeliverability } from '@/lib/ai-operator/briefing';
+import { getZeroQuoteActivationCandidates, isSyntheticAccountName } from '@/lib/admin-alerts';
 import {
   runAutonomousOperatorCycle,
   askAiOperator,
@@ -66,7 +67,9 @@ function createMockSupabase(overrides?: {
                 if (table === 'jobs') {
                   const jCount = overrides?.jobsCount !== undefined ? overrides.jobsCount : 3;
                   const resPromise = Promise.resolve({ count: jCount, data: [] });
-                  (resPromise as any).eq = () => Promise.resolve({ count: jCount, data: [] });
+                  (resPromise as any).eq = () => resPromise;
+                  (resPromise as any).gt = () => resPromise;
+                  (resPromise as any).in = () => resPromise;
                   return resPromise;
                 }
                 return Promise.resolve({ count: 0, data: [] });
@@ -226,7 +229,7 @@ describe('AI Operator Framework - Tool Declarations & Schemas', () => {
       ctx,
     );
 
-    expect((res.data as { success: boolean }).success).toBe(false);
+    expect((res.data as any).error).toContain('Unknown operator tool');
     // The card must still be waiting for a human.
     expect(getHitlActionById(created.id)?.status).toBe('pending');
   });
@@ -617,7 +620,32 @@ describe('RevOps & Lifecycle Growth Engine', () => {
     expect(scan.scannedAt).toBeDefined();
     expect(scan.details).toBeDefined();
     expect(scan.dunningAccountsIdentified).toBeDefined();
-    expect(scan.onboardingNudgesQueued).toBeDefined();
+    expect(scan.onboardingNudgeCandidates).toBeDefined();
+  });
+
+  // A production run of this cron wrote four audit rows reading "Automated Onboarding
+  // Nudge Dispatched" at safe_auto/success, and answered "4 safe actions executed".
+  // No email or SMS call exists on this path. Identification is not outreach, and the
+  // audit trail is the record the founder trusts.
+  it('never records an unsent nudge as a dispatch', async () => {
+    clearOperatorMemory();
+    await runRevOpsGrowthScan(mockSupabase, { autoDispatchNudges: true });
+
+    const logs = getOperatorAuditLogs({ limit: 50 });
+    for (const entry of logs) {
+      expect(entry.actionName).not.toMatch(/dispatch/i);
+      expect(entry.reasoningSummary ?? '').not.toMatch(/dispatched/i);
+    }
+    // Identification is real work and stays in the trail -- it just cannot claim a send.
+    const candidates = logs.filter((l) => l.actionName === 'Onboarding Nudge Candidate Identified');
+    for (const c of candidates) expect(c.severity).not.toBe('safe_auto');
+  });
+
+  it('reports zero safe actions executed while nothing can send', async () => {
+    const report = await runAutonomousOperatorCycle(mockSupabase);
+    expect(report.auditActionsLogged).toBe(0);
+    expect(report.safeActionsExecuted).toBe(0);
+    expect(typeof report.onboardingNudgeCandidates).toBe('number');
   });
 });
 
@@ -674,7 +702,9 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
 
     const resolveRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, ctx);
     expect(resolveRes.data).toBeDefined();
-    expect((resolveRes.data as any).success).toBe(true);
+    expect((resolveRes.data as any).success).toBe(false);
+    expect(resolveRes.data).toMatchObject({ replayedCount: 0, resolvedCount: 0 });
+    expect((resolveRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('enforces RBAC on replay_failed_webhooks: denies unauthorized staff without ops.manage', async () => {
@@ -694,13 +724,33 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     };
 
     const allowedRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, opsCtx);
-    expect((allowedRes.data as any).success).toBe(true);
+    expect((allowedRes.data as any).success).toBe(false);
+    expect((allowedRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('executes triage_email_deliverability and categorizes bounce events', async () => {
     const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, ctx);
     expect(res.data).toBeDefined();
     expect((res.data as any).totalBounced).toBeDefined();
+    expect((res.data as any).healthStatus).toBe('no_failure_events_returned');
+  });
+
+  it('distinguishes suppressed and failed sends from actual bounces in operator triage', async () => {
+    const events = ['bounced', 'complained', 'failed', 'suppressed'].map(status => ({
+      id: status, account_id: 'workspace-a', recipient: 'client@example.test', status,
+      error_reason: null, occurred_at: '2026-09-14T12:00:00Z',
+    }));
+    const builder = { select: () => builder, is: () => builder, in: () => builder, order: () => builder,
+      limit: async () => ({ data: events, error: null }) };
+    const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, {
+      ...ctx, supabase: { from: () => builder } as any,
+    });
+    const result = res.data as any;
+    expect(result.totalBounced).toBe(1);
+    expect(result.totalFailureEvents).toBe(4);
+    expect(result.details.find((r: any) => r.status === 'failed').bounceType).toBe('Provider Failure');
+    expect(result.details.find((r: any) => r.status === 'suppressed').bounceType).toBe('Provider Suppression');
+    expect(result.details.find((r: any) => r.status === 'suppressed').recommendation).toContain('do not bypass');
   });
 
   it('executes check_sms_carrier_health and evaluates deliverability rate', async () => {
@@ -722,10 +772,11 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((res.data as any).qualifiedCandidatesCount).toBeDefined();
   });
 
-  it('executes optimize_dunning_retries and calculates optimal retry windows', async () => {
+  it('refuses optimize_dunning_retries honestly until delivery rails exist (P2-1)', async () => {
     const res = await executeOperatorTool('optimize_dunning_retries', {}, ctx);
     expect(res.data).toBeDefined();
-    expect((res.data as any).dunningCount).toBeDefined();
+    expect((res.data as any).available).toBe(false);
+    expect((res.data as any).error).toContain('billing-operations');
   });
 
   it('executes check_connect_payout_compliance for paused Stripe Connect accounts', async () => {
@@ -833,6 +884,29 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((approvedResult.executionResult as { success: boolean }).success).toBe(false);
     expect((approvedResult.executionResult as { error: string }).error).toMatch(/no sender/i);
   });
+
+  it('refuses obsolete inspection approvals because inspection is not recovery', async () => {
+    const action = createHitlAction({
+      category: 'sre_platform',
+      title: 'Inspect Webhook Failure: ai_voice (provider_status)',
+      description: 'Webhook wh-1 failed',
+      actionType: 'sre.inspect_webhook_failure',
+      payload: { failureId: 'wh-1', source: 'ai_voice', error: 'Missing header' },
+    });
+
+    const approvedResult = await executeHitlDecision(
+      action.id,
+      'approved',
+      'staff@letsgetquoted.com',
+      'Confirmed invalid ping',
+      ctx,
+    );
+
+    expect(approvedResult.success).toBe(false);
+    expect(approvedResult.error).toContain('inspection alone cannot resolve it');
+    expect(approvedResult.action?.status).toBe('pending');
+    expect(approvedResult.executionResult).toBeUndefined();
+  });
 });
 
 // A percentage without a denominator is not a rate. The briefing used to report a
@@ -922,5 +996,190 @@ describe('operator writes are awaited before a request returns', () => {
 
   it('resolves when there is nothing pending', async () => {
     await expect(flushOperatorWrites()).resolves.toBeUndefined();
+  });
+});
+
+describe('Operator Activation Nudge: Audience Correction, Permissions, and Execution Safety', () => {
+  it('maps batch_activation_nudges to account.support permission', () => {
+    expect(permissionForHitlAction('batch_activation_nudges')).toBe('account.support');
+  });
+
+  it('requires explicit approval for batch_activation_nudges in safety policies', () => {
+    expect(REQUIRES_APPROVAL_ACTION_TYPES.has('batch_activation_nudges')).toBe(true);
+    expect(isActionSafeForAutoRemediation('batch_activation_nudges')).toBe(false);
+  });
+
+  it('deduplicates HITL actions when a deterministic ID is supplied', () => {
+    const deterministicId = 'hitl-batch_activation_nudges-2026-09-09';
+
+    const card1 = createHitlAction({
+      id: deterministicId,
+      category: 'growth_lifecycle',
+      title: 'First Quote Activation Nudges',
+      description: 'First attempt',
+      actionType: 'batch_activation_nudges',
+      payload: { count: 1 },
+    });
+
+    const card2 = createHitlAction({
+      id: deterministicId,
+      category: 'growth_lifecycle',
+      title: 'First Quote Activation Nudges',
+      description: 'Second attempt should return existing card',
+      actionType: 'batch_activation_nudges',
+      payload: { count: 2 },
+    });
+
+    expect(card1.id).toBe(deterministicId);
+    expect(card2.id).toBe(deterministicId);
+    expect(card2.description).toBe('First attempt'); // unchanged
+    expect(listPendingHitlActions().filter((a) => a.id === deterministicId).length).toBe(1);
+  });
+
+  it('leaves action pending and returns success: false on unknown actionType or tool failure (Stage 5)', async () => {
+    const unknownAction = createHitlAction({
+      category: 'growth_lifecycle',
+      title: 'Action with nonexistent tool',
+      description: 'Will fail at tool resolution',
+      actionType: 'totally_unknown_action_type',
+      payload: {},
+    });
+
+    const mockCtx: OperatorExecutionContext = {
+      supabase: createMockSupabase(),
+      adminUserId: 'founder@letsgetquoted.com',
+      source: 'admin_dashboard',
+    };
+
+    const res = await executeHitlDecision(
+      unknownAction.id,
+      'approved',
+      'founder@letsgetquoted.com',
+      'Approving unknown tool',
+      mockCtx,
+    );
+
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/Unknown operator tool/i);
+    // Action MUST remain pending, not marked approved
+    const stored = getHitlActionById(unknownAction.id);
+    expect(stored?.status).toBe('pending');
+  });
+
+  it('filters out accounts with quoted jobs > 0 and synthetic fixture accounts', async () => {
+    expect(isSyntheticAccountName('Webhook test ea923c32')).toBe(true);
+    expect(isSyntheticAccountName('E2E Leads-Jobs 4f691e58')).toBe(true);
+    expect(isSyntheticAccountName('Test Contractor')).toBe(true);
+    expect(isSyntheticAccountName('Apex Roofing LLC')).toBe(false);
+    expect(isSyntheticAccountName('My Business')).toBe(false);
+
+    const mockAccounts = [
+      {
+        id: 'acc-chelsea',
+        business_name: 'Chelsea Landry Renovations',
+        account_number: 101,
+        created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+        test_marker: null,
+      },
+      {
+        id: 'acc-zero-quote',
+        business_name: 'Brand New Painting',
+        account_number: 102,
+        created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+        test_marker: null,
+      },
+      {
+        id: 'acc-fixture',
+        business_name: 'Webhook test ea923c32',
+        account_number: 103,
+        created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+        test_marker: null,
+      },
+    ];
+
+    const mockJobsWithQuotes = [
+      { account_id: 'acc-chelsea' }, // Has 166 quotes (quoted_amount > 0)
+    ];
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        const query: any = {
+          select: () => query,
+          is: () => query,
+          order: () => query,
+          limit: () => query,
+          in: () => query,
+          gt: () => query,
+          then: (resolve: any) => {
+            if (table === 'accounts') {
+              return resolve({ data: mockAccounts, error: null });
+            }
+            if (table === 'jobs') {
+              return resolve({ data: mockJobsWithQuotes, error: null });
+            }
+            return resolve({ data: [], error: null });
+          },
+        };
+        return query;
+      },
+    };
+
+    const candidates = await getZeroQuoteActivationCandidates(mockAdmin);
+
+    // acc-chelsea must NOT be present (has quoted jobs)
+    expect(candidates.some((c) => c.id === 'acc-chelsea')).toBe(false);
+    // acc-fixture must NOT be present (synthetic fixture name)
+    expect(candidates.some((c) => c.id === 'acc-fixture')).toBe(false);
+    // acc-zero-quote MUST be present
+    expect(candidates.some((c) => c.id === 'acc-zero-quote')).toBe(true);
+    expect(candidates.length).toBe(1);
+    expect(candidates[0].quoted_jobs).toBe(0);
+  });
+
+  it('approves and executes batch_activation_nudges safely in dry-run mode when flag is off', async () => {
+    delete process.env.ACTIVATION_NUDGE_SEND_ENABLED;
+
+    const action = createHitlAction({
+      category: 'growth_lifecycle',
+      title: 'First-Quote Activation Nudges (1 Contractor)',
+      description: 'Testing approval in dry-run mode',
+      actionType: 'batch_activation_nudges',
+      payload: {
+        stepId: 'nudge_zero_quotes',
+        channel: 'email',
+        recipients: [
+          {
+            accountId: 'acc-test-dryrun',
+            businessName: 'Apex Framing Co',
+            email: 'apex@exampledryrun.com',
+            ageDays: 12,
+            quotedJobs: 0,
+          },
+        ],
+        skipped: [],
+      },
+    });
+
+    const mockCtx: OperatorExecutionContext = {
+      supabase: createMockSupabase({ accountRow: { created_at: new Date(Date.now() - 30 * 86400000).toISOString() } }),
+      adminUserId: 'founder@letsgetquoted.com',
+      source: 'admin_dashboard',
+    };
+
+    const res = await executeHitlDecision(
+      action.id,
+      'approved',
+      'founder@letsgetquoted.com',
+      'Approved dry-run activation nudge',
+      mockCtx,
+    );
+
+    expect(res.success).toBe(true);
+    expect(res.action?.status).toBe('approved');
+    const exec = res.executionResult as any;
+    expect(exec.dryRun).toBe(true);
+    expect(exec.sent).toBe(0);
+    expect(exec.skipped).toBe(1);
+    expect(exec.details[0].note).toContain('no longer eligible');
   });
 });

@@ -82,30 +82,25 @@ export async function runSmartDunningSweep(
       const { nextRetry, strategy } = calculateOptimalRetryTimestamp(declineCode);
 
       if (strategy === 'immediate_card_update_required') {
-        if (!opts.dryRun) {
-          // Dispatch payment update reminder link
-          await supabase
-            .from('dunning_events')
-            .insert({
-              account_id: item.account_id,
-              action: 'card_update_prompt_sent',
-              dispatched_at: new Date().toISOString(),
-              strategy,
-            });
-        }
-        report.cardUpdateLinksDispatched++;
+        report.errors.push(`Payment ${item.id}: Card update dispatcher not configured; no prompt sent.`);
       } else {
         if (!opts.dryRun) {
-          // Update smart retry schedule in database
-          await supabase
+          // Update retry schedule in database (next_retry_at only; dunning_strategy column does not exist)
+          const { error: updateErr } = await supabase
             .from('payments')
             .update({
               next_retry_at: nextRetry,
-              dunning_strategy: strategy,
             })
             .eq('id', item.id);
+
+          if (updateErr) {
+            report.errors.push(`Payment ${item.id} retry update failed: ${updateErr.message}`);
+          } else {
+            report.retriesOptimized++;
+          }
+        } else {
+          report.retriesOptimized++;
         }
-        report.retriesOptimized++;
       }
 
       // Check if contractor has active quotes/jobs in progress -> grant 3-day grace period

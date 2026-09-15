@@ -9,6 +9,7 @@ import { basePlanSubscriptionCheckoutEnabled } from '@/lib/billing/base-plan-sub
 import { planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { parsePlanIntent, planCheckoutPath } from '@/lib/plan-intent';
 import { getTrade } from '@/lib/trades';
+import { findBestTradeMatch } from '@/lib/trade-matching';
 import {
   TERMS_VERSION,
   businessNameProblem,
@@ -91,6 +92,8 @@ export async function completeFirstRunAction(input: {
   goal?: string | null;
   feature?: string | null;
   next?: string | null;
+  tradeSource?: 'guessed' | 'typed' | 'url';
+  zipResolved?: boolean;
 }): Promise<FirstRunResult> {
   const { supabase, accountId, userId, account } = await requireOwnerContext({ skipFirstRunGate: true });
   const signupConversionTransactionId = initialSignupConversionTransactionId(accountId, account);
@@ -106,17 +109,29 @@ export async function completeFirstRunAction(input: {
   if (zipProblem) return { ok: false, error: zipProblem };
 
   // '' is a real answer — "my trade isn't listed" — and stores as null rather
-  // than as an unrecognised string.
+  // than as an unrecognised string. Also gracefully resolves trade names or
+  // aliases to their canonical slug if passed directly.
   const requested = String(input.trade ?? '').trim();
-  if (requested && !getTrade(requested)) {
-    return { ok: false, error: 'Pick a trade from the list, or choose "Something else".' };
+  let resolvedTradeSlug: string | null = null;
+  if (requested) {
+    const direct = getTrade(requested);
+    if (direct) {
+      resolvedTradeSlug = direct.slug;
+    } else {
+      const fuzzy = findBestTradeMatch(requested, 250);
+      if (fuzzy) {
+        resolvedTradeSlug = fuzzy.slug;
+      } else if (requested.toLowerCase() !== 'something else') {
+        return { ok: false, error: 'Pick a trade from the list, or choose "Something else".' };
+      }
+    }
   }
 
   const { data: updatedAccount, error } = await supabase
     .from('accounts')
     .update({
       business_name: normalizeBusinessName(input.businessName),
-      trade: requested || null,
+      trade: resolvedTradeSlug,
       postal_code: normalizePostalCode(input.postalCode),
       terms_accepted_at: new Date().toISOString(),
       terms_version: TERMS_VERSION,
@@ -139,7 +154,7 @@ export async function completeFirstRunAction(input: {
     void sendFounderSignupAlert({
       accountId,
       businessName: input.businessName,
-      trade: requested || 'General',
+      trade: resolvedTradeSlug || 'General',
       postalCode: input.postalCode,
       plan: input.plan || null,
       billing: input.billing || null,
@@ -148,9 +163,26 @@ export async function completeFirstRunAction(input: {
     void sendContractorWelcomeEmail({
       accountId,
       businessName: input.businessName,
-      trade: requested || 'General',
+      trade: resolvedTradeSlug || 'General',
       postalCode: input.postalCode,
     });
+  }
+
+  // Record first-run completion event for trade accuracy instrumentation.
+  // Best-effort and deliberately after the acceptance write: a telemetry error
+  // must never block signup.
+  try {
+    await recordAccountEvent({
+      accountId,
+      kind: 'first_run_completed',
+      summary: `Completed initial business setup (${resolvedTradeSlug || 'no trade'})`,
+      meta: {
+        trade_source: input.tradeSource || 'typed',
+        zip_resolved: Boolean(input.zipResolved),
+      },
+    });
+  } catch (error) {
+    console.error('first_run_completed recording failed:', error instanceof Error ? error.message : error);
   }
 
   const intent = resolvePlanIntent(input);

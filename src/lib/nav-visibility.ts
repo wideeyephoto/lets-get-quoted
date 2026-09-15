@@ -10,6 +10,8 @@ export type NavSignals = {
   trade: string | null;
   /** Sections with zero rows, ever. Absent key means "not measured", not "zero". */
   emptySections: ReadonlySet<string>;
+  /** Optional pinned items from nav-customization. Pinned items are never demoted. */
+  pinned?: ReadonlySet<string>;
 };
 
 /**
@@ -68,12 +70,90 @@ export const NAV_RAIL_ORDER: readonly string[] = Object.freeze([
 ]);
 
 /**
+ * Trade relevance profile distinguishing core versus non-applicable workflows per trade cluster.
+ */
+export type TradeRelevance = {
+  claims: 'promoted' | 'standard' | 'demoted';
+  inventory: 'promoted' | 'standard' | 'demoted';
+  recurring: 'promoted' | 'standard' | 'demoted';
+};
+
+/**
+ * Resolves trade-specific relevance for claims, inventory, and recurring jobs.
+ */
+export function getTradeRelevance(trade: string | null): TradeRelevance {
+  if (!trade) {
+    return { claims: 'standard', inventory: 'standard', recurring: 'standard' };
+  }
+  const t = trade.toLowerCase().trim();
+  const tokens = t.split(/[-_\s]+/);
+
+  const isGlass = tokens.includes('glass') || t === 'auto-glass' || t === 'storefront-glass' || t === 'glass-and-mirrors';
+  const isRestorationOrRoofing =
+    t.includes('roof') ||
+    t.includes('water') ||
+    t.includes('fire') ||
+    t.includes('mold') ||
+    t.includes('storm') ||
+    t.includes('restoration') ||
+    t.includes('disaster') ||
+    t.includes('siding') ||
+    isGlass;
+
+  const isRecurringTrade =
+    t.includes('lawn') ||
+    t.includes('landscap') ||
+    t.includes('clean') ||
+    t.includes('pest') ||
+    t.includes('pool') ||
+    t.includes('waste') ||
+    t.includes('snow') ||
+    t.includes('wash');
+
+  const isAutoInventory =
+    t === 'auto-glass' ||
+    t === 'auto-detailing' ||
+    t === 'mobile-mechanics' ||
+    t === 'mobile-tires' ||
+    t === 'paintless-dent-repair' ||
+    t === 'rv-repair' ||
+    tokens.includes('auto') ||
+    tokens.includes('mechanic') ||
+    tokens.includes('vehicle');
+
+  const isInventoryTrade =
+    isGlass ||
+    t.includes('plumb') ||
+    t.includes('electric') ||
+    t.includes('hvac') ||
+    isAutoInventory ||
+    t.includes('tire') ||
+    t.includes('appliance');
+
+  return {
+    claims: isRestorationOrRoofing ? 'promoted' : isInsuranceEligibleTrade(trade) ? 'standard' : 'demoted',
+    inventory: isInventoryTrade ? 'promoted' : 'standard',
+    recurring: isRecurringTrade ? 'promoted' : 'standard',
+  };
+}
+
+/**
  * Helper to normalize section identifier for emptySections checks.
  */
 function isSectionEmpty(emptySections: ReadonlySet<string>, href: string): boolean {
   if (emptySections.has(href)) return true;
   const stripped = href.replace(/^\/dashboard\/?/, '');
   return emptySections.has(stripped);
+}
+
+/**
+ * Helper to check if a navigation item has been pinned by the user.
+ */
+function isItemPinned(pinned: ReadonlySet<string> | undefined, href: string): boolean {
+  if (!pinned) return false;
+  if (pinned.has(href)) return true;
+  const stripped = href.replace(/^\/dashboard\/?/, '');
+  return pinned.has(stripped);
 }
 
 /**
@@ -90,7 +170,7 @@ function isSectionEmpty(emptySections: ReadonlySet<string>, href: string): boole
 export function navTreatment(href: string, signals: NavSignals): NavTreatment {
   const isOwner = signals.role === 'owner';
 
-  // 1. Check HIDE
+  // 1. Check HIDE (Capability security outranks preferences)
   if (!isOwner) {
     const required = CAPABILITY_MAP[href];
     if (required === 'owner') {
@@ -103,34 +183,51 @@ export function navTreatment(href: string, signals: NavSignals): NavTreatment {
     }
   }
 
-  // 2. Check DEMOTE
-  // (a) Trade relevance (Insurance claims only in Phase 3)
+  // 2. If pinned by owner, never demote
+  if (isItemPinned(signals.pinned, href)) {
+    return 'show';
+  }
+
+  const relevance = getTradeRelevance(signals.trade);
+
+  // 3. Check DEMOTE
+  // (a) Trade relevance (Insurance claims demoted for non-insurance trades)
   if (href === '/dashboard/claims') {
     if (signals.trade !== null && typeof signals.trade === 'string') {
-      const isEligible = isInsuranceEligibleTrade(signals.trade);
-      if (!isEligible) {
+      if (relevance.claims === 'demoted') {
         return 'demote';
       }
     }
   }
 
   // (b) Zero usage demotion (crew, inventory, recurring)
-  if (
-    href === '/dashboard/crew' ||
-    href === '/dashboard/inventory' ||
-    href === '/dashboard/recurring'
-  ) {
+  if (href === '/dashboard/crew') {
     if (isSectionEmpty(signals.emptySections, href)) {
       return 'demote';
     }
   }
 
-  // 3. Default: SHOW
+  if (href === '/dashboard/inventory') {
+    // Inventory is promoted/protected for glass and parts-heavy trades; never demote
+    if (relevance.inventory !== 'promoted' && isSectionEmpty(signals.emptySections, href)) {
+      return 'demote';
+    }
+  }
+
+  if (href === '/dashboard/recurring') {
+    // Recurring is promoted/protected for recurring-first trades; never demote
+    if (relevance.recurring !== 'promoted' && isSectionEmpty(signals.emptySections, href)) {
+      return 'demote';
+    }
+  }
+
+  // 4. Default: SHOW
   return 'show';
 }
 
 /**
- * Resolves visible, demoted, and hidden counts across the entire rail order.
+ * Resolves visible, demoted, and hidden counts across the entire rail order,
+ * with trade-promoted items elevated to priority positions.
  */
 export function resolveVisibleNav(
   signals: NavSignals,
@@ -139,6 +236,7 @@ export function resolveVisibleNav(
   visible: string[];
   demoted: string[];
   hiddenCount: number;
+  promoted: string[];
 } {
   const visible: string[] = [];
   const demoted: string[] = [];
@@ -155,10 +253,26 @@ export function resolveVisibleNav(
     }
   }
 
+  // Determine promoted items based on trade relevance
+  const promoted: string[] = [];
+  if (signals.trade) {
+    const relevance = getTradeRelevance(signals.trade);
+    if (relevance.claims === 'promoted' && visible.includes('/dashboard/claims')) {
+      promoted.push('/dashboard/claims');
+    }
+    if (relevance.inventory === 'promoted' && visible.includes('/dashboard/inventory')) {
+      promoted.push('/dashboard/inventory');
+    }
+    if (relevance.recurring === 'promoted' && visible.includes('/dashboard/recurring')) {
+      promoted.push('/dashboard/recurring');
+    }
+  }
+
   return {
     visible,
     demoted,
     hiddenCount,
+    promoted,
   };
 }
 

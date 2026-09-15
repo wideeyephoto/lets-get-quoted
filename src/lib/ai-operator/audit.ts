@@ -76,6 +76,7 @@ export function permissionForHitlAction(actionType: string): Permission {
     case 'force_payout_settlement':
     case 'trigger_dunning_escalation':
       return 'money.payouts';
+    case 'batch_activation_nudges':
     case 'trigger_contractor_lifecycle_nudge':
     case 'send_onboarding_reminder':
     case 'triage_support_case':
@@ -124,6 +125,22 @@ function mapDbToAuditLog(row: Record<string, unknown>): OperatorAuditLogEntry {
   };
 }
 
+function mapAuditLogToDb(entry: OperatorAuditLogEntry) {
+  return {
+    id: entry.id,
+    timestamp: entry.timestamp,
+    category: entry.category,
+    action_name: entry.actionName,
+    severity: entry.severity,
+    tool_name: entry.toolName,
+    input_payload: entry.inputPayload,
+    output_result: entry.outputResult,
+    reasoning_summary: entry.reasoningSummary,
+    account_id: entry.accountId,
+    status: entry.status,
+  };
+}
+
 
 /**
  * Strict action safety classifications
@@ -140,6 +157,7 @@ export const SAFE_AUTO_REMEDIATION_ACTION_TYPES = new Set([
 ]);
 
 export const REQUIRES_APPROVAL_ACTION_TYPES = new Set([
+  'batch_activation_nudges',
   'issue_subscription_refund',
   'trigger_dunning_escalation',
   'extend_contractor_trial',
@@ -236,19 +254,7 @@ export function recordOperatorAudit(
     try {
       const q = client.from('ai_operator_logs');
       if (typeof q?.insert === 'function') {
-        trackWrite(Promise.resolve(q.insert({
-          id: fullEntry.id,
-          timestamp: fullEntry.timestamp,
-          category: fullEntry.category,
-          action_name: fullEntry.actionName,
-          severity: fullEntry.severity,
-          tool_name: fullEntry.toolName,
-          input_payload: fullEntry.inputPayload,
-          output_result: fullEntry.outputResult,
-          reasoning_summary: fullEntry.reasoningSummary,
-          account_id: fullEntry.accountId,
-          status: fullEntry.status,
-        })));
+        trackWrite(Promise.resolve(q.insert(mapAuditLogToDb(fullEntry))));
       }
     } catch {
       // Mock client or unconfigured
@@ -256,6 +262,57 @@ export function recordOperatorAudit(
   }
 
   return fullEntry;
+}
+
+/** Persist an event once across cold starts and concurrent workers. */
+export async function recordOperatorAuditOnce(
+  entry: OperatorAuditLogEntry,
+  supabase: SupabaseClient,
+): Promise<boolean> {
+  const { data, error } = await supabase.from('ai_operator_logs')
+    .upsert(mapAuditLogToDb(entry), { onConflict: 'id', ignoreDuplicates: true })
+    .select('id');
+  if (error) throw new Error(`Operator audit persistence failed: ${error.message}`);
+  if (!data?.length) return false;
+  auditLogsStore.unshift(entry);
+  if (auditLogsStore.length > 500) auditLogsStore.pop();
+  return true;
+}
+
+/** Read-only webhook inspection cards never represented an executable recovery. */
+export async function retireWebhookInspectionApprovals(supabase: SupabaseClient): Promise<number> {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase.from('ai_operator_action_requests')
+    .update({
+      status: 'expired',
+      expires_at: now,
+      resolved_at: now,
+      resolved_by: 'system:webhook-inspection',
+      resolution_reason: 'Read-only inspection does not require approval. Any unresolved failure remains in webhook monitoring; no recovery was executed.',
+    })
+    .eq('status', 'pending')
+    .eq('action_type', 'sre.inspect_webhook_failure')
+    .eq('category', 'sre_platform')
+    .eq('is_financial_mutation', false)
+    .select('*');
+  if (error) throw new Error(`Webhook inspection approval cleanup failed: ${error.message}`);
+  for (const row of data ?? []) {
+    const action = mapDbToHitlAction(row);
+    hitlActionStore.set(action.id, action);
+  }
+  if (data?.length) {
+    await recordOperatorAuditOnce({
+      id: `audit-webhook-approvals-retired-${randomUUID()}`,
+      timestamp: now,
+      category: 'sre_platform',
+      actionName: 'sre.webhook_inspection_approvals_retired',
+      severity: 'info',
+      reasoningSummary: `Retired ${data.length} obsolete read-only inspection approvals. No recovery was executed.`,
+      outputResult: { actionIds: data.map((row) => row.id) },
+      status: 'success',
+    }, supabase);
+  }
+  return data?.length ?? 0;
 }
 
 /**
@@ -328,6 +385,13 @@ export function createHitlAction(
   },
   supabase?: SupabaseClient,
 ): OperatorHitlActionRequest {
+  if (params.id) {
+    const existing = hitlActionStore.get(params.id);
+    if (existing && existing.status === 'pending') {
+      return existing;
+    }
+  }
+
   const id = params.id || `hitl-${randomUUID()}`;
   const now = params.createdAt ? new Date(params.createdAt) : new Date();
   const expiresAt = params.expiresInHours
@@ -354,20 +418,23 @@ export function createHitlAction(
   if (client) {
     try {
       const q = client.from('ai_operator_action_requests');
-      if (typeof q?.insert === 'function') {
-        trackWrite(Promise.resolve(q.insert({
-          id: request.id,
-          category: request.category,
-          title: request.title,
-          description: request.description,
-          action_type: request.actionType,
-          payload: request.payload,
-          status: request.status,
-          created_at: request.createdAt,
-          expires_at: request.expiresAt,
-          is_financial_mutation: Boolean(params.isFinancialMutation),
-          required_role: params.requiredRole || 'admin',
-        })));
+      const row = {
+        id: request.id,
+        category: request.category,
+        title: request.title,
+        description: request.description,
+        action_type: request.actionType,
+        payload: request.payload,
+        status: request.status,
+        created_at: request.createdAt,
+        expires_at: request.expiresAt,
+        is_financial_mutation: Boolean(params.isFinancialMutation),
+        required_role: params.requiredRole || 'admin',
+      };
+      if (typeof q?.upsert === 'function') {
+        trackWrite(Promise.resolve(q.upsert(row, { onConflict: 'id', ignoreDuplicates: true })));
+      } else if (typeof q?.insert === 'function') {
+        trackWrite(Promise.resolve(q.insert(row)));
       }
     } catch {
       // Mock client or unconfigured
@@ -456,6 +523,7 @@ export async function listPendingHitlActionsAsync(
   now = new Date(),
   supabase?: SupabaseClient,
 ): Promise<OperatorHitlActionRequest[]> {
+  await flushOperatorWrites();
   const client = getAdminClientSafe(supabase);
   if (!client) return listPendingHitlActions(now);
 
@@ -466,8 +534,13 @@ export async function listPendingHitlActionsAsync(
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       const items: OperatorHitlActionRequest[] = [];
+      // A successful empty query is authoritative; do not resurrect cached cards.
+      const pendingIds = new Set(data.map((row) => String(row.id)));
+      for (const [id, action] of hitlActionStore) {
+        if (action.status === 'pending' && !pendingIds.has(id)) hitlActionStore.delete(id);
+      }
       for (const row of data) {
         const action = mapDbToHitlAction(row as Record<string, unknown>);
         if (isHitlActionExpired(action, now)) {

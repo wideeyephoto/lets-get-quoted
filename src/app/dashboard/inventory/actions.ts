@@ -101,9 +101,12 @@ export async function saveToolAction(
 }
 
 export async function deleteToolAction(toolId: string): Promise<void> {
-  const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContextAny('inventory.write', 'jobs.write');
   if (!toolId) throw new Error('Tool ID is required');
-  return deleteTool(supabase, accountId, sanitizeString(toolId, 100));
+  return deleteTool(supabase, accountId, sanitizeString(toolId, 100), {
+    actor: { userId, role, email: userEmail },
+    source: 'web',
+  });
 }
 
 export async function checkOutToolAction(params: {
@@ -235,9 +238,12 @@ export async function saveVehicleAction(
 }
 
 export async function deleteVehicleAction(vehicleId: string): Promise<void> {
-  const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContextAny('inventory.write', 'jobs.write');
   if (!vehicleId) throw new Error('Vehicle ID is required');
-  return deleteVehicle(supabase, accountId, sanitizeString(vehicleId, 100));
+  return deleteVehicle(supabase, accountId, sanitizeString(vehicleId, 100), {
+    actor: { userId, role, email: userEmail },
+    source: 'web',
+  });
 }
 
 export async function updateVehicleMileageAction(params: {
@@ -277,9 +283,12 @@ export async function saveStockItemAction(
 }
 
 export async function deleteStockItemAction(stockId: string): Promise<void> {
-  const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContextAny('inventory.write', 'jobs.write');
   if (!stockId) throw new Error('Stock ID is required');
-  return deleteStockItem(supabase, accountId, sanitizeString(stockId, 100));
+  return deleteStockItem(supabase, accountId, sanitizeString(stockId, 100), {
+    actor: { userId, role, email: userEmail },
+    source: 'web',
+  });
 }
 
 export async function adjustStockQuantityAction(params: {
@@ -380,9 +389,12 @@ export async function saveLocationAction(
 }
 
 export async function deleteLocationAction(locationId: string): Promise<void> {
-  const { supabase, accountId } = await requireOfficeContextAny('inventory.write', 'jobs.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContextAny('inventory.write', 'jobs.write');
   if (!locationId) throw new Error('Location ID is required');
-  return deleteLocation(supabase, accountId, sanitizeString(locationId, 100));
+  return deleteLocation(supabase, accountId, sanitizeString(locationId, 100), {
+    actor: { userId, role, email: userEmail },
+    source: 'web',
+  });
 }
 
 export async function uploadToolPhotoAction(formData: FormData): Promise<{ url: string }> {

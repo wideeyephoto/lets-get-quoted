@@ -189,3 +189,122 @@ export function useNavCollapsed(serverDefault = false) {
     toggleCollapsed,
   };
 }
+
+export const NAV_PINNED_STORAGE_KEY = 'lgq_nav_pinned';
+export const NAV_PINNED_COOKIE = 'lgq_nav_pinned';
+export const NAV_PINNED_EVENT = 'lgq-nav-pinned-change';
+
+export function parseNavPinned(value: unknown): string[] {
+  if (!value) return [];
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (Array.isArray(parsed)) {
+      return parsed.map(String);
+    }
+  } catch {
+    // Ignore JSON errors
+  }
+  return [];
+}
+
+export function readStoredNavPinned(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const fromStorage = window.localStorage.getItem(NAV_PINNED_STORAGE_KEY);
+    if (fromStorage !== null) {
+      return parseNavPinned(fromStorage);
+    }
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${NAV_PINNED_COOKIE}=([^;]*)`));
+    if (match) {
+      return parseNavPinned(decodeURIComponent(match[1]));
+    }
+  } catch {
+    // Ignore storage errors in sandboxed iframe
+  }
+  return [];
+}
+
+export function writeStoredNavPinned(pinned: string[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const json = JSON.stringify(pinned);
+    window.localStorage.setItem(NAV_PINNED_STORAGE_KEY, json);
+    document.cookie = `${NAV_PINNED_COOKIE}=${encodeURIComponent(json)}; path=/; max-age=31536000; SameSite=Lax`;
+    window.dispatchEvent(new CustomEvent(NAV_PINNED_EVENT, { detail: { pinned } }));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function useNavPinned(serverDefault: string[] = []) {
+  const [pinned, setPinnedState] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      return readStoredNavPinned();
+    }
+    return serverDefault;
+  });
+
+  const sync = useCallback(() => {
+    setPinnedState(readStoredNavPinned());
+  }, []);
+
+  useEffect(() => {
+    sync();
+
+    const onCustomEvent = (event: Event) => {
+      const custom = event as CustomEvent<{ pinned?: string[] }>;
+      if (Array.isArray(custom.detail?.pinned)) {
+        setPinnedState(custom.detail.pinned);
+      } else {
+        sync();
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === NAV_PINNED_STORAGE_KEY) {
+        sync();
+      }
+    };
+
+    window.addEventListener(NAV_PINNED_EVENT, onCustomEvent);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(NAV_PINNED_EVENT, onCustomEvent);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [sync]);
+
+  const togglePin = useCallback((href: string) => {
+    setPinnedState((prev) => {
+      const next = prev.includes(href) ? prev.filter((h) => h !== href) : [...prev, href];
+      writeStoredNavPinned(next);
+      return next;
+    });
+  }, []);
+
+  const pinItem = useCallback((href: string) => {
+    setPinnedState((prev) => {
+      if (prev.includes(href)) return prev;
+      const next = [...prev, href];
+      writeStoredNavPinned(next);
+      return next;
+    });
+  }, []);
+
+  const unpinItem = useCallback((href: string) => {
+    setPinnedState((prev) => {
+      if (!prev.includes(href)) return prev;
+      const next = prev.filter((h) => h !== href);
+      writeStoredNavPinned(next);
+      return next;
+    });
+  }, []);
+
+  return {
+    pinned,
+    isPinned: (href: string) => pinned.includes(href),
+    togglePin,
+    pinItem,
+    unpinItem,
+  };
+}

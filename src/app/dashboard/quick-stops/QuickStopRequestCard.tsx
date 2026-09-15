@@ -15,6 +15,8 @@ import {
   proposeDiagnosticConversionAction,
   sendEtaSmsQuickStopAction,
 } from './actions';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { quickStopStatusText } from '@/lib/sms-templates';
 
 export type CardRequest = {
   id: string;
@@ -150,12 +152,14 @@ export default function QuickStopRequestCard({
   route,
   defaults,
   readOnly = false,
+  canCreateOffer = true,
 }: {
   request: CardRequest;
   photoUrls: string[];
   route: CardRoute | null;
   defaults: CardDefaults;
   readOnly?: boolean;
+  canCreateOffer?: boolean;
 }) {
   const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info' | 'cancel' | 'window' | 'diag'>('idle');
   const [arriving, setArriving] = useState(false);
@@ -527,35 +531,66 @@ export default function QuickStopRequestCard({
           {isLive ? (
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
               {request.status === 'confirmed' ? (
-                <form action={markEnRouteQuickStopAction.bind(null, request.id)} style={{ flex: '1 1 140px' }}>
-                  <button type="submit" className="btn primary" style={{ minHeight: '44px', width: '100%' }}>
-                    🚗 Mark en route
-                  </button>
-                </form>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.25rem', flex: '1 1 140px' }}>
+                  <form action={markEnRouteQuickStopAction.bind(null, request.id)} style={{ flex: 1 }}>
+                    <button type="submit" className="btn primary" style={{ minHeight: '44px', width: '100%' }}>
+                      🚗 Mark en route
+                    </button>
+                  </form>
+                  {request.client_phone ? (
+                    <SmsPreview
+                      message={quickStopStatusText('en_route')}
+                      recipientLabel={request.client_name || 'Customer'}
+                      phone={request.client_phone}
+                      triggerLabel="👁"
+                      buttonClassName="btn ghost"
+                    />
+                  ) : null}
+                </div>
               ) : null}
 
               {request.status === 'confirmed' || request.status === 'en_route' ? (
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={handleArrived}
-                  disabled={arriving}
-                  style={{ minHeight: '44px', flex: '1 1 140px' }}
-                >
-                  {arriving ? 'Recording…' : "📍 I've Arrived"}
-                </button>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.25rem', flex: '1 1 140px' }}>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={handleArrived}
+                    disabled={arriving}
+                    style={{ minHeight: '44px', flex: 1 }}
+                  >
+                    {arriving ? 'Recording…' : "📍 I've Arrived"}
+                  </button>
+                  {request.client_phone ? (
+                    <SmsPreview
+                      message={quickStopStatusText('arrived')}
+                      recipientLabel={request.client_name || 'Customer'}
+                      phone={request.client_phone}
+                      triggerLabel="👁"
+                      buttonClassName="btn ghost"
+                    />
+                  ) : null}
+                </div>
               ) : null}
 
               {(request.status === 'confirmed' || request.status === 'en_route') && request.client_phone ? (
-                <button
-                  type="button"
-                  className="btn secondary"
-                  onClick={() => handleSendEta(15)}
-                  disabled={etaSending || etaSent}
-                  style={{ minHeight: '44px', flex: '1 1 140px' }}
-                >
-                  {etaSending ? 'Sending…' : etaSent ? '✓ 15m ETA Sent' : '💬 Send 15m ETA'}
-                </button>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '.25rem', flex: '1 1 140px' }}>
+                  <button
+                    type="button"
+                    className="btn secondary"
+                    onClick={() => handleSendEta(15)}
+                    disabled={etaSending || etaSent}
+                    style={{ minHeight: '44px', flex: 1 }}
+                  >
+                    {etaSending ? 'Sending…' : etaSent ? '✓ 15m ETA Sent' : '💬 Send 15m ETA'}
+                  </button>
+                  <SmsPreview
+                    message={quickStopStatusText('eta', { minutes: 15 })}
+                    recipientLabel={request.client_name || 'Customer'}
+                    phone={request.client_phone}
+                    triggerLabel="👁"
+                    buttonClassName="btn ghost"
+                  />
+                </div>
               ) : null}
 
               <form action={completeQuickStopAction.bind(null, request.id)} style={{ flex: '1 1 140px' }}>
@@ -669,7 +704,7 @@ export default function QuickStopRequestCard({
         <>
           {mode === 'idle' ? (
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-              <button type="button" className="btn primary" onClick={() => setMode('offer')} style={{ minHeight: '44px' }}>
+              <button type="button" className="btn primary" disabled={!canCreateOffer} onClick={() => setMode('offer')} style={{ minHeight: '44px' }}>
                 Create Custom Offer
               </button>
               <button type="button" className="btn secondary" onClick={() => setMode('info')} style={{ minHeight: '44px' }}>
@@ -681,7 +716,7 @@ export default function QuickStopRequestCard({
             </div>
           ) : null}
 
-          {mode === 'offer' ? (
+          {canCreateOffer && mode === 'offer' ? (
             <form action={createQuickStopOfferAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
               <div className="field">
                 <label htmlFor={`ad-${request.id}`}>Arrival date</label>

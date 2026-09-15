@@ -1,12 +1,20 @@
 {
   "crons": [
     {
+      "path": "/api/cron/operational-alerts",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/addon-refunds",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/blog",
       "schedule": "0 9 * * *"
     },
     {
       "path": "/api/cron/quote-followups",
-      "schedule": "0 * * * *"
+      "schedule": "5 * * * *"
     },
     {
       "path": "/api/cron/recurring",
@@ -18,7 +26,7 @@
     },
     {
       "path": "/api/cron/appointment-reminders",
-      "schedule": "0 * * * *"
+      "schedule": "20 * * * *"
     },
     {
       "path": "/api/cron/daily-digest",
@@ -42,7 +50,7 @@
     },
     {
       "path": "/api/cron/arrival-late",
-      "schedule": "*/15 * * * *"
+      "schedule": "3,18,33,48 * * * *"
     },
     {
       "path": "/api/cron/arrival-confirm",
@@ -54,7 +62,7 @@
     },
     {
       "path": "/api/cron/selection-chase",
-      "schedule": "0 * * * *"
+      "schedule": "35 * * * *"
     },
     {
       "path": "/api/cron/quickbooks-sync",
@@ -62,7 +70,7 @@
     },
     {
       "path": "/api/cron/google-lsa-sync",
-      "schedule": "*/15 * * * *"
+      "schedule": "6,21,36,51 * * * *"
     },
     {
       "path": "/api/cron/billing-subscription-projection",
@@ -70,23 +78,27 @@
     },
     {
       "path": "/api/cron/billing-allowance-resets",
-      "schedule": "*/15 * * * *"
+      "schedule": "9,24,39,54 * * * *"
     },
     {
       "path": "/api/cron/plan-change-apply",
-      "schedule": "*/15 * * * *"
+      "schedule": "3,18,33,48 * * * *"
     },
     {
       "path": "/api/cron/refund-reconciliation",
-      "schedule": "*/15 * * * *"
+      "schedule": "6,21,36,51 * * * *"
     },
     {
       "path": "/api/cron/voice-allowance",
-      "schedule": "*/15 * * * *"
+      "schedule": "9,24,39,54 * * * *"
     },
     {
       "path": "/api/cron/voice-number-reconciliation",
-      "schedule": "0 * * * *"
+      "schedule": "50 * * * *"
+    },
+    {
+      "path": "/api/cron/voice-receipt-recovery",
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/connected-payment-projection",
@@ -142,15 +154,15 @@
     },
     {
       "path": "/api/cron/account-closure",
-      "schedule": "*/15 * * * *"
+      "schedule": "3,18,33,48 * * * *"
     },
     {
       "path": "/api/cron/ad-spend-sync",
-      "schedule": "*/15 * * * *"
+      "schedule": "6,21,36,51 * * * *"
     },
     {
       "path": "/api/cron/ad-wallet-refill",
-      "schedule": "*/15 * * * *"
+      "schedule": "9,24,39,54 * * * *"
     },
     {
       "path": "/api/cron/contractor-lifecycle",
@@ -175,6 +187,18 @@
     {
       "path": "/api/cron/email-domain-reconcile",
       "schedule": "23 6 * * *"
+    },
+    {
+      "path": "/api/cron/custom-domain-reconcile",
+      "schedule": "12,27,42,57 * * * *"
+    },
+    {
+      "path": "/api/cron/webhook-heal",
+      "schedule": "12,27,42,57 * * * *"
+    },
+    {
+      "path": "/api/cron/ops-metrics-snapshot",
+      "schedule": "0 6 * * *"
     }
   ]
 }

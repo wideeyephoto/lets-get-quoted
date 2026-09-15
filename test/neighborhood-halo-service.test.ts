@@ -31,6 +31,8 @@ vi.mock('@/lib/meta-ads-api', () => ({
   provisionManagedMetaCampaign: vi.fn(),
   pauseMetaCampaign: vi.fn().mockResolvedValue({ success: true, message: 'Paused' }),
   resumeMetaCampaign: vi.fn().mockResolvedValue({ success: true, message: 'Resumed' }),
+  activateMetaCampaign: vi.fn(),
+  fetchMetaCampaignDailySpend: vi.fn(),
 }));
 
 describe('Neighborhood Halo Service', () => {
@@ -158,603 +160,96 @@ describe('Neighborhood Halo Service', () => {
     });
   });
 
-  describe('launchHaloCampaign', () => {
-    it('refuses launch if monthly spend cap would be exceeded', async () => {
-      const mockSupabase = {
-        from: vi.fn().mockImplementation((table: string) => {
-          if (table === 'neighborhood_halo_settings') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({
-                    data: { ...DEFAULT_HALO_SETTINGS, monthly_spend_cap_dollars: 50.0, per_job_budget_dollars: 25.0 },
-                    error: null,
-                  }),
-                }),
-              }),
-            };
-          }
-          if (table === 'neighborhood_halo_campaigns') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  is: vi.fn().mockReturnValue({
-                    gte: vi.fn().mockResolvedValue({
-                      data: [{ budget_dollars: 40.0 }],
-                      error: null,
-                    }),
-                  }),
-                }),
-              }),
-            };
-          }
-          return {};
-        }),
-      } as never;
-
-      await expect(launchHaloCampaign(mockSupabase, accountId, jobId)).rejects.toThrow(
-        /Monthly Neighborhood Halo budget cap \(\$50\) would be exceeded/
-      );
+  describe('durable launch and delivery lifecycle', () => {
+    let rows: any[];
+    let job: any;
+    let reserveError: any;
+    let writeError: any;
+    let admin: any;
+    let meta: typeof import('@/lib/meta-ads-api');
+    beforeEach(async () => {
+      rows = []; reserveError = null; writeError = null;
+      job = { id: jobId, account_id: accountId, status: 'complete', address: '100 Main St, Austin, TX 78701', lat: 30.27, lng: -97.74, photo_paths: ['photo.jpg'] };
+      meta = await import('@/lib/meta-ads-api');
+      vi.mocked(meta.isMetaAdsConfigured).mockReturnValue(true);
+      vi.mocked(meta.provisionManagedMetaCampaign).mockResolvedValue({ success: true, status: 'paused', campaignId: '123', adSetId: '456', creativeId: '789', adId: '999', dailyBudgetDollars: 5, headline: 'Example', primaryText: 'Example', message: 'Created' });
+      vi.mocked(meta.activateMetaCampaign).mockResolvedValue({ success: true, message: 'Active' });
+      vi.mocked(meta.pauseMetaCampaign).mockResolvedValue({ success: true, message: 'Paused' });
+      vi.mocked(meta.fetchMetaCampaignDailySpend).mockResolvedValue({ success: true, spendCents: 700, clicks: 2, impressions: 30, conversions: 0, date: '2026-09-10' });
+      admin = { rpc: vi.fn(async (name, args) => {
+        if (name === 'claim_halo_delivery' || name === 'release_halo_delivery') return { data: true, error: null };
+        if (name === 'reserve_halo_campaign') {
+          if (reserveError) return { data: null, error: reserveError };
+          const row = { ...args.p_details, id: args.p_campaign_id, account_id: args.p_account_id }; rows.push(row); return { data: row };
+        }
+        if (name === 'settle_halo_campaign') { const row = rows.find(r => r.id === args.p_campaign_id); Object.assign(row, { status: args.p_status, spend_dollars: args.p_spend_cents / 100 }); return { data: row }; }
+        throw new Error(`Unexpected RPC ${name}`);
+      }), from: (table: string) => {
+        const filters: any = {}; let update: any;
+        const result = () => {
+          if (table === 'jobs') return { data: job };
+          if (table === 'neighborhood_halo_settings') return { data: null };
+          if (table === 'accounts') return { data: { business_name: 'Example Plumbing' } };
+          if (table === 'sites') return { data: { subdomain: 'example', content: {} } };
+          const matched = rows.filter(r => Object.entries(filters).every(([k,v]) => r[k] === v));
+          if (update && !writeError) matched.forEach(r => Object.assign(r, update));
+          return { data: matched, error: update ? writeError : null };
+        };
+        const q: any = { select: () => q, eq: (k: string,v: unknown) => { filters[k] = v; return q; }, is: () => q, in: () => q, gte: () => q, order: () => q, limit: () => q,
+          update: (value: any) => { update = value; return q; },
+          maybeSingle: async () => { const r = result(); return { ...r, data: Array.isArray(r.data) ? r.data[0] || null : r.data }; },
+          single: async () => q.maybeSingle(), then: (resolve: any) => Promise.resolve(result()).then(resolve) }; return q;
+      } };
+      const { createAdminClient } = await import('@/lib/auth'); vi.mocked(createAdminClient).mockReturnValue(admin);
     });
-
-    it('refuses launch if job is not completed', async () => {
-      const mockJob = {
-        id: jobId,
-        account_id: accountId,
-        status: 'in_progress',
-        address: '1428 Maple Ave, Rochester, MI 48307',
-        photo_paths: ['p1.jpg'],
-      };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation((table: string) => {
-          if (table === 'neighborhood_halo_settings') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                }),
-              }),
-            };
-          }
-          if (table === 'neighborhood_halo_campaigns') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  is: vi.fn().mockReturnValue({
-                    gte: vi.fn().mockResolvedValue({ data: [], error: null }),
-                  }),
-                }),
-              }),
-            };
-          }
-          if (table === 'jobs') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockResolvedValue({ data: mockJob, error: null }),
-                  }),
-                }),
-              }),
-            };
-          }
-          return {};
-        }),
-      } as never;
-
-      await expect(launchHaloCampaign(mockSupabase, accountId, jobId)).rejects.toThrow(
-        /Job must be marked completed before launching a Neighborhood Halo campaign/
-      );
+    function existing(overrides: any = {}) { const row = { id: 'halo', account_id: accountId, status: 'active', meta_campaign_id: '123', meta_ad_set_id: '456', meta_ad_id: '999', wallet_deducted_cents: 2500, spend_dollars: 0, budget_dollars: 25, expires_at: new Date(Date.now()+86400000).toISOString(), ...overrides }; rows.push(row); return row; }
+    it('reserves funds and persists all provider IDs before activation', async () => {
+      vi.mocked(meta.activateMetaCampaign).mockImplementation(async () => { expect(rows[0]).toMatchObject({ status: 'pending_provisioning', meta_campaign_id: '123', meta_ad_set_id: '456', meta_ad_id: '999' }); return { success: true, message: 'Active' }; });
+      const result = await launchHaloCampaign(admin, accountId, jobId);
+      expect(result.status).toBe('active'); expect(meta.provisionManagedMetaCampaign).toHaveBeenCalledWith(expect.objectContaining({ startPaused: true, lifetimeBudgetDollars: 25, imageUrl: 'https://example.com/photo1.jpg' }));
     });
-
-    it('refuses launch and does not debit wallet when Meta Ads is not configured', async () => {
-      const mockJob = {
-        id: jobId,
-        account_id: accountId,
-        status: 'complete',
-        address: '1428 Maple Ave, Rochester, MI 48307',
-        photo_paths: ['p1.jpg'],
-        city: 'Rochester',
-      };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation((table: string) => {
-          if (table === 'neighborhood_halo_settings') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                }),
-              }),
-            };
-          }
-          if (table === 'neighborhood_halo_campaigns') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  is: vi.fn().mockReturnValue({
-                    gte: vi.fn().mockResolvedValue({ data: [], error: null }),
-                    order: vi.fn().mockReturnValue({
-                      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-                    }),
-                  }),
-                }),
-              }),
-            };
-          }
-          if (table === 'jobs') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockResolvedValue({ data: mockJob, error: null }),
-                  }),
-                }),
-              }),
-            };
-          }
-          return {};
-        }),
-      } as never;
-
-      const mockAdmin = {
-        rpc: vi.fn(),
-      };
-      const { createAdminClient } = await import('@/lib/auth');
-      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
-
-      const { isMetaAdsConfigured } = await import('@/lib/meta-ads-api');
-      vi.mocked(isMetaAdsConfigured).mockReturnValue(false);
-
-      await expect(launchHaloCampaign(mockSupabase, accountId, jobId)).rejects.toThrow(
-        /Meta Ads API is not configured/
-      );
-
-      // Verify wallet debit was NEVER attempted
-      expect(mockAdmin.rpc).not.toHaveBeenCalled();
+    it('does not reserve money for missing coordinates, configuration, or incomplete jobs', async () => {
+      job.lat = null; await expect(launchHaloCampaign(admin, accountId, jobId)).rejects.toThrow(/coordinates/);
+      job.lat = 30; vi.mocked(meta.isMetaAdsConfigured).mockReturnValue(false); await expect(launchHaloCampaign(admin, accountId, jobId)).rejects.toThrow(/configured/);
+      job.status = 'scheduled'; await expect(launchHaloCampaign(admin, accountId, jobId)).rejects.toThrow(/completed/); expect(admin.rpc).not.toHaveBeenCalled();
     });
-
-    it('refuses launch if wallet balance is insufficient or debit fails', async () => {
-      const mockJob = {
-        id: jobId,
-        account_id: accountId,
-        status: 'complete',
-        address: '1428 Maple Ave, Rochester, MI 48307',
-        photo_paths: ['p1.jpg'],
-        city: 'Rochester',
-      };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation((table: string) => {
-          if (table === 'neighborhood_halo_settings') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                }),
-              }),
-            };
-          }
-          if (table === 'neighborhood_halo_campaigns') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  is: vi.fn().mockReturnValue({
-                    gte: vi.fn().mockResolvedValue({ data: [], error: null }),
-                    order: vi.fn().mockReturnValue({
-                      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-                    }),
-                  }),
-                }),
-              }),
-            };
-          }
-          if (table === 'jobs') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockResolvedValue({ data: mockJob, error: null }),
-                  }),
-                }),
-              }),
-            };
-          }
-          return {};
-        }),
-      } as never;
-
-      const mockAdmin = {
-        rpc: vi.fn().mockResolvedValue({
-          data: { success: false, error: 'insufficient_wallet_balance' },
-          error: null,
-        }),
-      };
-      const { createAdminClient } = await import('@/lib/auth');
-      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
-
-      const { isMetaAdsConfigured } = await import('@/lib/meta-ads-api');
-      vi.mocked(isMetaAdsConfigured).mockReturnValue(true);
-
-      await expect(launchHaloCampaign(mockSupabase, accountId, jobId)).rejects.toThrow(
-        /INSUFFICIENT_WALLET_BALANCE/
-      );
+    it.each(['INSUFFICIENT_WALLET_BALANCE', 'Monthly Halo spending cap exceeded', 'An existing Halo covers this zone'])('propagates reservation failure: %s', async message => {
+      reserveError = { message }; await expect(launchHaloCampaign(admin, accountId, jobId)).rejects.toThrow(message); expect(meta.provisionManagedMetaCampaign).not.toHaveBeenCalled();
     });
-
-    it('cleans up orphan Meta campaign and refunds wallet if Meta provisioning fails', async () => {
-      const mockJob = {
-        id: jobId,
-        account_id: accountId,
-        status: 'complete',
-        address: '1428 Maple Ave, Rochester, MI 48307',
-        photo_paths: ['p1.jpg'],
-        city: 'Rochester',
-      };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation((table: string) => {
-          if (table === 'neighborhood_halo_settings') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                }),
-              }),
-            };
-          }
-          if (table === 'neighborhood_halo_campaigns') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  is: vi.fn().mockReturnValue({
-                    gte: vi.fn().mockResolvedValue({ data: [], error: null }),
-                    order: vi.fn().mockReturnValue({
-                      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-                    }),
-                  }),
-                }),
-              }),
-            };
-          }
-          if (table === 'jobs') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    maybeSingle: vi.fn().mockResolvedValue({ data: mockJob, error: null }),
-                  }),
-                }),
-              }),
-            };
-          }
-          if (table === 'accounts' || table === 'sites') {
-            return {
-              select: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-                }),
-              }),
-            };
-          }
-          return {};
-        }),
-      } as never;
-
-      const mockAdmin = {
-        rpc: vi.fn().mockResolvedValue({
-          data: { success: true },
-          error: null,
-        }),
-      };
-      const { createAdminClient } = await import('@/lib/auth');
-      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
-
-      const { isMetaAdsConfigured, provisionManagedMetaCampaign, pauseMetaCampaign } = await import('@/lib/meta-ads-api');
-      vi.mocked(isMetaAdsConfigured).mockReturnValue(true);
-      vi.mocked(provisionManagedMetaCampaign).mockResolvedValueOnce({
-        success: false,
-        campaignId: 'meta_orphan_partially_active_999',
-        status: 'failed',
-        dailyBudgetDollars: 5,
-        headline: '',
-        primaryText: '',
-        message: 'Creative rejected by Meta policy',
-      });
-
-      await expect(launchHaloCampaign(mockSupabase, accountId, jobId)).rejects.toThrow(
-        /Creative rejected by Meta policy/
-      );
-
-      // Verify orphan was paused on Meta
-      expect(pauseMetaCampaign).toHaveBeenCalledWith('meta_orphan_partially_active_999');
-
-      // Verify wallet debit was refunded
-      expect(mockAdmin.rpc).toHaveBeenCalledWith('atomic_ad_wallet_credit', expect.objectContaining({
-        p_account_id: accountId,
-        p_credit_cents: 2500,
-        p_fee_cents: 0,
-      }));
+    it('stops a partial provider launch and releases its unused reservation', async () => {
+      vi.mocked(meta.provisionManagedMetaCampaign).mockResolvedValue({ success: false, status: 'failed', campaignId: '123', dailyBudgetDollars: 5, headline: '', primaryText: '', message: 'Creative rejected' });
+      await expect(launchHaloCampaign(admin, accountId, jobId)).rejects.toThrow(/Creative rejected/);
+      expect(meta.pauseMetaCampaign).toHaveBeenCalledWith('123'); expect(rows[0].status).toBe('failed'); expect(meta.activateMetaCampaign).not.toHaveBeenCalled();
     });
-  });
-
-  describe('pause, resume, and kill campaign', () => {
-    it('pauses and resumes an active campaign', async () => {
-      const activeRow = {
-        id: 'halo_1',
-        account_id: accountId,
-        status: 'active',
-        street_name: 'Maple Ave',
-        meta_campaign_id: 'meta_camp_123',
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-      };
-
-      let currentRow = { ...activeRow };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation(() => ({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockImplementation(async () => ({
-                  data: currentRow,
-                  error: null,
-                })),
-              }),
-            }),
-          }),
-          update: vi.fn().mockImplementation((payload: any) => ({
-            eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockImplementation(async () => {
-                      currentRow = { ...currentRow, ...payload };
-                      return { data: currentRow, error: null };
-                    }),
-                  }),
-                }),
-                select: vi.fn().mockReturnValue({
-                  single: vi.fn().mockImplementation(async () => {
-                    currentRow = { ...currentRow, ...payload };
-                    return { data: currentRow, error: null };
-                  }),
-                }),
-              }),
-            }),
-          })),
-        })),
-      } as never;
-
-      const { pauseMetaCampaign, resumeMetaCampaign } = await import('@/lib/meta-ads-api');
-
-      const paused = await pauseHaloCampaign(mockSupabase, accountId, 'halo_1');
-      expect(paused.status).toBe('paused');
-      expect(pauseMetaCampaign).toHaveBeenCalledWith('meta_camp_123');
-
-      const resumed = await resumeHaloCampaign(mockSupabase, accountId, 'halo_1');
-      expect(resumed.status).toBe('active');
-      expect(resumeMetaCampaign).toHaveBeenCalledWith('meta_camp_123');
+    it('never activates when saving provider resources fails', async () => {
+      writeError = { message: 'DB unavailable' }; await expect(launchHaloCampaign(admin, accountId, jobId)).rejects.toThrow(); expect(meta.activateMetaCampaign).not.toHaveBeenCalled();
     });
-
-    it('rolls back database status to paused if resumeMetaCampaign fails', async () => {
-      const pausedRow = {
-        id: 'halo_1',
-        account_id: accountId,
-        status: 'paused',
-        street_name: 'Maple Ave',
-        meta_campaign_id: 'meta_camp_123',
-        expires_at: new Date(Date.now() + 86400000).toISOString(),
-      };
-
-      let currentRow = { ...pausedRow };
-      const updatePayloads: any[] = [];
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation(() => ({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockImplementation(async () => ({
-                  data: currentRow,
-                  error: null,
-                })),
-              }),
-            }),
-          }),
-          update: vi.fn().mockImplementation((payload: any) => {
-            updatePayloads.push(payload);
-            return {
-              eq: vi.fn().mockReturnValue({
-                eq: vi.fn().mockReturnValue({
-                  eq: vi.fn().mockReturnValue({
-                    select: vi.fn().mockReturnValue({
-                      single: vi.fn().mockImplementation(async () => {
-                        currentRow = { ...currentRow, ...payload };
-                        return { data: currentRow, error: null };
-                      }),
-                    }),
-                  }),
-                  select: vi.fn().mockReturnValue({
-                    single: vi.fn().mockImplementation(async () => {
-                      currentRow = { ...currentRow, ...payload };
-                      return { data: currentRow, error: null };
-                    }),
-                  }),
-                }),
-              }),
-            };
-          }),
-        })),
-      } as never;
-
-      const { resumeMetaCampaign } = await import('@/lib/meta-ads-api');
-      vi.mocked(resumeMetaCampaign).mockResolvedValueOnce({
-        success: false,
-        message: 'Ad account disabled by Meta',
-      });
-
-      await expect(resumeHaloCampaign(mockSupabase, accountId, 'halo_1')).rejects.toThrow(
-        /Unable to resume Meta campaign: Ad account disabled by Meta/
-      );
-
-      // Verify DB was initially updated to active, then rolled back to paused
-      expect(updatePayloads[0]).toEqual(expect.objectContaining({ status: 'active' }));
-      expect(updatePayloads[1]).toEqual(expect.objectContaining({ status: 'paused' }));
+    it('pauses, then resumes all saved delivery resources', async () => {
+      existing(); expect((await pauseHaloCampaign(admin, accountId, 'halo')).status).toBe('paused'); expect((await resumeHaloCampaign(admin, accountId, 'halo')).status).toBe('active');
+      expect(meta.activateMetaCampaign).toHaveBeenCalledWith({ campaignId: '123', adSetId: '456', adId: '999' });
     });
-
-    it('refuses to resume a campaign that is not paused (e.g. killed or completed)', async () => {
-      const killedRow = {
-        id: 'halo_killed',
-        account_id: accountId,
-        status: 'killed',
-        street_name: 'Maple Ave',
-      };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation(() => ({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: killedRow, error: null }),
-              }),
-            }),
-          }),
-        })),
-      } as never;
-
-      await expect(resumeHaloCampaign(mockSupabase, accountId, 'halo_killed')).rejects.toThrow(
-        /Cannot resume campaign with status 'killed'/
-      );
+    it('preserves paused state when provider resume fails', async () => {
+      const row = existing({ status: 'paused' }); vi.mocked(meta.activateMetaCampaign).mockResolvedValue({ success: false, message: 'Provider unavailable' });
+      await expect(resumeHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/unavailable/); expect(row.status).toBe('paused');
     });
-
-    it('refuses to resume an expired campaign', async () => {
-      const expiredPausedRow = {
-        id: 'halo_expired',
-        account_id: accountId,
-        status: 'paused',
-        street_name: 'Maple Ave',
-        expires_at: new Date(Date.now() - 86400000).toISOString(),
-      };
-
-      const mockSupabase = {
-        from: vi.fn().mockImplementation(() => ({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: expiredPausedRow, error: null }),
-              }),
-            }),
-          }),
-        })),
-      } as never;
-
-      await expect(resumeHaloCampaign(mockSupabase, accountId, 'halo_expired')).rejects.toThrow(
-        /Cannot resume campaign: campaign duration has expired/
-      );
+    it('refuses resume after settlement, expiry, or termination', async () => {
+      const row = existing({ status: 'killed' }); await expect(resumeHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/paused/);
+      row.status = 'paused'; row.expires_at = '2020-01-01'; await expect(resumeHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/expired/);
+      row.settlement_requested_at = new Date().toISOString(); await expect(resumeHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/reconciled/);
     });
-
-    it('kills campaign and refunds proven debits only', async () => {
-      const liveRow = {
-        id: 'halo_1',
-        account_id: accountId,
-        status: 'active',
-        street_name: 'Maple Ave',
-        budget_dollars: 25.0,
-        spend_dollars: 10.0,
-        wallet_deducted_cents: 2500,
-        meta_campaign_id: 'meta_camp_live_123',
-      };
-
-      const mockAdmin = {
-        rpc: vi.fn().mockResolvedValue({ data: { success: true }, error: null }),
-      };
-      const { createAdminClient } = await import('@/lib/auth');
-      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: liveRow, error: null }),
-              }),
-            }),
-          }),
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                select: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({
-                    data: { ...liveRow, status: 'killed' },
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-          }),
-        }),
-      } as never;
-
-      const { pauseMetaCampaign } = await import('@/lib/meta-ads-api');
-      const killed = await killHaloCampaign(mockSupabase, accountId, 'halo_1', '72h_zero_clicks');
-      expect(killed.status).toBe('killed');
-      expect(pauseMetaCampaign).toHaveBeenCalledWith('meta_camp_live_123');
-      // Proven debit: $25 (2500c), actual spend: $10 (1000c) -> refundable: 1500c ($15)
-      expect(mockAdmin.rpc).toHaveBeenCalledWith('atomic_ad_wallet_credit', {
-        p_account_id: accountId,
-        p_payment_intent_id: 'refund_halo_kill_halo_1',
-        p_credit_cents: 1500,
-        p_fee_cents: 0,
-      });
+    it('holds funds while stopped spend is still being reported, then settles once', async () => {
+      const row = existing(); const stopped = await killHaloCampaign(admin, accountId, 'halo'); expect(stopped.status).toBe('paused');
+      expect(admin.rpc.mock.calls.filter((c: any[]) => c[0] === 'settle_halo_campaign')).toHaveLength(0);
+      row.settlement_requested_at = new Date(Date.now()-73*3600000).toISOString(); expect((await killHaloCampaign(admin, accountId, 'halo')).status).toBe('killed');
+      await killHaloCampaign(admin, accountId, 'halo'); expect(admin.rpc.mock.calls.filter((c: any[]) => c[0] === 'settle_halo_campaign')).toHaveLength(1);
     });
-
-    it('kills campaign with 0 refund when wallet_deducted_cents is 0', async () => {
-      const sandboxRow = {
-        id: 'halo_2',
-        account_id: accountId,
-        status: 'simulated_sandbox',
-        street_name: 'Oak Ave',
-        budget_dollars: 25.0,
-        spend_dollars: 5.0,
-        wallet_deducted_cents: 0, // never debited wallet
-      };
-
-      const mockAdmin = {
-        rpc: vi.fn(),
-      };
-      const { createAdminClient } = await import('@/lib/auth');
-      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
-
-      const mockSupabase = {
-        from: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              is: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: sandboxRow, error: null }),
-              }),
-            }),
-          }),
-          update: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                select: vi.fn().mockReturnValue({
-                  single: vi.fn().mockResolvedValue({
-                    data: { ...sandboxRow, status: 'killed' },
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
-          }),
-        }),
-      } as never;
-
-      const killed = await killHaloCampaign(mockSupabase, accountId, 'halo_2', 'manual');
-      expect(killed.status).toBe('killed');
-      // Must NOT credit anything since wallet was never debited
-      expect(mockAdmin.rpc).not.toHaveBeenCalled();
+    it('retains funds if provider pause or final insights fails', async () => {
+      existing({ settlement_requested_at: new Date(Date.now()-73*3600000).toISOString(), settlement_status: 'killed' });
+      vi.mocked(meta.pauseMetaCampaign).mockResolvedValue({ success: false, message: 'Pause failed' }); await expect(killHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/Pause failed/);
+      vi.mocked(meta.pauseMetaCampaign).mockResolvedValue({ success: true, message: 'Paused' }); vi.mocked(meta.fetchMetaCampaignDailySpend).mockResolvedValue({ success: false } as never);
+      await expect(killHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/final spend/); expect(admin.rpc.mock.calls.filter((c: any[]) => c[0] === 'settle_halo_campaign')).toHaveLength(0);
     });
+    it('refuses cross-account delivery changes', async () => { existing({ account_id: 'other' }); await expect(killHaloCampaign(admin, accountId, 'halo')).rejects.toThrow(/not found/); expect(meta.pauseMetaCampaign).not.toHaveBeenCalled(); });
   });
 
   describe('triggerNeighborhoodHaloOnJobComplete', () => {

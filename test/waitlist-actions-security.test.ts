@@ -52,14 +52,33 @@ describe('searchExistingContactsAction sanitization & PostgREST filter injection
     const injectionAttempt = 'John,status.eq.admin),address.ilike."%test%"';
     await searchExistingContactsAction(injectionAttempt);
 
-    // Verify commas, parens, quotes, percent, and backslashes were stripped
-    expect(capturedClientOrFilter).toBe('name.ilike.%Johnstatus.eq.adminaddress.ilike.test%,phone.ilike.%Johnstatus.eq.adminaddress.ilike.test%,address.ilike.%Johnstatus.eq.adminaddress.ilike.test%');
-    // Filter must strictly contain only the 3 legitimate top-level OR conditions (no extra injected conditions)
-    expect(capturedClientOrFilter.split(',')).toHaveLength(3);
-    expect(capturedClientOrFilter).not.toContain('(');
-    expect(capturedClientOrFilter).not.toContain(')');
-    expect(capturedClientOrFilter).not.toContain('"');
-    expect(capturedClientOrFilter).not.toContain("'");
+    // Two defences now, in this order: the action still strips the dangerous
+    // characters from the term, and ilikeAcross then quotes what is left so a
+    // character that ever slipped through could not be read as grammar.
+    const needle = '"%Johnstatus.eq.adminaddress.ilike.test%"';
+    expect(capturedClientOrFilter).toBe(
+      `name.ilike.${needle},phone.ilike.${needle},address.ilike.${needle}`,
+    );
+
+    // The property that matters: exactly the three conditions the caller wrote,
+    // and none the search term smuggled in. Counting occurrences of "ilike"
+    // would not show that — the stripped term still CONTAINS that word, which
+    // is the whole reason the value has to be quoted rather than trusted.
+    // Quoted segments are the odd-indexed pieces of a split on the delimiter,
+    // so three of them means three conditions.
+    const insideQuotes = capturedClientOrFilter.split('"').filter((_, i) => i % 2 === 1);
+    expect(insideQuotes).toHaveLength(3);
+
+    // Outside the quoted values, the only structure is `column.ilike.` joined
+    // by commas: three columns, two separators, nothing else.
+    const structure = capturedClientOrFilter.split('"').filter((_, i) => i % 2 === 0).join('');
+    expect(structure).toBe('name.ilike.,phone.ilike.,address.ilike.');
+    for (const value of insideQuotes) {
+      expect(value).not.toContain('(');
+      expect(value).not.toContain(')');
+      expect(value).not.toContain(',');
+      expect(value).not.toContain("'");
+    }
   });
 });
 

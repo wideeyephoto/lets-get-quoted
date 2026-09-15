@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import type { AutomationKey } from '@/lib/automations';
 import {
   adWalletRefillText,
@@ -18,6 +19,7 @@ import {
   crewWelcomeText,
   inboxReplyText,
   intakeConfirmationText,
+  formatPrivateSmsText,
   jobUpdateText,
   leadDeclineText,
   leadQuoteVisitOptionsText,
@@ -36,6 +38,7 @@ import {
   portalLinkText,
   quickStopConfirmedText,
   quickStopOfferText,
+  quickStopStatusText,
   quoteFollowupText,
   quoteUpdatedText,
   rebookInviteText,
@@ -591,7 +594,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'En route, arrived, cancelled or refunded',
     audience: 'customer',
     control: automation('extra-stop', 'Quick Stop'),
-    body: withOptOut(`${SAMPLE.business} is on the way to you now.`),
+    body: withOptOut(quickStopStatusText('en_route')),
   },
   {
     id: 'estimate-offer',
@@ -608,7 +611,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'A lead replies YES to an offer',
     audience: 'owner',
     control: always('Goes to your own mobile'),
-    body: withOptOut(`${SAMPLE.client} accepted your 2-4 PM offer.`),
+    body: lgqSmsText(withOptOut(`${SAMPLE.client} accepted your 2-4 PM offer.`)),
   },
 
   // -- money -----------------------------------------------------------------
@@ -703,6 +706,15 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     control: manual('You type it'),
     ownerAuthored: true,
     body: inboxReplyText({ businessName: SAMPLE.business, body: 'Yes — Thursday morning works, see you at 9.' }),
+  },
+  {
+    id: 'private-text',
+    title: 'Private text',
+    trigger: 'You send a direct message from a lead or job page',
+    audience: 'customer',
+    control: manual('You type it'),
+    ownerAuthored: true,
+    body: formatPrivateSmsText({ businessName: SAMPLE.business, body: 'Are you available for a site visit this afternoon?' }),
   },
   {
     id: 'owner-voice-emergency-alert',

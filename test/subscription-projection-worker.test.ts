@@ -258,6 +258,7 @@ describe('dark Stripe Billing subscription projection worker', () => {
       project: vi.fn(),
       fail,
       ignoreForeignRail: vi.fn(),
+      ignoreTestModeRehearsal: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const resolver = {
       loadProviderContext: vi.fn(),
@@ -300,6 +301,7 @@ describe('dark Stripe Billing subscription projection worker', () => {
       project,
       fail: vi.fn(),
       ignoreForeignRail: vi.fn(),
+      ignoreTestModeRehearsal: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const resolver = {
       loadProviderContext: vi.fn().mockResolvedValue(CONTEXT),

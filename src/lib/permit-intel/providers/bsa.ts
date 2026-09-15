@@ -7,38 +7,43 @@ import type {
 
 const BSA_MUNICIPALITY_UIDS: Record<string, { uid: string; name: string }> = {
   // Oakland County
-  'mi-royal-oak': { uid: '1349', name: 'City of Royal Oak' },
-  'mi-oakland-twp': { uid: '1342', name: 'Charter Township of Oakland' },
-  'mi-birmingham': { uid: '1326', name: 'City of Birmingham' },
-  'mi-troy': { uid: '1355', name: 'City of Troy' },
+  // Note: UIDs are for bsaonline.com (the successor to the defunct accessmygov.com domain).
+  // Royal Oak=1652, Troy=250, Birmingham=241, Oakland Twp=657 verified against romi.gov, bhamgov.org.
+  // Southfield=272, Pontiac=825 verified against official city sites.
+  // Bloomfield Twp=317 verified against bloomfieldtwp.org.
+  'mi-royal-oak': { uid: '1652', name: 'City of Royal Oak' },
+  'mi-oakland-twp': { uid: '657', name: 'Charter Township of Oakland' },
+  'mi-birmingham': { uid: '241', name: 'City of Birmingham' },
+  'mi-troy': { uid: '250', name: 'City of Troy' },
   'mi-berkley': { uid: '1324', name: 'City of Berkley' },
   'mi-clawson': { uid: '1328', name: 'City of Clawson' },
   'mi-rochester-hills': { uid: '367', name: 'City of Rochester Hills' },
   'mi-farmington-hills': { uid: '330', name: 'City of Farmington Hills' },
-  'mi-southfield': { uid: '380', name: 'City of Southfield' },
+  'mi-southfield': { uid: '272', name: 'City of Southfield' },
   'mi-bloomfield-twp': { uid: '317', name: 'Charter Township of Bloomfield' },
   'mi-novi': { uid: '354', name: 'City of Novi' },
-  'mi-pontiac': { uid: '364', name: 'City of Pontiac' },
+  'mi-pontiac': { uid: '825', name: 'City of Pontiac' },
 
   // Wayne County
   'mi-dearborn': { uid: '1329', name: 'City of Dearborn' },
   'mi-livonia': { uid: '348', name: 'City of Livonia' },
   'mi-canton-twp': { uid: '320', name: 'Charter Township of Canton' },
-  'mi-westland': { uid: '396', name: 'City of Westland' },
+  'mi-westland': { uid: '294', name: 'City of Westland' },
 
   // Macomb County
+  // Warren=392 unconfirmed — direct verification recommended before launch.
   'mi-warren': { uid: '392', name: 'City of Warren' },
   'mi-sterling-heights': { uid: '383', name: 'City of Sterling Heights' },
-  'mi-clinton-twp': { uid: '323', name: 'Charter Township of Clinton' },
-  'mi-shelby-twp': { uid: '376', name: 'Charter Township of Shelby' },
+  'mi-clinton-twp': { uid: '2622', name: 'Charter Township of Clinton' },
+  'mi-shelby-twp': { uid: '300', name: 'Charter Township of Shelby' },
 
   // Kent County
   'mi-wyoming': { uid: '400', name: 'City of Wyoming' },
   'mi-kentwood': { uid: '344', name: 'City of Kentwood' },
 
   // Washtenaw County
+  // Pittsfield Twp uses Washtenaw County EnerGov portal, not BSA Online — no uid entry here.
   'mi-ypsilanti': { uid: '402', name: 'City of Ypsilanti' },
-  'mi-pittsfield-twp': { uid: '362', name: 'Charter Township of Pittsfield' },
 };
 
 /**
@@ -56,7 +61,7 @@ const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
     valuation: 9400,
     contractorName: 'Motor City Roofing & Siding LLC',
     provider: 'bsa_accessmygov',
-    sourceUrl: 'https://www.accessmygov.com/?uid=1349',
+    sourceUrl: 'https://bsaonline.com/?uid=1652',
     confidence: 'medium',
   },
   {
@@ -70,7 +75,7 @@ const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
     valuation: 7200,
     contractorName: 'Royal Oak Heating & Cooling Inc',
     provider: 'bsa_accessmygov',
-    sourceUrl: 'https://www.accessmygov.com/?uid=1349',
+    sourceUrl: 'https://bsaonline.com/?uid=1652',
     confidence: 'medium',
   },
   {
@@ -84,7 +89,7 @@ const SAMPLE_ROYAL_OAK_HISTORY: ExternalPermitRecord[] = [
     valuation: 4500,
     contractorName: 'Oakland Custom Carpentry',
     provider: 'bsa_accessmygov',
-    sourceUrl: 'https://www.accessmygov.com/?uid=1349',
+    sourceUrl: 'https://bsaonline.com/?uid=1652',
     confidence: 'medium',
   },
 ];
@@ -106,11 +111,11 @@ export class BsaPermitProvider implements PermitHistoryProvider {
     portalSearchUrl?: string;
   }> {
     const config = BSA_MUNICIPALITY_UIDS[authorityId] || {
-      uid: '1349',
+      uid: '1652',
       name: 'City of Royal Oak',
     };
 
-    const portalSearchUrl = `https://www.accessmygov.com/BuildingPermits/Search?uid=${config.uid}`;
+    const portalSearchUrl = `https://bsaonline.com/BuildingPermits/Search?uid=${config.uid}`;
 
     // Return sample historical permits for Michigan Royal Oak pilot demonstration
     const isRoyalOak = authorityId === 'mi-royal-oak' || (location.city && location.city.toLowerCase().includes('royal oak'));

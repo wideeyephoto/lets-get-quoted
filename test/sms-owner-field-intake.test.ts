@@ -53,31 +53,31 @@ describe('GSM-7 Confirmation Templates', () => {
 
   it('formats deterministic ASCII confirmation strings under 160 chars', () => {
     const noteConfirm = formatFieldNoteConfirmation('J-101', 'John Smith');
-    expect(noteConfirm).toBe('[LGQ] J-101 (John Smith): Logged field note.');
+    expect(noteConfirm).toBe('Let\'s Get Quoted: J-101 (John Smith): Logged field note.');
     expect(noteConfirm.length).toBeLessThanOrEqual(160);
 
     const costConfirm = formatFieldCostConfirmation('J-101', 'John Smith', 75, 'material');
-    expect(costConfirm).toBe('[LGQ] J-101 (John Smith): Logged $75.00 material cost.');
+    expect(costConfirm).toBe('Let\'s Get Quoted: J-101 (John Smith): Logged $75.00 material cost.');
     expect(costConfirm.length).toBeLessThanOrEqual(160);
 
     const taskConfirm = formatFieldTaskConfirmation('J-101', 'John Smith', 'Pick up 4 bags of mortar');
-    expect(taskConfirm).toBe('[LGQ] J-101 (John Smith): Added task "Pick up 4 bags of mortar".');
+    expect(taskConfirm).toBe('Let\'s Get Quoted: J-101 (John Smith): Added task "Pick up 4 bags of mortar".');
     expect(taskConfirm.length).toBeLessThanOrEqual(160);
 
     const leadConfirm = formatFieldLeadConfirmation('Jane Doe');
-    expect(leadConfirm).toBe('[LGQ] Created new lead for Jane Doe.');
+    expect(leadConfirm).toBe('Let\'s Get Quoted: Created new lead for Jane Doe.');
     expect(leadConfirm.length).toBeLessThanOrEqual(160);
 
     const schedConfirm = formatFieldScheduleConfirmation('J-101', 'John Smith', '2026-09-01');
-    expect(schedConfirm).toBe('[LGQ] J-101 (John Smith): Scheduled for 2026-09-01.');
+    expect(schedConfirm).toBe('Let\'s Get Quoted: J-101 (John Smith): Scheduled for 2026-09-01.');
     expect(schedConfirm.length).toBeLessThanOrEqual(160);
 
     const clientConfirm = formatFieldClientConfirmation('Dave Miller');
-    expect(clientConfirm).toBe('[LGQ] Updated client profile for Dave Miller.');
+    expect(clientConfirm).toBe('Let\'s Get Quoted: Updated client profile for Dave Miller.');
     expect(clientConfirm.length).toBeLessThanOrEqual(160);
 
     const crewConfirm = formatFieldCrewConfirmation('J-101', 'John Smith', 'Mike');
-    expect(crewConfirm).toBe('[LGQ] Assigned Mike to J-101 (John Smith).');
+    expect(crewConfirm).toBe('Let\'s Get Quoted: Assigned Mike to J-101 (John Smith).');
     expect(crewConfirm.length).toBeLessThanOrEqual(160);
   });
 });
@@ -511,7 +511,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('append_internal_note');
-    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged field note.');
+    expect(result.confirmationText).toContain('Let\'s Get Quoted: J-101 (John Smith): Logged field note.');
     expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
     expect(mockFrom).toHaveBeenCalledWith('sms_inbound_action_tasks');
     expect(mockFrom).toHaveBeenCalledWith('sms_webhook_receipts');
@@ -914,7 +914,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('create_lead');
-    expect(result.confirmationText).toContain('[LGQ] Created new lead for Steve Whatchamacallit.');
+    expect(result.confirmationText).toContain('Let\'s Get Quoted: Created new lead for Steve Whatchamacallit.');
     expect(result.confirmationText).not.toMatch(/created (?:a )?new job/i);
     expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
 
@@ -1199,7 +1199,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('log_cost');
-    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged $148.50 Home Depot receipt (Plumbing fittings).');
+    expect(result.confirmationText).toContain('Let\'s Get Quoted: J-101 (John Smith): Logged $148.50 Home Depot receipt (Plumbing fittings).');
     expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
 
     expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', expect.objectContaining({

@@ -13,11 +13,11 @@
  */
 import '../globals.css';
 import { headers } from 'next/headers';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { requireDashboardShellContext } from '@/lib/auth';
 import { DASHBOARD_ORIENTATION_TOUR } from '@/lib/product-tour/catalog';
-import { filterStepsForUser } from '@/lib/product-tour/access';
+import { filterStepsForUser, shouldOfferTour } from '@/lib/product-tour/access';
 import type { TourProgressRecord } from '@/lib/product-tour/types';
 import ProductTourRoot from '@/components/product-tour/ProductTourRoot';
 import StripeAlertBanner from './StripeAlertBanner';
@@ -28,6 +28,7 @@ import { createAdminClient } from '@/lib/auth';
 import { resolveServerNavDecision } from '@/lib/nav-server';
 import { isNavPersonaEnabled } from '@/lib/nav-visibility';
 import type { NavVisibilityDecision } from '@/lib/nav-visibility-client';
+import { officeReadPageRedirect } from '@/lib/office-access';
 import DashboardNavSync from './DashboardNavSync';
 
 // Wraps every /dashboard/** page. Shows a hard-to-miss banner whenever Stripe
@@ -38,7 +39,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // The site builder's bare preview route renders the raw public template
   // with no dashboard chrome (embedded in an iframe) — never inject the
   // banner there, it would corrupt the "what visitors actually see" preview.
-  const isBarePreview = (await headers()).get('x-lgq-bare-preview') === '1';
+  const requestHeaders = await headers();
+  const isBarePreview = requestHeaders.get('x-lgq-bare-preview') === '1';
 
   if (isBarePreview) {
     return <>{children}</>;
@@ -49,6 +51,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   // every page still runs its own, and all but the deliberately converted ones
   // still run requireOwnerContext. See requireDashboardShellContext.
   const { supabase, userId, accountId, role, capabilities, account } = await requireDashboardShellContext();
+
+  // x-pathname is overwritten by middleware. Finish these page denials before
+  // the child loading boundary starts; page guards remain authoritative when
+  // a client navigation reuses this layout without rendering it again.
+  if (role === 'office') {
+    const destination = officeReadPageRedirect(requestHeaders.get('x-pathname'), capabilities);
+    if (destination) redirect(destination);
+  }
 
   // Owners only. An office user cannot connect the business's Stripe account,
   // so the banner would be an instruction they cannot follow about money that
@@ -62,12 +72,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const tourEnabled = orientationFlag === undefined || orientationFlag === '1' || orientationFlag === 'true';
 
   let tourProgress: TourProgressRecord | null = null;
-  const allowedStepIds = filterStepsForUser(DASHBOARD_ORIENTATION_TOUR, {
+  const userTourContext = {
     userId,
     accountId,
-    role,
+    role: role as 'owner' | 'office',
     capabilities,
-  }).map((s) => s.id);
+  };
+  const allowedStepIds = filterStepsForUser(DASHBOARD_ORIENTATION_TOUR, userTourContext).map((s) => s.id);
 
   if (tourEnabled) {
     try {
@@ -86,6 +97,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     }
   }
 
+  const offerTour = tourEnabled && shouldOfferTour(DASHBOARD_ORIENTATION_TOUR, tourProgress, userTourContext);
+
   let navDecision: NavVisibilityDecision | null = null;
   if (isNavPersonaEnabled()) {
     try {
@@ -99,7 +112,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <AssistantProvider>
       {navDecision ? <DashboardNavSync nav={navDecision} /> : null}
-      <div style={{ padding: '8px 24px', textAlign: 'right' }}><Link href="/workspaces">Switch workspace</Link></div>
       {!onboarded ? (
         // The whole bar starts the Stripe connect itself — landing on Settings
         // and hunting for the same button is a step that does nothing.
@@ -110,6 +122,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         initialProgress={tourProgress}
         allowedStepIds={allowedStepIds}
         enabled={tourEnabled}
+        offer={offerTour}
       />
       {children}
       <AssistantWidget />

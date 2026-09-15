@@ -1,0 +1,72 @@
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { cache } from 'react';
+
+import { getSiteGallery } from '@/lib/site-images';
+
+import { getCachedPublicSiteBySubdomain, getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
+import { getTemplate } from '@/lib/templates';
+import SiteStructuredData from '@/lib/templates/SiteStructuredData';
+import { getSiteContent } from '@/lib/site-content';
+import { parseVerificationToken } from '@/lib/seo/search-console';
+import { resolveSiteSeo, siteCanonicalUrl, isSiteSeoReady } from '@/lib/seo/site-seo';
+import { siteIconsMetadata } from '@/lib/brand-mark';
+
+type PublicSitePageProps = {
+  params: Promise<{ kind: string; tenant: string }>;
+};
+
+const loadPublicSite = cache(async (kind: string, tenant: string) => { return kind === 'd' ? getCachedPublicSiteByCustomDomain(decodeURIComponent(tenant)) : getCachedPublicSiteBySubdomain(tenant); });
+
+export default async function PublicSitePage({ params: paramsPromise }: PublicSitePageProps) {
+  const params = await paramsPromise;
+  const site = await loadPublicSite(params.kind, params.tenant);
+  if (!site) notFound();
+
+  const Template = getTemplate(site.template);
+  if (!Template) notFound();
+
+  return (
+    <>
+      <SiteStructuredData site={site} />
+      <Template site={site} galleryImages={getSiteGallery(site.content)} />
+    </>
+  );
+}
+
+export async function generateMetadata({ params: paramsPromise }: PublicSitePageProps): Promise<Metadata> {
+  const params = await paramsPromise;
+  const site = await loadPublicSite(params.kind, params.tenant);
+  if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
+
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  const { title, description } = resolveSiteSeo(site);
+  const canonical = siteCanonicalUrl(site) || `https://${site.subdomain}.${rootDomain}`;
+  // Search Console verification. On the HOMEPAGE only, which is where Google
+  // looks — and the only page the owner will be asked for. Stored as typed
+  // (often the whole <meta> tag), so it is parsed here rather than trusted.
+  const verification = parseVerificationToken(getSiteContent(site.content).googleSiteVerification);
+
+  return {
+    // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
+    // contractor's own domain/tab doesn't carry the SaaS brand. Guard against an
+    // empty title (blank company name) — undefined lets the root default apply
+    // rather than emitting an empty <title>.
+    title: title ? { absolute: title } : undefined,
+    description,
+    alternates: { canonical },
+    // A per-site favicon (the trade mark) so the tab carries the contractor's
+    // brand, not the platform's — matters most on their own custom domain.
+    icons: siteIconsMetadata(site),
+    // Keep thin/incomplete sites out of the index until they carry real content.
+    robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
+    ...(verification ? { verification: { google: verification } } : {}),
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonical,
+      images: site.hero_url ? [{ url: site.hero_url }] : [],
+    },
+  };
+}

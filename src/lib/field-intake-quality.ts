@@ -28,7 +28,7 @@ const US_PHONE_REGEX = /(?:\+?1[-. ]?)?\(?([2-9][0-9]{2})\)?[-. ]?([2-9][0-9]{2}
 const DOLLAR_AMOUNT_REGEX = /\$\s*(\d+(?:,\d{3})*(?:\.\d{2})?)|\b(\d+)\s*(?:dollars|bucks)\b/i;
 const SCHEDULE_TIME_REGEX = /\b(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|morning|afternoon|tonight|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tues|wed|thu|fri|sat|sun)\b/i;
 const TRADE_ACTION_REGEX = /\b(?:change order|inspection|rough|passed|punch list|quote|estimate|repaired|replaced|installed|caulk|drywall|wire|breaker|panel|freon|refrigerant|drain|roof|shingle|decking|paint|trim|subdecking|gfci|pex|capacitor)\b/i;
-const CLIENT_OR_JOB_REGEX = /\b(?:Job\s+J-\d+|New Lead[:\s]+[A-Z][a-z]+|Miller|Johnson|Smith|Davis|Wilson|Taylor|Clark|Jenkins|Adams|Vance|White|Scott|Parker)\b/i;
+const CLIENT_OR_JOB_REGEX = /\b(?:Job\s+J-\d+|New Lead[:\s]+[A-Z][a-z]+)\b/i;
 
 /**
  * Evaluate inbound field text or transcript to determine extraction quality,

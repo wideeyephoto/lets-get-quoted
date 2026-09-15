@@ -77,6 +77,11 @@ export function maxIntervalMinutes(schedule) {
       const n = Number(minStep[1]);
       return n > 0 && n < 60 ? n : null;
     }
+    if (minute.includes(',')) {
+      const list = minute.split(',').map((m) => Number(m.trim()));
+      if (list.length === 4 && list[1] - list[0] === 15) return 15;
+      if (list.length === 12 && list[1] - list[0] === 5) return 5;
+    }
     if (/^\d+$/.test(minute)) return 60;
     return 60;
   }

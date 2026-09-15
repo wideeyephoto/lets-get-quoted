@@ -43,12 +43,34 @@ export async function GET(request: Request) {
   );
 }
 
+/**
+ * Every value interpolated into the page below arrives from the query string.
+ *
+ * This endpoint answers with `text/html`, and the middleware matcher skips
+ * `/api` — so no CSP is set on this response and nothing downstream would catch
+ * a script that got through. `actionId` in particular reaches the page on the
+ * failure paths, which need no valid token to reach: a bad signature still
+ * renders, and so does a missing parameter. Escaping is the only thing standing
+ * between a crafted link and script execution on the app's own origin, where
+ * the dashboard session cookie lives.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderResultHtml(
   success: boolean,
-  message: string,
-  actionId: string,
+  rawMessage: string,
+  rawActionId: string,
   decision: string,
 ): string {
+  const message = escapeHtml(rawMessage);
+  const actionId = escapeHtml(rawActionId);
   const icon = success ? (decision === 'approved' ? '✅' : '❌') : '⚠️';
   const title = success
     ? `Action ${decision === 'approved' ? 'Approved' : 'Rejected'}`

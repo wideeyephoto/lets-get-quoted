@@ -227,7 +227,7 @@ try {
   await c.query("update public.workspace_entitlements set feature_limits = jsonb_set(feature_limits, '{office_users}', '4') where account_id = $1", [DRIFTED]);
   await c.query("update public.workspace_entitlements set plan_code = 'solo' where account_id = $1", [PARTIAL]);
   const paidBefore = await row(PARTIAL);
-  const seatsMigration = m('20260908132425_flex_two_office_seats.sql');
+  const seatsMigration = m('20260908132652_flex_two_office_seats.sql');
   await c.query(seatsMigration);
   ck('existing Flex gains a second office seat', (await row(AFTER)).feature_limits.office_users === 2);
   ck('larger office grants and unrelated limits survive',

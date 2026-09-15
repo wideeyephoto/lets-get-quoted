@@ -38,6 +38,8 @@ import { createAdminClient } from '@/lib/auth';
 import { arrivalSettingsFromAccount, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
 import { getActiveTrackingByJob } from '@/lib/job-tracking';
 import { formatJobSchedule } from '@/lib/jobs';
+import { arrivalTimeChangedText } from '@/lib/sms-templates';
+import { SmsBubble } from '@/components/sms/SmsPreview';
 import ScheduleNav from '../ScheduleNav';
 
 export const metadata = { title: 'Plan my day' };
@@ -653,6 +655,27 @@ export default async function PlanDayPage({
             Customers get a window, not a single time. It runs an hour either side of the estimate, and never starts
             before your workday does.
           </p>
+          <div style={{ margin: '1rem 0' }}>
+            <SmsBubble
+              recipientLabel={
+                justMoved.length > 1
+                  ? `${justMoved[0].stop.label} (+${justMoved.length - 1} other${justMoved.length > 2 ? 's' : ''})`
+                  : justMoved[0].stop.label
+              }
+              message={arrivalTimeChangedText({
+                businessName,
+                clientName: justMoved[0].stop.label,
+                windowLabel: arrivalWindow(justMoved[0].arrivalMinutes, {
+                  earliestMinutes: parseTimeMinutes(settings.workdayStart),
+                }).label,
+              })}
+              note={
+                justMoved.length > 1
+                  ? `Sample preview for ${justMoved[0].stop.label}. Each of the ${justMoved.length} customers receives their own arrival window.`
+                  : undefined
+              }
+            />
+          </div>
           <form action={notifyMovedClientsAction}>
             <input type="hidden" name="dateKey" value={dateKey} />
             <input type="hidden" name="crewId" value={crewId ?? ''} />

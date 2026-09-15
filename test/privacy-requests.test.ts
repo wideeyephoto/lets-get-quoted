@@ -40,10 +40,28 @@ describe('privacy request error handling', () => {
     );
   });
 
+  it('requires operational resolution notes when resolving a privacy request (P5-4)', async () => {
+    const { resolvePrivacyRequest } = await import('@/lib/privacy-requests');
+    const mockAdmin = {} as any;
+    const actor = { adminEmail: 'admin@test.com' } as any;
+
+    await expect(resolvePrivacyRequest(mockAdmin, actor, 'req-123', '')).rejects.toThrow(
+      'Resolution notes are required',
+    );
+    await expect(resolvePrivacyRequest(mockAdmin, actor, 'req-123', '   ')).rejects.toThrow(
+      'Resolution notes are required',
+    );
+  });
+
   it('throws when resolvePrivacyRequest encounters database error or nonexistent ID', async () => {
     const { resolvePrivacyRequest } = await import('@/lib/privacy-requests');
     const mockAdmin = {
       from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => ({ data: { details: 'Initial request details' }, error: null }),
+          }),
+        }),
         update: () => ({
           eq: () => ({
             select: () => ({
@@ -55,10 +73,17 @@ describe('privacy request error handling', () => {
     } as any;
 
     const actor = { adminEmail: 'admin@test.com' } as any;
-    await expect(resolvePrivacyRequest(mockAdmin, actor, 'req-123')).rejects.toThrow('Update failed');
+    await expect(
+      resolvePrivacyRequest(mockAdmin, actor, 'req-123', 'Exported data zip and sent encrypted link to user'),
+    ).rejects.toThrow('Update failed');
 
     const mockAdminNotFound = {
       from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => ({ data: null, error: null }),
+          }),
+        }),
         update: () => ({
           eq: () => ({
             select: () => ({
@@ -69,9 +94,9 @@ describe('privacy request error handling', () => {
       }),
     } as any;
 
-    await expect(resolvePrivacyRequest(mockAdminNotFound, actor, 'req-404')).rejects.toThrow(
-      'Privacy request not found or resolution failed',
-    );
+    await expect(
+      resolvePrivacyRequest(mockAdminNotFound, actor, 'req-404', 'Processed verified removal'),
+    ).rejects.toThrow('Privacy request not found or resolution failed');
   });
 
   it('computes exact 30-day statutory legal deadlines', async () => {

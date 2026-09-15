@@ -23,6 +23,7 @@ export function generateInvoiceHtml(params: {
   taxAmount?: number;
   items: Array<{ description: string; amount: number }>;
   invoiceLink: string;
+  financingAvailable?: boolean;
 }): string {
   const money = formatUsdExact;
   const accent = safeAccent(params.brand.accent);
@@ -86,7 +87,19 @@ export function generateInvoiceHtml(params: {
     prompt: `Questions about invoice ${escapeHtml(params.invoiceRef)}?`,
   });
 
-  const bodyHtml = `${itemsTable}${summaryHtml}${paymentTrustBadge}`;
+  const financingNotice = params.financingAvailable
+    ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0 0;background:${paint.subtleBg};border:1px solid ${paint.border};border-radius:8px;overflow:hidden">
+      <tr>
+        <td style="padding:10px 14px;font-family:${FONT_STACK};font-size:12px;color:#475569;text-align:center">
+          💳 <strong>Monthly payment options</strong> available through Acorn Finance &nbsp;·&nbsp; Review options on your invoice
+        </td>
+      </tr>
+    </table>
+  `
+    : '';
+
+  const bodyHtml = `${itemsTable}${summaryHtml}${financingNotice}${paymentTrustBadge}`;
 
   return renderBrandedEmail({
     brand: params.brand,

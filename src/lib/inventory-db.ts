@@ -17,8 +17,12 @@ import {
   DEFAULT_VEHICLES,
   DEFAULT_VAN_STOCK,
   DEFAULT_MAINTENANCE,
-  DEFAULT_CUSTODY_LOGS,
 } from '@/lib/inventory-data';
+import {
+  recordTenantAuditEvent,
+  type ActorSnapshot,
+  type TenantAuditSource,
+} from '@/lib/tenant-audit';
 
 /**
  * Resiliently encodes tax depreciation metadata into the notes field so the feature
@@ -607,26 +611,34 @@ export async function transferToolDb(
 }
 
 /**
- * Soft deletes a tool asset preserving historical records.
+ * Deletes a tool asset and records an immutable tenant audit event for navigation history.
  */
 export async function deleteTool(
   supabase: SupabaseClient,
   accountId: string,
   toolId: string,
+  options?: { actor?: ActorSnapshot; source?: TenantAuditSource },
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_tools')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', toolId)
     .eq('account_id', accountId);
 
-  if (error) {
-    const { error: fallbackErr } = await supabase
-      .from('inventory_tools')
-      .delete()
-      .eq('id', toolId)
-      .eq('account_id', accountId);
-    if (fallbackErr) throw fallbackErr;
+  if (error) throw error;
+
+  try {
+    await recordTenantAuditEvent({
+      client: supabase,
+      accountId,
+      entityType: 'inventory_tools',
+      entityId: toolId,
+      action: 'delete',
+      actor: options?.actor,
+      source: options?.source ?? 'web',
+    });
+  } catch (auditErr) {
+    console.warn('[inventory-db] Non-fatal: failed to record audit event for deleteTool:', auditErr);
   }
 }
 
@@ -750,26 +762,34 @@ export async function updateVehicleMileage(
 }
 
 /**
- * Soft deletes a fleet vehicle.
+ * Deletes a fleet vehicle and records an immutable tenant audit event for navigation history.
  */
 export async function deleteVehicle(
   supabase: SupabaseClient,
   accountId: string,
   vehicleId: string,
+  options?: { actor?: ActorSnapshot; source?: TenantAuditSource },
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_vehicles')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', vehicleId)
     .eq('account_id', accountId);
 
-  if (error) {
-    const { error: fallbackErr } = await supabase
-      .from('inventory_vehicles')
-      .delete()
-      .eq('id', vehicleId)
-      .eq('account_id', accountId);
-    if (fallbackErr) throw fallbackErr;
+  if (error) throw error;
+
+  try {
+    await recordTenantAuditEvent({
+      client: supabase,
+      accountId,
+      entityType: 'inventory_vehicles',
+      entityId: vehicleId,
+      action: 'delete',
+      actor: options?.actor,
+      source: options?.source ?? 'web',
+    });
+  } catch (auditErr) {
+    console.warn('[inventory-db] Non-fatal: failed to record audit event for deleteVehicle:', auditErr);
   }
 }
 
@@ -820,26 +840,34 @@ export async function saveStockItem(
 }
 
 /**
- * Soft deletes a stock item.
+ * Deletes a stock item and records an immutable tenant audit event for navigation history.
  */
 export async function deleteStockItem(
   supabase: SupabaseClient,
   accountId: string,
   stockId: string,
+  options?: { actor?: ActorSnapshot; source?: TenantAuditSource },
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_stock_items')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', stockId)
     .eq('account_id', accountId);
 
-  if (error) {
-    const { error: fallbackErr } = await supabase
-      .from('inventory_stock_items')
-      .delete()
-      .eq('id', stockId)
-      .eq('account_id', accountId);
-    if (fallbackErr) throw fallbackErr;
+  if (error) throw error;
+
+  try {
+    await recordTenantAuditEvent({
+      client: supabase,
+      accountId,
+      entityType: 'inventory_stock_items',
+      entityId: stockId,
+      action: 'delete',
+      actor: options?.actor,
+      source: options?.source ?? 'web',
+    });
+  } catch (auditErr) {
+    console.warn('[inventory-db] Non-fatal: failed to record audit event for deleteStockItem:', auditErr);
   }
 }
 
@@ -1083,26 +1111,34 @@ export async function saveLocation(
 }
 
 /**
- * Soft deletes inventory location.
+ * Deletes an inventory location and records an immutable tenant audit event for navigation history.
  */
 export async function deleteLocation(
   supabase: SupabaseClient,
   accountId: string,
   locationId: string,
+  options?: { actor?: ActorSnapshot; source?: TenantAuditSource },
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_locations')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', locationId)
     .eq('account_id', accountId);
 
-  if (error) {
-    const { error: fallbackErr } = await supabase
-      .from('inventory_locations')
-      .delete()
-      .eq('id', locationId)
-      .eq('account_id', accountId);
-    if (fallbackErr) throw fallbackErr;
+  if (error) throw error;
+
+  try {
+    await recordTenantAuditEvent({
+      client: supabase,
+      accountId,
+      entityType: 'inventory_locations',
+      entityId: locationId,
+      action: 'delete',
+      actor: options?.actor,
+      source: options?.source ?? 'web',
+    });
+  } catch (auditErr) {
+    console.warn('[inventory-db] Non-fatal: failed to record audit event for deleteLocation:', auditErr);
   }
 }
 

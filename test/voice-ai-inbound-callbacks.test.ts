@@ -56,11 +56,28 @@ describe('inbound recovery callback setup', () => {
     const body = await response.json();
     expect(body.sections.main.some((step: Record<string, unknown>) => step.record || step.connect || step.ai)).toBe(false);
     expect(body.sections.main.some((step: Record<string, unknown>) => step.play)).toBe(true);
+    expect(body.sections.main[0]).toEqual({ answer: { max_duration: 598 } });
+    expect(body.sections.main.at(-1)).toEqual({ hangup: {} });
+  });
+
+  it('bounds the apology call when admission fails before a plan exists', async () => {
+    mocks.plan.mockRejectedValueOnce(new Error('Admission dependency unavailable'));
+    const response = await POST(inbound());
+    const { sections: { main } } = await response.json();
+    expect(response.status).toBe(200);
+    expect(main).toEqual([
+      { answer: { max_duration: 598 } },
+      { play: { url: expect.stringContaining('say: ') } },
+      { hangup: {} },
+    ]);
+    expect(mocks.persist).not.toHaveBeenCalled();
   });
 
   it('rejects forged inbound calls before persisting context', async () => {
     mocks.verify.mockReturnValueOnce({ ok: false, reason: 'mismatch' });
-    expect((await POST(inbound())).status).toBe(403);
+    const response = await POST(inbound());
+    expect(response.status).toBe(403);
+    expect((await response.json()).sections.main).toEqual([{ hangup: {} }]);
     expect(mocks.persist).not.toHaveBeenCalled();
     expect(mocks.plan).not.toHaveBeenCalled();
   });

@@ -17,7 +17,12 @@ import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableAccentText, readableOnAccent } from './theme-color';
 import { templateFontVars } from './fonts';
-import styles from './themes.module.css';
+import baseStyles from './themes.module.css';
+import themeStyles from './vista.module.css';
+const styles = { ...baseStyles, ...themeStyles };
+import CallLink from './CallLink';
+import TextLink from './TextLink';
+import ResponseTimeBadge from './ResponseTimeBadge';
 
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
@@ -35,8 +40,8 @@ export default function VistaTemplate({ site }: TemplateProps) {
     '--theme-accent': effectiveAccent,
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#111'),
     '--theme-accent-text': site.accent_override
-      ? readableAccentText(site.accent_override, [scheme?.bg || '#0f1115', scheme?.surface || '#171a20'])
-      : (scheme?.accentText || defaultAccent),
+      ? readableAccentText(site.accent_override, [scheme?.bg || '#f4f5f3', scheme?.surface || '#ffffff'])
+      : (scheme?.accentText || readableAccentText(defaultAccent, ['#f4f5f3', '#ffffff'])),
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
     '--c-on-photo': scheme?.onPhoto || '#f0f2f5',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
@@ -58,7 +63,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
   } as CSSProperties;
 
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
+    <main id="main-content" className={`${templateFontVars} ${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
@@ -75,7 +80,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.vistaActions}>
-          {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          {site.phone && <CallLink site={site} className={styles.vistaPhone} data-edit="bizPhone">{site.phone}</CallLink>}
           <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)} <span aria-hidden="true">→</span></a>
         </div>
       </header>
@@ -110,7 +115,10 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <section className={styles.vistaContact} id="contact">
         <div className={styles.vistaContactCopy}>
           <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
-          {site.phone && <a href={`tel:${site.phone}`}>Call {site.phone} <span aria-hidden="true">↗</span></a>}
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            {site.phone && <CallLink site={site}>Call {site.phone} <span aria-hidden="true">↗</span></CallLink>}
+            <TextLink site={site}>Text us <span aria-hidden="true">↗</span></TextLink>
+          </div>
           <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />

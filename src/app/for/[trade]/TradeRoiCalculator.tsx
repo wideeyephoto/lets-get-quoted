@@ -62,7 +62,7 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
           </h2>
           <p className={styles.subtitle}>
             Traditional software charges \$300+/month before you even book a job. With \$0 monthly overhead on Flex and
-            built-in route matching, your bottom line looks radically different.
+            built-in route matching, your fixed overhead drops to zero.
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
             {/* Output Advantage Display */}
             <div className={styles.resultsSide}>
               <div className={styles.totalBlock}>
-                <span className={styles.totalLabel}>Estimated Annual Profit Advantage</span>
+                <span className={styles.totalLabel}>Estimated Annual Economic Advantage</span>
                 <span className={styles.totalAmount}>+{formatCurrency(calculations.totalAnnualAdvantage)}</span>
                 <span className={styles.totalSub}>in cash kept + extra booked jobs / year</span>
               </div>
@@ -131,7 +131,7 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
                 <div className={styles.breakdownItem}>
                   <div className={styles.breakdownHead}>
                     <span className={styles.checkIcon}>✓</span>
-                    <span>Zero Subscription Bloat:</span>
+                    <span>Fixed Subscription Savings:</span>
                   </div>
                   <strong>+{formatCurrency(calculations.softwareSavings)}/yr</strong>
                 </div>
@@ -157,6 +157,9 @@ export default function TradeRoiCalculator({ trade }: { trade: Trade }) {
                 </a>
                 <span className={styles.ctaNote}>No credit card required · Free forever on Flex</span>
               </div>
+                <p className={styles.disclaimerText}>
+                  * Compares fixed upfront subscription fees (legacy software ~$309/mo including 2 tech seats vs. Let’s Get Quoted Flex at $0/mo base with 2 office seats and 2 crew users included). When you collect invoice payments through Let’s Get Quoted, standard credit card processing and a 1.25% platform fee apply (or 0.50% on Solo, 0.40% on Growth). Quick Stop revenue reflects estimated gross billable margin opportunities along active routes.
+                </p>
             </div>
           </div>
         </div>

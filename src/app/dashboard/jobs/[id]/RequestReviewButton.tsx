@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { reviewRequestText } from '@/lib/sms-templates';
 
 type ReviewResult = { ok: boolean; message: string };
 
@@ -19,10 +21,18 @@ export default function RequestReviewButton({
   action,
   reviewConfigured,
   lastRequestedAt,
+  businessName,
+  clientName,
+  clientPhone,
+  reviewUrl,
 }: {
   action: () => Promise<ReviewResult>;
   reviewConfigured: boolean;
   lastRequestedAt: string | null;
+  businessName?: string;
+  clientName?: string;
+  clientPhone?: string | null;
+  reviewUrl?: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<ReviewResult | null>(null);
@@ -46,9 +56,24 @@ export default function RequestReviewButton({
 
   return (
     <div className="review-request-block">
-      <button type="button" className="btn secondary" onClick={handleClick} disabled={pending}>
-        {pending ? 'Sending…' : requestedLabel ? '⭐ Ask again for a review' : '⭐ Ask for a Google review'}
-      </button>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button type="button" className="btn secondary" onClick={handleClick} disabled={pending}>
+          {pending ? 'Sending…' : requestedLabel ? '⭐ Ask again for a review' : '⭐ Ask for a Google review'}
+        </button>
+        {reviewUrl && clientPhone ? (
+          <SmsPreview
+            message={reviewRequestText({
+              businessName: businessName || 'Your Business',
+              clientName: (clientName || 'there').trim().split(/\s+/)[0] || 'there',
+              reviewUrl,
+            })}
+            recipientLabel={clientName}
+            phone={clientPhone}
+            triggerLabel="👁 Preview text"
+            buttonClassName="btn ghost"
+          />
+        ) : null}
+      </div>
       {result ? (
         <small className={`review-request-hint ${result.ok ? 'is-ok' : 'is-error'}`}>{result.message}</small>
       ) : requestedLabel ? (

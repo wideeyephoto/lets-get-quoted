@@ -1,0 +1,62 @@
+{
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "before": [
+    {
+      "name": "rls_enabled_no_policy",
+      "count": 90
+    },
+    {
+      "name": "function_search_path_mutable",
+      "count": 4
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "count": 17
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "count": 34
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "count": 1
+    }
+  ],
+  "after": [
+    {
+      "name": "rls_enabled_no_policy",
+      "count": 90
+    },
+    {
+      "name": "function_search_path_mutable",
+      "count": 4
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "count": 16
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "count": 34
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "count": 1
+    }
+  ],
+  "removed": [
+    {
+      "name": "anon_security_definer_function_executable",
+      "metadata": {
+        "name": "crew_set_job_status",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "j uuid, new_status text",
+        "security_definer": true
+      },
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+    }
+  ],
+  "added": [],
+  "scope": "Comparison around the crew-completion corrective migration. Existing unrelated notices remain; this is not a project-wide security clearance."
+}

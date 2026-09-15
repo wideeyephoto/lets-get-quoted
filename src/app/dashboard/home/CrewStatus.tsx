@@ -16,12 +16,12 @@ export default function CrewStatus({
 
   return (
     <section className="panel workspace-section-card crew-status-panel">
-      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', width: '100%', maxWidth: 'none' }}>
         <div>
           <p className="eyebrow">Team</p>
           <h2>Crew &amp; labor status</h2>
         </div>
-        <Link href={`${basePath}/crew`} style={{ fontSize: '0.84rem', color: 'var(--accent)', textDecoration: 'none' }}>
+        <Link href={`${basePath}/crew`} style={{ fontSize: '0.84rem', color: 'var(--accent)', textDecoration: 'none', marginLeft: 'auto', alignSelf: 'flex-start' }}>
           View roster &rarr;
         </Link>
       </div>

@@ -330,15 +330,15 @@ export default async function SubcontractorRequestPage({
           <div className="form-grid">
             {status !== 'cancelled' ? (
               <div className="field full">
-                <ConfirmActionButton
-                  action={cancelRequestAction.bind(null, request.id)}
-                  confirmMessage="Cancel this request? Every open offer closes and each subcontractor is told."
-                  className="btn danger"
-                  pendingLabel="Cancelling…"
-                  savedLabel="Cancelled ✓"
-                >
-                  Cancel request
-                </ConfirmActionButton>
+                <details>
+                  <summary className="btn danger">Cancel request</summary>
+                  <p>Cancel this request? Every open offer closes and each subcontractor is told.</p>
+                  <form action={cancelRequestAction.bind(null, request.id)}>
+                    <SaveButton className="btn danger" pendingLabel="Cancelling…" savedLabel="Cancelled ✓">
+                      Confirm cancellation
+                    </SaveButton>
+                  </form>
+                </details>
               </div>
             ) : null}
 

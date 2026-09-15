@@ -27,6 +27,7 @@ import { analyzePipelineLogistics } from '@/lib/ai-lead-advisor';
 import type { MapPin } from '@/components/pin-map';
 import type { LeadViewItem } from '@/app/dashboard/leads/LeadsWorkspace';
 import type { ActionCard, ActiveRecordContext } from './types';
+import { ilikeAcross } from '@/lib/postgrest-filter';
 
 export interface ToolExecutionContext {
   supabase: SupabaseClient;
@@ -671,7 +672,7 @@ export async function executeAssistantTool(
         .limit(limit);
 
       if (query) {
-        dbQuery = dbQuery.or(`name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%,address.ilike.%${query}%`);
+        dbQuery = dbQuery.or(ilikeAcross(['name', 'phone', 'email', 'address'], query));
       }
 
       const { data: clients, error } = await dbQuery;
@@ -721,7 +722,7 @@ export async function executeAssistantTool(
       }
 
       if (query) {
-        dbQuery = dbQuery.or(`client_name.ilike.%${query}%,ref.ilike.%${query}%,address.ilike.%${query}%,scope.ilike.%${query}%`);
+        dbQuery = dbQuery.or(ilikeAcross(['client_name', 'ref', 'address', 'scope'], query));
       }
 
       const { data: jobs, error } = await dbQuery;

@@ -89,6 +89,16 @@ try {
     owns.set(owner.account_id, counts);
   }
 
+  // Map user_id to all account_ids where they have an active membership
+  const userAccounts = new Map();
+  const allMemberships = (await client.query(
+    `select user_id, account_id, role from public.memberships`,
+  )).rows;
+  for (const m of allMemberships) {
+    if (!userAccounts.has(m.user_id)) userAccounts.set(m.user_id, []);
+    userAccounts.get(m.user_id).push(m.account_id);
+  }
+
   const grandTotal = {};
   for (const table of tables) {
     grandTotal[table] = [...owns.values()].reduce((sum, counts) => sum + counts[table], 0);
@@ -98,6 +108,13 @@ try {
 
   for (const owner of owners) {
     const mine = owns.get(owner.account_id);
+    const memberAccountIds = userAccounts.get(owner.user_id) || [owner.account_id];
+    // For an unconstrained query, RLS permits rows across all workspaces where the user is a member
+    const expectedTotal = {};
+    for (const table of tables) {
+      expectedTotal[table] = memberAccountIds.reduce((sum, accId) => sum + (owns.get(accId)?.[table] ?? 0), 0);
+    }
+
     await client.query('begin');
     try {
       await client.query('set local role authenticated');
@@ -106,13 +123,39 @@ try {
         JSON.stringify({ sub: owner.user_id, role: 'authenticated' }),
       ]);
       for (const table of tables) {
+        // 1. Unconstrained query
         const { rows } = await client.query(`select count(*)::int as n from public.${table}`);
         const seen = rows[0].n;
-        const ok = seen === mine[table];
+        const ok = seen === expectedTotal[table];
         if (!ok) failures += 1;
+
+        // 2. Active workspace scoped query: must see exactly mine[table]
+        const { rows: scopedRows } = await client.query(
+          `select count(*)::int as n from public.${table} where account_id = $1`,
+          [owner.account_id],
+        );
+        const scopedSeen = scopedRows[0].n;
+        const scopedOk = scopedSeen === mine[table];
+        if (!scopedOk) failures += 1;
+
+        // 3. Foreign workspace probe: test an account user does NOT belong to
+        const foreignAccount = owners.find((o) => !memberAccountIds.includes(o.account_id));
+        if (foreignAccount) {
+          const { rows: foreignRows } = await client.query(
+            `select count(*)::int as n from public.${table} where account_id = $1`,
+            [foreignAccount.account_id],
+          );
+          if (foreignRows[0].n !== 0) {
+            failures += 1;
+            console.log(`  LEAK: saw ${foreignRows[0].n} rows in foreign account ${foreignAccount.account_id}`);
+          }
+        }
+
+        const isDual = memberAccountIds.length > 1;
         console.log(
           `  ${owner.account_id.slice(0, 8)}  ${table.padEnd(14)} sees ${String(seen).padStart(4)}`
-          + `  owns ${String(mine[table]).padStart(4)}  ${ok ? 'ok' : 'MISMATCH'}`,
+          + `  owns ${String(mine[table]).padStart(4)}${isDual ? ` (dual: ${expectedTotal[table]})` : ''}`
+          + `  ${ok && scopedOk ? 'ok' : 'MISMATCH'}`,
         );
       }
     } finally {
@@ -122,7 +165,7 @@ try {
     // An owner who happens to own every row would "pass" every check above
     // while proving nothing, so say when the comparison was vacuous rather than
     // letting it count as evidence.
-    const elsewhere = tables.reduce((sum, t) => sum + (grandTotal[t] - mine[t]), 0);
+    const elsewhere = tables.reduce((sum, t) => sum + (grandTotal[t] - expectedTotal[t]), 0);
     if (elsewhere === 0) {
       vacuous += 1;
       console.log('      no rows exist elsewhere, so isolation was not actually exercised here');

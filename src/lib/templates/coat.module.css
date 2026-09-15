@@ -1,0 +1,53 @@
+
+.coat {
+  --c-bg: #fff; --c-surface: #f4f3f6; --c-ink: #1b1a1f; --c-muted: #6a6870; --c-line: #ececf1; --c-deep: #3a080b; --c-on-deep: #fff;
+  --coat-ink: var(--c-ink); --coat-muted: var(--c-muted); --coat-surface: var(--c-surface); --coat-maroon: var(--c-deep);
+  --coat-ambient: radial-gradient(circle at 75% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
+  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+.coat[data-mode='dark'] {
+  --coat-ambient: radial-gradient(circle at 50% -15%, rgba(224, 50, 42, 0.25), transparent 50%), radial-gradient(circle at 85% 60%, rgba(244, 63, 94, 0.14), transparent 40%), linear-gradient(180deg, #14080a 0%, #1e0d11 50%, #0a0405 100%);
+}
+.coat .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.coat .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
+.coat .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--coat-ink); }
+.coat .kicker { color: var(--theme-accent); }
+.coat .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 18px; box-shadow: 0 22px 46px -30px rgba(27,26,31,.3); }
+.coat .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); color: var(--theme-accent); border-radius: 14px; }
+.coat .serviceCard h3 { color: var(--coat-ink); }
+.coat .serviceCard p { color: var(--coat-muted); }
+.coat .statValue { color: var(--coat-ink); }
+.coat .statItem { background: var(--coat-surface); border-radius: 16px; padding: 1.4rem 1rem; }
+.coat .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
+.coat .heroQuickForm {
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--coat-maroon, var(--c-deep)) 92%, #000 8%);
+  color: var(--c-on-deep);
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent);
+  box-shadow: 0 28px 56px -22px rgba(0,0,0,.7);
+}
+.coat .heroQuickForm .heroFormTitle { color: var(--c-on-deep); font-family: var(--theme-display); font-weight: 800; }
+.coat .heroQuickForm .heroFormNote { color: rgba(255, 255, 255, 0.85); }
+.coat .heroQuickForm input, .coat .heroQuickForm select, .coat .heroQuickForm textarea {
+  background: rgba(0, 0, 0, 0.55);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-radius: 10px;
+}
+.coat .heroQuickForm input::placeholder, .coat .heroQuickForm textarea::placeholder {
+  color: rgba(255, 255, 255, 0.65);
+  opacity: 1;
+}
+.coat .heroQuickForm input:focus, .coat .heroQuickForm select:focus, .coat .heroQuickForm textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.32);
+}
+.coat .heroQuickForm .heroFormChip {
+  background: rgba(0, 0, 0, 0.45);
+  color: #f8fafc;
+  border: 1.5px solid rgba(255, 255, 255, 0.32);
+  border-radius: 8px;
+}
+.coat .heroQuickForm .heroFieldLabel { color: rgba(255, 255, 255, 0.9); font-weight: 800; }
+.coat .heroQuickForm .heroFieldIcon { color: rgba(255, 255, 255, 0.75); }
+.coat[data-mode='dark'] { --c-bg: #17151a; --c-surface: #201d26; --c-ink: #e9e6ee; --c-muted: #a5a0af; --c-line: #2a2732; --c-deep: #2a0c11; --c-on-deep: #f3e9ec; }

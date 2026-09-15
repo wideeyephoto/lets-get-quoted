@@ -24,7 +24,7 @@ describe('standard contractor customer operations campaign template', () => {
     expect(effectiveBrandName({ legalBusinessName: 'Apex Roofing LLC', dbaName: '   ' })).toBe('Apex Roofing LLC');
   });
 
-  it('generates a carrier-compliant campaign description with non-marketing customer care scope', () => {
+  it('generates a proposed campaign description with non-marketing customer care scope', () => {
     const description = generateContractorCampaignDescription(sampleInput);
 
     expect(description).toContain('Apex Roofs & Gutters');
@@ -41,9 +41,13 @@ describe('standard contractor customer operations campaign template', () => {
 
     expect(optIn).toContain('Apex Roofs & Gutters');
     expect(optIn).toContain('https://apexroofing.example.com');
-    expect(optIn).toContain('By providing your phone number');
-    expect(optIn).toContain('Reply STOP to opt out or HELP for help');
-    expect(optIn).toContain('never sold or shared with third parties');
+    expect(optIn).toContain('"Call or text me" or "Text me only" before submitting');
+    expect(optIn).toContain('not consent to unrelated');
+    expect(optIn).toContain('stored consent evidence');
+    expect(optIn).not.toContain('by signing a service agreement');
+    expect(optIn).not.toContain('or by initiating direct contact');
+    expect(optIn).not.toContain('never sold or shared with third parties');
+    expect(optIn).toContain('for their marketing or promotional purposes');
   });
 
   it('generates five representative operational sample messages with STOP opt-out disclosures', () => {
@@ -57,6 +61,9 @@ describe('standard contractor customer operations campaign template', () => {
     // Check specific message categories
     expect(samples[0]).toContain('estimate you requested');
     expect(samples[1]).toContain('appointment is confirmed');
+    expect(samples[1]).toContain('STOP to opt out of texts');
+    expect(samples[1]).toContain('To change your appointment, contact our office');
+    expect(samples[1]).not.toContain('STOP to cancel');
     expect(samples[2]).toContain('technician is on the way');
     expect(samples[3]).toContain('received your note');
     expect(samples[4]).toContain('service has been completed');
@@ -89,5 +96,6 @@ describe('standard contractor customer operations campaign template', () => {
     expect(payload.subscriberOptOut).toBe(true);
     expect(payload.subscriberHelp).toBe(true);
     expect(payload.sampleMessages).toHaveLength(5);
+    expect(payload.optInMessage).toContain('STOP to opt out of texts');
   });
 });

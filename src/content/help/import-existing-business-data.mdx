@@ -1,0 +1,30 @@
+---
+title: "Import existing business data, clients, and price books"
+owner: "Help Center Team"
+last_verified: "August 29, 2026"
+category: "Billing and account"
+---
+
+# Purpose
+Migrate client lists, leads, price book items, and past jobs from spreadsheets or legacy software.
+
+# Steps
+## Owner-gated data import hub
+Although the data hub is visible, all four importer actions (Clients, Leads, Price Book, and Past Jobs) are strictly gated by Owner security clearance (requireOwnerContext).
+
+## Prepare and upload your CSV files
+1. Download the sample CSV template for the data type you are importing.
+2. Format columns: ensure phone numbers have area codes and addresses are split into street, city, state, and zip.
+3. Upload your CSV and inspect the preview mapping table before confirming the import.
+
+
+
+# Done State
+You will import your historical client database and service catalog cleanly with zero data corruption.
+
+# Common Failure
+**An office user cannot run a CSV import.**
+Data import actions require Owner role clearance to prevent accidental data overwrites.
+
+**Import shows duplicate records.**
+Clean and deduplicate your source spreadsheet before uploading.
